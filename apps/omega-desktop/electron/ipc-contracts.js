@@ -1,0 +1,45 @@
+export const IPC_CHANNELS = Object.freeze({
+  sessionReady: "omega:sessionReady",
+  getState: "omega:getState",
+  listModels: "omega:listModels",
+  setModel: "omega:setModel",
+  setThinkingLevel: "omega:setThinkingLevel",
+  listCommands: "omega:listCommands",
+  compact: "omega:compact",
+  authStatus: "omega:authStatus",
+  listSessions: "omega:listSessions",
+  newSession: "omega:newSession",
+  loadSession: "omega:loadSession",
+  deleteSession: "omega:deleteSession",
+  listWorkspaces: "omega:listWorkspaces",
+  chooseWorkspace: "omega:chooseWorkspace",
+  diffWorkspace: "omega:diffWorkspace",
+  gitSnapshot: "omega:gitSnapshot",
+  gitStage: "omega:gitStage",
+  gitUnstage: "omega:gitUnstage",
+  gitCommit: "omega:gitCommit",
+  approveChange: "omega:approveChange",
+  prompt: "agent:prompt",
+  abort: "agent:abort",
+  event: "agent:event",
+  transport: "worker:transport",
+});
+
+export const ERROR_CODES = Object.freeze({
+  forbidden: "forbidden",
+  invalidArgs: "invalid_args",
+  bootstrapFailed: "bootstrap_failed",
+  workerUnavailable: "worker_unavailable",
+  workerTimeout: "worker_timeout",
+  workerDisposed: "worker_disposed",
+  staleGeneration: "stale_generation",
+  sessionBusy: "session_busy",
+  staleDiffSnapshot: "stale_diff_snapshot",
+  workspaceUnauthorized: "workspace_not_authorized",
+  cancelled: "cancelled",
+  unsupported: "unsupported",
+});
+
+export function isIpcEnvelope(value) {
+  return Boolean(value && typeof value === "object" && typeof value.ok === "boolean");
+}

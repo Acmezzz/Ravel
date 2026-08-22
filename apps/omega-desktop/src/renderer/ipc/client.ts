@@ -47,8 +47,8 @@ export interface OmegaBridge {
   fileIndex(req: { query: string }): Promise<IpcResult<string[]>>;
   bash(req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>>;
   gitSnapshot(): Promise<IpcResult<GitSnapshot>>;
-  gitStage(req: { items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>>;
-  gitUnstage(req: { items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>>;
+  gitStage(req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>>;
+  gitUnstage(req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>>;
   gitCommit(req: { message: string }): Promise<IpcResult<{ hash: string }>>;
   getThinking(req: { entryId: string }): Promise<IpcResult<{ text: string | null }>>;
   getSystemPrompt(): Promise<IpcResult<{ systemPrompt: string }>>;
@@ -60,7 +60,10 @@ export interface OmegaBridge {
   isMaximized(): Promise<IpcResult<{ maximized: boolean }>>;
   onWindowStateChanged(callback: (data: { maximized: boolean }) => void): () => void;
   onStatus(callback: (data: unknown) => void): () => void;
+  onTransport(callback: (data: { state: string }) => void): () => void;
   onEvent(callback: (data: unknown) => void): () => void;
+  listWorkspaces(): Promise<IpcResult<string[]>>;
+  chooseWorkspace(): Promise<IpcResult<{ root: string; workspaces: string[] }>>;
   sessionReady(): Promise<IpcResult<{ ready: boolean }>>;
   getState(): Promise<IpcResult<AgentStateSnapshot>>;
   listModels(): Promise<IpcResult<ModelInfo[]>>;
@@ -93,6 +96,7 @@ export interface OmegaBridge {
   diffWorkspace(req: { taskId?: string }): Promise<IpcResult<WorkspaceDiff>>;
   approveChange(req: {
     action: "accept" | "reject";
+    snapshotToken?: string;
     files?: string[];
   }): Promise<IpcResult<ChangeApprovalResult>>;
 }
@@ -132,8 +136,8 @@ export const ipc = {
   bash: async (req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>> =>
     ok(await window.omega?.bash?.(req)),
   gitSnapshot: async (): Promise<IpcResult<GitSnapshot>> => ok(await window.omega?.gitSnapshot?.()),
-  gitStage: async (req: { items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>> => ok(await window.omega?.gitStage?.(req)),
-  gitUnstage: async (req: { items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>> => ok(await window.omega?.gitUnstage?.(req)),
+  gitStage: async (req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>> => ok(await window.omega?.gitStage?.(req)),
+  gitUnstage: async (req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>> => ok(await window.omega?.gitUnstage?.(req)),
   gitCommit: async (req: { message: string }): Promise<IpcResult<{ hash: string }>> => ok(await window.omega?.gitCommit?.(req)),
   getThinking: async (req: { entryId: string }): Promise<IpcResult<{ text: string | null }>> =>
     ok(await window.omega?.getThinking?.(req)),
@@ -146,6 +150,8 @@ export const ipc = {
   isMaximized: async (): Promise<IpcResult<{ maximized: boolean }>> => ok(await window.omega?.isMaximized?.()),
   onWindowStateChanged: (callback: (data: { maximized: boolean }) => void): (() => void) =>
     window.omega?.onWindowStateChanged?.(callback) ?? (() => {}),
+  listWorkspaces: async (): Promise<IpcResult<string[]>> => ok(await window.omega?.listWorkspaces?.()),
+  chooseWorkspace: async (): Promise<IpcResult<{ root: string; workspaces: string[] }>> => ok(await window.omega?.chooseWorkspace?.()),
   sessionReady: async (): Promise<IpcResult<{ ready: boolean }>> =>
     ok(await window.omega?.sessionReady?.()),
   getState: async (): Promise<IpcResult<AgentStateSnapshot>> => ok(await window.omega?.getState?.()),
@@ -184,6 +190,7 @@ export const ipc = {
   diffWorkspace: async (req: { taskId?: string }): Promise<IpcResult<WorkspaceDiff>> => ok(await window.omega?.diffWorkspace?.(req)),
   approveChange: async (req: {
     action: "accept" | "reject";
+    snapshotToken?: string;
     files?: string[];
   }): Promise<IpcResult<ChangeApprovalResult>> => ok(await window.omega?.approveChange?.(req)),
 };

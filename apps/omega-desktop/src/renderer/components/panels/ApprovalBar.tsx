@@ -11,6 +11,7 @@ import { ipc } from "../../ipc/client";
 import type { ChangeApprovalResult } from "../../types/dto";
 
 export interface ApprovalBarProps {
+  snapshotToken: string;
   selectedFiles: string[];
   hasUntrackedSelected: boolean;
   onApplied: (result: ChangeApprovalResult) => void;
@@ -22,7 +23,7 @@ export interface ApprovalBarProps {
  * untracked files is irreversible — we force a second confirmation with a
  * clear risk warning. See system_design.md §3.4 / 决策 #6.
  */
-export function ApprovalBar({ selectedFiles, hasUntrackedSelected, onApplied }: ApprovalBarProps): React.ReactElement {
+export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected, onApplied }: ApprovalBarProps): React.ReactElement {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
@@ -40,11 +41,11 @@ export function ApprovalBar({ selectedFiles, hasUntrackedSelected, onApplied }: 
 
   const confirmReject = React.useCallback(async () => {
     setBusy(true);
-    const res = await ipc.approveChange({ action: "reject", files: selectedFiles });
+    const res = await ipc.approveChange({ action: "reject", snapshotToken, files: selectedFiles });
     if (res.ok) onApplied(res.data);
     setConfirmOpen(false);
     setBusy(false);
-  }, [selectedFiles, onApplied]);
+  }, [selectedFiles, snapshotToken, onApplied]);
 
   return (
     <Box sx={{ position: "sticky", bottom: 0, mt: 1, p: 1.25, background: "var(--omega-bg-elevated)", border: "1px solid var(--omega-border)", borderRadius: "12px", display: "flex", gap: 1 }}>

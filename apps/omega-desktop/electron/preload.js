@@ -70,6 +70,14 @@ contextBridge.exposeInMainWorld("omega", {
     return ipcRenderer.invoke("agent:prompt", text, behavior, images);
   },
   abort: () => ipcRenderer.invoke("agent:abort"),
+  onTransport: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const handler = (_event, data) => {
+      try { callback(data); } catch (error) { console.error("omega transport callback failed", error); }
+    };
+    ipcRenderer.on("worker:transport", handler);
+    return () => ipcRenderer.removeListener("worker:transport", handler);
+  },
   onStatus: (callback) => {
     if (typeof callback !== "function") return () => {};
     const handler = (_event, data) => {
@@ -88,6 +96,8 @@ contextBridge.exposeInMainWorld("omega", {
   },
 
   // ----- extension state (read-only) -----
+  listWorkspaces: () => ipcRenderer.invoke("omega:listWorkspaces"),
+  chooseWorkspace: () => ipcRenderer.invoke("omega:chooseWorkspace"),
   sessionReady: () => ipcRenderer.invoke("omega:sessionReady"),
   getState: () => ipcRenderer.invoke("omega:getState"),
   listModels: () => ipcRenderer.invoke("omega:listModels"),
@@ -181,13 +191,13 @@ contextBridge.exposeInMainWorld("omega", {
     if (!Array.isArray(req?.items)) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "items[] is required" });
     }
-    return ipcRenderer.invoke("omega:gitStage", { items: req.items.slice(0, 200) });
+    return ipcRenderer.invoke("omega:gitStage", { snapshotToken: safeString(req.snapshotToken, 128), items: req.items.slice(0, 200) });
   },
   gitUnstage: (req) => {
     if (!Array.isArray(req?.items)) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "items[] is required" });
     }
-    return ipcRenderer.invoke("omega:gitUnstage", { items: req.items.slice(0, 200) });
+    return ipcRenderer.invoke("omega:gitUnstage", { snapshotToken: safeString(req.snapshotToken, 128), items: req.items.slice(0, 200) });
   },
   gitCommit: (req) => {
     if (!req || typeof req.message !== "string" || !req.message.trim()) {
@@ -259,6 +269,6 @@ contextBridge.exposeInMainWorld("omega", {
     const files = Array.isArray(req.files)
       ? req.files.filter((f) => typeof f === "string").map((f) => f.slice(0, 4096)).slice(0, 2000)
       : undefined;
-    return ipcRenderer.invoke("omega:approveChange", { action: req.action, files });
+    return ipcRenderer.invoke("omega:approveChange", { action: req.action, snapshotToken: safeString(req.snapshotToken, 128), files });
   },
 });

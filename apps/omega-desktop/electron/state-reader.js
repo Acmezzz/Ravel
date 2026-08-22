@@ -13,7 +13,7 @@
  * leak upstream types. See system_design.md §3.1 and the security red line.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { homedir as osHomedir } from "node:os";
 
 // ---------------------------------------------------------------------------
@@ -26,10 +26,19 @@ export function projectKeyFromCwd(cwd) {
 }
 
 function safeTaskSegment(taskId) {
+  if (typeof taskId !== "string" || !/^[A-Za-z0-9._-]{1,160}$/.test(taskId)) return null;
   return encodeURIComponent(taskId).replace(
     /[!'()*]/g,
     (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
   );
+}
+
+function safeProjectKey(projectKey) {
+  return typeof projectKey === "string" && /^--[A-Za-z0-9._/-]{1,512}--$/.test(projectKey) ? projectKey : null;
+}
+
+function boundedString(value, max = 16_000) {
+  return typeof value === "string" ? value.slice(0, max) : "";
 }
 
 function defaultAgentDir() {
@@ -187,8 +196,10 @@ export function readWorkflowRegistry(workflowsRoot) {
 }
 
 export function readWorkflowTracker(journalsRoot, projectKey, taskId, workflowsRoot) {
-  if (!taskId) return undefined;
-  const snap = readJson(join(journalsRoot, projectKey, taskId, "tracker.json"));
+  const safeProject = safeProjectKey(projectKey);
+  const safeTask = safeTaskSegment(taskId);
+  if (!safeProject || !safeTask) return undefined;
+  const snap = readJson(join(journalsRoot, safeProject, safeTask, "tracker.json"));
   if (!snap || snap.version !== 1 || typeof snap.workflowId !== "string") return undefined;
   const registry = readWorkflowRegistry(workflowsRoot ?? join(journalsRoot, "..", "workflows"));
   const entry = registry.entries.find((e) => e.id === snap.workflowId);
@@ -211,8 +222,10 @@ export function readWorkflowTracker(journalsRoot, projectKey, taskId, workflowsR
 }
 
 export function readWorkflowMemoryCoverage(journalsRoot, projectKey, taskId) {
-  if (!taskId) return undefined;
-  const coverage = readJson(join(journalsRoot, projectKey, taskId, "memory", "coverage.json"));
+  const safeProject = safeProjectKey(projectKey);
+  const safeTask = safeTaskSegment(taskId);
+  if (!safeProject || !safeTask) return undefined;
+  const coverage = readJson(join(journalsRoot, safeProject, safeTask, "memory", "coverage.json"));
   if (!coverage) return undefined;
   return {
     distilledUpTo: Number(coverage.distilledUpTo ?? 0),
@@ -431,8 +444,10 @@ function mapRound(record, selection) {
 }
 
 export function readScoutRounds(explorationsRoot, projectKey, taskId) {
-  if (!taskId) return undefined;
-  const file = join(explorationsRoot, projectKey, safeTaskSegment(taskId), "rounds.jl");
+  const safeProject = safeProjectKey(projectKey);
+  const safeTask = safeTaskSegment(taskId);
+  if (!safeProject || !safeTask) return undefined;
+  const file = join(explorationsRoot, safeProject, safeTask, "rounds.jl");
   /** @type {any[]} */
   const rounds = [];
   /** @type {Array<{roundId:string,selection:any}>} */
@@ -539,9 +554,12 @@ function placeholderPlan() {
 export function readExtensionState(opts = {}) {
   const scope = opts.scope ?? "all";
   const roots = resolveRoots(opts.agentDir);
-  const projectKey = opts.projectKey || (opts.cwd ? projectKeyFromCwd(opts.cwd) : undefined);
-  if (!projectKey) return {};
-  const taskId = opts.taskId || latestTaskId(roots.journalsRoot, projectKey);
+  // Project identity is derived from the privileged active cwd. Renderer-supplied
+  // project keys are never allowed to select another project's state directory.
+  const projectKey = opts.cwd ? projectKeyFromCwd(opts.cwd) : undefined;
+  if (!projectKey || !safeProjectKey(projectKey)) return {};
+  const requestedTask = typeof opts.taskId === "string" && safeTaskSegment(opts.taskId) ? opts.taskId : undefined;
+  const taskId = requestedTask || latestTaskId(roots.journalsRoot, projectKey);
 
   /** @type {Record<string, any>} */
   const bundle = {};

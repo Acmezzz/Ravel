@@ -4,6 +4,15 @@
  * raw SDK event; everything here is scrubbed.
  */
 
+export interface EventMeta {
+  sequence: number;
+  sessionId?: string;
+  runId?: string | null;
+  generation: number;
+}
+
+export type SafeEventEnvelope = { event: SafeEvent; meta: EventMeta };
+
 export interface MessageStartEvent {
   type: "message_start";
   message: {

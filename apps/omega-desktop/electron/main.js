@@ -15,6 +15,7 @@ import {
   Notification,
   session as electronSession,
   shell,
+  dialog,
   utilityProcess,
 } from "electron";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
@@ -26,6 +27,10 @@ import * as persistence from "./persistence.js";
 import * as stateReader from "./state-reader.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
+import { createWorkspaceRegistry } from "./workspace-registry.js";
+import { realRoot } from "./path-security.js";
+import { readSessionSummaries } from "./session-reader.js";
+import { isIpcEnvelope } from "./ipc-contracts.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -34,12 +39,19 @@ const PROMPT_BEHAVIORS = ["steer", "followUp"];
 const MAX_PROMPT_IMAGES = 4;
 const MAX_IMAGE_CHARS = 8_000_000;
 const WORKER_RPC_TIMEOUT = 120_000;
+const CLOSE_FLUSH_TIMEOUT = 10_000;
 let win;
 let worker = null;
 let bootstrapError = null;
 let shuttingDown = false;
+let quitRequested = false;
 let activeCwd = null;
 let agentReady = false;
+let agentRunning = false;
+let workspaceRegistry;
+let closeDecision = null;
+let closeHandling = false;
+let closeApproved = false;
 
 function rootOf() {
   return app.isPackaged ? (process.resourcesPath ? join(process.resourcesPath, "omega-runtime") : app.getAppPath()) : DEV_ROOT;
@@ -51,6 +63,44 @@ function extensionsRootOf() {
 
 function sessionsRoot() {
   return join(app.getPath("userData"), "omega", "sessions");
+}
+
+function workspaceRegistryFile() {
+  return join(app.getPath("userData"), "omega", "workspaces.json");
+}
+
+function authorizedWorkspace(value) {
+  if (!workspaceRegistry) {
+    const error = new Error("Workspace registry is not ready");
+    error.code = "workspace_registry_unavailable";
+    throw error;
+  }
+  return workspaceRegistry.resolveAuthorized(value);
+}
+
+function isAgentBusy() {
+  return Boolean(worker && agentReady && agentRunning && !shuttingDown);
+}
+
+async function requestCloseDecision() {
+  if (!isAgentBusy()) return "wait";
+  if (closeDecision) return closeDecision;
+  closeDecision = dialog
+    .showMessageBox(win, {
+      type: "warning",
+      title: "Omega 正在运行",
+      message: "Agent 仍在生成回复。请选择关闭方式。",
+      detail: "等待完成会保留当前会话；停止并退出会中止当前生成。",
+      buttons: ["等待完成", "停止并退出", "取消"],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+    })
+    .then((result) => (result.response === 0 ? "wait" : result.response === 1 ? "stop" : "cancel"))
+    .finally(() => {
+      closeDecision = null;
+    });
+  return closeDecision;
 }
 
 function rendererPath() {
@@ -75,6 +125,11 @@ function okResult(data) {
   return { ok: true, data: data };
 }
 
+function assertIpcResult(value) {
+  if (!isIpcEnvelope(value)) throw new Error("invalid_ipc_envelope");
+  return value;
+}
+
 // ---------------------------------------------------------------------------
 // Worker host (requestId RPC + event forwarding, port of pi-app's slot logic)
 // ---------------------------------------------------------------------------
@@ -84,29 +139,92 @@ class WorkerHost {
     this.child = null;
     this.pending = new Map();
     this.seq = 0;
+    this.generation = 0;
+    this.state = "dead";
+    this.restartCount = 0;
+    this.stopping = false;
+    this.cwd = null;
+    this.extensionsRoot = null;
+    this.sessionId = null;
     this.onEvent = null;
     this.onSettled = null;
     this.onError = null;
+    this.onTransport = null;
     this._initResolve = null;
     this._initReject = null;
+    this._initTimer = null;
   }
 
-  async start(cwd, extensionsRoot) {
-    this.child = utilityProcess.fork(join(MAIN_DIR, "worker.mjs"), [], { stdio: "ignore" });
-    this.child.on("message", (message) => this._handle(message));
+  async start(cwd, extensionsRoot, sessionId = this.sessionId) {
+    this.cwd = cwd;
+    this.extensionsRoot = extensionsRoot;
+    this.sessionId = sessionId ?? null;
+    this.stopping = false;
+    this.state = "starting";
+    const generation = ++this.generation;
+    const child = utilityProcess.fork(join(MAIN_DIR, "worker.mjs"), [], { stdio: "ignore" });
+    this.child = child;
+    child.on("message", (message) => this._handle(message, generation));
+    child.on("error", (error) => this._handleDeath(generation, error));
+    child.on("exit", (code, signal) => {
+      if (code === 0 && this.stopping) return;
+      this._handleDeath(generation, new Error(`Worker exited (${code ?? "unknown"}${signal ? `, ${signal}` : ""})`));
+    });
     const done = new Promise((resolvePromise, rejectPromise) => {
       this._initResolve = resolvePromise;
       this._initReject = rejectPromise;
-      setTimeout(() => rejectPromise(new Error("Worker init timeout (60s)")), 60_000);
+      this._initTimer = setTimeout(() => rejectPromise(new Error("Worker init timeout (60s)")), 60_000);
     });
-    this.child.postMessage({ type: "init", cwd, extensionsRoot });
-    return done;
+    this.onTransport?.("starting");
+    child.postMessage({ type: "init", cwd, extensionsRoot, sessionId: this.sessionId, generation });
+    try {
+      const info = await done;
+      if (generation === this.generation && this.state === "starting") {
+        this.sessionId = info.sessionId ?? this.sessionId;
+        this.state = "ready";
+        this.onTransport?.("ready");
+      }
+      return info;
+    } catch (error) {
+      if (generation === this.generation) this._handleDeath(generation, error);
+      throw error;
+    }
   }
 
-  _handle(message) {
-    if (!message || typeof message !== "object") return;
+  _handleDeath(generation, error) {
+    if (generation !== this.generation || this.state === "dead" || this.state === "stopping") return;
+    this.state = "dead";
+    clearTimeout(this._initTimer);
+    this._initTimer = null;
+    this._initReject?.(error);
+    this._initResolve = null;
+    this._initReject = null;
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(Object.assign(new Error("worker unavailable"), { code: "worker_unavailable" }));
+    }
+    this.pending.clear();
+    this.onError?.(error instanceof Error ? error.message : String(error));
+    this.onTransport?.("dead");
+    if (this.child && generation === this.generation) this.child = null;
+    if (!this.stopping && this.restartCount < 1 && this.cwd && this.extensionsRoot) {
+      this.restartCount += 1;
+      this.state = "restarting";
+      this.onTransport?.("restarting");
+      setTimeout(() => {
+        if (!this.stopping) void this.start(this.cwd, this.extensionsRoot, this.sessionId).catch(() => {});
+      }, 250);
+    }
+  }
+
+  _handle(message, generation) {
+    if (generation !== this.generation || !message || typeof message !== "object") return;
     if (message.type === "init-done") {
+      clearTimeout(this._initTimer);
+      this._initTimer = null;
       this._initResolve?.(message);
+      this._initResolve = null;
+      this._initReject = null;
       return;
     }
     if (message.type === "init-error") {
@@ -114,11 +232,11 @@ class WorkerHost {
       return;
     }
     if (message.type === "app-event") {
-      this.onEvent?.(message.event);
+      this.onEvent?.(message.event, message.meta);
       return;
     }
     if (message.type === "settled") {
-      this.onSettled?.();
+      this.onSettled?.(message.meta);
       return;
     }
     if (message.type === "worker-error") {
@@ -128,7 +246,7 @@ class WorkerHost {
     }
     if (message.type === "resp") {
       const pending = this.pending.get(message.id);
-      if (!pending) return;
+      if (!pending || pending.generation !== generation) return;
       this.pending.delete(message.id);
       clearTimeout(pending.timer);
       if (message.error) {
@@ -142,57 +260,82 @@ class WorkerHost {
   }
 
   call(method, args) {
-    if (!this.child) return Promise.reject(new Error("session not ready"));
+    if (!this.child || (this.state !== "ready" && !(this.state === "stopping" && (method === "dispose" || method === "flush"))) || (this.stopping && method !== "dispose" && method !== "flush")) return Promise.reject(new Error("session not ready"));
     const id = `req-${++this.seq}`;
+    const generation = this.generation;
     return new Promise((resolvePromise, rejectPromise) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        rejectPromise(new Error(`Worker RPC timeout: ${method}`));
+        rejectPromise(Object.assign(new Error(`Worker RPC timeout: ${method}`), { code: "worker_timeout" }));
       }, WORKER_RPC_TIMEOUT);
-      this.pending.set(id, { resolve: resolvePromise, reject: rejectPromise, timer });
-      this.child.postMessage({ type: "req", id, method, args: args ?? {} });
+      this.pending.set(id, { resolve: resolvePromise, reject: rejectPromise, timer, generation });
+      const wireArgs = { ...(args ?? {}), generation };
+      this.child.postMessage({ type: "req", id, method, args: wireArgs, generation });
     });
   }
 
   async kill() {
-    if (!this.child) return;
-    try {
-      await this.call("dispose");
-    } catch {
-      /* best effort */
+    if (!this.child && this.state === "dead") return;
+    this.stopping = true;
+    const child = this.child;
+    const canDispose = Boolean(child && this.state === "ready");
+    this.state = "stopping";
+    this.onTransport?.("stopping");
+    if (canDispose) {
+      try {
+        await this.call("flush");
+      } catch {
+        /* best effort: dispose still has a bounded path */
+      }
+      try {
+        await this.call("dispose");
+      } catch {
+        /* best effort */
+      }
     }
-    for (const [, pending] of this.pending) {
+    for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
-      pending.reject(new Error("worker disposed"));
+      pending.reject(Object.assign(new Error("worker disposed"), { code: "worker_disposed" }));
     }
     this.pending.clear();
     try {
-      this.child.kill();
+      child?.kill();
     } catch {
       /* already gone */
     }
     this.child = null;
+    this.state = "dead";
+    this.onTransport?.("dead");
   }
 }
 
 /** Wrap a worker RPC into an IpcResult, mapping worker error codes through. */
 async function rpc(method, args, fallbackCode = "call_failed") {
   try {
-    return okResult(await worker.call(method, args));
+    return assertIpcResult(okResult(await worker.call(method, args)));
   } catch (error) {
     return errorResult(error?.code ?? fallbackCode, error instanceof Error ? error.message : String(error));
   }
 }
 
 async function bootstrap() {
-  const cwd = process.env.OMEGA_WORKSPACE ? resolve(process.env.OMEGA_WORKSPACE) : rootOf();
+  workspaceRegistry = createWorkspaceRegistry(workspaceRegistryFile());
+  const requested = process.env.OMEGA_WORKSPACE ? realRoot(resolve(process.env.OMEGA_WORKSPACE)) : realRoot(rootOf());
+  const cwd = workspaceRegistry.has(requested) ? workspaceRegistry.resolveAuthorized(requested) : workspaceRegistry.add(requested);
   activeCwd = cwd;
   const extensionsRoot = extensionsRootOf();
   process.stdout.write(`[main] cwd=${cwd}\n`);
   worker = new WorkerHost();
-  worker.onEvent = (event) => {
+  worker.onEvent = (event, meta) => {
+    if (event?.type === "agent_start" || event?.type === "turn_start") agentRunning = true;
+    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") agentRunning = false;
     if (!win || win.isDestroyed()) return;
-    win.webContents.send("agent:event", event);
+    win.webContents.send("agent:event", { event, meta });
+  };
+  worker.onTransport = (state) => {
+    agentReady = state === "ready";
+    if (state !== "ready") agentRunning = false;
+    if (win && !win.isDestroyed()) win.webContents.send("worker:transport", { state });
   };
   worker.onSettled = () => {
     if (!win || win.isDestroyed() || win.isFocused()) return;
@@ -257,6 +400,35 @@ async function createWindow() {
   electronSession.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   win.webContents.on("console-message", (details) => {
     process.stdout.write(`[renderer] [${details.level}] ${details.message}\n`);
+  });
+  win.on("close", (event) => {
+    if (closeApproved || closeHandling || !isAgentBusy()) return;
+    event.preventDefault();
+    closeHandling = true;
+    void requestCloseDecision()
+      .then(async (decision) => {
+        if (decision === "cancel") return;
+        if (decision === "stop") {
+          try {
+            await worker?.call("abort");
+          } catch {
+            /* best effort */
+          }
+        }
+        try {
+          await Promise.race([
+            worker?.call("flush"),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("close_flush_timeout")), CLOSE_FLUSH_TIMEOUT)),
+          ]);
+        } catch {
+          if (decision === "wait") return;
+        }
+        closeApproved = true;
+        win?.close();
+      })
+      .finally(() => {
+        closeHandling = false;
+      });
   });
   win.on("closed", () => {
     win = undefined;
@@ -368,6 +540,24 @@ ipcMain.handle("window:close", (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   win?.close();
   return okResult(undefined);
+});
+
+ipcMain.handle("omega:listWorkspaces", (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  return okResult(workspaceRegistry?.list() ?? []);
+});
+
+ipcMain.handle("omega:chooseWorkspace", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (isAgentBusy()) return errorResult("session_busy", "生成中无法切换工作区，请先停止或等待完成");
+  const result = await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory", "promptToCreate"] });
+  if (result.canceled || !result.filePaths[0]) return errorResult("cancelled", "未选择工作区");
+  try {
+    const root = workspaceRegistry.add(result.filePaths[0]);
+    return okResult({ root, workspaces: workspaceRegistry.list() });
+  } catch (error) {
+    return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
+  }
 });
 
 ipcMain.handle("window:isMaximized", (event) => {
@@ -505,24 +695,45 @@ ipcMain.handle("omega:authStatus", (event) => {
   return rpc("authStatus", {}, "read_failed");
 });
 
-ipcMain.handle("omega:listPiSessions", (event) => {
+ipcMain.handle("omega:listPiSessions", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  return rpc("listPiSessions", { cwd: activeCwd ?? rootOf() }, "read_failed");
+  const result = await rpc("listPiSessions", { cwd: activeCwd ?? rootOf() }, "read_failed");
+  if (!result.ok) return result;
+  return okResult(result.data.filter((session) => {
+    try {
+      return workspaceRegistry.has(session.workspace);
+    } catch {
+      return false;
+    }
+  }));
 });
 
 ipcMain.handle("omega:newPiSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  const workspace = req?.workspace ? resolve(req.workspace) : activeCwd ?? rootOf();
+  if (isAgentBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
+  let workspace;
+  try {
+    workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
+  } catch (error) {
+    return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
+  }
   const result = await rpc("newSession", { workspace, title: req?.title }, "write_failed");
-  if (result.ok) activeCwd = result.data.workspace || workspace;
+  if (result.ok) {
+    activeCwd = result.data.workspace || workspace;
+    worker.sessionId = result.data.id ?? worker.sessionId;
+  }
   return result;
 });
 
 ipcMain.handle("omega:switchPiSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (isAgentBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
   if (!req?.sessionId) return errorResult("invalid_args", "sessionId is required");
   const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
-  if (result.ok) activeCwd = result.data.workspace || activeCwd;
+  if (result.ok) {
+    activeCwd = result.data.workspace || activeCwd;
+    worker.sessionId = result.data.id ?? req.sessionId;
+  }
   return result;
 });
 
@@ -597,10 +808,9 @@ ipcMain.handle("omega:queryExtensionState", (event, req) => {
 
 ipcMain.handle("omega:listSessions", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  const result = await rpc("listPiSessions", { cwd: activeCwd ?? rootOf() }, "read_failed");
-  if (result.ok && Array.isArray(result.data) && result.data.length > 0) return result;
   try {
-    return okResult(persistence.list(sessionsRoot()));
+    const summaries = await readSessionSummaries(piSessionsRoot(), { allowedWorkspaces: workspaceRegistry?.list() ?? [] });
+    return okResult(summaries);
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }
@@ -608,7 +818,13 @@ ipcMain.handle("omega:listSessions", async (event) => {
 
 ipcMain.handle("omega:newSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  const workspace = req?.workspace ? resolve(req.workspace) : activeCwd ?? rootOf();
+  if (isAgentBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
+  let workspace;
+  try {
+    workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
+  } catch (error) {
+    return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
+  }
   const result = await rpc("newSession", { workspace, title: req?.title }, "write_failed");
   if (result.ok) activeCwd = result.data.workspace || workspace;
   return result;
@@ -618,19 +834,17 @@ ipcMain.handle("omega:loadSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req?.sessionId) return errorResult("invalid_args", "sessionId is required");
   const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
-  if (result.ok) activeCwd = result.data.workspace || activeCwd;
+  if (result.ok) {
+    activeCwd = result.data.workspace || activeCwd;
+    worker.sessionId = result.data.id ?? req.sessionId;
+  }
   return result;
 });
 
 ipcMain.handle("omega:saveSession", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req?.sessionId || !req?.transcript) return errorResult("invalid_args", "sessionId and transcript are required");
-  try {
-    persistence.save(sessionsRoot(), req.transcript);
-    return okResult(undefined);
-  } catch (error) {
-    return errorResult("write_failed", error instanceof Error ? error.message : String(error));
-  }
+  return errorResult("unsupported", "Pi JSONL is the session authority; transcript cache writes are disabled");
 });
 
 ipcMain.handle("omega:deleteSession", async (event, req) => {
@@ -651,11 +865,6 @@ ipcMain.handle("omega:deleteSession", async (event, req) => {
       const inRoot = resolved === root || resolved.startsWith(`${root}\\`) || resolved.startsWith(`${root}/`);
       if (!inRoot) return errorResult("forbidden", "Refusing to delete a file outside the pi sessions directory");
       if (existsSync(resolved)) unlinkSync(resolved);
-    }
-    try {
-      persistence.remove(sessionsRoot(), target);
-    } catch {
-      /* JSON cache is best-effort */
     }
     return okResult(undefined);
   } catch (error) {
@@ -720,16 +929,21 @@ ipcMain.handle("omega:gitSnapshot", (event) => {
 
 function normalizeGitItems(req) {
   if (!Array.isArray(req?.items)) throw new Error("items[] is required");
-  return req.items.slice(0, 200).map((item) => ({
-    path: typeof item?.path === "string" ? item.path.slice(0, 4096) : "",
-    hunks: Array.isArray(item?.hunks) ? item.hunks.filter((hunk) => typeof hunk === "string").slice(0, 100) : undefined,
-  }));
+  if (typeof req.snapshotToken !== "string" || !req.snapshotToken) throw new Error("snapshotToken is required");
+  return {
+    snapshotToken: req.snapshotToken.slice(0, 128),
+    items: req.items.slice(0, 200).map((item) => ({
+      path: typeof item?.path === "string" ? item.path.slice(0, 4096) : "",
+      hunks: Array.isArray(item?.hunks) ? item.hunks.filter((hunk) => typeof hunk === "string").slice(0, 100) : undefined,
+    })),
+  };
 }
 
 ipcMain.handle("omega:gitStage", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
-    return okResult(diffService.stageItems(activeCwd ?? rootOf(), normalizeGitItems(req)));
+    const normalized = normalizeGitItems(req);
+    return okResult(diffService.stageItems(activeCwd ?? rootOf(), normalized.items, normalized.snapshotToken));
   } catch (error) {
     return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));
   }
@@ -738,7 +952,8 @@ ipcMain.handle("omega:gitStage", (event, req) => {
 ipcMain.handle("omega:gitUnstage", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
-    return okResult(diffService.unstageItems(activeCwd ?? rootOf(), normalizeGitItems(req)));
+    const normalized = normalizeGitItems(req);
+    return okResult(diffService.unstageItems(activeCwd ?? rootOf(), normalized.items, normalized.snapshotToken));
   } catch (error) {
     return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));
   }
@@ -763,10 +978,13 @@ ipcMain.handle("omega:approveChange", (event, req) => {
   }
   try {
     const cwd = activeCwd ?? rootOf();
+    if (req.action === "reject" && (typeof req.snapshotToken !== "string" || !req.snapshotToken)) {
+      return errorResult("invalid_args", "snapshotToken is required");
+    }
     const result =
       req.action === "accept"
         ? diffService.acceptChanges()
-        : diffService.revertFiles(Array.isArray(req.files) ? req.files : [], cwd);
+        : diffService.revertFiles(Array.isArray(req.files) ? req.files : [], cwd, req.snapshotToken);
     return okResult(result);
   } catch (error) {
     return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));
@@ -778,8 +996,11 @@ ipcMain.handle("omega:approveChange", (event, req) => {
 async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
-  await worker?.kill();
+  agentReady = false;
+  agentRunning = false;
+  const currentWorker = worker;
   worker = null;
+  await currentWorker?.kill();
 }
 
 app
@@ -789,6 +1010,13 @@ app
       await bootstrap();
     } catch (error) {
       showBootstrapError(error);
+      agentReady = false;
+      try {
+        await worker?.kill();
+      } catch {
+        /* best effort */
+      }
+      worker = null;
       process.stderr.write(`[main] bootstrap failed: ${bootstrapError}\n`);
     }
     try {
@@ -807,8 +1035,41 @@ app
     app.exit(1);
   });
 
-app.on("before-quit", () => {
-  void shutdown();
+app.on("before-quit", (event) => {
+  if (quitRequested) return;
+  if (closeApproved || !isAgentBusy()) {
+    event.preventDefault();
+    quitRequested = true;
+    void shutdown().finally(() => app.exit(0));
+    return;
+  }
+  event.preventDefault();
+  if (closeHandling) return;
+  closeHandling = true;
+  void requestCloseDecision()
+    .then(async (decision) => {
+      if (decision === "cancel") return;
+      if (decision === "stop") {
+        try {
+          await worker?.call("abort");
+        } catch {
+          /* best effort */
+        }
+      }
+      try {
+        await Promise.race([
+          worker?.call("flush"),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("close_flush_timeout")), CLOSE_FLUSH_TIMEOUT)),
+        ]);
+      } catch {
+        if (decision === "wait") return;
+      }
+      closeApproved = true;
+      app.quit();
+    })
+    .finally(() => {
+      closeHandling = false;
+    });
 });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

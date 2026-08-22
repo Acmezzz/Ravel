@@ -456,6 +456,7 @@ export interface GitSnapshot {
   log: GitCommitInfo[];
   unstaged: DiffFile[];
   staged: DiffFile[];
+  snapshotToken: string;
 }
 
 export interface GitApplyResult {
@@ -466,6 +467,11 @@ export interface GitApplyResult {
 export interface GitStageItem {
   path: string;
   hunks?: string[];
+}
+
+export interface GitStageRequest {
+  snapshotToken: string;
+  items: GitStageItem[];
 }
 
 // ===== extension state aggregation (single pull) =====

@@ -14,6 +14,20 @@ test("main configures Electron isolation and navigation boundaries", async () =>
   assert.match(source, /will-navigate/);
   assert.match(source, /senderAllowed/);
   assert.match(source, /await worker\?\.kill/);
+  assert.match(source, /requestCloseDecision/);
+  assert.match(source, /CLOSE_FLUSH_TIMEOUT/);
+  assert.match(source, /abort/);
+  assert.match(source, /worker-registry|workspace-registry/);
+});
+
+test("worker and renderer use sequenced event envelopes for stale-event rejection", async () => {
+  const worker = await read("../electron/worker.mjs");
+  const app = await read("../src/renderer/App.tsx");
+  assert.match(worker, /sequence: \+\+eventSequence/);
+  assert.match(worker, /sessionId:/);
+  assert.match(worker, /generation/);
+  assert.match(app, /meta\.sequence <= lastSequence/);
+  assert.match(app, /meta\.generation < currentGeneration/);
 });
 
 test("bridge filters raw agent events and does not forward sensitive payloads", async () => {
@@ -71,6 +85,16 @@ test("state-reader never exposes rawOutput as a DTO field and does not import ex
     /import\s+[^;]*from\s+["'][^"']*(journal-workflow|exploration-scout)/,
     "does not import upstream extension source",
   );
+});
+
+test("workspace picker and registry IPC stay behind senderAllowed", async () => {
+  const source = await read("../electron/main.js");
+  for (const channel of ["omega:listWorkspaces", "omega:chooseWorkspace"]) {
+    assert.match(source, new RegExp(`ipcMain\\.handle\\("${channel}"`));
+    assert.match(source, new RegExp(`"${channel}",\\s*(?:async\\s*)?\\(event`));
+  }
+  assert.match(source, /workspaceRegistry\.resolveAuthorized/);
+  assert.match(source, /dialog\.showOpenDialog/);
 });
 
 test("new IPC handlers stay behind senderAllowed and return an IpcResult envelope", async () => {

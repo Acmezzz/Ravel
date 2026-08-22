@@ -192,11 +192,12 @@ export function DiffViewer(): React.ReactElement {
   };
 
   const stage = React.useCallback(async () => {
-    const withHunks = collectItems(unstagedSel, snapshot?.unstaged ?? []);
+    if (!snapshot) return;
+    const withHunks = collectItems(unstagedSel, snapshot.unstaged);
     if (withHunks.length === 0) return;
     setBusy(true);
     setError(null);
-    const res = await ipc.gitStage({ items: withHunks });
+    const res = await ipc.gitStage({ snapshotToken: snapshot.snapshotToken, items: withHunks });
     setBusy(false);
     if (res.ok && res.data.applied) {
       clearSel();
@@ -209,11 +210,12 @@ export function DiffViewer(): React.ReactElement {
   }, [unstagedSel, snapshot, refresh]);
 
   const unstage = React.useCallback(async () => {
-    const withHunks = collectItems(stagedSel, snapshot?.staged ?? []);
+    if (!snapshot) return;
+    const withHunks = collectItems(stagedSel, snapshot.staged);
     if (withHunks.length === 0) return;
     setBusy(true);
     setError(null);
-    const res = await ipc.gitUnstage({ items: withHunks });
+    const res = await ipc.gitUnstage({ snapshotToken: snapshot.snapshotToken, items: withHunks });
     setBusy(false);
     if (res.ok && res.data.applied) {
       clearSel();
@@ -337,6 +339,7 @@ export function DiffViewer(): React.ReactElement {
 
           {unstagedCount > 0 ? (
             <ApprovalBar
+              snapshotToken={snapshot.snapshotToken}
               selectedFiles={[...unstagedSel.files.keys()].filter((p) => snapshot.unstaged.some((f) => f.path === p))}
               hasUntrackedSelected={snapshot.unstaged.some((f) => unstagedSel.files.has(f.path) && f.status === "added")}
               onApplied={() => {

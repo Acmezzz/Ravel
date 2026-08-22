@@ -355,6 +355,15 @@ test("left nav exposes the files tab and viewer", async () => {
   assert.match(markdown, /openViewer/);
 });
 
+test("session list uses disk-first JSONL reader instead of starting a live runtime", async () => {
+  const main = await read("../electron/main.js");
+  const reader = await read("../electron/session-reader.js");
+  assert.match(main, /readSessionSummaries/);
+  assert.match(main, /piSessionsRoot/);
+  assert.match(reader, /createReadStream/);
+  assert.match(reader, /session_info/);
+});
+
 test("R3: deferred thinking and stats/export IPC surfaces", async () => {
   const bridge = await read("../electron/agent-bridge.js");
   assert.match(bridge, /thinkingDeferred/);

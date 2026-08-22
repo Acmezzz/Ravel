@@ -5,10 +5,11 @@
  * Run from omega-desktop:  npm run sdk-check
  */
 import {
-	createAgentSession,
-	DefaultResourceLoader,
-	SettingsManager,
+  createAgentSession,
+  DefaultResourceLoader,
+  SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import { toRendererEvent } from "../electron/agent-bridge.js";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +24,13 @@ const pluginEntries = [
 ];
 
 async function main() {
+  const projected = toRendererEvent({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "offline" } });
+  if (!projected.some((event) => event?.assistantMessageEvent?.type === "text_delta")) throw new Error("offline event projection failed");
+  console.log("[sdk-check] offline event projection: PASS");
+  if (process.env.OMEGA_LIVE_PROVIDER !== "1") {
+    console.log("[sdk-check] live prompt: SKIPPED (set OMEGA_LIVE_PROVIDER=1 to require provider/network smoke)");
+    return;
+  }
 	console.log("[sdk-check] agentDir =", agentDir);
 	console.log("[sdk-check] plugin entries =", pluginEntries);
 

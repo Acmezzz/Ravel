@@ -7,8 +7,84 @@
  * receives the structured DTO and an approval result. See system_design.md §3.4.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, isAbsolute, relative, resolve } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
+
+const snapshotTokens = new Map();
+const SNAPSHOT_TTL_MS = 5 * 60_000;
+
+function safeRepoPath(root, value) {
+  if (typeof value !== "string" || !value.trim() || isAbsolute(value) || value.includes("\\") || value.split("/").some((part) => part === "..")) return null;
+  const normalized = value.replace(/^\.\//, "");
+  const candidate = resolve(root, normalized);
+  const rel = relative(root, candidate).replace(/\\/g, "/");
+  return rel && rel !== "." && !rel.startsWith("../") && rel !== ".." ? rel : null;
+}
+
+function rememberSnapshot(snapshot) {
+  const token = randomUUID();
+  snapshotTokens.set(token, { at: Date.now(), repoRoot: snapshot.repoRoot, snapshot });
+  for (const [key, value] of snapshotTokens) if (Date.now() - value.at > SNAPSHOT_TTL_MS) snapshotTokens.delete(key);
+  return token;
+}
+
+function snapshotFor(cwd, token) {
+  const item = snapshotTokens.get(token);
+  if (!item || Date.now() - item.at > SNAPSHOT_TTL_MS) throw new Error("stale_diff_snapshot");
+  const root = repoRoot(cwd);
+  if (resolve(item.repoRoot) !== resolve(root)) throw new Error("diff_snapshot_workspace_mismatch");
+  assertFreshSnapshot(cwd, item.snapshot);
+  return item.snapshot;
+}
+
+function snapshotFiles(snapshot) {
+  return [...(snapshot?.unstaged ?? []), ...(snapshot?.staged ?? [])];
+}
+
+function gitState(cwd, snapshot = {}) {
+  const root = repoRoot(cwd);
+  const run = (args) => {
+    try {
+      return git(cwd, args).replace(/\\r\\n/g, "\\n");
+    } catch {
+      return "";
+    }
+  };
+  const fileHashes = {};
+  for (const file of snapshotFiles(snapshot).map((entry) => entry.path)) {
+    const safe = safeRepoPath(root, file);
+    if (!safe) continue;
+    const target = join(root, safe);
+    let content = Buffer.alloc(0);
+    try {
+      content = readFileSync(target);
+    } catch {
+      content = Buffer.from("<missing>");
+    }
+    fileHashes[safe] = createHash("sha256").update(content).digest("hex");
+  }
+  return {
+    head: run(["rev-parse", "HEAD"]).trim(),
+    index: run(["write-tree"]).trim(),
+    status: run(["-c", "core.quotepath=false", "status", "--porcelain", "-uall"]),
+    fileHashes,
+  };
+}
+
+function assertFreshSnapshot(cwd, snapshot) {
+  const current = gitState(cwd, snapshot);
+  if (
+    current.head !== snapshot.gitState?.head ||
+    current.index !== snapshot.gitState?.index ||
+    current.status !== snapshot.gitState?.status ||
+    JSON.stringify(current.fileHashes) !== JSON.stringify(snapshot.gitState?.fileHashes)
+  ) {
+    const error = new Error("Git workspace changed after the snapshot was created; refresh before applying changes");
+    error.code = "stale_diff_snapshot";
+    throw error;
+  }
+}
 
 /**
  * @typedef {Object} DiffHunk
@@ -249,20 +325,26 @@ export function computeDiff(cwd) {
  * @param {string} cwd
  * @returns {{applied:boolean,action:string,revertedFiles:string[],errors:string[]}}
  */
-export function revertFiles(files, cwd) {
+export function revertFiles(files, cwd, snapshotToken) {
+  const snapshot = snapshotFor(cwd, snapshotToken);
+  const allowed = new Set(snapshotFiles(snapshot).map((file) => file.path));
   /** @type {string[]} */
   const revertedFiles = [];
   /** @type {string[]} */
   const errors = [];
   for (const file of files ?? []) {
-    if (typeof file !== "string" || !file.trim()) continue;
+    const safeFile = safeRepoPath(snapshot.repoRoot, file);
+    if (!safeFile || !allowed.has(safeFile)) {
+      errors.push(`${String(file)}: file is not present in the approved snapshot`);
+      continue;
+    }
     try {
-      if (isTracked(cwd, file)) {
-        git(cwd, ["checkout", "--", file]);
+      if (isTracked(cwd, safeFile)) {
+        git(cwd, ["checkout", "--", safeFile]);
       } else {
-        git(cwd, ["clean", "-f", "--", file]);
+        git(cwd, ["clean", "-f", "--", safeFile]);
       }
-      revertedFiles.push(file);
+      revertedFiles.push(safeFile);
     } catch (error) {
       errors.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -316,7 +398,9 @@ function untrackedHunks(cwd, filePath) {
 export function computeSnapshot(cwd) {
   const generatedAt = new Date().toISOString();
   if (!isInsideWorkTree(cwd)) {
-    return { generatedAt, repoRoot: cwd, isGitRepo: false, branch: "", log: [], unstaged: [], staged: [] };
+    const snapshot = { generatedAt, repoRoot: cwd, isGitRepo: false, branch: "", log: [], unstaged: [], staged: [], gitState: null };
+    const { gitState: _gitState, ...publicSnapshot } = snapshot;
+    return { ...publicSnapshot, snapshotToken: rememberSnapshot(snapshot) };
   }
   const root = repoRoot(cwd);
   let branch = "";
@@ -367,7 +451,10 @@ export function computeSnapshot(cwd) {
       );
     }
   }
-  return { generatedAt, repoRoot: root, isGitRepo: true, branch, log, unstaged, staged };
+  const snapshot = { generatedAt, repoRoot: root, isGitRepo: true, branch, log, unstaged, staged };
+  snapshot.gitState = gitState(cwd, snapshot);
+  const { gitState: _gitState, ...publicSnapshot } = snapshot;
+  return { ...publicSnapshot, snapshotToken: rememberSnapshot(snapshot) };
 }
 
 function buildPatch(filePath, hunkRaws) {
@@ -379,29 +466,41 @@ function buildPatch(filePath, hunkRaws) {
  * otherwise `git add` the whole file (covers adds/deletes/renames).
  * @param {{path:string, hunks?:string[]}[]} items
  */
-export function stageItems(cwd, items) {
-  return applyItems(cwd, items, ["apply", "--cached", "--recount", "-"], (paths) => ["add", "--", ...paths]);
+export function stageItems(cwd, items, snapshotToken) {
+  return applyItems(cwd, items, ["apply", "--cached", "--recount", "-"], (paths) => ["add", "--", ...paths], snapshotFor(cwd, snapshotToken), "unstaged");
 }
 
 /** Unstage items (hunks must come from the STAGED diff; reverse-applied). */
-export function unstageItems(cwd, items) {
-  return applyItems(cwd, items, ["apply", "-R", "--cached", "--recount", "-"], (paths) => ["reset", "-q", "HEAD", "--", ...paths]);
+export function unstageItems(cwd, items, snapshotToken) {
+  return applyItems(cwd, items, ["apply", "-R", "--cached", "--recount", "-"], (paths) => ["reset", "-q", "HEAD", "--", ...paths], snapshotFor(cwd, snapshotToken), "staged");
 }
 
-function applyItems(cwd, items, applyArgs, wholeFileArgs) {
+function applyItems(cwd, items, applyArgs, wholeFileArgs, snapshot, section) {
   const errors = [];
+  const allowedFiles = new Map((snapshot?.[section] ?? []).map((file) => [file.path, file]));
   const whole = [];
   for (const item of items ?? []) {
-    if (!item || typeof item.path !== "string" || !item.path.trim()) continue;
-    const raws = Array.isArray(item.hunks) ? item.hunks.filter((hunk) => typeof hunk === "string" && hunk.includes("@@")) : [];
+    const safePath = safeRepoPath(snapshot?.repoRoot, item?.path);
+    const file = safePath ? allowedFiles.get(safePath) : undefined;
+    if (!file) {
+      errors.push(`${String(item?.path)}: file is not present in the approved snapshot`);
+      continue;
+    }
+    const selected = Array.isArray(item.hunks) ? item.hunks.filter((hunk) => typeof hunk === "string" && hunk.includes("@@")) : [];
+    const approvedRaws = new Set((file.hunks ?? []).map((hunk) => hunk.raw).filter(Boolean));
+    const raws = selected.filter((raw) => approvedRaws.has(raw));
+    if (selected.length !== raws.length) {
+      errors.push(`${safePath}: one or more hunks are not present in the approved snapshot`);
+      continue;
+    }
     if (raws.length === 0) {
-      whole.push(item.path);
+      whole.push(safePath);
       continue;
     }
     try {
-      gitInput(cwd, applyArgs, buildPatch(item.path, raws));
+      gitInput(cwd, applyArgs, buildPatch(safePath, raws));
     } catch (error) {
-      errors.push(`${item.path}: ${error instanceof Error ? error.message : String(error)}`);
+      errors.push(`${safePath}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   if (whole.length > 0) {

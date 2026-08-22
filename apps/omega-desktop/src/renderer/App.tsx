@@ -6,7 +6,7 @@ import { TreeOverlay } from "./components/layout/TreeOverlay";
 import { FileViewer } from "./components/files/FileViewer";
 import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
-import type { SafeEvent } from "./types/events";
+import type { EventMeta, SafeEvent } from "./types/events";
 
 async function refreshControlPlane(): Promise<void> {
   const store = useAppStore.getState();
@@ -98,8 +98,21 @@ export function App(): React.ReactElement {
   }, [themeMode]);
 
   React.useEffect(() => {
+    let lastSequence = 0;
+    let currentGeneration = 0;
     const handleEvent = (data: unknown) => {
-      const event = data as SafeEvent;
+      const envelope = data && typeof data === "object" && "event" in data ? data as { event: SafeEvent; meta?: EventMeta } : { event: data as SafeEvent };
+      const event = envelope.event;
+      const meta = envelope.meta;
+      const activeSessionId = useAppStore.getState().activeSessionId;
+      if (meta) {
+        if (activeSessionId && meta.sessionId && activeSessionId !== meta.sessionId) return;
+        if (meta.generation < currentGeneration || meta.sequence <= lastSequence) return;
+        if (currentGeneration && meta.generation > currentGeneration) lastSequence = 0;
+        currentGeneration = meta.generation;
+        lastSequence = meta.sequence;
+      }
+      if (!event || typeof event !== "object" || typeof event.type !== "string") return;
       const store = useAppStore.getState();
       switch (event.type) {
         case "message_start": {
@@ -232,6 +245,18 @@ export function App(): React.ReactElement {
       const payload = data as { message?: string };
       if (payload?.message) setBootstrapError(payload.message);
     });
+    const offTransport = window.omega.onTransport((data) => {
+      if (data.state === "ready") {
+        setBootstrapError(null);
+        setConnection("ready");
+        void refreshControlPlane();
+      } else if (data.state === "starting" || data.state === "restarting" || data.state === "stopping") {
+        setConnection("connecting");
+      } else if (data.state === "dead") {
+        setConnection("error");
+        useAppStore.getState().setComposerError("Agent worker 已断开，正在等待恢复");
+      }
+    });
 
     setConnection("connecting");
     let cancelled = false;
@@ -258,6 +283,7 @@ export function App(): React.ReactElement {
       cancelled = true;
       offEvent();
       offStatus();
+      offTransport();
     };
   }, [setConnection, setBootstrapError, setSessions, setExtensionState, setExtensionLoading]);
 

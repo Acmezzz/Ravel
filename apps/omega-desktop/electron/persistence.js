@@ -10,8 +10,11 @@
  * (injected by main.js) so they remain testable without Electron.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, renameSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
+
+const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+const MAX_RECORD_BYTES = 8 * 1024 * 1024;
 
 /**
  * @typedef {Object} SessionSummary
@@ -65,8 +68,25 @@ function writeManifest(root, summaries) {
   renameSync(temp, target);
 }
 
+function validId(id) {
+  return typeof id === "string" && SESSION_ID_PATTERN.test(id);
+}
+
 function recordPath(root, id) {
-  return join(root, `${id}.json`);
+  if (!validId(id)) throw new Error("invalid_session_id");
+  const base = resolve(ensureDir(root));
+  const target = resolve(base, `${id}.json`);
+  if (target !== base && !target.startsWith(`${base}${sep}`)) throw new Error("session_path_escape");
+  return target;
+}
+
+function writeRecord(root, record) {
+  const target = recordPath(root, record.id);
+  const body = `${JSON.stringify(record, null, "\t")}\n`;
+  if (Buffer.byteLength(body, "utf8") > MAX_RECORD_BYTES) throw new Error("session_record_too_large");
+  const temp = `${target}.tmp-${process.pid}`;
+  writeFileSync(temp, body, { mode: 0o600 });
+  renameSync(temp, target);
 }
 
 /** List all sessions (most recently updated first). */
@@ -90,7 +110,7 @@ export function create(root, req = {}) {
     messages: [],
     toolCards: [],
   };
-  writeFileSync(recordPath(root, id), `${JSON.stringify(record, null, "\t")}\n`);
+  writeRecord(root, record);
   const summaries = readManifest(root).filter((s) => s.id !== id);
   summaries.push({
     id: record.id,
@@ -117,13 +137,15 @@ export function load(root, id) {
 }
 
 /** Persist (overwrite) a session record and refresh its manifest summary. */
-export function save(root, record) {
+export function save(root, record, expectedId) {
   if (!record || typeof record.id !== "string") {
     throw new Error("invalid_session_record");
   }
+  if (expectedId && record.id !== expectedId) throw new Error("session_id_mismatch");
+  if (!validId(record.id)) throw new Error("invalid_session_id");
   const now = new Date().toISOString();
-  const enriched = { ...record, updatedAt: now };
-  writeFileSync(recordPath(root, enriched.id), `${JSON.stringify(enriched, null, "\t")}\n`);
+  const enriched = { ...record, id: record.id, updatedAt: now };
+  writeRecord(root, enriched);
   const summaries = readManifest(root).filter((s) => s.id !== enriched.id);
   summaries.push({
     id: enriched.id,
@@ -140,8 +162,13 @@ export function save(root, record) {
 
 /** Delete a session (record + manifest entry). */
 export function remove(root, id) {
+  if (!validId(id)) throw new Error("invalid_session_id");
+  const summaries = readManifest(root);
+  if (!summaries.some((summary) => summary?.id === id)) return false;
   const path = recordPath(root, id);
   if (existsSync(path)) unlinkSync(path);
-  const summaries = readManifest(root).filter((s) => s.id !== id);
-  writeManifest(root, summaries);
+  writeManifest(root, summaries.filter((summary) => summary?.id !== id));
+  return true;
 }
+
+export { validId };

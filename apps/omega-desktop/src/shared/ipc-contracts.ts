@@ -1,0 +1,67 @@
+/** Shared renderer/main IPC vocabulary. Keep this independent from the Pi SDK types. */
+export const IPC_CHANNELS = {
+  sessionReady: "omega:sessionReady",
+  getState: "omega:getState",
+  listModels: "omega:listModels",
+  setModel: "omega:setModel",
+  setThinkingLevel: "omega:setThinkingLevel",
+  listCommands: "omega:listCommands",
+  compact: "omega:compact",
+  authStatus: "omega:authStatus",
+  listSessions: "omega:listSessions",
+  newSession: "omega:newSession",
+  loadSession: "omega:loadSession",
+  deleteSession: "omega:deleteSession",
+  listWorkspaces: "omega:listWorkspaces",
+  chooseWorkspace: "omega:chooseWorkspace",
+  diffWorkspace: "omega:diffWorkspace",
+  gitSnapshot: "omega:gitSnapshot",
+  gitStage: "omega:gitStage",
+  gitUnstage: "omega:gitUnstage",
+  gitCommit: "omega:gitCommit",
+  approveChange: "omega:approveChange",
+  prompt: "agent:prompt",
+  abort: "agent:abort",
+  event: "agent:event",
+  transport: "worker:transport",
+} as const;
+
+export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
+
+export const ERROR_CODES = {
+  forbidden: "forbidden",
+  invalidArgs: "invalid_args",
+  invalidPrompt: "invalid_prompt",
+  bootstrapFailed: "bootstrap_failed",
+  workerUnavailable: "worker_unavailable",
+  workerTimeout: "worker_timeout",
+  workerDisposed: "worker_disposed",
+  staleGeneration: "stale_generation",
+  sessionBusy: "session_busy",
+  sessionNotFound: "not_found",
+  staleDiffSnapshot: "stale_diff_snapshot",
+  workspaceUnauthorized: "workspace_not_authorized",
+  cancelled: "cancelled",
+  unsupported: "unsupported",
+} as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+
+export interface IpcResult<T> {
+  ok: true;
+  data: T;
+}
+
+export interface IpcError {
+  ok: false;
+  code: string;
+  message: string;
+}
+
+export function isIpcResult(value: unknown): value is IpcResult<unknown> | IpcError {
+  return Boolean(value && typeof value === "object" && "ok" in value && typeof value.ok === "boolean");
+}
+
+export function isNonEmptyString(value: unknown, max = 4096): value is string {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= max;
+}

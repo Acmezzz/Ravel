@@ -21,6 +21,10 @@ import * as bridge from "./agent-bridge.js";
 let runtime = null;
 let extensionsRoot = null;
 let unsubscribe = null;
+let generation = 0;
+let disposed = false;
+let eventSequence = 0;
+let activeRunId = null;
 /** Serializes non-streaming prompts; streaming prompts bypass it (steer). */
 let promptQueue = Promise.resolve();
 
@@ -35,16 +39,42 @@ function attach(session) {
     /* best effort */
   }
   unsubscribe = session.subscribe((event) => {
-    if (event?.type === "agent_settled") post({ type: "settled" });
+    if (event?.type === "agent_start" || event?.type === "turn_start") activeRunId = activeRunId ?? `run-${Date.now()}-${eventSequence + 1}`;
+    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") activeRunId = null;
+    const meta = {
+      sequence: ++eventSequence,
+      sessionId: runtime?.session?.sessionId ?? session?.sessionId,
+      runId: activeRunId,
+      generation,
+    };
+    if (event?.type === "agent_settled") post({ type: "settled", meta });
     for (const projected of bridge.toRendererEvent(event)) {
-      if (projected) post({ type: "app-event", event: projected });
+      if (projected) post({ type: "app-event", event: projected, meta });
     }
   });
 }
 
-async function init({ cwd, extensionsRoot: root }) {
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration }) {
+  generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
+  eventSequence = 0;
+  activeRunId = null;
+  disposed = false;
   extensionsRoot = root;
   runtime = await bridge.createRuntime({ cwd, extensionsRoot: root });
+  if (sessionId && sessionId !== runtime.session.sessionId) {
+    const sessionPath = await bridge.resolveSessionPath(sessionId);
+    if (!sessionPath) {
+      const error = new Error("Session not found during worker recovery");
+      error.code = "session_recovery_failed";
+      throw error;
+    }
+    const cancelled = await runtime.switchSession(sessionPath);
+    if (cancelled.cancelled) {
+      const error = new Error("Session recovery cancelled");
+      error.code = "session_recovery_cancelled";
+      throw error;
+    }
+  }
   runtime.setRebindSession(async (session) => attach(session));
   attach(runtime.session);
   post({ type: "init-done", sessionId: runtime.session.sessionId, cwd: runtime.cwd });
@@ -62,7 +92,12 @@ function autoTitleFor(text) {
   }
 }
 
-async function prompt({ text, behavior, images }) {
+async function prompt({ text, behavior, images, generation: requestGeneration }) {
+  if (disposed || requestGeneration !== generation) {
+    const error = new Error("stale worker generation");
+    error.code = "stale_generation";
+    throw error;
+  }
   const session = runtime.session;
   const options = { streamingBehavior: behavior ?? "followUp" };
   if (images) options.images = images;
@@ -71,7 +106,13 @@ async function prompt({ text, behavior, images }) {
     autoTitleFor(text);
     return undefined;
   }
+  const queuedGeneration = generation;
   const run = promptQueue.then(async () => {
+    if (disposed || queuedGeneration !== generation) {
+      const error = new Error("stale worker generation");
+      error.code = "stale_generation";
+      throw error;
+    }
     await runtime.session.prompt(text, options);
     autoTitleFor(text);
   });
@@ -103,6 +144,10 @@ async function recreateForWorkspace(workspace) {
 }
 
 const methods = {
+  flush: async () => {
+    if (!runtime?.session?.agent?.waitForIdle) return;
+    await runtime.session.agent.waitForIdle();
+  },
   prompt,
   abort: () => runtime.session.abort(),
   getState: () => bridge.snapshotOf(runtime),
@@ -221,8 +266,23 @@ const methods = {
     }));
     return { extensions, skills, prompts };
   },
-  dispose: () => runtime.dispose(),
+  dispose: async () => {
+    disposed = true;
+    promptQueue = Promise.resolve();
+    try {
+      unsubscribe?.();
+    } catch {
+      /* best effort */
+    }
+    unsubscribe = null;
+    if (runtime) {
+      await runtime.dispose();
+      runtime = null;
+    }
+  },
 };
+
+const METHOD_NAMES = new Set(Object.keys(methods));
 
 process.parentPort.on("message", async (event) => {
   const message = event?.data && typeof event.data === "object" ? event.data : event;
@@ -236,8 +296,12 @@ process.parentPort.on("message", async (event) => {
     return;
   }
   if (message.type === "req") {
+    if (message.generation !== generation || !METHOD_NAMES.has(message.method) || (disposed && message.method !== "dispose")) {
+      post({ type: "resp", id: message.id, error: "stale or unsupported worker request", code: "stale_generation" });
+      return;
+    }
     try {
-      const data = await methods[message.method]?.(message.args ?? {});
+      const data = await methods[message.method](message.args ?? {});
       post({ type: "resp", id: message.id, data: data === undefined ? null : data });
     } catch (error) {
       post({

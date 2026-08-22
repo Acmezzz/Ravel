@@ -1,0 +1,113 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { resolveExisting, resolveForCreate, PathSecurityError } from "../electron/path-security.js";
+import * as persistence from "../electron/persistence.js";
+import { listDir } from "../electron/workspace-service.js";
+import { computeSnapshot, revertFiles } from "../electron/diff-service.js";
+import { createWorkspaceRegistry } from "../electron/workspace-registry.js";
+import { readSessionSummaries } from "../electron/session-reader.js";
+
+test("path security rejects traversal and symlink escapes in a real workspace", () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-path-"));
+  mkdirSync(join(root, "src"));
+  writeFileSync(join(root, "src", "ok.txt"), "ok");
+  assert.equal(resolveExisting(root, "src/ok.txt").relative, "src/ok.txt");
+  assert.throws(() => resolveExisting(root, "../outside.txt"), (error) => error instanceof PathSecurityError && error.code === "path_escape");
+  assert.throws(() => resolveForCreate(root, "../new.txt"), (error) => error instanceof PathSecurityError && error.code === "path_escape");
+
+  const outside = mkdtempSync(join(tmpdir(), "omega-outside-"));
+  writeFileSync(join(outside, "secret.txt"), "secret");
+  try {
+    symlinkSync(outside, join(root, "linked"), "junction");
+    assert.throws(() => resolveExisting(root, "linked/secret.txt"), (error) => error instanceof PathSecurityError && error.code === "path_escape");
+    assert.deepEqual(listDir(root, ".").entries.map((entry) => entry.name), ["src"]);
+  } catch (error) {
+    if (error?.code !== "EPERM" && error?.code !== "EACCES") throw error;
+  }
+});
+
+test("persistence never deletes an unlisted record and enforces the requested id", () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-session-"));
+  const created = persistence.create(root, { title: "test", workspace: root });
+  assert.throws(() => persistence.save(root, { ...created, id: "other" }, created.id), /session_id_mismatch/);
+  const unknownPath = join(root, "unknown.json");
+  writeFileSync(unknownPath, "keep");
+  assert.equal(persistence.remove(root, "unknown"), false);
+  assert.equal(readFileSync(unknownPath, "utf8"), "keep");
+  assert.equal(persistence.remove(root, created.id), true);
+  assert.equal(persistence.load(root, created.id), null);
+});
+
+test("workspace registry canonicalizes roots and rejects unauthorized directories", () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-authorized-"));
+  const other = mkdtempSync(join(tmpdir(), "omega-unauthorized-"));
+  const registryFile = join(root, "state", "workspaces.json");
+  const registry = createWorkspaceRegistry(registryFile);
+  assert.equal(registry.has(root), false);
+  assert.throws(() => registry.resolveAuthorized(other), /not authorized/);
+  const canonical = registry.add(root);
+  assert.equal(registry.has(root), true);
+  assert.equal(registry.resolveAuthorized(root), canonical);
+  assert.deepEqual(registry.list(), [canonical]);
+  const reloaded = createWorkspaceRegistry(registryFile);
+  assert.equal(reloaded.resolveAuthorized(root), canonical);
+});
+
+test("disk-first session reader reads JSONL summaries without starting a runtime", async () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-jsonl-"));
+  const workspace = mkdtempSync(join(tmpdir(), "omega-jsonl-workspace-"));
+  writeFileSync(join(root, "2026_session.jsonl"), [
+    JSON.stringify({ type: "session", version: 3, id: "session-1", timestamp: "2026-01-01T00:00:00.000Z", cwd: workspace }),
+    "not-json",
+    JSON.stringify({ type: "session_info", id: "info-1", parentId: null, timestamp: "2026-01-01T00:00:01.000Z", name: "工作会话" }),
+    JSON.stringify({ type: "message", id: "message-1", parentId: null, timestamp: "2026-01-01T00:00:02.000Z", message: { role: "user", content: "你好 Omega" } }),
+  ].join("\n") + "\n");
+  writeFileSync(join(root, "invalid.jsonl"), "{\"type\":\"not-session\"}\n");
+  const summaries = await readSessionSummaries(root, { allowedWorkspaces: [workspace] });
+  assert.equal(summaries.length, 1);
+  assert.deepEqual(summaries[0], {
+    id: "session-1",
+    title: "工作会话",
+    workspace,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:02.000Z",
+    status: "active",
+    messageCount: 1,
+  });
+  assert.deepEqual(await readSessionSummaries(root, { allowedWorkspaces: [mkdtempSync(join(tmpdir(), "omega-other-"))] }), []);
+});
+
+test("git snapshot token rejects changes made after the snapshot", () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-git-stale-"));
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  execFileSync("git", ["config", "user.email", "omega@example.invalid"], { cwd: root });
+  execFileSync("git", ["config", "user.name", "Omega Test"], { cwd: root });
+  writeFileSync(join(root, "tracked.txt"), "one\n");
+  execFileSync("git", ["add", "tracked.txt"], { cwd: root });
+  execFileSync("git", ["commit", "-qm", "initial"], { cwd: root });
+  writeFileSync(join(root, "tracked.txt"), "two\n");
+  const snapshot = computeSnapshot(root);
+  writeFileSync(join(root, "tracked.txt"), "three\n");
+  assert.throws(() => revertFiles(["tracked.txt"], root, snapshot.snapshotToken), (error) => error?.code === "stale_diff_snapshot");
+});
+
+test("git snapshot token rejects a path not present in the approved snapshot", () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-git-"));
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  execFileSync("git", ["config", "user.email", "omega@example.invalid"], { cwd: root });
+  execFileSync("git", ["config", "user.name", "Omega Test"], { cwd: root });
+  writeFileSync(join(root, "tracked.txt"), "one\n");
+  execFileSync("git", ["add", "tracked.txt"], { cwd: root });
+  execFileSync("git", ["commit", "-qm", "initial"], { cwd: root });
+  writeFileSync(join(root, "tracked.txt"), "two\n");
+  const snapshot = computeSnapshot(root);
+  assert.match(snapshot.snapshotToken, /^[0-9a-f-]{36}$/);
+  const result = revertFiles(["../outside.txt"], root, snapshot.snapshotToken);
+  assert.equal(result.applied, false);
+  assert.equal(result.revertedFiles.length, 0);
+  assert.match(result.errors[0], /approved snapshot/);
+});
