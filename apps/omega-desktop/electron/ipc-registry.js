@@ -16,6 +16,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:setProviderApiKey",
   "omega:removeProviderApiKey",
   "omega:listSessions",
+  "omega:readSessionMessages",
   "omega:newSession",
   "omega:loadSession",
   "omega:saveSession",

@@ -13,6 +13,7 @@ export const IPC_CHANNELS = {
   setProviderApiKey: "omega:setProviderApiKey",
   removeProviderApiKey: "omega:removeProviderApiKey",
   listSessions: "omega:listSessions",
+  readSessionMessages: "omega:readSessionMessages",
   newSession: "omega:newSession",
   loadSession: "omega:loadSession",
   saveSession: "omega:saveSession",

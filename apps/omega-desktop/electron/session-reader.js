@@ -6,6 +6,7 @@ const MAX_FILES = 2000;
 const MAX_LINE_CHARS = 512 * 1024;
 const MAX_FIRST_MESSAGE_CHARS = 240;
 const summaryCache = new Map();
+const messageCache = new Map();
 
 function textOf(content) {
   if (typeof content === "string") return content;
@@ -112,6 +113,34 @@ function treeIndexOf(summaries) {
     byParent.set(summary.parentSessionId, children);
   }
   return Object.fromEntries([...byParent.entries()]);
+}
+
+export async function readSessionMessages(file, { offset = 0, limit = 100 } = {}) {
+  const resolved = resolve(file);
+  let stats;
+  try { stats = statSync(resolved); } catch { throw new Error("Session file not found"); }
+  const stamp = `${stats.mtimeMs}:${stats.size}`;
+  const cached = messageCache.get(resolved);
+  let messages = cached?.stamp === stamp ? cached.messages : null;
+  if (!messages) {
+    messages = [];
+    const rl = createInterface({ input: createReadStream(resolved, { encoding: "utf8" }), crlfDelay: Infinity });
+    for await (const rawLine of rl) {
+      if (rawLine.length > MAX_LINE_CHARS) continue;
+      try {
+        const entry = JSON.parse(rawLine);
+        if (entry?.type !== "message" || !entry.message) continue;
+        const message = entry.message;
+        const text = textOf(message.content);
+        if (!text && message.role !== "toolResult") continue;
+        messages.push({ role: message.role === "toolResult" ? "tool" : message.role, id: message.id ?? entry.id, text, ts: entry.timestamp ?? new Date(stats.mtimeMs).toISOString(), entryId: entry.id });
+      } catch { /* skip malformed lines */ }
+    }
+    messageCache.set(resolved, { stamp, messages });
+  }
+  const safeOffset = Number.isInteger(offset) && offset > 0 ? offset : 0;
+  const safeLimit = Number.isInteger(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+  return { items: messages.slice(safeOffset, safeOffset + safeLimit), total: messages.length, nextOffset: safeOffset + safeLimit < messages.length ? safeOffset + safeLimit : null };
 }
 
 export async function readSessionSummaries(root, { allowedWorkspaces = [], offset = 0, limit = 100 } = {}) {

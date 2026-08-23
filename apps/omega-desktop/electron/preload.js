@@ -380,6 +380,10 @@ contextBridge.exposeInMainWorld("omega", {
     offset: Number.isInteger(req?.offset) ? req.offset : 0,
     limit: Number.isInteger(req?.limit) ? req.limit : 100,
   }),
+  readSessionMessages: (req) => {
+    if (!req || typeof req.sessionId !== "string" || !req.sessionId.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId is required" });
+    return ipcRenderer.invoke("omega:readSessionMessages", { sessionId: req.sessionId.slice(0, 128), offset: Number.isInteger(req.offset) ? req.offset : 0, limit: Number.isInteger(req.limit) ? req.limit : 100 });
+  },
   newSession: (req) => {
     if (req && req.title !== undefined && (typeof req.title !== "string" || req.title.length > 256)) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "title must be a short string" });

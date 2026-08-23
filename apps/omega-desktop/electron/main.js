@@ -31,7 +31,7 @@ import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
 import { projectTrust } from "./project-trust.js";
 import { realRoot } from "./path-security.js";
-import { readSessionSummaries } from "./session-reader.js";
+import { readSessionMessages, readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";
 import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-protocol.js";
@@ -1125,6 +1125,18 @@ ipcMain.handle("omega:queryExtensionState", (event, req) => {
       cwd: activeCwd ?? undefined,
     });
     return okResult(bundle);
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:readSessionMessages", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (typeof req?.sessionId !== "string" || !req.sessionId.trim()) return errorResult("invalid_args", "sessionId is required");
+  try {
+    const sessionPath = await resolveSessionPath(req.sessionId);
+    if (!sessionPath) return errorResult("not_found", "Session not found");
+    return okResult(await readSessionMessages(sessionPath, { offset: req.offset, limit: req.limit }));
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }

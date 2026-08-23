@@ -122,6 +122,7 @@ export interface OmegaBridge {
     taskId?: string;
   }): Promise<IpcResult<ExtensionStateBundle>>;
   listSessions(req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>>;
+  readSessionMessages(req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>>;
   newSession(req: {
     projectKey?: string;
     title?: string;
@@ -263,6 +264,8 @@ export const ipc = {
   }): Promise<IpcResult<ExtensionStateBundle>> => ok(await window.omega?.queryExtensionState?.(req)),
   listSessions: async (req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>> =>
     ok(await window.omega?.listSessions?.(req)),
+  readSessionMessages: async (req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>> =>
+    ok(await window.omega?.readSessionMessages?.(req)),
   newSession: async (req: {
     projectKey?: string;
     title?: string;
