@@ -5,6 +5,7 @@ import { CommandPalette } from "./components/layout/CommandPalette";
 import { TreeOverlay } from "./components/layout/TreeOverlay";
 import { FileViewer } from "./components/files/FileViewer";
 import { ExtensionUIHost } from "./components/layout/ExtensionUIHost";
+import { TrustCenter } from "./components/layout/TrustCenter";
 import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
 import type { EventMeta, SafeEvent } from "./types/events";
@@ -437,6 +438,7 @@ export function App(): React.ReactElement {
       <TreeOverlay />
       <FileViewer />
       <ExtensionUIHost />
+      <TrustCenter />
     </ThemeProvider>
   );
 }

@@ -81,6 +81,7 @@ export interface LayoutState {
   modelCenterOpen: boolean;
   settingsOpen: boolean;
   resourceCenterOpen: boolean;
+  trustCenterOpen: boolean;
 }
 
 export interface ViewerState {
@@ -212,6 +213,7 @@ export interface AppState {
   setModelCenterOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setResourceCenterOpen: (open: boolean) => void;
+  setTrustCenterOpen: (open: boolean) => void;
 }
 
 const EMPTY_USAGE: UsageSnapshot = {
@@ -301,6 +303,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     modelCenterOpen: false,
     settingsOpen: false,
     resourceCenterOpen: false,
+    trustCenterOpen: false,
   },
 
   setConnection: (connection) => set({ connection }),
@@ -586,6 +589,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setResourceCenterOpen: (resourceCenterOpen) =>
     set((state) => ({
       layout: { ...state.layout, resourceCenterOpen },
+    })),
+  setTrustCenterOpen: (trustCenterOpen) =>
+    set((state) => ({
+      layout: { ...state.layout, trustCenterOpen },
     })),
 }));
 

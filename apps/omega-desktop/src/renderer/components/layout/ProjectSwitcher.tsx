@@ -207,6 +207,9 @@ export function ProjectSwitcher(): React.ReactElement {
         <MenuItem disabled={busy} onClick={() => void choose()}>
           <AddIcon sx={{ fontSize: 17, mr: 1 }} /> 添加工作区…
         </MenuItem>
+        <MenuItem disabled={busy} onClick={() => { setAnchor(null); useAppStore.getState().setTrustCenterOpen(true); }}>
+          <ShieldOutlinedIcon sx={{ fontSize: 17, mr: 1 }} /> Trust Center…
+        </MenuItem>
         {currentWorkspace?.requiresTrust ? (
           <MenuItem
             disabled={busy}

@@ -54,6 +54,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
   const setDesktopSettings = useAppStore((s) => s.setDesktopSettings);
   const setModelCenterOpen = useAppStore((s) => s.setModelCenterOpen);
   const setResourceCenterOpen = useAppStore((s) => s.setResourceCenterOpen);
+  const setTrustCenterOpen = useAppStore((s) => s.setTrustCenterOpen);
   const workspaceEpoch = useAppStore((s) => s.workspaceEpoch);
   const [resources, setResources] = React.useState<ResourceBundle | null>(null);
   const [workerCap, setWorkerCap] = React.useState(String(desktopSettings?.workerCap ?? 3));
@@ -230,6 +231,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
             sx={{ textTransform: "none", alignSelf: "flex-start" }}
           >
             打开资源中心
+          </Button>
+          <Button size="small" onClick={() => { onClose(); setTrustCenterOpen(true); }} sx={{ textTransform: "none", alignSelf: "flex-start" }}>
+            打开 Trust Center
           </Button>
         </Box>
 
