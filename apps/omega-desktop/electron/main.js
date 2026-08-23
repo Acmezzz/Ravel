@@ -41,6 +41,7 @@ import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { PERMISSION_PROFILES, sanitizePermissionProfile } from "./permission-profiles.js";
+import { fileRequest, replayRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -739,11 +740,12 @@ ipcMain.handle("omega:chooseWorkspace", async (event) => {
 
 ipcMain.handle("omega:switchWorkspace", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (!req?.workspace || typeof req.workspace !== "string") return errorResult("invalid_args", "workspace is required");
+  const normalized = workspaceRequest(req);
+  if (!normalized) return errorResult("invalid_args", "workspace is required");
   if (isForegroundBusy()) return errorResult("session_busy", "生成中无法切换工作区，请先停止或等待完成");
   let root;
   try {
-    root = authorizedWorkspace(req.workspace);
+    root = authorizedWorkspace(normalized.workspace);
   } catch (error) {
     return errorResult(error?.code ?? "workspace_not_authorized", error instanceof Error ? error.message : String(error));
   }
@@ -758,13 +760,14 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
 
 ipcMain.handle("omega:sessionRpc", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (typeof req?.sessionId !== "string" || !req.sessionId.trim() || typeof req?.method !== "string" || !req.method.trim()) return errorResult("invalid_args", "sessionId and method are required");
-  const slot = workerPool.get(req.sessionId);
+  const normalized = sessionRpcRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sessionId and method are required");
+  const slot = workerPool.get(normalized.sessionId);
   if (!slot?.host || slot.host.state !== "ready") return errorResult("not_found", "后台 session 没有 live Worker");
   const allowed = new Set(["getState", "sessionRecord", "getSessionTree", "listResources", "getThinking"]);
-  if (!allowed.has(req.method)) return errorResult("unsupported", "后台 RPC 只允许只读方法");
+  if (!allowed.has(normalized.method)) return errorResult("unsupported", "后台 RPC 只允许只读方法");
   try {
-    return okResult(await slot.host.call(req.method, req.args ?? {}));
+    return okResult(await slot.host.call(normalized.method, normalized.args));
   } catch (error) {
     return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
   }
@@ -772,9 +775,10 @@ ipcMain.handle("omega:sessionRpc", async (event, req) => {
 
 ipcMain.handle("omega:recentEvents", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  const sessionId = typeof req?.sessionId === "string" ? req.sessionId : worker?.sessionId;
-  const after = typeof req?.after === "number" && Number.isFinite(req.after) ? req.after : 0;
-  const limit = Number.isInteger(req?.limit) ? Math.max(1, Math.min(req.limit, 100)) : RECENT_EVENT_LIMIT;
+  const normalized = replayRequest(req);
+  const sessionId = normalized.sessionId ?? worker?.sessionId;
+  const after = normalized.after;
+  const limit = normalized.limit;
   let bucket = sessionId ? recentEventsBySession.get(sessionId) ?? [] : [];
   if (sessionId && bucket.length === 0) {
     try {
@@ -1210,9 +1214,10 @@ ipcMain.handle("omega:queryExtensionState", (event, req) => {
 
 ipcMain.handle("omega:readSessionMessages", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (typeof req?.sessionId !== "string" || !req.sessionId.trim()) return errorResult("invalid_args", "sessionId is required");
+  const normalized = sessionRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sessionId is required");
   try {
-    const sessionPath = await resolveSessionPath(req.sessionId);
+    const sessionPath = await resolveSessionPath(normalized.sessionId);
     if (!sessionPath) return errorResult("not_found", "Session not found");
     return okResult(await readSessionMessages(sessionPath, { offset: req.offset, limit: req.limit }));
   } catch (error) {
@@ -1290,9 +1295,10 @@ ipcMain.handle("omega:saveSession", (event, req) => {
 
 ipcMain.handle("omega:deleteSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (!req?.sessionId || typeof req.sessionId !== "string") return errorResult("invalid_args", "sessionId is required");
+  const normalized = sessionRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sessionId is required");
   try {
-    const target = req.sessionId;
+    const target = normalized.sessionId;
     if (workerPool.get(target)?.running) return errorResult("session_busy", "生成中无法删除会话，请先停止或等待完成");
     const state = await requireWorker().call("getState");
     if (state?.sessionId === target) {
@@ -1345,8 +1351,10 @@ ipcMain.handle("omega:listDir", (event, req) => {
 
 ipcMain.handle("omega:readFile", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = fileRequest(req);
+  if (!normalized) return errorResult("invalid_args", "path is required");
   try {
-    return okResult(workspaceService.readFile(activeCwd ?? rootOf(), requireString(req, "path")));
+    return okResult(workspaceService.readFile(activeCwd ?? rootOf(), normalized.path));
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }
