@@ -146,8 +146,7 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 2. FileViewer 内嵌 DOCX 富文本布局、上传进度和更完整语言资源。
 3. Model Center 离线 catalog/缓存模型和更完整 fake latency UI；真实 OAuth/discovery/latency 等待外部环境。
 4. 完整 IPC JSON Schema 迁移和性能拆包。
-5. 完整 IPC JSON Schema 迁移和性能拆包。
-6. 只有在允许联网、签名和 CI 发布环境后，才实施真实 updater UI、OAuth、remote/fetch 和完整 release E2E。
+5. 只有在允许联网、签名和 CI 发布环境后，才实施真实 updater UI、OAuth、remote/fetch 和完整 release E2E。
 
 ## 6. 明确不做
 
