@@ -159,6 +159,13 @@ export function DiffViewer(): React.ReactElement {
 
   React.useEffect(() => {
     if (!snapshot) void refresh();
+    const timer = window.setInterval(() => void refresh(), 30_000);
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [snapshot, refresh]);
 
   const clearSel = () => {
@@ -205,7 +212,8 @@ export function DiffViewer(): React.ReactElement {
     } else if (res.ok) {
       setError(res.data.errors.join("\n"));
     } else {
-      setError(res.message);
+      setError(res.code === "stale_diff_snapshot" ? "工作区已变化，已刷新快照；请重新选择要暂存的文件或 hunk。" : res.message);
+      if (res.code === "stale_diff_snapshot") await refresh();
     }
   }, [unstagedSel, snapshot, refresh]);
 
@@ -223,7 +231,8 @@ export function DiffViewer(): React.ReactElement {
     } else if (res.ok) {
       setError(res.data.errors.join("\n"));
     } else {
-      setError(res.message);
+      setError(res.code === "stale_diff_snapshot" ? "工作区已变化，已刷新快照；请重新选择要取消暂存的文件或 hunk。" : res.message);
+      if (res.code === "stale_diff_snapshot") await refresh();
     }
   }, [stagedSel, snapshot, refresh]);
 
