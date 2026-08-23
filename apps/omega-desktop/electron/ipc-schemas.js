@@ -26,6 +26,21 @@ export function replayRequest(value) {
   return { sessionId, after, limit };
 }
 
+export function gitCommitRequest(value) {
+  const message = boundedString(value?.message, 8_000);
+  return message ? { message } : null;
+}
+
+export function gitStageRequest(value) {
+  const snapshotToken = boundedString(value?.snapshotToken, 256);
+  const items = Array.isArray(value?.items) ? value.items.slice(0, 500).filter((item) => boundedString(item?.path, MAX.path)).map((item) => ({ path: item.path, hunks: Array.isArray(item.hunks) ? item.hunks.slice(0, 200).map((hunk) => String(hunk).slice(0, 64_000)) : undefined })) : [];
+  return snapshotToken && items.length ? { snapshotToken, items } : null;
+}
+
+export function customProviderRequest(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
 export function sessionRpcRequest(value) {
   const sessionId = boundedString(value?.sessionId, MAX.sessionId);
   const method = boundedString(value?.method, MAX.method);

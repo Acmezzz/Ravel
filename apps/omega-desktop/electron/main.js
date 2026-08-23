@@ -41,7 +41,7 @@ import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { PERMISSION_PROFILES, sanitizePermissionProfile } from "./permission-profiles.js";
-import { fileRequest, replayRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
+import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
 import * as fileTransfer from "./file-transfer-service.js";
 
@@ -993,7 +993,9 @@ ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
 
 ipcMain.handle("omega:configureCustomProvider", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  return rpc("configureCustomProvider", req ?? {}, "write_failed");
+  const normalized = customProviderRequest(req);
+  if (!normalized) return errorResult("invalid_args", "provider config is required");
+  return rpc("configureCustomProvider", normalized, "write_failed");
 });
 
 ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
@@ -1566,7 +1568,8 @@ function normalizeGitItems(req) {
 ipcMain.handle("omega:gitStage", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
-    const normalized = normalizeGitItems(req);
+    const normalized = gitStageRequest(req);
+    if (!normalized) return errorResult("invalid_args", "snapshotToken and items are required");
     return okResult(diffService.stageItems(activeCwd ?? rootOf(), normalized.items, normalized.snapshotToken));
   } catch (error) {
     return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));
@@ -1576,7 +1579,8 @@ ipcMain.handle("omega:gitStage", (event, req) => {
 ipcMain.handle("omega:gitUnstage", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
-    const normalized = normalizeGitItems(req);
+    const normalized = gitStageRequest(req);
+    if (!normalized) return errorResult("invalid_args", "snapshotToken and items are required");
     return okResult(diffService.unstageItems(activeCwd ?? rootOf(), normalized.items, normalized.snapshotToken));
   } catch (error) {
     return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));
@@ -1585,9 +1589,9 @@ ipcMain.handle("omega:gitUnstage", (event, req) => {
 
 ipcMain.handle("omega:gitCommit", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  const message = typeof req?.message === "string" ? req.message.trim() : "";
-  if (!message) return errorResult("invalid_args", "message is required");
-  if (message.length > 8000) return errorResult("invalid_args", "message too long");
+  const normalized = gitCommitRequest(req);
+  if (!normalized) return errorResult("invalid_args", "message is required");
+  const message = normalized.message;
   try {
     return okResult(diffService.commitIndexed(activeCwd ?? rootOf(), message));
   } catch (error) {
