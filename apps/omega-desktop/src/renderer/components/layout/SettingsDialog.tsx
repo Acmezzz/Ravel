@@ -59,12 +59,14 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
   const [resources, setResources] = React.useState<ResourceBundle | null>(null);
   const [workerCap, setWorkerCap] = React.useState(String(desktopSettings?.workerCap ?? 3));
   const [idleTtl, setIdleTtl] = React.useState(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
+  const [keybindings, setKeybindings] = React.useState(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
   const [desktopError, setDesktopError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
     setWorkerCap(String(desktopSettings?.workerCap ?? 3));
     setIdleTtl(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
+    setKeybindings(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
     setDesktopError(null);
   }, [open, desktopSettings]);
 
@@ -190,6 +192,10 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
           >
             {Object.entries(PERMISSION_LABEL).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
           </TextField>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+            快捷键
+          </Typography>
+          {(["commandPalette", "newSession", "abort"] as const).map((key) => <TextField key={key} size="small" label={key === "commandPalette" ? "打开命令中心" : key === "newSession" ? "新建会话" : "停止 Agent"} value={keybindings[key]} onChange={(event) => setKeybindings((current) => ({ ...current, [key]: event.target.value }))} onBlur={() => void ipc.updateDesktopSettings({ keybindings })} helperText="当前版本支持默认快捷键；可先保存偏好，后续扩展更多组合键。" />)}
           <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
             桌面运行时
           </Typography>

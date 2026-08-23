@@ -402,24 +402,26 @@ export function App(): React.ReactElement {
     };
   }, [setConnection, setShutdownPhase, setBootstrapError, setExtensionState, setExtensionLoading]);
 
+  const keybindings = useAppStore((s) => s.desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
+
   React.useEffect(() => {
-    // Workbench shortcuts: Ctrl+K toggles the command palette, Ctrl+Shift+N
+    // Workbench shortcuts are stored in typed desktop settings.
     // starts a fresh session, Esc stops a running agent. (F11 fullscreen and
     // F12 devtools live in main.)
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && !e.shiftKey && e.key.toLowerCase() === "k") {
+      if (keybindings.commandPalette === "Ctrl+K" && mod && !e.shiftKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         const layout = useAppStore.getState().layout;
         useAppStore.getState().setCommandPaletteOpen(!layout.commandPaletteOpen);
         return;
       }
-      if (mod && e.shiftKey && e.key.toLowerCase() === "n") {
+      if (keybindings.newSession === "Ctrl+Shift+N" && mod && e.shiftKey && e.key.toLowerCase() === "n") {
         e.preventDefault();
         void startNewSession();
         return;
       }
-      if (e.key === "Escape" && useAppStore.getState().connection === "running") {
+      if (keybindings.abort === "Escape" && e.key === "Escape" && useAppStore.getState().connection === "running") {
         const target = e.target as HTMLElement | null;
         if (
           target &&
@@ -433,7 +435,7 @@ export function App(): React.ReactElement {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [keybindings]);
 
   return (
     <ThemeProvider>

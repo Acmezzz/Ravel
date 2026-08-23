@@ -427,6 +427,7 @@ export interface DesktopSettings {
   rightPanelOpen: boolean;
   permissionProfile: "trusted" | "workspace-only" | "read-only" | "ask-before-command";
   sessionRecovery: Record<string, { state: string; running: boolean; unread: boolean; error: string | null; retryAttempt?: number; retryMaxAttempts?: number; retryDelayMs?: number; updatedAt: string }>;
+  keybindings: { commandPalette: string; newSession: string; abort: string };
   windowBounds: DesktopWindowBounds | null;
 }
 

@@ -15,6 +15,7 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   rightPanelOpen: true,
   permissionProfile: "trusted",
   sessionRecovery: {},
+  keybindings: { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" },
   windowBounds: null,
 });
 
@@ -39,6 +40,7 @@ export function sanitizeDesktopSettings(input, base = DESKTOP_SETTINGS_DEFAULTS)
     rightPanelOpen: typeof source.rightPanelOpen === "boolean" ? source.rightPanelOpen : base.rightPanelOpen,
     permissionProfile: PERMISSION_PROFILES.has(source.permissionProfile) ? source.permissionProfile : base.permissionProfile,
     sessionRecovery: source.sessionRecovery && typeof source.sessionRecovery === "object" ? Object.fromEntries(Object.entries(source.sessionRecovery).slice(-100).map(([id, value]) => [String(id).slice(0, 128), { state: typeof value?.state === "string" ? value.state.slice(0, 64) : "unknown", running: Boolean(value?.running), unread: Boolean(value?.unread), error: typeof value?.error === "string" ? value.error.slice(0, 1000) : null, retryAttempt: Number.isInteger(value?.retryAttempt) ? value.retryAttempt : 0, retryMaxAttempts: Number.isInteger(value?.retryMaxAttempts) ? value.retryMaxAttempts : 0, retryDelayMs: Number.isInteger(value?.retryDelayMs) ? value.retryDelayMs : 0, updatedAt: typeof value?.updatedAt === "string" ? value.updatedAt : new Date().toISOString() }])) : { ...base.sessionRecovery },
+    keybindings: source.keybindings && typeof source.keybindings === "object" ? { commandPalette: typeof source.keybindings.commandPalette === "string" ? source.keybindings.commandPalette.slice(0, 64) : base.keybindings.commandPalette, newSession: typeof source.keybindings.newSession === "string" ? source.keybindings.newSession.slice(0, 64) : base.keybindings.newSession, abort: typeof source.keybindings.abort === "string" ? source.keybindings.abort.slice(0, 64) : base.keybindings.abort } : { ...base.keybindings },
     windowBounds: bounds
       ? {
           x: clampInt(bounds.x, -10_000, 10_000, 80),
