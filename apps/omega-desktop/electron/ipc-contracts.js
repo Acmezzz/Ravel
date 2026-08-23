@@ -62,6 +62,8 @@ export const IPC_CHANNELS = Object.freeze({
   gitCommit: "omega:gitCommit",
   diffWorkspace: "omega:diffWorkspace",
   approveChange: "omega:approveChange",
+  extensionUiResponse: "omega:extensionUiResponse",
+  extensionUiCancel: "omega:extensionUiCancel",
   prompt: "agent:prompt",
   abort: "agent:abort",
   event: "agent:event",
@@ -72,6 +74,7 @@ export const IPC_CHANNELS = Object.freeze({
   windowClose: "window:close",
   windowIsMaximized: "window:isMaximized",
   windowMaximizedChanged: "window:maximizedChanged",
+  extensionUiRequest: "extension-ui:request",
 });
 
 export { INVOKE_CHANNELS, PUSH_CHANNELS };

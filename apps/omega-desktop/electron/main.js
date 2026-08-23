@@ -33,6 +33,7 @@ import { realRoot } from "./path-security.js";
 import { readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";
+import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 import { WorkerHost } from "./worker-host.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
@@ -222,6 +223,11 @@ function bindHost(host) {
     }
     if (!win || win.isDestroyed()) return;
     win.webContents.send("agent:event", { event, meta });
+  };
+  host.onExtensionUIRequest = (request) => {
+    if (!isExtensionUIRequest(request)) return;
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send("extension-ui:request", request);
   };
   host.onTransport = (state, extra = {}) => {
     const foreground = host === worker;
@@ -956,6 +962,18 @@ ipcMain.handle("omega:setSkillModelInvocation", (event, req) => {
 ipcMain.handle("omega:setSkillCommandsEnabled", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   return rpc("setSkillCommandsEnabled", { enabled: req?.enabled !== false }, "write_failed");
+});
+
+ipcMain.handle("omega:extensionUiResponse", (event, response) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!isExtensionUIResponse(response)) return errorResult("invalid_args", "Invalid extension UI response");
+  return rpc("extensionUiResponse", response, "write_failed");
+});
+
+ipcMain.handle("omega:extensionUiCancel", (event, response) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!isExtensionUIResponse({ ...response, cancelled: true })) return errorResult("invalid_args", "Invalid extension UI cancellation");
+  return rpc("extensionUiCancel", response, "write_failed");
 });
 
 ipcMain.handle("omega:getSystemPrompt", (event) => {

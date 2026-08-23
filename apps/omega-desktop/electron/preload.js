@@ -94,6 +94,38 @@ contextBridge.exposeInMainWorld("omega", {
     ipcRenderer.on("agent:event", handler);
     return () => ipcRenderer.removeListener("agent:event", handler);
   },
+  onExtensionUiRequest: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const handler = (_event, data) => {
+      try { callback(data); } catch (error) { console.error("omega extension UI callback failed", error); }
+    };
+    ipcRenderer.on("extension-ui:request", handler);
+    return () => ipcRenderer.removeListener("extension-ui:request", handler);
+  },
+  extensionUiResponse: (response) => {
+    if (!isPlainObject(response) || typeof response.id !== "string" || typeof response.sessionId !== "string" || !Number.isInteger(response.generation)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "Invalid extension UI response" });
+    }
+    return ipcRenderer.invoke("omega:extensionUiResponse", {
+      ...response,
+      id: response.id.slice(0, 128),
+      sessionId: response.sessionId.slice(0, 128),
+      runId: typeof response.runId === "string" ? response.runId.slice(0, 128) : null,
+      value: typeof response.value === "string" ? response.value.slice(0, MAX_FIELD_CHARS) : response.value,
+    });
+  },
+  extensionUiCancel: (response) => {
+    if (!isPlainObject(response) || typeof response.id !== "string" || typeof response.sessionId !== "string" || !Number.isInteger(response.generation)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "Invalid extension UI cancellation" });
+    }
+    return ipcRenderer.invoke("omega:extensionUiCancel", {
+      ...response,
+      id: response.id.slice(0, 128),
+      sessionId: response.sessionId.slice(0, 128),
+      runId: typeof response.runId === "string" ? response.runId.slice(0, 128) : null,
+      cancelled: true,
+    });
+  },
 
   // ----- extension state (read-only) -----
   listWorkspaces: () => ipcRenderer.invoke("omega:listWorkspaces"),

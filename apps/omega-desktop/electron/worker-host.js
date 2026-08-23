@@ -26,6 +26,7 @@ export class WorkerHost {
     this.projectTrusted = true;
     this.activating = false;
     this.onEvent = null;
+    this.onExtensionUIRequest = null;
     this.onSettled = null;
     this.onError = null;
     this.onTransport = null;
@@ -133,6 +134,10 @@ export class WorkerHost {
     }
     if (message.type === "app-event") {
       this.onEvent?.(message.event, message.meta);
+      return;
+    }
+    if (message.type === "extension-ui-request") {
+      this.onExtensionUIRequest?.(message.request);
       return;
     }
     if (message.type === "settled") {

@@ -15,6 +15,7 @@
  * window: the main process owns the UI and proxies every omega:* RPC here.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { DefaultPackageManager } from "@earendil-works/pi-coding-agent";
 import * as bridge from "./agent-bridge.js";
 import {
@@ -25,6 +26,7 @@ import {
   nextScopedPaths,
   setDisableModelInvocationFrontmatter,
 } from "./resource-center.js";
+import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 
 /** @type {import("./agent-bridge.js").ReturnType<typeof bridge.createRuntime> | null} */
 let runtime = null;
@@ -34,11 +36,98 @@ let generation = 0;
 let disposed = false;
 let eventSequence = 0;
 let activeRunId = null;
+const pendingExtensionUI = new Map();
 /** Serializes non-streaming prompts; streaming prompts bypass it (steer). */
 let promptQueue = Promise.resolve();
 
 function post(message) {
   process.parentPort.postMessage(message);
+}
+
+function extensionMeta() {
+  return {
+    sessionId: runtime?.session?.sessionId ?? null,
+    runId: activeRunId,
+    generation,
+  };
+}
+
+function settleExtensionUI(id, value) {
+  const pending = pendingExtensionUI.get(id);
+  if (!pending) return false;
+  pendingExtensionUI.delete(id);
+  clearTimeout(pending.timer);
+  pending.resolve(value);
+  return true;
+}
+
+function cancelAllExtensionUI() {
+  for (const pending of pendingExtensionUI.values()) {
+    clearTimeout(pending.timer);
+    pending.resolve({ cancelled: true });
+  }
+  pendingExtensionUI.clear();
+}
+
+function createDesktopExtensionUIContext() {
+  const request = (payload, defaultValue, timeout) => {
+    const id = randomUUID();
+    const meta = extensionMeta();
+    const requestPayload = { type: "extension_ui_request", id, ...payload, ...meta };
+    const effectiveTimeout = Number.isFinite(timeout) && timeout > 0 ? Math.min(timeout, 10 * 60 * 1000) : 5 * 60 * 1000;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        pendingExtensionUI.delete(id);
+        resolve(defaultValue);
+      }, effectiveTimeout);
+      pendingExtensionUI.set(id, { resolve, timer, ...meta });
+      post({ type: "extension-ui-request", request: requestPayload });
+    });
+  };
+
+  return {
+    select: (title, options, opts) => request({ method: "select", title, options, timeout: opts?.timeout }, undefined, opts?.timeout),
+    confirm: (title, message, opts) => request({ method: "confirm", title, message, timeout: opts?.timeout }, false, opts?.timeout),
+    input: (title, placeholder, opts) => request({ method: "input", title, placeholder, timeout: opts?.timeout }, undefined, opts?.timeout),
+    editor: (title, prefill) => request({ method: "editor", title, prefill }, undefined),
+    notify: (message, notifyType) => {
+      post({ type: "extension-ui-request", request: { type: "extension_ui_request", id: randomUUID(), method: "notify", message, notifyType, ...extensionMeta() } });
+    },
+    onTerminalInput: () => () => {},
+    setStatus: (statusKey, statusText) => {
+      post({ type: "extension-ui-request", request: { type: "extension_ui_request", id: randomUUID(), method: "setStatus", statusKey, statusText, ...extensionMeta() } });
+    },
+    setWorkingMessage: () => {},
+    setWorkingVisible: () => {},
+    setWorkingIndicator: () => {},
+    setHiddenThinkingLabel: () => {},
+    setWidget: (widgetKey, widgetLines, options) => {
+      if (widgetLines !== undefined && !Array.isArray(widgetLines)) return;
+      post({ type: "extension-ui-request", request: { type: "extension_ui_request", id: randomUUID(), method: "setWidget", widgetKey, widgetLines, widgetPlacement: options?.placement, ...extensionMeta() } });
+    },
+    setFooter: () => {},
+    setHeader: () => {},
+    setTitle: (title) => {
+      post({ type: "extension-ui-request", request: { type: "extension_ui_request", id: randomUUID(), method: "setTitle", title, ...extensionMeta() } });
+    },
+    custom: async () => undefined,
+    pasteToEditor: (text) => {
+      post({ type: "extension-ui-request", request: { type: "extension_ui_request", id: randomUUID(), method: "set_editor_text", text, ...extensionMeta() } });
+    },
+    setEditorText: (text) => {
+      post({ type: "extension-ui-request", request: { type: "extension_ui_request", id: randomUUID(), method: "set_editor_text", text, ...extensionMeta() } });
+    },
+    getEditorText: () => "",
+    addAutocompleteProvider: () => {},
+    setEditorComponent: () => {},
+    getEditorComponent: () => undefined,
+    get theme() { return undefined; },
+    getAllThemes: () => [],
+    getTheme: () => undefined,
+    setTheme: () => ({ success: false, error: "Theme switching is not supported" }),
+    getToolsExpanded: () => false,
+    setToolsExpanded: () => {},
+  };
 }
 
 function attach(session) {
@@ -87,8 +176,12 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
       throw error;
     }
   }
-  runtime.setRebindSession(async (session) => attach(session));
+  runtime.setRebindSession(async (session) => {
+    attach(session);
+    await session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
+  });
   attach(runtime.session);
+  await runtime.session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
   post({ type: "init-done", sessionId: runtime.session.sessionId, cwd: runtime.cwd });
 }
 
@@ -179,6 +272,7 @@ async function listResourceBundle() {
 }
 
 async function recreateForWorkspace(workspace) {
+  cancelAllExtensionUI();
   try {
     unsubscribe?.();
   } catch {
@@ -187,8 +281,12 @@ async function recreateForWorkspace(workspace) {
   unsubscribe = undefined;
   await runtime.dispose();
   runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot, projectTrusted });
-  runtime.setRebindSession(async (session) => attach(session));
+  runtime.setRebindSession(async (session) => {
+    attach(session);
+    await session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
+  });
   attach(runtime.session);
+  await runtime.session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
 }
 
 const methods = {
@@ -418,8 +516,39 @@ const methods = {
     await runtime.session.reload();
     return listResourceBundle();
   },
+  extensionUiResponse: async (response) => {
+    if (!isExtensionUIResponse(response)) {
+      const error = new Error("invalid extension UI response");
+      error.code = "invalid_args";
+      throw error;
+    }
+    const pending = pendingExtensionUI.get(response.id);
+    if (!pending || pending.sessionId !== response.sessionId || pending.generation !== response.generation || (pending.runId ?? null) !== (response.runId ?? null)) {
+      const error = new Error("stale extension UI response");
+      error.code = "stale_generation";
+      throw error;
+    }
+    settleExtensionUI(response.id, response.cancelled === true ? { cancelled: true } : ("confirmed" in response ? { confirmed: response.confirmed } : { value: response.value }));
+    return { accepted: true };
+  },
+  extensionUiCancel: async (response) => {
+    if (!isExtensionUIResponse({ ...response, cancelled: true })) {
+      const error = new Error("invalid extension UI cancellation");
+      error.code = "invalid_args";
+      throw error;
+    }
+    const pending = pendingExtensionUI.get(response.id);
+    if (!pending || pending.sessionId !== response.sessionId || pending.generation !== response.generation || (pending.runId ?? null) !== (response.runId ?? null)) {
+      const error = new Error("stale extension UI cancellation");
+      error.code = "stale_generation";
+      throw error;
+    }
+    settleExtensionUI(response.id, { cancelled: true });
+    return { accepted: true };
+  },
   dispose: async () => {
     disposed = true;
+    cancelAllExtensionUI();
     promptQueue = Promise.resolve();
     try {
       unsubscribe?.();
@@ -439,6 +568,22 @@ const METHOD_NAMES = new Set(Object.keys(methods));
 process.parentPort.on("message", async (event) => {
   const message = event?.data && typeof event.data === "object" ? event.data : event;
   if (!message || typeof message !== "object") return;
+  if (message.type === "extension-ui-response") {
+    try {
+      await methods.extensionUiResponse(message.response ?? {});
+    } catch {
+      /* stale UI responses are intentionally ignored */
+    }
+    return;
+  }
+  if (message.type === "extension-ui-cancel") {
+    try {
+      await methods.extensionUiCancel(message.response ?? {});
+    } catch {
+      /* stale UI cancellations are intentionally ignored */
+    }
+    return;
+  }
   if (message.type === "init") {
     try {
       await init(message);

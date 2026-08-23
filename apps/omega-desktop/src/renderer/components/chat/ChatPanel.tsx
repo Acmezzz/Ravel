@@ -4,6 +4,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { EmptyState } from "./EmptyState";
+import { ExtensionSurface } from "../layout/ExtensionSurface";
 
 export function ChatPanel(): React.ReactElement {
   const messageCount = useAppStore((s) => s.messages.length);
@@ -23,8 +24,11 @@ export function ChatPanel(): React.ReactElement {
         position: "relative",
       }}
     >
-      <Box sx={{ flexGrow: 1, minHeight: 0, position: "relative" }}>
-        {!hasMessages ? <EmptyState /> : <MessageList />}
+      <Box sx={{ flexGrow: 1, minHeight: 0, position: "relative", display: "flex", flexDirection: "column" }}>
+        <ExtensionSurface />
+        <Box sx={{ flexGrow: 1, minHeight: 0, position: "relative" }}>
+          {!hasMessages ? <EmptyState /> : <MessageList />}
+        </Box>
       </Box>
       <Composer />
     </Box>

@@ -28,6 +28,9 @@ import type {
   UsageSnapshot,
   GitSnapshot,
   FileReadResult,
+  ExtensionUIRequest,
+  ExtensionUIStatus,
+  ExtensionUIWidget,
 } from "../types/dto";
 import type { Palette, ThemeMode } from "../theme/palettes";
 import { applyModeWithTransition, paletteForMode } from "../theme/palettes";
@@ -123,6 +126,10 @@ export interface AppState {
   retrying: boolean;
   composerError: string | null;
   composerPrefill: string | null;
+  extensionUiRequest: ExtensionUIRequest | null;
+  extensionStatuses: ExtensionUIStatus[];
+  extensionWidgets: ExtensionUIWidget[];
+  extensionTitle: string | null;
   bashTail: string;
   workerError: string | null;
   canRetryWorker: boolean;
@@ -146,6 +153,12 @@ export interface AppState {
   setBootstrapError: (message: string | null) => void;
   setComposerError: (message: string | null) => void;
   setComposerPrefill: (text: string | null) => void;
+  setExtensionUiRequest: (request: ExtensionUIRequest | null) => void;
+  setExtensionStatus: (status: ExtensionUIStatus) => void;
+  clearExtensionStatus: (sessionId: string, key: string) => void;
+  setExtensionWidget: (widget: ExtensionUIWidget) => void;
+  clearExtensionWidget: (sessionId: string, key: string) => void;
+  setExtensionTitle: (title: string | null) => void;
   setWorkerError: (message: string | null, canRetry?: boolean) => void;
 
   setSessions: (sessions: SessionSummary[]) => void;
@@ -258,6 +271,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   retrying: false,
   composerError: null,
   composerPrefill: null,
+  extensionUiRequest: null,
+  extensionStatuses: [],
+  extensionWidgets: [],
+  extensionTitle: null,
   bashTail: "",
   workerError: null,
   canRetryWorker: false,
@@ -290,6 +307,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setBootstrapError: (bootstrapError) => set({ bootstrapError }),
   setComposerError: (composerError) => set({ composerError }),
   setComposerPrefill: (composerPrefill) => set({ composerPrefill }),
+  setExtensionUiRequest: (extensionUiRequest) => set({ extensionUiRequest }),
+  setExtensionStatus: (status) => set((state) => ({ extensionStatuses: [...state.extensionStatuses.filter((item) => !(item.sessionId === status.sessionId && item.key === status.key)), status] })),
+  clearExtensionStatus: (sessionId, key) => set((state) => ({ extensionStatuses: state.extensionStatuses.filter((item) => !(item.sessionId === sessionId && item.key === key)) })),
+  setExtensionWidget: (widget) => set((state) => ({ extensionWidgets: [...state.extensionWidgets.filter((item) => !(item.sessionId === widget.sessionId && item.key === widget.key)), widget] })),
+  clearExtensionWidget: (sessionId, key) => set((state) => ({ extensionWidgets: state.extensionWidgets.filter((item) => !(item.sessionId === sessionId && item.key === key)) })),
+  setExtensionTitle: (extensionTitle) => set({ extensionTitle }),
   setWorkerError: (workerError, canRetry = false) => set({ workerError, canRetryWorker: Boolean(workerError) && canRetry }),
 
   setSessions: (sessions) => set({ sessions }),

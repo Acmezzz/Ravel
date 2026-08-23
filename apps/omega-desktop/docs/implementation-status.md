@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**77/77 通过**。
+- 桌面和安全测试：**80/80 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -201,7 +201,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - 仍缺：OAuth 登录/登出、自定义 provider/base URL、model discovery、延迟测试、catalog/recommendation。
 - Project Trust Dialog 第一轮已完成；完整 Trust Center（批量管理、父目录继承 UI）仍待做。
 - Skills/Plugins Center 第一轮已落地：Header / 设置 / Command Palette 打开资源中心；可列表、搜索、启用/禁用、本地安装/移除、重载当前会话、切换 skill 模型可见性。npm/git 联网安装被拒绝。仍缺：联网更新、安装进度、package 内部资源过滤编辑。
-- Extension UI bridge：select、confirm、input、editor、notify、status、widget、title。
+- Extension UI bridge 第一轮已落地：Worker 绑定 Pi RPC UI context；select/confirm/input/editor 使用桌面 Dialog，notify 使用 Snackbar，status/widget/title/editor text 使用受控 renderer surface；请求支持 session/run/generation、取消和超时。暂不支持 TUI custom/footer/header/editor factory。
 - 权限 profile：Trusted、Workspace-only、Read-only、Ask before command。
 
 ### P2：产品化与发布

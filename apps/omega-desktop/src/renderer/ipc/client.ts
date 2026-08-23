@@ -32,6 +32,8 @@ import type {
   GitStageItem,
   GitWorktreeList,
   ResourceBundle,
+  ExtensionUIRequest,
+  ExtensionUIResponse,
 } from "../types/dto";
 
 export interface OmegaBridge {
@@ -85,6 +87,9 @@ export interface OmegaBridge {
   onStatus(callback: (data: unknown) => void): () => void;
   onTransport(callback: (data: { state: string; error?: string; canRetry?: boolean; sessionId?: string; foreground?: boolean }) => void): () => void;
   onEvent(callback: (data: unknown) => void): () => void;
+  onExtensionUiRequest(callback: (request: ExtensionUIRequest) => void): () => void;
+  extensionUiResponse(response: ExtensionUIResponse): Promise<IpcResult<{ accepted: boolean }>>;
+  extensionUiCancel(response: Omit<ExtensionUIResponse, "value" | "confirmed"> & { cancelled: true }): Promise<IpcResult<{ accepted: boolean }>>;
   listWorkspaces(): Promise<IpcResult<WorkspaceInfo[]>>;
   chooseWorkspace(): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[]; trust?: ProjectTrustInfo }>>;
   switchWorkspace(req: { workspace: string }): Promise<IpcResult<SessionRecord>>;
@@ -207,6 +212,12 @@ export const ipc = {
   isMaximized: async (): Promise<IpcResult<{ maximized: boolean }>> => ok(await window.omega?.isMaximized?.()),
   onWindowStateChanged: (callback: (data: { maximized: boolean }) => void): (() => void) =>
     window.omega?.onWindowStateChanged?.(callback) ?? (() => {}),
+  onExtensionUiRequest: (callback: (request: ExtensionUIRequest) => void): (() => void) =>
+    window.omega?.onExtensionUiRequest?.(callback) ?? (() => {}),
+  extensionUiResponse: async (response: ExtensionUIResponse): Promise<IpcResult<{ accepted: boolean }>> =>
+    ok(await window.omega?.extensionUiResponse?.(response)),
+  extensionUiCancel: async (response: Omit<ExtensionUIResponse, "value" | "confirmed"> & { cancelled: true }): Promise<IpcResult<{ accepted: boolean }>> =>
+    ok(await window.omega?.extensionUiCancel?.(response)),
   listWorkspaces: async (): Promise<IpcResult<WorkspaceInfo[]>> => ok(await window.omega?.listWorkspaces?.()),
   chooseWorkspace: async (): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[]; trust?: ProjectTrustInfo }>> => ok(await window.omega?.chooseWorkspace?.()),
   switchWorkspace: async (req: { workspace: string }): Promise<IpcResult<SessionRecord>> => ok(await window.omega?.switchWorkspace?.(req)),

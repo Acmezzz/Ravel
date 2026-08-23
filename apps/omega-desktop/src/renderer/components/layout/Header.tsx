@@ -223,6 +223,7 @@ export function Header(): React.ReactElement {
   const shuttingDown = shutdownPhase !== "idle";
   const canRetryWorker = useAppStore((s) => s.canRetryWorker);
   const workerError = useAppStore((s) => s.workerError);
+  const extensionTitle = useAppStore((s) => s.extensionTitle);
   const setAgent = useAppStore((s) => s.setAgent);
   const setConnection = useAppStore((s) => s.setConnection);
   const themeMode = useAppStore((s) => s.themeMode);
@@ -302,7 +303,7 @@ export function Header(): React.ReactElement {
         <Box sx={{ minWidth: 0, maxWidth: 200 }}>
           <Typography sx={{ fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.15 }}>Omega</Typography>
           <Typography className="mono-num" sx={{ color: "var(--omega-text-muted)", fontSize: 11 }} noWrap title={workerError ?? undefined}>
-            {workerError ? "Worker 未就绪" : agent?.sessionName || "新会话"}
+            {workerError ? "Worker 未就绪" : extensionTitle || agent?.sessionName || "新会话"}
           </Typography>
         </Box>
 

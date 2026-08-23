@@ -61,6 +61,8 @@ export const IPC_CHANNELS = {
   gitCommit: "omega:gitCommit",
   diffWorkspace: "omega:diffWorkspace",
   approveChange: "omega:approveChange",
+  extensionUiResponse: "omega:extensionUiResponse",
+  extensionUiCancel: "omega:extensionUiCancel",
   prompt: "agent:prompt",
   abort: "agent:abort",
   event: "agent:event",
@@ -71,6 +73,7 @@ export const IPC_CHANNELS = {
   windowClose: "window:close",
   windowIsMaximized: "window:isMaximized",
   windowMaximizedChanged: "window:maximizedChanged",
+  extensionUiRequest: "extension-ui:request",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

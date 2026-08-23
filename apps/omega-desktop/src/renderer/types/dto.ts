@@ -507,6 +507,51 @@ export interface ResourceBundle {
   skillCommandsEnabled?: boolean;
 }
 
+export type ExtensionUIKind = "select" | "confirm" | "input" | "editor" | "notify" | "setStatus" | "setWidget" | "setTitle" | "set_editor_text";
+export type ExtensionUINotifyType = "info" | "warning" | "error";
+export type ExtensionUIWidgetPlacement = "aboveEditor" | "belowEditor";
+
+export interface ExtensionUIRequestBase {
+  type: "extension_ui_request";
+  id: string;
+  method: ExtensionUIKind;
+  sessionId: string;
+  runId: string | null;
+  generation: number;
+}
+
+export type ExtensionUIRequest =
+  | (ExtensionUIRequestBase & { method: "select"; title: string; options: string[]; timeout?: number })
+  | (ExtensionUIRequestBase & { method: "confirm"; title: string; message: string; timeout?: number })
+  | (ExtensionUIRequestBase & { method: "input"; title: string; placeholder?: string; timeout?: number })
+  | (ExtensionUIRequestBase & { method: "editor"; title: string; prefill?: string })
+  | (ExtensionUIRequestBase & { method: "notify"; message: string; notifyType?: ExtensionUINotifyType })
+  | (ExtensionUIRequestBase & { method: "setStatus"; statusKey: string; statusText?: string })
+  | (ExtensionUIRequestBase & { method: "setWidget"; widgetKey: string; widgetLines?: string[]; widgetPlacement?: ExtensionUIWidgetPlacement })
+  | (ExtensionUIRequestBase & { method: "setTitle"; title: string })
+  | (ExtensionUIRequestBase & { method: "set_editor_text"; text: string });
+
+export type ExtensionUIResponse = {
+  type: "extension_ui_response";
+  id: string;
+  sessionId: string;
+  runId: string | null;
+  generation: number;
+} & ({ value: string } | { confirmed: boolean } | { cancelled: true });
+
+export interface ExtensionUIStatus {
+  key: string;
+  text: string;
+  sessionId: string;
+}
+
+export interface ExtensionUIWidget {
+  key: string;
+  lines: string[];
+  placement: ExtensionUIWidgetPlacement;
+  sessionId: string;
+}
+
 export interface DirEntryInfo {
   name: string;
   isDir: boolean;

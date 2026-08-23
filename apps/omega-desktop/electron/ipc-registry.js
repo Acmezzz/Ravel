@@ -64,6 +64,8 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:gitCommit",
   "omega:diffWorkspace",
   "omega:approveChange",
+  "omega:extensionUiResponse",
+  "omega:extensionUiCancel",
   "agent:prompt",
   "agent:abort",
   "window:minimize",
@@ -77,6 +79,7 @@ export const PUSH_CHANNELS = Object.freeze([
   "worker:transport",
   "app:bootstrap-error",
   "window:maximizedChanged",
+  "extension-ui:request",
 ]);
 
 export function extractHandleChannels(source) {
