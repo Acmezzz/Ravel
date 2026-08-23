@@ -185,7 +185,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 ### P1：桌面工作区和会话体验
 
 - Session Sidebar 第一轮已完成：workspace 分组、当前工作区、unread/running/失败/压缩中、parent/child 缩进；当前会话可 Clone。
-- Session Sidebar 仍缺：按 worktree 分组、完整右键菜单、删除父 session 时安全重挂。
+- Session Sidebar 已按 JSONL header 的实际 workspace/worktree 根目录分组，并显示当前工作区、活动状态、父子分支关系；仍缺完整右键菜单和删除父 session 时的安全重挂。
 - Session Tree 第一轮已落地：单击预览将继承的上下文、双击/确认后 rewind、busy 时禁止破坏性切换、Clone 当前分支。
 - FileViewer 第二轮已落地：源码/Markdown 预览、行号、选区 `@file:start-end` 引用、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页加载、diff 视图、Mermaid/KaTeX 安全源码预览。仍缺 DOCX、文件 watch/live refresh、上传冲突处理。
 - Worktree Manager 第一轮已落地：列表、创建（原生目录选择器）、删除、dirty 二次确认；仍缺 remote/fetch 和按 worktree 聚合会话。
