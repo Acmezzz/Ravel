@@ -62,6 +62,7 @@ export const IPC_CHANNELS = Object.freeze({
   gitCommit: "omega:gitCommit",
   diffWorkspace: "omega:diffWorkspace",
   approveChange: "omega:approveChange",
+  setPermissionProfile: "omega:setPermissionProfile",
   extensionUiResponse: "omega:extensionUiResponse",
   extensionUiCancel: "omega:extensionUiCancel",
   prompt: "agent:prompt",

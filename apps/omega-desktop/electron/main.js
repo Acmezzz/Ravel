@@ -39,6 +39,7 @@ import { WorkerHost } from "./worker-host.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
+import { PERMISSION_PROFILES, sanitizePermissionProfile } from "./permission-profiles.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -267,6 +268,7 @@ async function acquireSlot({ sessionId = null, cwd, projectTrusted } = {}) {
     cwd: cwd ?? activeCwd ?? rootOf(),
     extensionsRoot: extensionsRootOf(),
     projectTrusted: projectTrusted !== false,
+    permissionProfile: desktopSettings?.get()?.permissionProfile ?? "trusted",
     createHost: createBoundHost,
   });
   return adoptSlot(slot);
@@ -788,10 +790,31 @@ ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
   if (Number.isInteger(req?.workerCap)) patch.workerCap = req.workerCap;
   if (Number.isInteger(req?.workerIdleTtlMs)) patch.workerIdleTtlMs = req.workerIdleTtlMs;
   if (typeof req?.rightPanelOpen === "boolean") patch.rightPanelOpen = req.rightPanelOpen;
+  if (typeof req?.permissionProfile === "string" && PERMISSION_PROFILES.includes(req.permissionProfile)) patch.permissionProfile = sanitizePermissionProfile(req.permissionProfile);
   if (typeof req?.lastSessionId === "string" || req?.lastSessionId === null) patch.lastSessionId = req.lastSessionId;
   if (typeof req?.lastWorkspace === "string" || req?.lastWorkspace === null) patch.lastWorkspace = req.lastWorkspace;
   const next = desktopSettings.update(patch);
   workerPool.configure({ cap: next.workerCap, idleTtlMs: next.workerIdleTtlMs });
+  return okResult(next);
+});
+
+ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (typeof req?.profile !== "string" || !PERMISSION_PROFILES.includes(req.profile)) return errorResult("invalid_args", "Unsupported permission profile");
+  const profile = sanitizePermissionProfile(req.profile);
+  const next = desktopSettings.update({ permissionProfile: profile });
+  const slots = workerPool.list().filter((slot) => slot.host?.state === "ready");
+  const results = await Promise.all(slots.map(async (slot) => {
+    try {
+      await slot.host.call("setPermissionProfile", { profile });
+      slot.host.permissionProfile = profile;
+      return null;
+    } catch (error) {
+      return error;
+    }
+  }));
+  const failed = results.find(Boolean);
+  if (failed) return errorResult(failed?.code ?? "write_failed", failed instanceof Error ? failed.message : String(failed));
   return okResult(next);
 });
 

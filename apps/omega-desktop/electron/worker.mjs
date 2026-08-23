@@ -27,6 +27,7 @@ import {
   setDisableModelInvocationFrontmatter,
 } from "./resource-center.js";
 import { isExtensionUIResponse } from "./extension-ui-protocol.js";
+import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
 
 /** @type {import("./agent-bridge.js").ReturnType<typeof bridge.createRuntime> | null} */
 let runtime = null;
@@ -130,6 +131,19 @@ function createDesktopExtensionUIContext() {
   };
 }
 
+async function bindSession(session) {
+  const uiContext = createDesktopExtensionUIContext();
+  await session.bindExtensions({
+    uiContext,
+    mode: "rpc",
+    toolCallGuard: createPermissionGuard({
+      profile: permissionProfile,
+      cwd: runtime.cwd,
+      confirm: (title, message) => uiContext.confirm(title, message),
+    }),
+  });
+}
+
 function attach(session) {
   try {
     unsubscribe?.();
@@ -153,8 +167,10 @@ function attach(session) {
 }
 
 let projectTrusted = true;
+let permissionProfile = "trusted";
 
-async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted }) {
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile }) {
+  permissionProfile = sanitizePermissionProfile(profile);
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
   activeRunId = null;
@@ -178,10 +194,10 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   }
   runtime.setRebindSession(async (session) => {
     attach(session);
-    await session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
+    await bindSession(session);
   });
   attach(runtime.session);
-  await runtime.session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
+  await bindSession(runtime.session);
   post({ type: "init-done", sessionId: runtime.session.sessionId, cwd: runtime.cwd });
 }
 
@@ -283,10 +299,10 @@ async function recreateForWorkspace(workspace) {
   runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot, projectTrusted });
   runtime.setRebindSession(async (session) => {
     attach(session);
-    await session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
+    await bindSession(session);
   });
   attach(runtime.session);
-  await runtime.session.bindExtensions({ uiContext: createDesktopExtensionUIContext(), mode: "rpc" });
+  await bindSession(runtime.session);
 }
 
 const methods = {
@@ -298,6 +314,11 @@ const methods = {
   abort: () => runtime.session.abort(),
   getState: () => bridge.snapshotOf(runtime),
   listModels: () => bridge.listModels(runtime),
+  setPermissionProfile: async ({ profile }) => {
+    permissionProfile = sanitizePermissionProfile(profile);
+    await bindSession(runtime.session);
+    return { profile: permissionProfile };
+  },
   setProviderApiKey: async ({ providerId, apiKey }) => {
     if (typeof providerId !== "string" || !providerId.trim()) {
       const error = new Error("providerId is required");

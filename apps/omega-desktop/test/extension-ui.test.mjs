@@ -29,7 +29,8 @@ test("extension UI bridge is bound in the worker and isolated behind IPC", async
   const preload = await read("../electron/preload.js");
   const host = await read("../electron/worker-host.js");
   const app = await read("../src/renderer/components/layout/ExtensionUIHost.tsx");
-  assert.match(worker, /bindExtensions\(\{ uiContext: createDesktopExtensionUIContext\(\), mode: "rpc" \}\)/);
+  assert.match(worker, /bindSession\(session\)/);
+  assert.match(worker, /toolCallGuard/);
   assert.match(worker, /pendingExtensionUI/);
   assert.match(worker, /stale extension UI response/);
   assert.match(host, /onExtensionUIRequest/);

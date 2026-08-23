@@ -425,6 +425,7 @@ export interface DesktopSettings {
   lastSessionId: string | null;
   lastWorkspace: string | null;
   rightPanelOpen: boolean;
+  permissionProfile: "trusted" | "workspace-only" | "read-only" | "ask-before-command";
   windowBounds: DesktopWindowBounds | null;
 }
 

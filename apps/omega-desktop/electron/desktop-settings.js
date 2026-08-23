@@ -13,10 +13,12 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   lastSessionId: null,
   lastWorkspace: null,
   rightPanelOpen: true,
+  permissionProfile: "trusted",
   windowBounds: null,
 });
 
 const THEME_MODES = new Set(["system", "light", "dark"]);
+const PERMISSION_PROFILES = new Set(["trusted", "workspace-only", "read-only", "ask-before-command"]);
 
 function clampInt(value, min, max, fallback) {
   const next = Number(value);
@@ -34,6 +36,7 @@ export function sanitizeDesktopSettings(input, base = DESKTOP_SETTINGS_DEFAULTS)
     lastSessionId: typeof source.lastSessionId === "string" && source.lastSessionId.trim() ? source.lastSessionId.trim().slice(0, 128) : null,
     lastWorkspace: typeof source.lastWorkspace === "string" && source.lastWorkspace.trim() ? source.lastWorkspace.trim().slice(0, 4096) : null,
     rightPanelOpen: typeof source.rightPanelOpen === "boolean" ? source.rightPanelOpen : base.rightPanelOpen,
+    permissionProfile: PERMISSION_PROFILES.has(source.permissionProfile) ? source.permissionProfile : base.permissionProfile,
     windowBounds: bounds
       ? {
           x: clampInt(bounds.x, -10_000, 10_000, 80),

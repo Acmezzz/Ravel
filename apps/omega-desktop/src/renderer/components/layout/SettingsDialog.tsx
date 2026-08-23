@@ -20,6 +20,13 @@ const MODE_LABEL: Record<"all" | "one-at-a-time", string> = {
   "one-at-a-time": "逐条发送",
 };
 
+const PERMISSION_LABEL: Record<NonNullable<NonNullable<ReturnType<typeof useAppStore.getState>["desktopSettings"]>["permissionProfile"]>, string> = {
+  trusted: "Trusted（当前用户权限）",
+  "workspace-only": "Workspace-only（仅限工作区）",
+  "read-only": "Read-only（只读）",
+  "ask-before-command": "Ask before command（执行前确认）",
+};
+
 export interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
@@ -162,6 +169,26 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         </Box>
 
         <Box sx={{ borderTop: "1px solid var(--omega-border)", pt: 1.5, display: "flex", flexDirection: "column", gap: 1.25 }}>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+            权限与桌面运行时
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="工具权限 profile"
+            value={desktopSettings?.permissionProfile ?? "trusted"}
+            onChange={(event) => {
+              const profile = event.target.value as NonNullable<NonNullable<ReturnType<typeof useAppStore.getState>["desktopSettings"]>["permissionProfile"]>;
+              void ipc.setPermissionProfile({ profile }).then((res) => {
+                if (res.ok) setDesktopSettings(res.data);
+                else setDesktopError(res.message);
+              });
+            }}
+            helperText="Read-only 和 Workspace-only 会在工具真正执行前阻止越界或写入；Git Review 仍是事后审查。"
+          >
+            {Object.entries(PERMISSION_LABEL).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
+          </TextField>
           <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
             桌面运行时
           </Typography>

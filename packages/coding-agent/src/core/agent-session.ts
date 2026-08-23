@@ -230,6 +230,8 @@ export interface AgentSessionConfig {
 export interface ExtensionBindings {
 	uiContext?: ExtensionUIContext;
 	mode?: ExtensionMode;
+	/** Host-provided execution guard invoked before any tool call. */
+	toolCallGuard?: (event: ToolCallEvent) => Promise<void> | void;
 	commandContextActions?: ExtensionCommandContextActions;
 	abortHandler?: () => void;
 	shutdownHandler?: ShutdownHandler;
@@ -360,6 +362,7 @@ export class AgentSession {
 	private _extensionShutdownHandler?: ShutdownHandler;
 	private _extensionErrorListener?: ExtensionErrorListener;
 	private _extensionErrorUnsubscriber?: () => void;
+	private _toolCallGuard?: (event: ToolCallEvent) => Promise<void> | void;
 
 	private _modelRuntime: ModelRuntime;
 
@@ -478,6 +481,7 @@ export class AgentSession {
 	 */
 	private _installAgentToolHooks(): void {
 		this.agent.beforeToolCall = async ({ toolCall, args }) => {
+			await this._toolCallGuard?.({ type: "tool_call", toolName: toolCall.name, toolCallId: toolCall.id, input: args as Record<string, unknown> });
 			const runner = this._extensionRunner;
 			if (!runner.hasHandlers("tool_call")) {
 				return undefined;
@@ -2238,10 +2242,13 @@ export class AgentSession {
 		if (bindings.uiContext !== undefined) {
 			this._extensionUIContext = bindings.uiContext;
 		}
-		if (bindings.mode !== undefined) {
-			this._extensionMode = bindings.mode;
-		}
-		if (bindings.commandContextActions !== undefined) {
+			if (bindings.mode !== undefined) {
+				this._extensionMode = bindings.mode;
+			}
+			if (bindings.toolCallGuard !== undefined) {
+				this._toolCallGuard = bindings.toolCallGuard;
+			}
+			if (bindings.commandContextActions !== undefined) {
 			this._extensionCommandContextActions = bindings.commandContextActions;
 		}
 		if (bindings.abortHandler !== undefined) {
