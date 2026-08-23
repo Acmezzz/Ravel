@@ -427,7 +427,8 @@ test("session list uses disk-first JSONL reader instead of starting a live runti
   const reader = await read("../electron/session-reader.js");
   assert.match(main, /readSessionSummaries/);
   assert.match(main, /piSessionsRoot/);
-  assert.match(main, /okResult\(page\)/);
+  assert.match(main, /okResult\(\{ \.\.\.page/);
+  assert.match(main, /workspaceId/);
   assert.match(reader, /createReadStream/);
   assert.match(reader, /session_info/);
   assert.match(reader, /treeIndex/);

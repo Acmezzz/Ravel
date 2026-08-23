@@ -288,6 +288,8 @@ export interface SessionSummary {
   title: string;
   projectKey?: string;
   workspace: string;
+  workspaceId?: string;
+  workspaceLabel?: string;
   createdAt: string;
   updatedAt: string;
   status: "active" | "archived";

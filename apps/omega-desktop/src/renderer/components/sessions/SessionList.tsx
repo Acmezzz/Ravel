@@ -23,10 +23,9 @@ import Chip from "@mui/material/Chip";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 
-function groupKey(workspace: string): string {
-  if (!workspace) return "其他工作区";
-  const parts = workspace.split(/[\\/]/).filter(Boolean);
-  return parts[parts.length - 1] || workspace;
+function groupKey(session: { workspace: string; workspaceId?: string; workspaceLabel?: string }): string {
+  if (session.workspaceId) return session.workspaceLabel ? `${session.workspaceLabel} · ${session.workspaceId.slice(-8)}` : session.workspaceId;
+  return session.workspace || "其他工作区";
 }
 
 function relativeTime(iso: string): string {
@@ -175,7 +174,7 @@ export function SessionList(): React.ReactElement {
 
   const groups = new Map<string, typeof filtered>();
   for (const session of roots) {
-    const key = groupKey(session.workspace);
+    const key = groupKey(session);
     const list = groups.get(key) ?? [];
     list.push(session);
     groups.set(key, list);

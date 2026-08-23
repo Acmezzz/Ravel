@@ -1288,7 +1288,8 @@ ipcMain.handle("omega:listSessions", async (event, req) => {
       offset,
       limit,
     });
-    return okResult(page);
+    const workspaceMap = new Map((workspaceRegistry?.list() ?? []).map((item) => [resolve(item.realRoot), item]));
+    return okResult({ ...page, items: page.items.map((item) => { const workspace = workspaceMap.get(resolve(item.workspace)); return workspace ? { ...item, workspaceId: workspace.workspaceId, workspaceLabel: workspace.displayPath } : item; }) });
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }

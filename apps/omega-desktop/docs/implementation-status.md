@@ -141,8 +141,8 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 
 ## 5. 后续实施顺序
 
-1. Worktree 元数据、细粒度审查状态和本地聚合；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
-2. FileViewer 内嵌 DOCX 富文本布局、上传进度和语言设置。
+1. Worktree 细粒度审查状态；按 canonical workspaceId/realRoot 分组已完成，跨 worktree 聚合与 remote/fetch 等待明确环境边界。
+2. FileViewer 内嵌 DOCX 富文本布局、上传进度和更完整语言资源。
 3. Model Center 离线 catalog/缓存模型和更完整 fake latency UI；真实 OAuth/discovery/latency 等待外部环境。
 4. 完整 IPC JSON Schema 迁移和性能拆包。
 5. 完整 IPC JSON Schema 迁移和性能拆包。
