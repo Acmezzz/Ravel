@@ -1408,6 +1408,19 @@ ipcMain.handle("omega:fileIndex", (event, req) => {
   }
 });
 
+ipcMain.handle("omega:openFileDefault", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = fileRequest(req);
+  if (!normalized) return errorResult("invalid_args", "path is required");
+  try {
+    const revealed = workspaceService.revealPath(activeCwd ?? rootOf(), normalized.path);
+    void shell.openPath(revealed.absolutePath);
+    return okResult({ path: normalized.path });
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
 ipcMain.handle("omega:watchFile", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = fileRequest(req);

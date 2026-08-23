@@ -56,6 +56,7 @@ export interface OmegaBridge {
   readFilePage(req: { path: string; offset?: number; limit?: number }): Promise<IpcResult<FileReadResult & { offset: number; nextOffset: number | null; totalLines: number }>>;
   fileIndex(req: { query: string }): Promise<IpcResult<string[]>>;
   revealInFolder(req: { path: string }): Promise<IpcResult<{ path: string }>>;
+  openFileDefault(req: { path: string }): Promise<IpcResult<{ path: string }>>;
   watchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
   unwatchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
   bash(req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>>;
@@ -183,6 +184,7 @@ export const ipc = {
   fileIndex: async (req: { query: string }): Promise<IpcResult<string[]>> => ok(await window.omega?.fileIndex?.(req)),
   revealInFolder: async (req: { path: string }): Promise<IpcResult<{ path: string }>> =>
     ok(await window.omega?.revealInFolder?.(req)),
+  openFileDefault: async (req: { path: string }): Promise<IpcResult<{ path: string }>> => ok(await window.omega?.openFileDefault?.(req)),
   watchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.watchFile?.(req)),
   unwatchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.unwatchFile?.(req)),
   bash: async (req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>> =>

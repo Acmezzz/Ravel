@@ -59,6 +59,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:readFilePage",
   "omega:fileIndex",
   "omega:revealInFolder",
+  "omega:openFileDefault",
   "omega:watchFile",
   "omega:unwatchFile",
   "omega:gitSnapshot",

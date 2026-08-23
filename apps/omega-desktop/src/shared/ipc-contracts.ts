@@ -56,6 +56,7 @@ export const IPC_CHANNELS = {
   readFilePage: "omega:readFilePage",
   fileIndex: "omega:fileIndex",
   revealInFolder: "omega:revealInFolder",
+  openFileDefault: "omega:openFileDefault",
   watchFile: "omega:watchFile",
   unwatchFile: "omega:unwatchFile",
   gitSnapshot: "omega:gitSnapshot",

@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **109/109**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **110/110**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -117,7 +117,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - 删除父 session 时的非级联安全行为、右键菜单、重命名、复制 session ID 和删除已完成；孤立子 session 会被 Sidebar 提升为根节点。
 - Git Review 已支持窗口 focus/30 秒自动刷新，并在 stale snapshot 时自动重取快照、提示重新选择；Worktree 更细粒度审查状态仍可继续增强。
 - Worktree 按项目聚合会话、remote/fetch 需要跨 worktree/网络边界，暂列外部或后续增强。
-- FileViewer DOCX 预览、上传及冲突处理。
+- FileViewer 已支持二进制/DOCX 通过受控 Main IPC 使用系统默认应用打开；仍缺内嵌 DOCX 预览、上传及冲突处理。
 - Model Center 自定义 provider/base URL/headers、model discovery、延迟测试和 catalog/recommendation。
 - Skills/Plugins package 内部资源过滤编辑、安装进度展示。
 - `electron/ipc-schemas.js` 已覆盖 workspace/session/file/replay/sessionRpc 常用入口；完整 JSON Schema 迁移到所有历史 handler 仍可继续推进。

@@ -286,6 +286,10 @@ contextBridge.exposeInMainWorld("omega", {
     return ipcRenderer.invoke("omega:readFilePage", { path: req.path.slice(0, 4096), offset: Number.isInteger(req.offset) ? req.offset : 0, limit: Number.isInteger(req.limit) ? req.limit : 200 });
   },
   fileIndex: (req) => ipcRenderer.invoke("omega:fileIndex", { query: safeString(req?.query, 256) ?? "" }),
+  openFileDefault: (req) => {
+    if (!req || typeof req.path !== "string" || !req.path.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
+    return ipcRenderer.invoke("omega:openFileDefault", { path: req.path.slice(0, 4096) });
+  },
   watchFile: (req) => {
     if (!req || typeof req.path !== "string" || !req.path.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
     return ipcRenderer.invoke("omega:watchFile", { path: req.path.slice(0, 4096) });

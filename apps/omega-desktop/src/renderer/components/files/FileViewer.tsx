@@ -140,6 +140,9 @@ export function FileViewer(): React.ReactElement {
           </Box>
         ) : null}
         <Typography sx={{ fontSize: 10, color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
+        <Tooltip title="使用系统默认应用打开">
+          <IconButton size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: 10 }}>外部</Typography></IconButton>
+        </Tooltip>
         <Tooltip title="在资源管理器中显示">
           <IconButton size="small" onClick={() => void reveal()} sx={{ color: "var(--omega-text-dim)" }}>
             <FolderOpenIcon sx={{ fontSize: 16 }} />
