@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build：通过。
-- 桌面和安全测试：**59/59 通过**。
+- 桌面和安全测试：**60/60 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -109,9 +109,10 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 #### 4.1 Workspace Project Switcher
 
-基础授权已完成，但还缺完整桌面交互：
+已完成第一轮：Header 已接入 Project Switcher，可查看授权 workspace、通过原生目录选择器添加 workspace，并在空闲时切换到新 session。
 
-- renderer Project Switcher UI。
+仍需完善：
+
 - workspace DTO：`workspaceId / realRoot / displayPath`。
 - 切换 workspace 时重新检查 trust、extensions、models 和资源缓存。
 - workspace 删除、移动、权限变化后的 registry 清理。
@@ -119,7 +120,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 #### 4.2 关闭状态 UI 与测试
 
-主进程关闭保护已完成，但还缺：
+主进程关闭保护和 flush 超时风险提示已完成第一轮，但还缺：
 
 - renderer 显示“正在停止 / 正在 flush / 正在退出”。
 - flush 超时后的用户可见风险提示和强制退出按钮。
@@ -139,10 +140,10 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 #### 4.4 Event snapshot/replay
 
-事件 envelope 已完成第一轮，但还缺：
+事件 envelope、Main 最近事件缓存和 renderer ready 后补发已完成第一轮，但还缺：
 
-- Main 侧最近事件短缓存。
-- renderer 按 sequence 请求补发事件。
+- 扩大 Main 侧最近事件短缓存的持久化和按 session 分区能力。
+- renderer 按 sequence 请求补发事件的分页和丢失区间提示。
 - reload、窗口重新激活和 Worker restart 后的 snapshot/replay 流程。
 - snapshot 中完整包含 transcript、model、thinking、queue、compaction、retry、usage 和 session state。
 
@@ -160,8 +161,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 第一轮 JSONL 摘要读取已完成，还缺：
 
-- mtime + size cache。
-- 分页和请求合并。
+- mtime + size cache 已完成第一轮内存缓存。
+- 仍需分页和请求合并。
 - 历史消息按页加载。
 - session tree 的磁盘索引。
 - 大量 session 的后台扫描和取消。

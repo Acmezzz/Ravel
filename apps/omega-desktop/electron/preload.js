@@ -98,6 +98,13 @@ contextBridge.exposeInMainWorld("omega", {
   // ----- extension state (read-only) -----
   listWorkspaces: () => ipcRenderer.invoke("omega:listWorkspaces"),
   chooseWorkspace: () => ipcRenderer.invoke("omega:chooseWorkspace"),
+  switchWorkspace: (req) => {
+    if (!req || typeof req.workspace !== "string" || !req.workspace.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "workspace is required" });
+    }
+    return ipcRenderer.invoke("omega:switchWorkspace", { workspace: req.workspace.slice(0, 4096) });
+  },
+  recentEvents: (req) => ipcRenderer.invoke("omega:recentEvents", { after: Number.isFinite(req?.after) ? req.after : 0 }),
   sessionReady: () => ipcRenderer.invoke("omega:sessionReady"),
   getState: () => ipcRenderer.invoke("omega:getState"),
   listModels: () => ipcRenderer.invoke("omega:listModels"),

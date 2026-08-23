@@ -64,6 +64,8 @@ export interface OmegaBridge {
   onEvent(callback: (data: unknown) => void): () => void;
   listWorkspaces(): Promise<IpcResult<string[]>>;
   chooseWorkspace(): Promise<IpcResult<{ root: string; workspaces: string[] }>>;
+  switchWorkspace(req: { workspace: string }): Promise<IpcResult<SessionRecord>>;
+  recentEvents(req: { after: number }): Promise<IpcResult<Array<{ event: unknown; meta: unknown }>>>;
   sessionReady(): Promise<IpcResult<{ ready: boolean }>>;
   getState(): Promise<IpcResult<AgentStateSnapshot>>;
   listModels(): Promise<IpcResult<ModelInfo[]>>;
@@ -152,6 +154,8 @@ export const ipc = {
     window.omega?.onWindowStateChanged?.(callback) ?? (() => {}),
   listWorkspaces: async (): Promise<IpcResult<string[]>> => ok(await window.omega?.listWorkspaces?.()),
   chooseWorkspace: async (): Promise<IpcResult<{ root: string; workspaces: string[] }>> => ok(await window.omega?.chooseWorkspace?.()),
+  switchWorkspace: async (req: { workspace: string }): Promise<IpcResult<SessionRecord>> => ok(await window.omega?.switchWorkspace?.(req)),
+  recentEvents: async (req: { after: number }): Promise<IpcResult<Array<{ event: unknown; meta: unknown }>>> => ok(await window.omega?.recentEvents?.(req)),
   sessionReady: async (): Promise<IpcResult<{ ready: boolean }>> =>
     ok(await window.omega?.sessionReady?.()),
   getState: async (): Promise<IpcResult<AgentStateSnapshot>> => ok(await window.omega?.getState?.()),

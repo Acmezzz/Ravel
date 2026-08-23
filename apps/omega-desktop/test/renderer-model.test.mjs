@@ -355,6 +355,16 @@ test("left nav exposes the files tab and viewer", async () => {
   assert.match(markdown, /openViewer/);
 });
 
+test("Project Switcher and event replay surfaces exist", async () => {
+  const switcher = await read("../src/renderer/components/layout/ProjectSwitcher.tsx");
+  const client = await read("../src/renderer/ipc/client.ts");
+  const app = await read("../src/renderer/App.tsx");
+  assert.match(switcher, /chooseWorkspace/);
+  assert.match(switcher, /switchWorkspace/);
+  assert.match(client, /recentEvents/);
+  assert.match(app, /recentEvents/);
+});
+
 test("session list uses disk-first JSONL reader instead of starting a live runtime", async () => {
   const main = await read("../electron/main.js");
   const reader = await read("../electron/session-reader.js");

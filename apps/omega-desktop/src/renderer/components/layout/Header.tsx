@@ -29,6 +29,7 @@ import type { ThemeMode } from "../../theme/palettes";
 import { SettingsDialog } from "./SettingsDialog";
 import { SessionInfoDialog } from "./SessionInfoDialog";
 import { ModelPicker } from "./ModelPicker";
+import { ProjectSwitcher } from "./ProjectSwitcher";
 
 const THINKING_LABEL: Record<ThinkingLevel, string> = {
   off: "思考 off",
@@ -261,6 +262,10 @@ export function Header(): React.ReactElement {
             {agent?.sessionName || "新会话"}
           </Typography>
         </Box>
+
+        <Divider />
+
+        <ProjectSwitcher />
 
         <Divider />
 

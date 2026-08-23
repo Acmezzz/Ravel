@@ -40,6 +40,7 @@ const MAX_PROMPT_IMAGES = 4;
 const MAX_IMAGE_CHARS = 8_000_000;
 const WORKER_RPC_TIMEOUT = 120_000;
 const CLOSE_FLUSH_TIMEOUT = 10_000;
+const RECENT_EVENT_LIMIT = 300;
 let win;
 let worker = null;
 let bootstrapError = null;
@@ -52,6 +53,7 @@ let workspaceRegistry;
 let closeDecision = null;
 let closeHandling = false;
 let closeApproved = false;
+const recentEventLog = [];
 
 function rootOf() {
   return app.isPackaged ? (process.resourcesPath ? join(process.resourcesPath, "omega-runtime") : app.getAppPath()) : DEV_ROOT;
@@ -78,8 +80,52 @@ function authorizedWorkspace(value) {
   return workspaceRegistry.resolveAuthorized(value);
 }
 
-function isAgentBusy() {
-  return Boolean(worker && agentReady && agentRunning && !shuttingDown);
+/** Bounded flush; on timeout ("wait" path only) offer an explicit force-exit risk prompt. */
+async function flushWithRiskPrompt(decision) {
+  for (;;) {
+    try {
+      await Promise.race([
+        worker?.call("flush"),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("close_flush_timeout")), CLOSE_FLUSH_TIMEOUT)),
+      ]);
+      return true;
+    } catch {
+      // Stop already aborted the run, so its flush is bounded — go through.
+      if (decision === "stop") return true;
+      if (!win || win.isDestroyed()) return false;
+      const choice = await dialog.showMessageBox(win, {
+        type: "warning",
+        title: "保存超时",
+        message: "会话保存超时，Agent 可能仍在生成。",
+        detail: "强制退出可能丢失最后一条回复记录。",
+        buttons: ["继续等待", "强制退出"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (choice.response === 1) return true;
+    }
+  }
+}
+
+async function runCloseSequence(finish) {
+  const decision = await requestCloseDecision();
+  if (decision === "cancel") return;
+  sendTransportState("closing");
+  if (decision === "stop") {
+    try {
+      await worker?.call("abort");
+    } catch {
+      /* best effort */
+    }
+  }
+  if (!(await flushWithRiskPrompt(decision))) return;
+  closeApproved = true;
+  finish();
+}
+
+function sendTransportState(state) {
+  if (win && !win.isDestroyed()) win.webContents.send("worker:transport", { state });
 }
 
 async function requestCloseDecision() {
@@ -329,6 +375,10 @@ async function bootstrap() {
   worker.onEvent = (event, meta) => {
     if (event?.type === "agent_start" || event?.type === "turn_start") agentRunning = true;
     if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") agentRunning = false;
+    if (meta?.sequence) {
+      recentEventLog.push({ event, meta });
+      if (recentEventLog.length > RECENT_EVENT_LIMIT) recentEventLog.splice(0, recentEventLog.length - RECENT_EVENT_LIMIT);
+    }
     if (!win || win.isDestroyed()) return;
     win.webContents.send("agent:event", { event, meta });
   };
@@ -405,30 +455,9 @@ async function createWindow() {
     if (closeApproved || closeHandling || !isAgentBusy()) return;
     event.preventDefault();
     closeHandling = true;
-    void requestCloseDecision()
-      .then(async (decision) => {
-        if (decision === "cancel") return;
-        if (decision === "stop") {
-          try {
-            await worker?.call("abort");
-          } catch {
-            /* best effort */
-          }
-        }
-        try {
-          await Promise.race([
-            worker?.call("flush"),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("close_flush_timeout")), CLOSE_FLUSH_TIMEOUT)),
-          ]);
-        } catch {
-          if (decision === "wait") return;
-        }
-        closeApproved = true;
-        win?.close();
-      })
-      .finally(() => {
-        closeHandling = false;
-      });
+    void runCloseSequence(() => win?.close()).finally(() => {
+      closeHandling = false;
+    });
   });
   win.on("closed", () => {
     win = undefined;
@@ -558,6 +587,30 @@ ipcMain.handle("omega:chooseWorkspace", async (event) => {
   } catch (error) {
     return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
   }
+});
+
+ipcMain.handle("omega:switchWorkspace", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!req?.workspace || typeof req.workspace !== "string") return errorResult("invalid_args", "workspace is required");
+  if (isAgentBusy()) return errorResult("session_busy", "生成中无法切换工作区，请先停止或等待完成");
+  let root;
+  try {
+    root = authorizedWorkspace(req.workspace);
+  } catch (error) {
+    return errorResult(error?.code ?? "workspace_not_authorized", error instanceof Error ? error.message : String(error));
+  }
+  const result = await rpc("newSession", { workspace: root }, "write_failed");
+  if (result.ok) {
+    activeCwd = result.data.workspace || root;
+    worker.sessionId = result.data.id ?? worker.sessionId;
+  }
+  return result;
+});
+
+ipcMain.handle("omega:recentEvents", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const after = typeof req?.after === "number" && Number.isFinite(req.after) ? req.after : 0;
+  return okResult(recentEventLog.filter((item) => item.meta?.sequence > after));
 });
 
 ipcMain.handle("window:isMaximized", (event) => {
@@ -1046,30 +1099,9 @@ app.on("before-quit", (event) => {
   event.preventDefault();
   if (closeHandling) return;
   closeHandling = true;
-  void requestCloseDecision()
-    .then(async (decision) => {
-      if (decision === "cancel") return;
-      if (decision === "stop") {
-        try {
-          await worker?.call("abort");
-        } catch {
-          /* best effort */
-        }
-      }
-      try {
-        await Promise.race([
-          worker?.call("flush"),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("close_flush_timeout")), CLOSE_FLUSH_TIMEOUT)),
-        ]);
-      } catch {
-        if (decision === "wait") return;
-      }
-      closeApproved = true;
-      app.quit();
-    })
-    .finally(() => {
-      closeHandling = false;
-    });
+  void runCloseSequence(() => app.quit()).finally(() => {
+    closeHandling = false;
+  });
 });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

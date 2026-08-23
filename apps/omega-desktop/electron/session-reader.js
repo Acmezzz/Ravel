@@ -5,6 +5,7 @@ import { createInterface } from "node:readline";
 const MAX_FILES = 2000;
 const MAX_LINE_CHARS = 512 * 1024;
 const MAX_FIRST_MESSAGE_CHARS = 240;
+const summaryCache = new Map();
 
 function textOf(content) {
   if (typeof content === "string") return content;
@@ -43,6 +44,10 @@ async function readSummary(file) {
   } catch {
     return null;
   }
+  const cacheKey = resolve(file);
+  const cacheStamp = `${stats.mtimeMs}:${stats.size}`;
+  const cached = summaryCache.get(cacheKey);
+  if (cached?.stamp === cacheStamp) return cached.summary;
   let header = null;
   let name;
   let messageCount = 0;
@@ -82,7 +87,7 @@ async function readSummary(file) {
   const createdAt = typeof header.timestamp === "string" ? header.timestamp : stats.birthtime.toISOString();
   const updatedAt = typeof lastTimestamp === "string" && lastTimestamp ? lastTimestamp : stats.mtime.toISOString();
   const parent = typeof header.parentSession === "string" ? header.parentSession.split(/[\\/]/).pop()?.replace(/\.jsonl$/i, "") : undefined;
-  return {
+  const summary = {
     id: header.id,
     title: name || firstMessage || "未命名会话",
     workspace: header.cwd,
@@ -92,6 +97,8 @@ async function readSummary(file) {
     messageCount,
     ...(parent ? { parentSessionId: parent } : {}),
   };
+  summaryCache.set(cacheKey, { stamp: cacheStamp, summary });
+  return summary;
 }
 
 export async function readSessionSummaries(root, { allowedWorkspaces = [] } = {}) {
