@@ -162,6 +162,10 @@ contextBridge.exposeInMainWorld("omega", {
     sessionId: safeString(req?.sessionId, 128),
     after: Number.isFinite(req?.after) ? req.after : 0,
   }),
+  sessionRpc: (req) => {
+    if (!req || typeof req.sessionId !== "string" || !req.sessionId.trim() || typeof req.method !== "string" || !req.method.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId and method are required" });
+    return ipcRenderer.invoke("omega:sessionRpc", { sessionId: req.sessionId.slice(0, 128), method: req.method.slice(0, 128), args: isPlainObject(req.args) ? req.args : {} });
+  },
   sessionReady: () => ipcRenderer.invoke("omega:sessionReady"),
   getState: () => ipcRenderer.invoke("omega:getState"),
   listModels: () => ipcRenderer.invoke("omega:listModels"),

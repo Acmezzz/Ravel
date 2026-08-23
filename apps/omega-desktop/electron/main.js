@@ -19,7 +19,7 @@ import {
   dialog,
   safeStorage,
 } from "electron";
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync, appendFileSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
@@ -112,6 +112,10 @@ function desktopSettingsFile() {
 
 function credentialStoreFile() {
   return join(app.getPath("userData"), "omega", "credentials.bin.json");
+}
+
+function recentEventsFile(sessionId) {
+  return join(app.getPath("userData"), "omega", "event-cache", `${String(sessionId).replace(/[^A-Za-z0-9_-]/g, "_")}.jsonl`);
 }
 
 function authorizedWorkspace(value) {
@@ -283,6 +287,11 @@ function bindHost(host) {
       bucket.push({ event, meta });
       if (bucket.length > RECENT_EVENT_LIMIT) bucket.splice(0, bucket.length - RECENT_EVENT_LIMIT);
       recentEventsBySession.set(sessionId, bucket);
+      try {
+        appendFileSync(recentEventsFile(sessionId), `${JSON.stringify({ event, meta })}\n`);
+      } catch {
+        /* event cache is best effort and never blocks the agent */
+      }
     }
     if (!win || win.isDestroyed()) return;
     win.webContents.send("agent:event", { event, meta });
@@ -725,11 +734,32 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
   return result;
 });
 
+ipcMain.handle("omega:sessionRpc", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (typeof req?.sessionId !== "string" || !req.sessionId.trim() || typeof req?.method !== "string" || !req.method.trim()) return errorResult("invalid_args", "sessionId and method are required");
+  const slot = workerPool.get(req.sessionId);
+  if (!slot?.host || slot.host.state !== "ready") return errorResult("not_found", "后台 session 没有 live Worker");
+  const allowed = new Set(["getState", "sessionRecord", "getSessionTree", "listResources", "getThinking"]);
+  if (!allowed.has(req.method)) return errorResult("unsupported", "后台 RPC 只允许只读方法");
+  try {
+    return okResult(await slot.host.call(req.method, req.args ?? {}));
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
 ipcMain.handle("omega:recentEvents", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const sessionId = typeof req?.sessionId === "string" ? req.sessionId : worker?.sessionId;
   const after = typeof req?.after === "number" && Number.isFinite(req.after) ? req.after : 0;
-  const bucket = sessionId ? recentEventsBySession.get(sessionId) ?? [] : [];
+  let bucket = sessionId ? recentEventsBySession.get(sessionId) ?? [] : [];
+  if (sessionId && bucket.length === 0) {
+    try {
+      bucket = readFileSync(recentEventsFile(sessionId), "utf8").split("\n").filter(Boolean).slice(-RECENT_EVENT_LIMIT).map((line) => JSON.parse(line));
+    } catch {
+      bucket = [];
+    }
+  }
   const first = bucket[0]?.meta?.sequence ?? 0;
   const last = bucket.at(-1)?.meta?.sequence ?? 0;
   return okResult({ events: bucket.filter((item) => item.meta?.sequence > after), gap: after > 0 && first > after + 1, first, last });

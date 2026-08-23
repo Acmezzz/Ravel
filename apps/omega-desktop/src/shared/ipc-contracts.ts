@@ -26,6 +26,7 @@ export const IPC_CHANNELS = {
   decideProjectTrust: "omega:decideProjectTrust",
   retryWorker: "omega:retryWorker",
   recentEvents: "omega:recentEvents",
+  sessionRpc: "omega:sessionRpc",
   listPiSessions: "omega:listPiSessions",
   newPiSession: "omega:newPiSession",
   switchPiSession: "omega:switchPiSession",

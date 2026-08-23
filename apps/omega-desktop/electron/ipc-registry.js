@@ -29,6 +29,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:decideProjectTrust",
   "omega:retryWorker",
   "omega:recentEvents",
+  "omega:sessionRpc",
   "omega:listPiSessions",
   "omega:newPiSession",
   "omega:switchPiSession",

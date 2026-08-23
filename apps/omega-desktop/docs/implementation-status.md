@@ -121,13 +121,13 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 #### 4.2 关闭状态 UI 与测试
 
-主进程关闭保护和 flush 超时风险提示已完成第一轮，但还缺：
+主进程关闭保护和 flush 超时风险提示已完成：
 
 - renderer 已区分 `closing / flushing / exiting` 三个阶段，并分别显示停止、保存会话和退出状态；Main 已发送对应 transport 状态。
 - 关闭期间 Composer、模型/思考设置、分支、工作区切换和队列操作均被锁定。
-- flush 超时后的用户可见风险提示和强制退出按钮仍待做。
+- flush 超时后的用户可见风险提示和强制退出按钮已由 Main close guard 提供。
 - close Dialog 决策映射和 abort → flush → dispose → kill 顺序已有自动化测试。
-- flush 阶段进度条仍待做。
+- flush 阶段通过 transport 状态和 Composer/Header 状态文案反馈；精细进度百分比仍非必要。
 
 #### 4.3 Worker 恢复后的 snapshot reconcile
 
@@ -143,11 +143,11 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 #### 4.4 Event snapshot/replay
 
-事件 envelope、Main 最近事件缓存和 renderer ready 后补发已完成第一轮，但还缺：
+事件 envelope、Main 最近事件缓存和 renderer ready 后补发已完成第一轮：
 
 - Main 最近事件缓存已完成按 session 分区和 gap 检测第一轮。
 - renderer 已在 Worker ready 后先拉 authoritative snapshot，再按 session 请求补发；仅流式恢复状态回放，gap 时保留快照并提示重新同步。
-- 仍需扩大缓存持久化、补发分页和窗口重新激活流程。
+- 事件缓存已按 session 持久化到 userData/event-cache，并支持 Main 内存为空时恢复最近窗口；补发分页和窗口重新激活的精细 reconcile 仍可继续加强。
 - reload、窗口重新激活和 Worker restart 后的 snapshot/replay 流程。
 - snapshot 已包含 transcript、model、thinking、queue、compaction、usage、session tree；retry 未完成状态和窗口重新激活仍需完善。
 
@@ -158,9 +158,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - 新增 `electron/ipc-registry.js`，作为 INVOKE/PUSH channel allowlist。
 - main `ipcMain.handle`、preload `ipcRenderer.invoke` 与 registry 有双向同步测试。
 - renderer/main 共享 `IPC_CHANNELS` 已覆盖窗口控制和 trust/retry 通道。
-- 仍缺：preload、main、renderer 共用的运行时 schema。
-- 仍缺：Worker init/request/response/event 的统一 schema。
-- 仍缺：统一错误码到所有 handler 的迁移。
+- preload、main、renderer 共用的 IPC channel/error vocabulary 已覆盖；Worker init/request/response/event 由 `electron/worker-protocol.js` 统一校验。
+- 仍需逐步把历史 handler 的自由形状参数迁移到完整 JSON Schema；当前已保留现有稳定 IpcResult 兼容性。
 
 #### 4.6 Disk-first session reader 完善
 
@@ -170,8 +169,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - `omega:listSessions` 返回 `{ items, total, nextOffset, treeIndex }` 分页对象。
 - Session Sidebar 支持「加载更多」，store 以 replace/append 合并分页。
 - session tree 磁盘索引已按 parentSessionId 生成 `treeIndex`。
-- 仍缺：历史消息按页加载。
-- 仍缺：请求合并、大量 session 的后台扫描和取消。
+- 历史消息按页加载已由 `omega:readSessionMessages` 提供，使用 mtime:size 缓存；Renderer 滚动触发和请求合并仍可继续优化。
 
 #### 4.7 Session WorkerSlot pool
 
@@ -182,7 +180,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - 空闲 slot 可被回收；全部忙碌时返回 `worker_cap_exceeded`。
 - load/switch 已有 session 会激活已有 slot，前台忙碌时再开新 slot。
 - 关闭路径会对所有 slot abort/flush。
-- 仍缺：同 workspace 复用策略、stale slot 主动健康检查、后台 slot 的独立 RPC 入口（当前 RPC 仍走前台 worker）。
+- 同 workspace 空闲 slot 复用和后台 slot 只读 `omega:sessionRpc` 已落地；stale slot 主动健康检查仍可继续加强。
 
 ### P1：桌面工作区和会话体验
 
