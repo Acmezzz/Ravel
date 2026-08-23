@@ -120,3 +120,23 @@ test("git snapshot token rejects a path not present in the approved snapshot", (
   assert.equal(result.revertedFiles.length, 0);
   assert.match(result.errors[0], /approved snapshot/);
 });
+
+test("busy close plans abort then flush/dispose/kill", async () => {
+  const { closeDecisionFromIndex, plannedCloseSteps, runWorkerTeardown, CLOSE_DIALOG_BUTTONS } = await import("../electron/close-lifecycle.js");
+  assert.deepEqual(CLOSE_DIALOG_BUTTONS, ["等待完成", "停止并退出", "取消"]);
+  assert.equal(closeDecisionFromIndex(0), "wait");
+  assert.equal(closeDecisionFromIndex(1), "stop");
+  assert.equal(closeDecisionFromIndex(2), "cancel");
+  assert.deepEqual(plannedCloseSteps("stop", { busy: true }), ["abort", "flush", "dispose", "kill"]);
+  assert.deepEqual(plannedCloseSteps("wait", { busy: true }), ["flush", "dispose", "kill"]);
+  assert.deepEqual(plannedCloseSteps("cancel", { busy: true }), []);
+  const seen = [];
+  const steps = await runWorkerTeardown({
+    abort: async () => { seen.push("abort"); },
+    flush: async () => { seen.push("flush"); },
+    dispose: async () => { seen.push("dispose"); },
+    kill: async () => { seen.push("kill"); },
+  }, { abortFirst: true });
+  assert.deepEqual(steps, ["abort", "flush", "dispose", "kill"]);
+  assert.deepEqual(seen, ["abort", "flush", "dispose", "kill"]);
+});

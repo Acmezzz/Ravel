@@ -15,6 +15,8 @@ test("main configures Electron isolation and navigation boundaries", async () =>
   assert.match(source, /senderAllowed/);
   assert.match(source, /await worker\?\.kill/);
   assert.match(source, /requestCloseDecision/);
+  assert.match(source, /CLOSE_DIALOG_BUTTONS/);
+  assert.match(source, /closeDecisionFromIndex/);
   assert.match(source, /CLOSE_FLUSH_TIMEOUT/);
   assert.match(source, /abort/);
   assert.match(source, /worker-registry|workspace-registry/);

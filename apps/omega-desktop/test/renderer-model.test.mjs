@@ -257,6 +257,11 @@ test("session list supports search, rename, and delete affordances", async () =>
   assert.match(source, /搜索会话/);
   assert.match(source, /setSessionName/);
   assert.match(source, /deleteSession/);
+  assert.match(source, /sessionActivity/);
+  assert.match(source, /parentSessionId/);
+  assert.match(source, /运行中/);
+  assert.match(source, /未读/);
+  assert.match(source, /子会话/);
 });
 
 test("workbench registers Ctrl+K palette and Ctrl+Shift+N new-session shortcuts", async () => {

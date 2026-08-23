@@ -125,10 +125,9 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 - renderer 已区分 `closing / flushing / exiting` 三个阶段，并分别显示停止、保存会话和退出状态；Main 已发送对应 transport 状态。
 - 关闭期间 Composer、模型/思考设置、分支、工作区切换和队列操作均被锁定。
-- 仍需补充 flush 阶段进度和自动化 close Dialog 测试。
-- flush 超时后的用户可见风险提示和强制退出按钮。
-- 原生 close Dialog 的自动化测试。
-- 验证 abort、flush、dispose、kill 顺序的生命周期测试。
+- flush 超时后的用户可见风险提示和强制退出按钮仍待做。
+- close Dialog 决策映射和 abort → flush → dispose → kill 顺序已有自动化测试。
+- flush 阶段进度条仍待做。
 
 #### 4.3 Worker 恢复后的 snapshot reconcile
 
@@ -184,7 +183,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ### P1：桌面工作区和会话体验
 
-- Session Sidebar：项目/worktree 分组、unread、running、失败、压缩中、父子关系。
+- Session Sidebar 第一轮已完成：workspace 分组、当前工作区、unread/running/失败/压缩中、parent/child 缩进。
+- Session Sidebar 仍缺：worktree 分组、右键菜单、删除父 session 时安全重挂。
 - Session Tree：fork preview、clone、rewind 二次确认、parent/child 可视化。
 - FileViewer：多标签、source/preview/diff、行号引用、大文件分页。
 - Markdown、Mermaid、KaTeX、图片、PDF、DOCX 等预览。
@@ -213,13 +213,12 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ## 5. 下一步实施顺序
 
-1. Session Sidebar unread/running/parent-child 与 close-path 自动化测试。
-2. Shared IPC runtime schema 与 handler registry。
-3. Disk-first reader cache、分页和历史消息加载。
-4. Session WorkerSlot pool。
-5. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
-6. Model Center、safeStorage、Plugins/Skills、Extension UI。
-7. Typed settings、native integration、updater、签名发布和 Electron E2E。
+1. Shared IPC runtime schema 与 handler registry。
+2. Disk-first reader cache、分页和历史消息加载。
+3. Session WorkerSlot pool。
+4. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
+5. Model Center、safeStorage、Plugins/Skills、Extension UI。
+6. Typed settings、native integration、updater、签名发布和 Electron E2E。
 
 ## 6. 明确不做
 

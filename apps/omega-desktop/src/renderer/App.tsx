@@ -131,7 +131,22 @@ export function App(): React.ReactElement {
       const meta = envelope.meta;
       const activeSessionId = useAppStore.getState().activeSessionId;
       if (meta) {
-        if (activeSessionId && meta.sessionId && activeSessionId !== meta.sessionId) return;
+        const background = Boolean(activeSessionId && meta.sessionId && activeSessionId !== meta.sessionId);
+        if (background && meta.sessionId) {
+          const sessionId = meta.sessionId;
+          if (event?.type === "agent_start" || event?.type === "turn_start") {
+            useAppStore.getState().markSessionActivity(sessionId, { running: true, unread: true, failed: false });
+          } else if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") {
+            useAppStore.getState().markSessionActivity(sessionId, { running: false, unread: true });
+          } else if (event?.type === "compaction_start") {
+            useAppStore.getState().markSessionActivity(sessionId, { compacting: true });
+          } else if (event?.type === "compaction_end") {
+            useAppStore.getState().markSessionActivity(sessionId, { compacting: false });
+          } else if (event?.type === "error") {
+            useAppStore.getState().markSessionActivity(sessionId, { failed: true, unread: true, running: false });
+          }
+          return;
+        }
         if (meta.generation < currentGeneration || meta.sequence <= lastSequence) return;
         if (currentGeneration && meta.generation > currentGeneration) lastSequence = 0;
         currentGeneration = meta.generation;
@@ -217,9 +232,11 @@ export function App(): React.ReactElement {
           break;
         case "compaction_start":
           store.setCompacting(true);
+          if (activeSessionId) store.markSessionActivity(activeSessionId, { compacting: true });
           break;
         case "compaction_end":
           store.setCompacting(false);
+          if (activeSessionId) store.markSessionActivity(activeSessionId, { compacting: false });
           void refreshTranscriptWhenIdle();
           break;
         case "queue_update":
@@ -241,6 +258,7 @@ export function App(): React.ReactElement {
         case "turn_start":
           setConnection("running");
           store.setComposerError(null);
+          if (activeSessionId) store.markSessionActivity(activeSessionId, { running: true, failed: false });
           useAppStore.setState({ bashTail: "", streamingAssistantId: null, lastAgentStartAt: Date.now() });
           break;
         case "agent_end":
@@ -248,11 +266,13 @@ export function App(): React.ReactElement {
         case "agent_settled":
           setConnection("ready");
           store.setThinkingActive(false);
+          if (activeSessionId) store.markSessionActivity(activeSessionId, { running: false, compacting: false });
           void ipc.getState().then((res) => {
             if (res.ok) useAppStore.getState().setAgent(res.data);
           });
           break;
         case "error":
+          if (activeSessionId) store.markSessionActivity(activeSessionId, { failed: true, running: false });
           store.appendMessage({
             role: "assistant",
             id: `error-${Date.now()}`,

@@ -60,6 +60,13 @@ export interface QueuedMessages {
   followUp: string[];
 }
 
+export interface SessionActivity {
+  running: boolean;
+  unread: boolean;
+  compacting: boolean;
+  failed: boolean;
+}
+
 export interface LayoutState {
   rightPanelOpen: boolean;
   rightTab: "workflow" | "scout" | "diff";
@@ -86,6 +93,7 @@ export interface AppState {
   setThemeMode: (mode: ThemeMode, origin?: { x: number; y: number }) => void;
 
   sessions: SessionSummary[];
+  sessionActivity: Record<string, SessionActivity>;
   activeSessionId: string | null;
   messages: SessionMessage[];
   toolCards: ToolCardState[];
@@ -132,6 +140,8 @@ export interface AppState {
   setWorkerError: (message: string | null, canRetry?: boolean) => void;
 
   setSessions: (sessions: SessionSummary[]) => void;
+  markSessionActivity: (sessionId: string, patch: Partial<SessionActivity>) => void;
+  clearSessionUnread: (sessionId: string) => void;
   setActiveSession: (id: string | null) => void;
   loadTranscript: (record: SessionRecord) => void;
   clearConversation: () => void;
@@ -206,6 +216,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   sessions: [],
+  sessionActivity: {},
   activeSessionId: null,
   messages: [],
   toolCards: [],
@@ -255,7 +266,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   setWorkerError: (workerError, canRetry = false) => set({ workerError, canRetryWorker: Boolean(workerError) && canRetry }),
 
   setSessions: (sessions) => set({ sessions }),
-  setActiveSession: (activeSessionId) => set({ activeSessionId }),
+  markSessionActivity: (sessionId, patch) =>
+    set((state) => {
+      const current = state.sessionActivity[sessionId] ?? { running: false, unread: false, compacting: false, failed: false };
+      return { sessionActivity: { ...state.sessionActivity, [sessionId]: { ...current, ...patch } } };
+    }),
+  clearSessionUnread: (sessionId) =>
+    set((state) => {
+      const current = state.sessionActivity[sessionId];
+      if (!current?.unread) return {};
+      return { sessionActivity: { ...state.sessionActivity, [sessionId]: { ...current, unread: false } } };
+    }),
+  setActiveSession: (activeSessionId) =>
+    set((state) => {
+      if (!activeSessionId) return { activeSessionId };
+      const current = state.sessionActivity[activeSessionId];
+      if (!current?.unread) return { activeSessionId };
+      return {
+        activeSessionId,
+        sessionActivity: { ...state.sessionActivity, [activeSessionId]: { ...current, unread: false } },
+      };
+    }),
   loadTranscript: (record) =>
     set({
       activeSessionId: record.id,

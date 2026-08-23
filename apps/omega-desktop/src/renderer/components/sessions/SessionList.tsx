@@ -16,6 +16,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 
@@ -41,6 +42,9 @@ function relativeTime(iso: string): string {
 
 export function SessionList(): React.ReactElement {
   const sessions = useAppStore((s) => s.sessions);
+  const sessionActivity = useAppStore((s) => s.sessionActivity);
+  const compacting = useAppStore((s) => s.compacting);
+  const connection = useAppStore((s) => s.connection);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const activeWorkspace = useAppStore((s) => s.agent?.cwd);
   const setActiveSession = useAppStore((s) => s.setActiveSession);
@@ -124,8 +128,13 @@ export function SessionList(): React.ReactElement {
     );
   }
 
+  const byId = new Map(filtered.map((session) => [session.id, session]));
+  const childIds = new Set(filtered.filter((session) => session.parentSessionId && byId.has(session.parentSessionId)).map((session) => session.id));
+  const roots = filtered.filter((session) => !childIds.has(session.id));
+  const childrenOf = (id: string) => filtered.filter((session) => session.parentSessionId === id);
+
   const groups = new Map<string, typeof filtered>();
-  for (const session of filtered) {
+  for (const session of roots) {
     const key = groupKey(session.workspace);
     const list = groups.get(key) ?? [];
     list.push(session);
@@ -158,8 +167,15 @@ export function SessionList(): React.ReactElement {
             {items[0] && activeWorkspace && items[0].workspace === activeWorkspace ? " · 当前工作区" : ""}
           </Typography>
           <List dense sx={{ p: 0 }}>
-            {items.map((session) => {
+            {items.flatMap((session) => [session, ...childrenOf(session.id)]).map((session) => {
               const active = session.id === activeSessionId;
+              const nested = Boolean(session.parentSessionId && byId.has(session.parentSessionId));
+              const activity = sessionActivity[session.id];
+              const running = Boolean(activity?.running || (active && connection === "running"));
+              const unread = Boolean(activity?.unread && !active);
+              const isCompacting = Boolean(activity?.compacting || (active && compacting));
+              const failed = Boolean(activity?.failed);
+              const status = failed ? "失败" : isCompacting ? "压缩中" : running ? "运行中" : unread ? "未读" : nested ? "子会话" : null;
               return (
                 <ListItemButton
                   key={session.id}
@@ -169,6 +185,7 @@ export function SessionList(): React.ReactElement {
                     borderRadius: "10px",
                     mb: 0.5,
                     px: 1.25,
+                    pl: nested ? 2.75 : 1.25,
                     "&.Mui-selected": { background: "var(--omega-selected)" },
                     "&:hover": { background: "var(--omega-hover-fill)" },
                     "& .row-actions": { opacity: 0 },
@@ -177,9 +194,13 @@ export function SessionList(): React.ReactElement {
                 >
                   <ListItemText
                     primary={
-                      <Typography sx={{ fontSize: 13, fontWeight: active ? 700 : 500, color: "var(--omega-text)" }} noWrap>
-                        {session.title}
-                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+                        {unread ? <Box sx={{ width: 7, height: 7, borderRadius: "50%", background: "var(--omega-accent)", flex: "0 0 auto" }} /> : null}
+                        <Typography sx={{ fontSize: 13, fontWeight: active || unread ? 700 : 500, color: "var(--omega-text)", minWidth: 0 }} noWrap>
+                          {nested ? `↳ ${session.title}` : session.title}
+                        </Typography>
+                        {status ? <Chip size="small" label={status} sx={{ height: 18, fontSize: 10 }} /> : null}
+                      </Box>
                     }
                     secondary={
                       <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)" }} component="span" noWrap>

@@ -32,6 +32,7 @@ import { projectTrust } from "./project-trust.js";
 import { realRoot } from "./path-security.js";
 import { readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
+import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -144,12 +145,12 @@ async function requestCloseDecision() {
       title: "Omega 正在运行",
       message: "Agent 仍在生成回复。请选择关闭方式。",
       detail: "等待完成会保留当前会话；停止并退出会中止当前生成。",
-      buttons: ["等待完成", "停止并退出", "取消"],
+      buttons: [...CLOSE_DIALOG_BUTTONS],
       defaultId: 0,
       cancelId: 2,
       noLink: true,
     })
-    .then((result) => (result.response === 0 ? "wait" : result.response === 1 ? "stop" : "cancel"))
+    .then((result) => closeDecisionFromIndex(result.response))
     .finally(() => {
       closeDecision = null;
     });
