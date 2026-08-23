@@ -170,7 +170,7 @@ function attach(session) {
 let projectTrusted = true;
 let permissionProfile = "trusted";
 
-async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile }) {
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, runtimeCredentials = {} }) {
   permissionProfile = sanitizePermissionProfile(profile);
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
@@ -179,6 +179,9 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   extensionsRoot = root;
   projectTrusted = trusted !== false;
   runtime = await bridge.createRuntime({ cwd, extensionsRoot: root, projectTrusted });
+  for (const [providerId, apiKey] of Object.entries(runtimeCredentials ?? {})) {
+    if (typeof apiKey === "string" && apiKey.length > 0) await runtime.session.modelRuntime.setRuntimeApiKey(providerId, apiKey);
+  }
   if (sessionId && sessionId !== runtime.session.sessionId) {
     const sessionPath = await bridge.resolveSessionPath(sessionId);
     if (!sessionPath) {

@@ -26,6 +26,7 @@ export class WorkerHost {
     this.sessionId = null;
     this.projectTrusted = true;
     this.permissionProfile = "trusted";
+    this.runtimeCredentials = {};
     this.activating = false;
     this.onEvent = null;
     this.onExtensionUIRequest = null;
@@ -68,6 +69,7 @@ export class WorkerHost {
       generation,
       projectTrusted: this.projectTrusted,
       permissionProfile: this.permissionProfile,
+      runtimeCredentials: this.runtimeCredentials,
     });
     try {
       const info = await done;

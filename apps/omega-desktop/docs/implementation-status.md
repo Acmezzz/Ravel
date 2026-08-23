@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **120/120**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **121/121**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -65,7 +65,7 @@
 
 ### 2.6 配置、生态和 Extension UI
 
-- Model Center 第一轮：provider/model 列表、API key 添加/删除/测试选择；Electron `safeStorage` 优先，Renderer 不接触明文凭据。
+- Model Center 第一轮：provider/model 列表、API key 添加/删除/测试选择；Electron `safeStorage` 优先，Main 在 Worker 创建/重启时恢复 vault 凭据，Renderer 不接触明文凭据。
 - Skills/Plugins Center：列表、搜索、本地安装/移除、启用/禁用、skill model invocation、资源 reload；联网安装拒绝。
 - Extension UI bridge：
   - Dialog：`select`、`confirm`、`input`、`editor`

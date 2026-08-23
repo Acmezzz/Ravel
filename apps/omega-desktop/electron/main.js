@@ -366,7 +366,11 @@ function bindHost(host) {
 }
 
 function createBoundHost() {
-  return bindHost(new WorkerHost({ timeout: WORKER_RPC_TIMEOUT }));
+  const host = new WorkerHost({ timeout: WORKER_RPC_TIMEOUT });
+  if (credentialStore) {
+    host.runtimeCredentials = Object.fromEntries(credentialStore.listIds().map((id) => [id, credentialStore.read(id)]).filter(([, value]) => typeof value === "string" && value.length > 0));
+  }
+  return bindHost(host);
 }
 
 async function sessionWorkspaceOf(sessionId) {
