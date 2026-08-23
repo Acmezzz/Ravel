@@ -471,4 +471,23 @@ test("R5: resource inventory is exposed through the worker and surfaced in setti
   assert.match(settings, /listResources/);
   assert.match(settings, /扩展（/);
   assert.match(settings, /Skills（/);
+  assert.match(settings, /打开资源中心/);
+});
+
+test("resource center manages local install, enable, and reload without network", async () => {
+  const helper = await read("../electron/resource-center.js");
+  assert.match(helper, /network_forbidden/);
+  assert.match(helper, /disable-model-invocation/);
+  const worker = await read("../electron/worker.mjs");
+  assert.match(worker, /installAndPersist/);
+  assert.match(worker, /reloadResources/);
+  assert.match(worker, /setResourceEnabled/);
+  assert.match(worker, /knownResourcePath/);
+  assert.doesNotMatch(worker, /installNpm|installGit/);
+  const center = await read("../src/renderer/components/layout/ResourceCenter.tsx");
+  assert.match(center, /installLocalResource/);
+  assert.match(center, /reloadResources/);
+  assert.match(center, /不会联网/);
+  const palette = await read("../src/renderer/components/layout/CommandPalette.tsx");
+  assert.match(palette, /打开资源中心/);
 });

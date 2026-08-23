@@ -25,6 +25,7 @@ export function CommandPalette(): React.ReactElement {
   const setAgent = useAppStore((s) => s.setAgent);
   const setModelCenterOpen = useAppStore((s) => s.setModelCenterOpen);
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
+  const setResourceCenterOpen = useAppStore((s) => s.setResourceCenterOpen);
   const setTreeOpen = useAppStore((s) => s.setTreeOpen);
   const commands = useAppStore((s) => s.commands);
   const [query, setQuery] = React.useState("");
@@ -52,6 +53,13 @@ export function CommandPalette(): React.ReactElement {
         title: "打开设置",
         description: "Agent 行为、后台会话上限和桌面偏好",
         run: () => setSettingsOpen(true),
+      },
+      {
+        kind: "ui",
+        id: "resource-center",
+        title: "打开资源中心",
+        description: "查看、启用/禁用、本地安装并重载扩展与 skills",
+        run: () => setResourceCenterOpen(true),
       },
       {
         kind: "ui",
@@ -89,7 +97,7 @@ export function CommandPalette(): React.ReactElement {
         run: () => useAppStore.getState().setRightTab("worktree"),
       },
     ],
-    [setModelCenterOpen, setSettingsOpen, setTreeOpen],
+    [setModelCenterOpen, setSettingsOpen, setResourceCenterOpen, setTreeOpen],
   );
 
   const items = React.useMemo(() => {

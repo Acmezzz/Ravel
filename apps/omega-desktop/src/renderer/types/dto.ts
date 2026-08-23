@@ -449,17 +449,33 @@ export interface ForkCandidate {
   text: string;
 }
 
+export type ResourceScope = "user" | "project" | "temporary";
+export type ResourceOrigin = "package" | "top-level";
+
 export interface ExtensionResource {
   name: string;
   path: string;
   commands: number;
   tools: number;
+  enabled?: boolean;
+  scope?: ResourceScope;
+  origin?: ResourceOrigin;
+  source?: string;
+  baseDir?: string;
+  dormant?: boolean;
 }
 
 export interface SkillResource {
   name: string;
   description: string;
   filePath: string;
+  enabled?: boolean;
+  scope?: ResourceScope;
+  origin?: ResourceOrigin;
+  source?: string;
+  baseDir?: string;
+  disableModelInvocation?: boolean;
+  dormant?: boolean;
 }
 
 export interface PromptResource {
@@ -467,12 +483,28 @@ export interface PromptResource {
   description: string;
   argumentHint?: string;
   filePath: string;
+  enabled?: boolean;
+  scope?: ResourceScope;
+  origin?: ResourceOrigin;
+  source?: string;
+  baseDir?: string;
+  dormant?: boolean;
+}
+
+export interface ConfiguredPackageInfo {
+  source: string;
+  scope: "user" | "project";
+  filtered: boolean;
+  installedPath?: string;
 }
 
 export interface ResourceBundle {
   extensions: ExtensionResource[];
   skills: SkillResource[];
   prompts: PromptResource[];
+  packages?: ConfiguredPackageInfo[];
+  projectTrusted?: boolean;
+  skillCommandsEnabled?: boolean;
 }
 
 export interface DirEntryInfo {

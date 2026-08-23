@@ -32,6 +32,7 @@ import { projectTrust } from "./project-trust.js";
 import { realRoot } from "./path-security.js";
 import { readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
+import { assertLocalSource } from "./resource-center.js";
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 import { WorkerHost } from "./worker-host.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
@@ -894,6 +895,67 @@ ipcMain.handle("omega:getThinking", (event, req) => {
 ipcMain.handle("omega:listResources", (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   return rpc("listResources", {}, "read_failed");
+});
+
+ipcMain.handle("omega:reloadResources", (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  return rpc("reloadResources", {}, "write_failed");
+});
+
+ipcMain.handle("omega:installLocalResource", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    let source = typeof req?.source === "string" ? req.source.trim() : "";
+    if (!source && win) {
+      const picked = await dialog.showOpenDialog(win, {
+        properties: ["openDirectory", "openFile"],
+        title: "选择本地扩展 / skill / prompt",
+      });
+      if (picked.canceled || !picked.filePaths[0]) return errorResult("cancelled", "未选择本地资源");
+      source = picked.filePaths[0];
+    }
+    source = assertLocalSource(source);
+    return rpc("installLocalResource", { source, project: req?.project === true }, "write_failed");
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:removeLocalResource", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const source = assertLocalSource(req?.source);
+    return rpc("removeLocalResource", { source, project: req?.project === true }, "write_failed");
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:setResourceEnabled", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!req || typeof req.kind !== "string" || typeof req.path !== "string" || !req.path.trim()) {
+    return errorResult("invalid_args", "kind and path are required");
+  }
+  return rpc("setResourceEnabled", {
+    kind: req.kind,
+    path: req.path,
+    enabled: req.enabled !== false,
+    project: req.project === true,
+    baseDir: typeof req.baseDir === "string" ? req.baseDir : undefined,
+  }, "write_failed");
+});
+
+ipcMain.handle("omega:setSkillModelInvocation", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!req || typeof req.filePath !== "string" || !req.filePath.trim()) {
+    return errorResult("invalid_args", "filePath is required");
+  }
+  return rpc("setSkillModelInvocation", { filePath: req.filePath, disable: req.disable === true }, "write_failed");
+});
+
+ipcMain.handle("omega:setSkillCommandsEnabled", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  return rpc("setSkillCommandsEnabled", { enabled: req?.enabled !== false }, "write_failed");
 });
 
 ipcMain.handle("omega:getSystemPrompt", (event) => {

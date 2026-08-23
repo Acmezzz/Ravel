@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
-> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表、会话列表分页、WorkerSlot pool、Model Center 第一轮、typed desktop settings、Session Tree/Clone、Worktree Manager 和 FileViewer 第一轮已落地。后续进入 Plugins/Skills、Extension UI 与产品化。
+> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表、会话列表分页、WorkerSlot pool、Model Center 第一轮、typed desktop settings、Session Tree/Clone、Worktree Manager、FileViewer 第一轮和 Plugins/Skills 资源中心第一轮已落地。后续进入 Extension UI、权限 profile 与产品化。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**72/72 通过**。
+- 桌面和安全测试：**77/77 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -200,7 +200,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - Electron `safeStorage` credential vault 已落地，并同步写入 Pi `modelRuntime.setRuntimeApiKey`，Agent 实际可用。
 - 仍缺：OAuth 登录/登出、自定义 provider/base URL、model discovery、延迟测试、catalog/recommendation。
 - Project Trust Dialog 第一轮已完成；完整 Trust Center（批量管理、父目录继承 UI）仍待做。
-- Skills/Plugins Center：安装、更新、删除、启用、scope、进度和 trust gate。
+- Skills/Plugins Center 第一轮已落地：Header / 设置 / Command Palette 打开资源中心；可列表、搜索、启用/禁用、本地安装/移除、重载当前会话、切换 skill 模型可见性。npm/git 联网安装被拒绝。仍缺：联网更新、安装进度、package 内部资源过滤编辑。
 - Extension UI bridge：select、confirm、input、editor、notify、status、widget、title。
 - 权限 profile：Trusted、Workspace-only、Read-only、Ask before command。
 
@@ -217,7 +217,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ## 5. 下一步实施顺序
 
-1. Plugins/Skills、Extension UI、权限 profile。
+1. Extension UI native bridge、权限 profile。
 2. Model Center OAuth/custom provider/discovery、FileViewer 多媒体预览、native integration。
 3. updater、签名发布和 Electron E2E。
 4. 历史消息分页、IPC runtime schema 与 Worker 协议统一。

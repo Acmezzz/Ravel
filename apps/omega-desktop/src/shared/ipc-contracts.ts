@@ -38,6 +38,12 @@ export const IPC_CHANNELS = {
   navigateTree: "omega:navigateTree",
   getThinking: "omega:getThinking",
   listResources: "omega:listResources",
+  reloadResources: "omega:reloadResources",
+  installLocalResource: "omega:installLocalResource",
+  removeLocalResource: "omega:removeLocalResource",
+  setResourceEnabled: "omega:setResourceEnabled",
+  setSkillModelInvocation: "omega:setSkillModelInvocation",
+  setSkillCommandsEnabled: "omega:setSkillCommandsEnabled",
   getSystemPrompt: "omega:getSystemPrompt",
   exportHtml: "omega:exportHtml",
   bash: "omega:bash",
@@ -86,6 +92,7 @@ export const ERROR_CODES = {
   trustRequired: "trust_required",
   cancelled: "cancelled",
   unsupported: "unsupported",
+  networkForbidden: "network_forbidden",
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

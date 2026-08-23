@@ -20,7 +20,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const AGENT_DIR = join(homedir(), ".pi", "agent");
+export const AGENT_DIR = join(homedir(), ".pi", "agent");
 const DEV_EXTENSIONS_ROOT = resolve(fileURLToPath(new URL("../../../.pi/extensions", import.meta.url)));
 const TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"];
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];

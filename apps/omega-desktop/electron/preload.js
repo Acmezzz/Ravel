@@ -280,6 +280,44 @@ contextBridge.exposeInMainWorld("omega", {
   getSystemPrompt: () => ipcRenderer.invoke("omega:getSystemPrompt"),
   exportHtml: () => ipcRenderer.invoke("omega:exportHtml"),
   listResources: () => ipcRenderer.invoke("omega:listResources"),
+  reloadResources: () => ipcRenderer.invoke("omega:reloadResources"),
+  installLocalResource: (req) => ipcRenderer.invoke("omega:installLocalResource", {
+    source: safeString(req?.source, 4096),
+    project: req?.project === true,
+  }),
+  removeLocalResource: (req) => {
+    if (!req || typeof req.source !== "string" || !req.source.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "source is required" });
+    }
+    return ipcRenderer.invoke("omega:removeLocalResource", {
+      source: req.source.slice(0, 4096),
+      project: req.project === true,
+    });
+  },
+  setResourceEnabled: (req) => {
+    if (!req || typeof req.kind !== "string" || typeof req.path !== "string" || !req.path.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "kind and path are required" });
+    }
+    return ipcRenderer.invoke("omega:setResourceEnabled", {
+      kind: req.kind.slice(0, 32),
+      path: req.path.slice(0, 4096),
+      enabled: req.enabled !== false,
+      project: req.project === true,
+      baseDir: safeString(req.baseDir, 4096),
+    });
+  },
+  setSkillModelInvocation: (req) => {
+    if (!req || typeof req.filePath !== "string" || !req.filePath.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "filePath is required" });
+    }
+    return ipcRenderer.invoke("omega:setSkillModelInvocation", {
+      filePath: req.filePath.slice(0, 4096),
+      disable: req.disable === true,
+    });
+  },
+  setSkillCommandsEnabled: (req) => ipcRenderer.invoke("omega:setSkillCommandsEnabled", {
+    enabled: req?.enabled !== false,
+  }),
   queryExtensionState: (req) => {
     const scope = typeof req?.scope === "string" ? req.scope : "all";
     if (!["all", "workflow", "scout"].includes(scope)) {

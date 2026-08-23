@@ -147,6 +147,12 @@ test("new IPC handlers stay behind senderAllowed and return an IpcResult envelop
     "omega:listWorktrees",
     "omega:addWorktree",
     "omega:removeWorktree",
+    "omega:reloadResources",
+    "omega:installLocalResource",
+    "omega:removeLocalResource",
+    "omega:setResourceEnabled",
+    "omega:setSkillModelInvocation",
+    "omega:setSkillCommandsEnabled",
     "agent:abort",
   ]) {
     assert.match(source, new RegExp(`ipcMain\\.handle\\("${channel}"`), `${channel} handler present`);
@@ -200,6 +206,12 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "listWorktrees",
     "addWorktree",
     "removeWorktree",
+    "reloadResources",
+    "installLocalResource",
+    "removeLocalResource",
+    "setResourceEnabled",
+    "setSkillModelInvocation",
+    "setSkillCommandsEnabled",
   ]) {
     assert.match(source, new RegExp(`ipcRenderer\\.invoke\\("omega:${method}"`), `${method} invoke present`);
   }

@@ -77,6 +77,7 @@ export interface LayoutState {
   leftTab: "sessions" | "files";
   modelCenterOpen: boolean;
   settingsOpen: boolean;
+  resourceCenterOpen: boolean;
 }
 
 export interface ViewerState {
@@ -196,6 +197,7 @@ export interface AppState {
   setTreeOpen: (open: boolean) => void;
   setModelCenterOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
+  setResourceCenterOpen: (open: boolean) => void;
 }
 
 const EMPTY_USAGE: UsageSnapshot = {
@@ -280,6 +282,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     leftTab: "sessions",
     modelCenterOpen: false,
     settingsOpen: false,
+    resourceCenterOpen: false,
   },
 
   setConnection: (connection) => set({ connection }),
@@ -549,6 +552,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSettingsOpen: (settingsOpen) =>
     set((state) => ({
       layout: { ...state.layout, settingsOpen },
+    })),
+  setResourceCenterOpen: (resourceCenterOpen) =>
+    set((state) => ({
+      layout: { ...state.layout, resourceCenterOpen },
     })),
 }));
 

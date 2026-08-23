@@ -14,8 +14,17 @@
  * A crash or hang in the agent/extension code no longer takes down the
  * window: the main process owns the UI and proxies every omega:* RPC here.
  */
-import { basename } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { DefaultPackageManager } from "@earendil-works/pi-coding-agent";
 import * as bridge from "./agent-bridge.js";
+import {
+  RESOURCE_ARRAY_KEYS,
+  RESOURCE_KINDS,
+  assertLocalSource,
+  buildResourceBundle,
+  nextScopedPaths,
+  setDisableModelInvocationFrontmatter,
+} from "./resource-center.js";
 
 /** @type {import("./agent-bridge.js").ReturnType<typeof bridge.createRuntime> | null} */
 let runtime = null;
@@ -131,6 +140,42 @@ function withBusyCode(error) {
     error.message = "生成中无法切换分支或会话，请先停止或等待完成";
   }
   throw error;
+}
+
+function packageManagerOf() {
+  const session = runtime.session;
+  return new DefaultPackageManager({
+    cwd: runtime.cwd,
+    agentDir: session.settingsManager?.agentDir ?? bridge.AGENT_DIR,
+    settingsManager: session.settingsManager,
+  });
+}
+
+function knownResourcePath(kind, path) {
+  const loader = runtime.session.resourceLoader;
+  if (kind === "extension") {
+    return loader.getExtensions().extensions.some((extension) => (extension.sourceInfo?.path ?? extension.path) === path);
+  }
+  if (kind === "skill") {
+    return loader.getSkills().skills.some((skill) => skill.filePath === path);
+  }
+  return loader.getPrompts().prompts.some((prompt) => prompt.filePath === path);
+}
+
+async function listResourceBundle() {
+  const session = runtime.session;
+  const loader = session.resourceLoader;
+  const manager = packageManagerOf();
+  const resolved = await manager.resolve(async () => "skip");
+  return buildResourceBundle({
+    resolved,
+    extensions: loader.getExtensions().extensions.filter((extension) => !extension.hidden),
+    skills: loader.getSkills().skills,
+    prompts: loader.getPrompts().prompts,
+    packages: manager.listConfiguredPackages(),
+    projectTrusted: session.settingsManager?.isProjectTrusted?.() !== false,
+    skillCommandsEnabled: session.settingsManager?.getEnableSkillCommands?.() !== false,
+  });
 }
 
 async function recreateForWorkspace(workspace) {
@@ -290,29 +335,88 @@ const methods = {
   resolveSessionPath: ({ sessionId }) => bridge.resolveSessionPath(sessionId),
   sessionRecord: () => bridge.sessionRecordOf(runtime),
   /** Extensions / skills / prompt templates discovered for the active cwd. */
-  listResources: () => {
-    const loader = runtime.session.resourceLoader;
-    const extensions = loader
-      .getExtensions()
-      .extensions.filter((extension) => !extension.hidden)
-      .map((extension) => ({
-        name: basename(extension.path) || extension.path,
-        path: extension.sourceInfo?.path ?? extension.path,
-        commands: extension.commands?.size ?? 0,
-        tools: extension.tools?.size ?? 0,
-      }));
-    const skills = loader.getSkills().skills.map((skill) => ({
-      name: skill.name,
-      description: skill.description ?? "",
-      filePath: skill.filePath,
-    }));
-    const prompts = loader.getPrompts().prompts.map((prompt) => ({
-      name: prompt.name,
-      description: prompt.description ?? "",
-      argumentHint: prompt.argumentHint,
-      filePath: prompt.filePath,
-    }));
-    return { extensions, skills, prompts };
+  listResources: async () => listResourceBundle(),
+  reloadResources: async () => {
+    if (runtime.session.isStreaming) {
+      const error = new Error("生成中无法重载资源，请先停止或等待完成");
+      error.code = "session_busy";
+      throw error;
+    }
+    await runtime.session.reload();
+    return listResourceBundle();
+  },
+  installLocalResource: async ({ source, project }) => {
+    const localSource = assertLocalSource(source);
+    const manager = packageManagerOf();
+    await manager.installAndPersist(localSource, { local: project === true });
+    await runtime.session.reload();
+    return listResourceBundle();
+  },
+  removeLocalResource: async ({ source, project }) => {
+    const localSource = assertLocalSource(source);
+    const manager = packageManagerOf();
+    await manager.removeAndPersist(localSource, { local: project === true });
+    await runtime.session.reload();
+    return listResourceBundle();
+  },
+  setResourceEnabled: async ({ kind, path, enabled, project, baseDir }) => {
+    if (!RESOURCE_KINDS.includes(kind)) {
+      const error = new Error("kind must be extension|skill|prompt");
+      error.code = "invalid_args";
+      throw error;
+    }
+    if (typeof path !== "string" || !path.trim()) {
+      const error = new Error("path is required");
+      error.code = "invalid_args";
+      throw error;
+    }
+    if (!knownResourcePath(kind, path)) {
+      const error = new Error("未知资源，无法修改启用状态");
+      error.code = "not_found";
+      throw error;
+    }
+    const settings = runtime.session.settingsManager;
+    const arrayKey = RESOURCE_ARRAY_KEYS[kind];
+    const useProject = project === true;
+    if (useProject && settings.isProjectTrusted?.() === false) {
+      const error = new Error("当前项目未信任，无法修改项目资源");
+      error.code = "trust_required";
+      throw error;
+    }
+    const current = useProject
+      ? [...(settings.getProjectSettings()?.[arrayKey] ?? [])]
+      : [...(settings.getGlobalSettings()?.[arrayKey] ?? [])];
+    const next = nextScopedPaths(current, path, typeof baseDir === "string" ? baseDir : undefined, enabled !== false);
+    if (useProject) {
+      if (kind === "extension") settings.setProjectExtensionPaths(next);
+      else if (kind === "skill") settings.setProjectSkillPaths(next);
+      else settings.setProjectPromptTemplatePaths(next);
+    } else if (kind === "extension") settings.setExtensionPaths(next);
+    else if (kind === "skill") settings.setSkillPaths(next);
+    else settings.setPromptTemplatePaths(next);
+    await runtime.session.reload();
+    return listResourceBundle();
+  },
+  setSkillModelInvocation: async ({ filePath, disable }) => {
+    if (typeof filePath !== "string" || !filePath.trim()) {
+      const error = new Error("filePath is required");
+      error.code = "invalid_args";
+      throw error;
+    }
+    if (!knownResourcePath("skill", filePath) || !existsSync(filePath)) {
+      const error = new Error("Skill 文件不存在");
+      error.code = "not_found";
+      throw error;
+    }
+    const current = readFileSync(filePath, "utf8");
+    writeFileSync(filePath, setDisableModelInvocationFrontmatter(current, disable === true), "utf8");
+    await runtime.session.reload();
+    return listResourceBundle();
+  },
+  setSkillCommandsEnabled: async ({ enabled }) => {
+    runtime.session.settingsManager.setEnableSkillCommands(enabled !== false);
+    await runtime.session.reload();
+    return listResourceBundle();
   },
   dispose: async () => {
     disposed = true;

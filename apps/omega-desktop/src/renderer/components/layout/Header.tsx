@@ -31,6 +31,7 @@ import { SettingsDialog } from "./SettingsDialog";
 import { SessionInfoDialog } from "./SessionInfoDialog";
 import { ModelPicker } from "./ModelPicker";
 import { ModelCenter } from "./ModelCenter";
+import { ResourceCenter } from "./ResourceCenter";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 
 const THINKING_LABEL: Record<ThinkingLevel, string> = {
@@ -344,9 +345,18 @@ export function Header(): React.ReactElement {
           >
             模型中心
           </Button>
+          <Button
+            size="small"
+            disabled={shuttingDown}
+            onClick={() => useAppStore.getState().setResourceCenterOpen(true)}
+            sx={{ textTransform: "none", fontSize: 11.5, color: "var(--omega-text-muted)", minWidth: 0, px: 1 }}
+          >
+            资源中心
+          </Button>
         </Box>
         <ModelPicker anchor={modelAnchor} onClose={() => setModelAnchor(null)} />
         <ModelCenter />
+        <ResourceCenter />
 
           <Chip
           size="small"
