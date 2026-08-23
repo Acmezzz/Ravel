@@ -28,6 +28,7 @@ import {
 } from "./resource-center.js";
 import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
+import { validateCustomProvider } from "./custom-providers.js";
 
 /** @type {import("./agent-bridge.js").ReturnType<typeof bridge.createRuntime> | null} */
 let runtime = null;
@@ -314,6 +315,12 @@ const methods = {
   abort: () => runtime.session.abort(),
   getState: () => bridge.snapshotOf(runtime),
   listModels: () => bridge.listModels(runtime),
+  configureCustomProvider: async (input) => {
+    const provider = validateCustomProvider(input);
+    const config = { name: provider.name, baseUrl: provider.baseUrl, api: provider.api, headers: provider.headers, authHeader: provider.authHeader, models: provider.models };
+    runtime.session.modelRuntime.registerProvider(provider.id, config);
+    return { provider: { ...provider, headers: Object.keys(provider.headers) }, models: bridge.listModels(runtime) };
+  },
   setPermissionProfile: async ({ profile }) => {
     permissionProfile = sanitizePermissionProfile(profile);
     await bindSession(runtime.session);

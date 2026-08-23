@@ -121,6 +121,7 @@ export interface OmegaBridge {
   authStatus(): Promise<IpcResult<AuthStatus>>;
   getDesktopSettings(): Promise<IpcResult<DesktopSettings>>;
   updateDesktopSettings(req: Partial<DesktopSettings>): Promise<IpcResult<DesktopSettings>>;
+  configureCustomProvider(req: Record<string, unknown>): Promise<IpcResult<{ provider: Record<string, unknown>; models: ModelInfo[] }>>;
   setPermissionProfile(req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>>;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
@@ -267,6 +268,7 @@ export const ipc = {
   getDesktopSettings: async (): Promise<IpcResult<DesktopSettings>> => ok(await window.omega?.getDesktopSettings?.()),
   updateDesktopSettings: async (req: Partial<DesktopSettings>): Promise<IpcResult<DesktopSettings>> =>
     ok(await window.omega?.updateDesktopSettings?.(req)),
+  configureCustomProvider: async (req: Record<string, unknown>): Promise<IpcResult<{ provider: Record<string, unknown>; models: ModelInfo[] }>> => ok(await window.omega?.configureCustomProvider?.(req)),
   setPermissionProfile: async (req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>> =>
     ok(await window.omega?.setPermissionProfile?.(req)),
   setProviderApiKey: async (req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>> =>

@@ -987,6 +987,11 @@ ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
   return okResult(next);
 });
 
+ipcMain.handle("omega:configureCustomProvider", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  return rpc("configureCustomProvider", req ?? {}, "write_failed");
+});
+
 ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (typeof req?.profile !== "string" || !PERMISSION_PROFILES.includes(req.profile)) return errorResult("invalid_args", "Unsupported permission profile");

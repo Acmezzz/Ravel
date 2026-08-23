@@ -75,6 +75,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:diffWorkspace",
   "omega:approveChange",
   "omega:setPermissionProfile",
+  "omega:configureCustomProvider",
   "omega:extensionUiResponse",
   "omega:extensionUiCancel",
   "agent:prompt",

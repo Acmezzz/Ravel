@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **117/117**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **120/120**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -114,7 +114,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 - Worktree 元数据已增强：staged/unstaged/untracked 计数、HEAD short hash、最近提交信息和当前分支状态；按项目聚合会话和 remote/fetch 需要跨 worktree/网络边界。
 - FileViewer 内嵌 DOCX 富文本布局、上传进度仍可增强；当前已支持安全纯文本预览、系统默认应用打开、workspace 导入和冲突保护。
-- Model Center 自定义 provider/base URL/headers、model discovery、延迟测试和 catalog/recommendation。
+- Model Center 已支持本地 custom provider 配置：id/name/baseUrl/API 类型/headers/model 定义/上下文窗口，并通过 Worker `registerProvider` 组合到离线 runtime；真实 OAuth、在线 discovery、真实 latency 仍为外部依赖。
 - Skills/Plugins package 内部资源过滤编辑、安装进度展示。
 - `electron/ipc-schemas.js` 已覆盖 workspace/session/file/replay/sessionRpc 常用入口；完整 JSON Schema 迁移到所有历史 handler。
 
@@ -143,7 +143,7 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 
 1. Worktree 元数据、细粒度审查状态和本地聚合；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
 2. FileViewer 内嵌 DOCX 富文本布局、上传进度和语言设置。
-3. Model Center 自定义 provider/discovery/latency。
+3. Model Center 本地 provider 的持久化/重启恢复、离线 catalog 和 fake latency 测试；真实 OAuth/discovery/latency 等待外部环境。
 4. 完整 IPC JSON Schema 迁移和性能拆包。
 5. 完整 IPC JSON Schema 迁移和性能拆包。
 6. 只有在允许联网、签名和 CI 发布环境后，才实施真实 updater UI、OAuth、remote/fetch 和完整 release E2E。

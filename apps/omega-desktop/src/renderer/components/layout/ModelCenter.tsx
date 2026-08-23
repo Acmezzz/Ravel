@@ -125,6 +125,8 @@ export function ModelCenter(): React.ReactElement {
   const [busy, setBusy] = React.useState(false);
   const [pendingModel, setPendingModel] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
+  const [customProviderOpen, setCustomProviderOpen] = React.useState(false);
+  const [customProvider, setCustomProvider] = React.useState({ id: "local-ai", name: "Local AI", baseUrl: "http://127.0.0.1:8080/v1", api: "openai-completions", modelId: "demo", modelName: "Demo", contextWindow: "128000" });
 
   React.useEffect(() => {
     if (!open) {
@@ -216,9 +218,8 @@ export function ModelCenter(): React.ReactElement {
           )}
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
-            模型
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>模型</Typography><Button size="small" onClick={() => setCustomProviderOpen(true)} sx={{ textTransform: "none" }}>添加本地 Provider</Button></Box>
+          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>本地配置不会联网 discovery；真实 OAuth 和在线目录需外部环境。</Typography>
           <TextField size="small" placeholder="搜索模型…" value={query} onChange={(e) => setQuery(e.target.value)} />
           <Box sx={{ overflowY: "auto", maxHeight: 420, pr: 0.5 }}>
             {groups.length === 0 ? (
@@ -268,6 +269,7 @@ export function ModelCenter(): React.ReactElement {
           </Box>
         </Box>
       </DialogContent>
+      <Dialog open={customProviderOpen} onClose={() => setCustomProviderOpen(false)} fullWidth maxWidth="sm"><DialogTitle>添加本地 Provider</DialogTitle><DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>{(["id", "name", "baseUrl", "api", "modelId", "modelName", "contextWindow"] as const).map((key) => <TextField key={key} size="small" label={key} value={customProvider[key]} onChange={(event) => setCustomProvider((current) => ({ ...current, [key]: event.target.value }))} />)}</DialogContent><DialogActions><Button onClick={() => setCustomProviderOpen(false)}>取消</Button><Button variant="contained" onClick={() => void ipc.configureCustomProvider({ id: customProvider.id, name: customProvider.name, baseUrl: customProvider.baseUrl, api: customProvider.api, models: [{ id: customProvider.modelId, name: customProvider.modelName, contextWindow: Number(customProvider.contextWindow), reasoning: false }] }).then((result) => { if (result.ok) { setModels(result.data.models); setStatus("本地 Provider 已配置"); setCustomProviderOpen(false); } else setStatus(result.message); })}>保存</Button></DialogActions></Dialog>
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
         <Typography sx={{ fontSize: 11.5, color: status ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>
           {status ?? "OAuth、自定义提供商和延迟测试仍走后续阶段。"}

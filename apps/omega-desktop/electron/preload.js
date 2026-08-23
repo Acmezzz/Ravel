@@ -197,6 +197,10 @@ contextBridge.exposeInMainWorld("omega", {
   authStatus: () => ipcRenderer.invoke("omega:authStatus"),
   getDesktopSettings: () => ipcRenderer.invoke("omega:getDesktopSettings"),
   updateDesktopSettings: (req) => ipcRenderer.invoke("omega:updateDesktopSettings", isPlainObject(req) ? req : {}),
+  configureCustomProvider: (req) => {
+    if (!req || typeof req !== "object") return Promise.resolve({ ok: false, code: "invalid_args", message: "provider config is required" });
+    return ipcRenderer.invoke("omega:configureCustomProvider", req);
+  },
   setPermissionProfile: (req) => {
     const allowed = ["trusted", "workspace-only", "read-only", "ask-before-command"];
     if (!req || typeof req.profile !== "string" || !allowed.includes(req.profile)) {

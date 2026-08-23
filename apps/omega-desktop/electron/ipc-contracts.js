@@ -73,6 +73,7 @@ export const IPC_CHANNELS = Object.freeze({
   diffWorkspace: "omega:diffWorkspace",
   approveChange: "omega:approveChange",
   setPermissionProfile: "omega:setPermissionProfile",
+  configureCustomProvider: "omega:configureCustomProvider",
   extensionUiResponse: "omega:extensionUiResponse",
   extensionUiCancel: "omega:extensionUiCancel",
   prompt: "agent:prompt",
