@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**86/86 通过**。
+- 桌面和安全测试：**89/89 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -189,8 +189,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - Session Sidebar 第一轮已完成：workspace 分组、当前工作区、unread/running/失败/压缩中、parent/child 缩进；当前会话可 Clone。
 - Session Sidebar 仍缺：按 worktree 分组、完整右键菜单、删除父 session 时安全重挂。
 - Session Tree 第一轮已落地：单击预览将继承的上下文、双击/确认后 rewind、busy 时禁止破坏性切换、Clone 当前分支。
-- FileViewer 第一轮已落地：源码/Markdown 预览、行号、选区 `@file:start-end` 引用、Reveal in Folder。仍缺多标签、diff 模式、大文件分页、Mermaid/KaTeX/PDF/DOCX。
-- 文件下载、watch/live refresh、上传冲突处理仍待做。
+- FileViewer 第二轮已落地：源码/Markdown 预览、行号、选区 `@file:start-end` 引用、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页加载。仍缺 diff 模式、Mermaid/KaTeX/DOCX、文件 watch/live refresh、上传冲突处理。
 - Worktree Manager 第一轮已落地：列表、创建（原生目录选择器）、删除、dirty 二次确认；仍缺 remote/fetch 和按 worktree 聚合会话。
 - Git stale snapshot 自动刷新和更细粒度审查状态。
 

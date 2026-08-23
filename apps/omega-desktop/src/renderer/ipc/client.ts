@@ -53,6 +53,7 @@ export interface OmegaBridge {
   navigateTree(req: { targetId: string }): Promise<IpcResult<SessionRecord>>;
   listDir(req: { path: string }): Promise<IpcResult<DirListing>>;
   readFile(req: { path: string }): Promise<IpcResult<FileReadResult>>;
+  readFilePage(req: { path: string; offset?: number; limit?: number }): Promise<IpcResult<FileReadResult & { offset: number; nextOffset: number | null; totalLines: number }>>;
   fileIndex(req: { query: string }): Promise<IpcResult<string[]>>;
   revealInFolder(req: { path: string }): Promise<IpcResult<{ path: string }>>;
   bash(req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>>;
@@ -172,6 +173,7 @@ export const ipc = {
     ok(await window.omega?.navigateTree?.(req)),
   listDir: async (req: { path: string }): Promise<IpcResult<DirListing>> => ok(await window.omega?.listDir?.(req)),
   readFile: async (req: { path: string }): Promise<IpcResult<FileReadResult>> => ok(await window.omega?.readFile?.(req)),
+  readFilePage: async (req: { path: string; offset?: number; limit?: number }): Promise<IpcResult<FileReadResult & { offset: number; nextOffset: number | null; totalLines: number }>> => ok(await window.omega?.readFilePage?.(req)),
   fileIndex: async (req: { query: string }): Promise<IpcResult<string[]>> => ok(await window.omega?.fileIndex?.(req)),
   revealInFolder: async (req: { path: string }): Promise<IpcResult<{ path: string }>> =>
     ok(await window.omega?.revealInFolder?.(req)),

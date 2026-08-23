@@ -10,7 +10,13 @@ const IGNORED_DIRS = new Set([
   ".next", ".nuxt", ".cache", ".turbo", "__pycache__", ".venv", "venv",
 ]);
 const MAX_READ_BYTES = 512 * 1024;
+const MAX_MEDIA_BYTES = 8 * 1024 * 1024;
 const MAX_INDEX_FILES = 4000;
+
+function mimeFor(path) {
+  const ext = String(path).split(".").pop()?.toLowerCase();
+  return ({ png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", pdf: "application/pdf" })[ext] ?? "application/octet-stream";
+}
 const MAX_INDEX_DEPTH = 10;
 
 function resolveUnder(root, relPath) {
@@ -57,11 +63,28 @@ export function readFile(root, relPath) {
   const info = statSync(abs);
   if (info.isDirectory()) throw new Error("Path is a directory");
   const size = info.size;
+  const mimeType = mimeFor(relPath);
   const buffer = readFileSync(abs, { encoding: null, flag: "r" });
   const head = buffer.subarray(0, 8192);
-  if (head.includes(0)) return { path: relPath, size, binary: true };
+  const media = mimeType.startsWith("image/") || mimeType.startsWith("audio/") || mimeType === "application/pdf";
+  if (media && size <= MAX_MEDIA_BYTES) return { path: relPath, size, binary: true, mimeType, dataUrl: `data:${mimeType};base64,${buffer.toString("base64")}` };
+  if (media) return { path: relPath, size, binary: true, mimeType, truncated: true };
+  if (head.includes(0)) return { path: relPath, size, binary: true, mimeType };
   const content = buffer.toString("utf8", 0, Math.min(buffer.length, MAX_READ_BYTES));
-  return { path: relPath, size, binary: false, content, truncated: size > MAX_READ_BYTES };
+  const truncated = size > MAX_READ_BYTES;
+  const lineCount = truncated ? content.split("\n").length : undefined;
+  return { path: relPath, size, binary: false, content, truncated, mimeType, offset: 0, nextOffset: truncated ? lineCount : null, totalLines: truncated ? lineCount : undefined };
+}
+
+export function readFilePage(root, relPath, offset = 0, limit = 200) {
+  const abs = resolveUnder(root, relPath);
+  const info = statSync(abs);
+  if (info.isDirectory()) throw new Error("Path is a directory");
+  const safeOffset = Math.max(0, Math.min(Number.isInteger(offset) ? offset : 0, 10_000_000));
+  const safeLimit = Math.max(1, Math.min(Number.isInteger(limit) ? limit : 200, 2_000));
+  const content = readFileSync(abs, "utf8");
+  const lines = content.split("\n");
+  return { path: relPath, size: info.size, binary: false, content: lines.slice(safeOffset, safeOffset + safeLimit).join("\n"), offset: safeOffset, nextOffset: safeOffset + safeLimit < lines.length ? safeOffset + safeLimit : null, totalLines: lines.length };
 }
 
 export function fileIndex(root, query) {

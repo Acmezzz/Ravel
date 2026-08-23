@@ -570,6 +570,11 @@ export interface FileReadResult {
   binary: boolean;
   content?: string;
   truncated?: boolean;
+  mimeType?: string;
+  dataUrl?: string;
+  offset?: number;
+  nextOffset?: number | null;
+  totalLines?: number;
 }
 
 export interface GitWorktreeInfo {

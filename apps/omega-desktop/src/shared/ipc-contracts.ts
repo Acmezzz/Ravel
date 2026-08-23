@@ -50,6 +50,7 @@ export const IPC_CHANNELS = {
   queryExtensionState: "omega:queryExtensionState",
   listDir: "omega:listDir",
   readFile: "omega:readFile",
+  readFilePage: "omega:readFilePage",
   fileIndex: "omega:fileIndex",
   revealInFolder: "omega:revealInFolder",
   gitSnapshot: "omega:gitSnapshot",

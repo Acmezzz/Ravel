@@ -6,6 +6,7 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FolderOpenIcon from "@mui/icons-material/FolderOpenOutlined";
@@ -30,6 +31,10 @@ function isMarkdown(path: string | null): boolean {
   return ["md", "markdown", "mdx"].includes(extOf(path));
 }
 
+function isImage(file: { mimeType?: string; dataUrl?: string } | null): boolean { return Boolean(file?.mimeType?.startsWith("image/") && file.dataUrl); }
+function isAudio(file: { mimeType?: string; dataUrl?: string } | null): boolean { return Boolean(file?.mimeType?.startsWith("audio/") && file.dataUrl); }
+function isPdf(file: { mimeType?: string; dataUrl?: string } | null): boolean { return Boolean(file?.mimeType === "application/pdf" && file.dataUrl); }
+
 function numbered(content: string): Array<{ n: number; text: string }> {
   const lines = content.split("\n");
   return lines.map((text, index) => ({ n: index + 1, text }));
@@ -43,11 +48,18 @@ export function FileViewer(): React.ReactElement {
   const [copied, setCopied] = React.useState(false);
   const [mode, setMode] = React.useState<"source" | "preview">("source");
   const [selection, setSelection] = React.useState<{ start: number; end: number } | null>(null);
+  const [tabs, setTabs] = React.useState<string[]>([]);
+  const [displayedContent, setDisplayedContent] = React.useState("");
+  const [nextOffset, setNextOffset] = React.useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = React.useState(false);
 
   React.useEffect(() => {
     setMode(isMarkdown(viewer.path) ? "preview" : "source");
     setSelection(null);
-  }, [viewer.path]);
+    setDisplayedContent(viewer.file?.content ?? "");
+    setNextOffset(viewer.file?.nextOffset ?? null);
+    if (viewer.path && !tabs.includes(viewer.path)) setTabs((current) => [...current, viewer.path!].slice(-8));
+  }, [viewer.file?.content, viewer.file?.nextOffset, viewer.path]);
 
   const copy = React.useCallback(async () => {
     if (!viewer.file?.content) return;
@@ -72,14 +84,24 @@ export function FileViewer(): React.ReactElement {
     await ipc.revealInFolder({ path: viewer.path });
   }, [viewer.path]);
 
-  const lines = viewer.file?.content && !viewer.file.binary ? numbered(viewer.file.content) : [];
+  const lines = displayedContent && !viewer.file?.binary ? numbered(displayedContent) : [];
+  const loadMore = React.useCallback(async () => {
+    if (!viewer.path || nextOffset === null || loadingMore) return;
+    setLoadingMore(true);
+    const res = await ipc.readFilePage({ path: viewer.path, offset: nextOffset, limit: 400 });
+    if (res.ok) {
+      setDisplayedContent((current) => `${current}${current ? "\\n" : ""}${res.data.content ?? ""}`);
+      setNextOffset(res.data.nextOffset);
+    }
+    setLoadingMore(false);
+  }, [loadingMore, nextOffset, viewer.path]);
 
   return (
     <Dialog open={viewer.open} onClose={closeViewer} fullWidth maxWidth="md">
       <DialogTitle sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1, pr: 6 }}>
-        <Typography component="span" sx={{ fontSize: 15, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {viewer.path ?? ""}
-        </Typography>
+        <Box sx={{ display: "flex", gap: 0.5, minWidth: 0, overflow: "auto" }}>
+          {tabs.map((tab) => <Typography key={tab} onClick={() => void useAppStore.getState().openViewer(tab)} sx={{ fontSize: 12, px: 0.75, py: 0.25, cursor: "pointer", whiteSpace: "nowrap", color: tab === viewer.path ? "var(--omega-accent)" : "var(--omega-text-muted)", borderBottom: tab === viewer.path ? "2px solid var(--omega-accent)" : "2px solid transparent" }}>{tab.split(/[\\/]/).pop()}</Typography>)}
+        </Box>
         {viewer.file ? (
           <Typography component="span" sx={{ fontSize: 11, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
             {formatSize(viewer.file.size)}
@@ -117,8 +139,14 @@ export function FileViewer(): React.ReactElement {
           </Box>
         ) : viewer.error ? (
           <Typography sx={{ fontSize: 13, color: "var(--omega-danger)" }}>{viewer.error}</Typography>
+        ) : isImage(viewer.file) ? (
+          <Box component="img" src={viewer.file?.dataUrl} alt={viewer.path ?? "image"} sx={{ display: "block", maxWidth: "100%", maxHeight: "64vh", mx: "auto", objectFit: "contain" }} />
+        ) : isAudio(viewer.file) ? (
+          <Box component="audio" controls src={viewer.file?.dataUrl} sx={{ width: "100%" }} />
+        ) : isPdf(viewer.file) ? (
+          <Box component="iframe" title={viewer.path ?? "PDF"} src={viewer.file?.dataUrl} sx={{ width: "100%", height: "64vh", border: 0 }} />
         ) : viewer.file?.binary ? (
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>二进制文件，无法预览。可用资源管理器打开。</Typography>
+          <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>该二进制文件暂不支持内嵌预览，可用资源管理器打开。</Typography>
         ) : mode === "preview" && isMarkdown(viewer.path) ? (
           <Box sx={{ maxHeight: "64vh", overflow: "auto" }}>
             <Markdown>{viewer.file?.content ?? ""}</Markdown>
@@ -165,6 +193,7 @@ export function FileViewer(): React.ReactElement {
                 </Box>
               );
             })}
+            {nextOffset !== null ? <Button size="small" onClick={() => void loadMore()} disabled={loadingMore} sx={{ mt: 1, textTransform: "none" }}>{loadingMore ? "加载中…" : "加载更多行"}</Button> : null}
           </Box>
         )}
         {viewer.file?.content ? (

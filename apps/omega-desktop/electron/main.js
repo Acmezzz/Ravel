@@ -1256,6 +1256,15 @@ ipcMain.handle("omega:readFile", (event, req) => {
   }
 });
 
+ipcMain.handle("omega:readFilePage", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    return okResult(workspaceService.readFilePage(activeCwd ?? rootOf(), requireString(req, "path"), req?.offset, req?.limit));
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
 ipcMain.handle("omega:fileIndex", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
