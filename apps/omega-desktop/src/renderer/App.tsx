@@ -8,7 +8,7 @@ import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
 import type { EventMeta, SafeEvent } from "./types/events";
 
-async function refreshControlPlane(): Promise<void> {
+async function refreshControlPlane(): Promise<boolean> {
   const store = useAppStore.getState();
   const [stateRes, modelsRes, commandsRes, authRes, sessionsRes] = await Promise.all([
     ipc.getState(),
@@ -39,6 +39,7 @@ async function refreshControlPlane(): Promise<void> {
   if (commandsRes.ok) store.setCommands(commandsRes.data);
   if (authRes.ok) store.setAuth(authRes.data);
   if (sessionsRes.ok) store.setSessions(sessionsRes.data);
+  return stateRes.ok;
 }
 
 async function refreshTranscriptWhenIdle(): Promise<void> {
@@ -77,6 +78,7 @@ async function startNewSession(): Promise<void> {
  */
 export function App(): React.ReactElement {
   const setConnection = useAppStore((s) => s.setConnection);
+  const setShutdownPhase = useAppStore((s) => s.setShutdownPhase);
   const setBootstrapError = useAppStore((s) => s.setBootstrapError);
   const setSessions = useAppStore((s) => s.setSessions);
   const setExtensionState = useAppStore((s) => s.setExtensionState);
@@ -247,20 +249,34 @@ export function App(): React.ReactElement {
     });
     const offTransport = window.omega.onTransport((data) => {
       if (data.state === "ready") {
+        setShutdownPhase("idle");
         setBootstrapError(null);
         setConnection("ready");
         useAppStore.setState({ streamingAssistantId: null, thinkingActive: false, compacting: false, retrying: false, bashTail: "", queuedMessages: { steering: [], followUp: [] } });
-        const sessionId = useAppStore.getState().activeSessionId ?? undefined;
-        void ipc.recentEvents({ sessionId, after: 0 }).then((result) => {
-          if (result.ok) {
-            if (result.data.gap) void refreshControlPlane();
-            for (const item of result.data.events) handleEvent({ event: item.event as SafeEvent, meta: item.meta as EventMeta });
+        void (async () => {
+          const reconciled = await refreshControlPlane();
+          if (!reconciled) return;
+          const state = useAppStore.getState().agent;
+          const sessionId = state?.sessionId ?? useAppStore.getState().activeSessionId ?? undefined;
+          const result = await ipc.recentEvents({ sessionId, after: 0 });
+          if (!result.ok || result.data.gap || state?.isStreaming !== true) {
+            if (result.ok && result.data.gap) useAppStore.getState().setComposerError("会话已恢复，事件缓存已重新同步");
+            return;
           }
-        });
-        void refreshControlPlane();
+          for (const item of result.data.events) handleEvent({ event: item.event as SafeEvent, meta: item.meta as EventMeta });
+        })();
       } else if (data.state === "closing") {
+        setShutdownPhase("closing");
         setConnection("closing");
-        useAppStore.getState().setComposerError("正在保存会话并退出…");
+        useAppStore.getState().setComposerError("正在停止 Agent…");
+      } else if (data.state === "flushing") {
+        setShutdownPhase("flushing");
+        setConnection("closing");
+        useAppStore.getState().setComposerError("正在保存会话…");
+      } else if (data.state === "exiting") {
+        setShutdownPhase("exiting");
+        setConnection("closing");
+        useAppStore.getState().setComposerError("正在退出…");
       } else if (data.state === "starting" || data.state === "restarting" || data.state === "stopping") {
         setConnection("connecting");
       } else if (data.state === "dead") {
@@ -296,7 +312,7 @@ export function App(): React.ReactElement {
       offStatus();
       offTransport();
     };
-  }, [setConnection, setBootstrapError, setSessions, setExtensionState, setExtensionLoading]);
+  }, [setConnection, setShutdownPhase, setBootstrapError, setSessions, setExtensionState, setExtensionLoading]);
 
   React.useEffect(() => {
     // Workbench shortcuts: Ctrl+K toggles the command palette, Ctrl+Shift+N

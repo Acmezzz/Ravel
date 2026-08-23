@@ -366,6 +366,8 @@ test("Project Switcher, replay, and worker recovery reconcile surfaces exist", a
   assert.match(app, /recentEvents/);
   assert.match(app, /streamingAssistantId: null/);
   assert.match(app, /queuedMessages: \{ steering: \[\], followUp: \[\] \}/);
+  assert.match(app, /const reconciled = await refreshControlPlane\(\)/);
+  assert.match(app, /state\?\.isStreaming !== true/);
 });
 
 test("session list uses disk-first JSONL reader instead of starting a live runtime", async () => {

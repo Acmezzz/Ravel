@@ -37,6 +37,7 @@ import type {
 } from "../types/events";
 
 export type ConnectionState = "connecting" | "ready" | "running" | "closing" | "error";
+export type ShutdownPhase = "idle" | "closing" | "flushing" | "exiting";
 
 export interface ToolCardState {
   toolCallId: string;
@@ -76,6 +77,7 @@ export interface ViewerState {
 
 export interface AppState {
   connection: ConnectionState;
+  shutdownPhase: ShutdownPhase;
   bootstrapError: string | null;
 
   themeMode: ThemeMode;
@@ -118,6 +120,7 @@ export interface AppState {
   layout: LayoutState;
 
   setConnection: (state: ConnectionState) => void;
+  setShutdownPhase: (phase: ShutdownPhase) => void;
   setBootstrapError: (message: string | null) => void;
   setComposerError: (message: string | null) => void;
   setComposerPrefill: (text: string | null) => void;
@@ -177,6 +180,7 @@ const EMPTY_USAGE: UsageSnapshot = {
 
 export const useAppStore = create<AppState>((set, get) => ({
   connection: "connecting",
+  shutdownPhase: "idle",
   bootstrapError: null,
 
   themeMode: "system",
@@ -232,6 +236,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setConnection: (connection) => set({ connection }),
+  setShutdownPhase: (shutdownPhase) => set({ shutdownPhase }),
   setBootstrapError: (bootstrapError) => set({ bootstrapError }),
   setComposerError: (composerError) => set({ composerError }),
   setComposerPrefill: (composerPrefill) => set({ composerPrefill }),

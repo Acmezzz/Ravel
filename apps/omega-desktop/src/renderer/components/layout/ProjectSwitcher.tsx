@@ -19,6 +19,7 @@ function labelFor(root: string): string {
 export function ProjectSwitcher(): React.ReactElement {
   const agent = useAppStore((state) => state.agent);
   const connection = useAppStore((state) => state.connection);
+  const shutdownPhase = useAppStore((state) => state.shutdownPhase);
   const setAgent = useAppStore((state) => state.setAgent);
   const setSessions = useAppStore((state) => state.setSessions);
   const [anchor, setAnchor] = React.useState<HTMLElement | null>(null);
@@ -65,7 +66,7 @@ export function ProjectSwitcher(): React.ReactElement {
   }, [switchTo]);
 
   const current = agent?.cwd || "未选择项目";
-  const disabled = busy || connection === "running";
+  const disabled = busy || connection === "running" || shutdownPhase !== "idle";
 
   return (
     <>

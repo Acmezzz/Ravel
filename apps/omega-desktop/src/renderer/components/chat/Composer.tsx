@@ -98,6 +98,7 @@ export function Composer(): React.ReactElement {
   const setConnection = useAppStore((s) => s.setConnection);
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const connection = useAppStore((s) => s.connection);
+  const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const composerError = useAppStore((s) => s.composerError);
   const composerPrefill = useAppStore((s) => s.composerPrefill);
   const setComposerError = useAppStore((s) => s.setComposerError);
@@ -107,6 +108,7 @@ export function Composer(): React.ReactElement {
   const messages = useAppStore((s) => s.messages);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const running = connection === "running";
+  const shuttingDown = shutdownPhase !== "idle";
 
   // Restore the draft whenever the active session changes. Declared BEFORE the
   // persist effect so `textSessionRef` is re-anchored first.
@@ -189,6 +191,7 @@ export function Composer(): React.ReactElement {
 
   const runBash = React.useCallback(
     (rawValue: string) => {
+      if (shuttingDown) return;
       const exclude = rawValue.startsWith("!!");
       const command = (exclude ? rawValue.slice(2) : rawValue.slice(1)).trim();
       setText("");
@@ -218,11 +221,12 @@ export function Composer(): React.ReactElement {
         }
       })();
     },
-    [setConnection],
+    [setConnection, shuttingDown],
   );
 
   const send = React.useCallback(
     (behavior?: "steer" | "followUp") => {
+      if (shuttingDown) return;
       const value = text.trim();
       if ((!value && attachments.length === 0) || sendingRef.current) return;
       if (value.startsWith("!")) {
@@ -297,7 +301,7 @@ export function Composer(): React.ReactElement {
         }
       })();
     },
-    [text, attachments, running, setConnection, setComposerError, runBash],
+    [text, attachments, running, shuttingDown, setConnection, setComposerError, runBash],
   );
 
   const abort = React.useCallback(async () => {
@@ -310,6 +314,7 @@ export function Composer(): React.ReactElement {
   }, [setConnection]);
 
   const recallQueue = React.useCallback(async () => {
+    if (shuttingDown) return;
     const res = await ipc.clearQueue();
     if (!res.ok) return;
     setQueuedMessages({ steering: [], followUp: [] });
@@ -318,7 +323,7 @@ export function Composer(): React.ReactElement {
       setText((prev) => (prev.trim() ? `${texts.join("\n\n")}\n\n${prev}` : texts.join("\n\n")));
       taRef.current?.focus();
     }
-  }, [setQueuedMessages]);
+  }, [setQueuedMessages, shuttingDown]);
 
   const applyHistory = React.useCallback((entry: string) => {
     setHistoryOpen(false);
@@ -365,6 +370,10 @@ export function Composer(): React.ReactElement {
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (shuttingDown) {
+      e.preventDefault();
+      return;
+    }
     const nativeEvent = e.nativeEvent;
     const sendShortcut = e.key === "Enter" && !e.shiftKey;
     const recentlyComposed = Date.now() - lastCompositionEndAtRef.current < COMPOSITION_END_ENTER_GRACE_MS;
@@ -561,7 +570,7 @@ export function Composer(): React.ReactElement {
             ))}
           </Box>
           <Tooltip title="撤回全部排队消息到输入框">
-            <IconButton size="small" onClick={() => void recallQueue()} sx={{ color: "var(--omega-text-muted)", "&:hover": { color: "var(--omega-accent)" } }}>
+            <IconButton size="small" onClick={() => void recallQueue()} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", "&:hover": { color: "var(--omega-accent)" } }}>
               <ReplayIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -600,7 +609,7 @@ export function Composer(): React.ReactElement {
         }}
       >
         <Tooltip title="命令面板（Ctrl+K）">
-          <IconButton size="small" onClick={() => setCommandPaletteOpen(true)} sx={{ color: "var(--omega-text-muted)", mb: 0.5 }}>
+          <IconButton size="small" onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", mb: 0.5 }}>
             <KeyboardCommandKeyIcon />
           </IconButton>
         </Tooltip>
@@ -608,7 +617,7 @@ export function Composer(): React.ReactElement {
           <IconButton
             size="small"
             onClick={() => fileRef.current?.click()}
-            disabled={attachments.length >= MAX_IMAGES}
+            disabled={shuttingDown || attachments.length >= MAX_IMAGES}
             sx={{ color: "var(--omega-text-muted)", mb: 0.5 }}
           >
             <AttachFileIcon />
@@ -628,6 +637,7 @@ export function Composer(): React.ReactElement {
         <TextareaAutosize
           ref={taRef as never}
           value={text}
+          disabled={shuttingDown}
           onChange={(e) => {
             setText(e.target.value);
             setHistoryOpen(false);
@@ -663,7 +673,7 @@ export function Composer(): React.ReactElement {
             <Tooltip title="打断当前生成并注入这条消息（steer）">
               <IconButton
                 onClick={() => send("steer")}
-                disabled={canSend}
+                disabled={shuttingDown || canSend}
                 sx={{
                   color: "#fff",
                   background: "var(--omega-warning)",
@@ -681,6 +691,7 @@ export function Composer(): React.ReactElement {
             <Tooltip title="彻底停止生成">
               <IconButton
                 onClick={() => void abort()}
+                disabled={shuttingDown}
                 sx={{
                   color: "#fff",
                   background: "var(--omega-danger)",
@@ -698,7 +709,7 @@ export function Composer(): React.ReactElement {
         ) : (
           <IconButton
             onClick={() => send()}
-            disabled={canSend}
+            disabled={shuttingDown || canSend}
             sx={{
               color: "#fff",
               background: "var(--omega-accent-strong)",

@@ -119,13 +119,19 @@ async function runCloseSequence(finish) {
       /* best effort */
     }
   }
+  sendTransportState("flushing");
   if (!(await flushWithRiskPrompt(decision))) return;
+  sendTransportState("exiting");
   closeApproved = true;
   finish();
 }
 
 function sendTransportState(state) {
   if (win && !win.isDestroyed()) win.webContents.send("worker:transport", { state });
+}
+
+function isAgentBusy() {
+  return agentRunning;
 }
 
 async function requestCloseDecision() {

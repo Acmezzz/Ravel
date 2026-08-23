@@ -31,6 +31,10 @@ test("worker and renderer use sequenced event envelopes for stale-event rejectio
   assert.match(app, /meta\.generation < currentGeneration/);
   assert.match(main, /recentEventsBySession/);
   assert.match(main, /gap: after > 0/);
+  assert.match(main, /sendTransportState\("flushing"\)/);
+  assert.match(main, /sendTransportState\("exiting"\)/);
+  assert.match(app, /setShutdownPhase\("flushing"\)/);
+  assert.match(app, /state\?\.isStreaming !== true/);
 });
 
 test("bridge filters raw agent events and does not forward sensitive payloads", async () => {

@@ -59,6 +59,7 @@ function Divider(): React.ReactElement {
  */
 function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): React.ReactElement {
   const connection = useAppStore((s) => s.connection);
+  const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const thinkingActive = useAppStore((s) => s.thinkingActive);
   const compacting = useAppStore((s) => s.compacting);
 
@@ -66,26 +67,32 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
   const ringColor =
     failed
       ? "var(--omega-danger)"
-      : compacting
+      : shutdownPhase !== "idle"
         ? "var(--omega-warning)"
-        : connection === "running"
-          ? "var(--omega-accent)"
-          : "transparent";
+        : compacting
+          ? "var(--omega-warning)"
+          : connection === "running"
+            ? "var(--omega-accent)"
+            : "transparent";
   const label = bootstrapError
     ? "初始化失败"
-    : compacting
-      ? "压缩中"
-      : thinkingActive
-        ? "思考中"
-        : connection === "running"
-          ? "运行中"
-          : connection === "error"
-            ? "错误"
-            : connection === "closing"
-              ? "保存并退出"
-              : connection === "connecting"
-              ? "连接中"
-              : "就绪";
+    : shutdownPhase === "closing"
+      ? "正在停止"
+      : shutdownPhase === "flushing"
+        ? "保存会话"
+        : shutdownPhase === "exiting"
+          ? "正在退出"
+          : compacting
+            ? "压缩中"
+            : thinkingActive
+              ? "思考中"
+              : connection === "running"
+                ? "运行中"
+                : connection === "error"
+                  ? "错误"
+                  : connection === "connecting"
+                    ? "连接中"
+                    : "就绪";
 
   return (
     <Tooltip title={`状态：${label}${bootstrapError ? "（详见日志）" : ""}`}>
@@ -178,6 +185,7 @@ function formatUsage(percent: number | null, tokens: number | null, contextWindo
 
 export function Header(): React.ReactElement {
   const connection = useAppStore((s) => s.connection);
+  const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const bootstrapError = useAppStore((s) => s.bootstrapError);
   const rightOpen = useAppStore((s) => s.layout.rightPanelOpen);
   const rightTab = useAppStore((s) => s.layout.rightTab);
@@ -187,6 +195,7 @@ export function Header(): React.ReactElement {
   const agent = useAppStore((s) => s.agent);
   const running = useAppStore((s) => s.connection === "running");
   const compacting = useAppStore((s) => s.compacting);
+  const shuttingDown = shutdownPhase !== "idle";
   const setAgent = useAppStore((s) => s.setAgent);
   const setConnection = useAppStore((s) => s.setConnection);
   const themeMode = useAppStore((s) => s.themeMode);
@@ -208,6 +217,7 @@ export function Header(): React.ReactElement {
   const ThemeIcon = themeMode === "light" ? LightModeIcon : themeMode === "dark" ? DarkModeIcon : SettingsBrightnessIcon;
 
   const handleAbort = React.useCallback(async () => {
+    if (shuttingDown) return;
     setBusy(true);
     try {
       await ipc.abort();
@@ -215,9 +225,10 @@ export function Header(): React.ReactElement {
     } finally {
       setBusy(false);
     }
-  }, [setConnection]);
+  }, [setConnection, shuttingDown]);
 
   const handleCompact = React.useCallback(async () => {
+    if (shuttingDown) return;
     setBusy(true);
     try {
       const res = await ipc.compact();
@@ -225,15 +236,16 @@ export function Header(): React.ReactElement {
     } finally {
       setBusy(false);
     }
-  }, [setAgent]);
+  }, [setAgent, shuttingDown]);
 
   const handleSetThinking = React.useCallback(
     async (level: ThinkingLevel) => {
+      if (shuttingDown) return;
       setThinkingAnchor(null);
       const res = await ipc.setThinkingLevel({ level });
       if (res.ok) setAgent(res.data);
     },
-    [setAgent],
+    [setAgent, shuttingDown],
   );
 
   return (
@@ -273,8 +285,10 @@ export function Header(): React.ReactElement {
 
         {/* model cluster */}
         <Box
-          onClick={(e) => setModelAnchor(e.currentTarget)}
-          sx={{
+            onClick={(e) => {
+              if (!shuttingDown) setModelAnchor(e.currentTarget);
+            }}
+            sx={{
             display: "flex",
             alignItems: "center",
             gap: 0.5,
@@ -282,7 +296,8 @@ export function Header(): React.ReactElement {
             py: 0.5,
             borderRadius: "10px",
             border: "1px solid var(--omega-border)",
-            cursor: "pointer",
+            cursor: shuttingDown ? "default" : "pointer",
+            opacity: shuttingDown ? 0.55 : 1,
             maxWidth: 230,
             "&:hover": { borderColor: "var(--omega-accent)", background: "var(--omega-hover-fill)" },
           }}
@@ -294,11 +309,13 @@ export function Header(): React.ReactElement {
         </Box>
         <ModelPicker anchor={modelAnchor} onClose={() => setModelAnchor(null)} />
 
-        <Chip
+          <Chip
           size="small"
           label={THINKING_LABEL[agent?.thinkingLevel ?? "off"]}
-          onClick={(e) => setThinkingAnchor(e.currentTarget)}
-          disabled={agent?.supportsThinking === false}
+          onClick={(e) => {
+            if (!shuttingDown) setThinkingAnchor(e.currentTarget);
+          }}
+          disabled={shuttingDown || agent?.supportsThinking === false}
           sx={{ cursor: "pointer", fontSize: 11.5 }}
         />
         <Menu anchorEl={thinkingAnchor} open={Boolean(thinkingAnchor)} onClose={() => setThinkingAnchor(null)}>

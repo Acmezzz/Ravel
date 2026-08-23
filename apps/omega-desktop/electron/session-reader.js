@@ -102,7 +102,7 @@ async function readSummary(file) {
 }
 
 export async function readSessionSummaries(root, { allowedWorkspaces = [], offset = 0, limit = 100 } = {}) {
-  if (!existsSync(root)) return [];
+  if (!existsSync(root)) return { items: [], total: 0, nextOffset: null };
   const normalize = (value) => process.platform === "win32" ? resolve(value).toLowerCase() : resolve(value);
   const allowed = new Set(allowedWorkspaces.map(normalize));
   const files = sessionFileList(root);

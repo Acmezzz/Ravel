@@ -1,8 +1,8 @@
 # Omega Desktop 实施状态与路线图
 
-> 更新日期：2026-08-22
-> 当前分支：`main`
-> 当前状态：Milestone A 已完成，Milestone B 已完成第一轮基础设施，后续进入多会话和桌面工作区能力。
+> 更新日期：2026-08-23
+> 当前分支：`feat/omega-runtime-foundation`
+> 当前状态：Milestone A 已完成，Milestone B 已完成第一轮基础设施，单 Worker 恢复和关闭状态已进一步收口，后续进入多会话和桌面工作区能力。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -90,7 +90,7 @@
 
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
-- Vite renderer build：通过。
+- Vite renderer build（`build:renderer`）：通过。
 - 桌面和安全测试：**60/60 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
@@ -122,8 +122,9 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 主进程关闭保护和 flush 超时风险提示已完成第一轮，但还缺：
 
-- renderer 已区分 `closing` 状态，并显示“保存并退出”；Main 已发送 `closing` transport 状态。
-- 仍需补充更细的 flush 阶段进度和自动化 close Dialog 测试。
+- renderer 已区分 `closing / flushing / exiting` 三个阶段，并分别显示停止、保存会话和退出状态；Main 已发送对应 transport 状态。
+- 关闭期间 Composer、模型/思考设置、分支、工作区切换和队列操作均被锁定。
+- 仍需补充 flush 阶段进度和自动化 close Dialog 测试。
 - flush 超时后的用户可见风险提示和强制退出按钮。
 - 原生 close Dialog 的自动化测试。
 - 验证 abort、flush、dispose、kill 顺序的生命周期测试。
@@ -132,8 +133,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 精确 session 恢复已完成，但还缺：
 
-- Worker ready 后已清理 renderer 的 running/thinking/compaction/retry/queue 瞬态，再用 authoritative snapshot 对账。
-- 仍需恢复 model、thinking level、queue、branch/tree 的更细粒度 reconcile。
+- Worker ready 后先读取 authoritative snapshot，再决定是否按 session 回放最近事件；空闲快照不重复追加历史事件，gap 时保留权威快照并提示重新同步。
+- 已清理 renderer 的 running/thinking/compaction/retry/queue 瞬态并恢复 model、usage、transcript 等基础状态；仍需恢复 queue、branch/tree 的更细粒度 reconcile。
 - 丢失 prompt 的恢复提示，不静默重发。
 - restart failure 的可操作错误界面。
 - Worker 崩溃前运行状态、未读状态和错误原因的持久化。
@@ -145,7 +146,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 事件 envelope、Main 最近事件缓存和 renderer ready 后补发已完成第一轮，但还缺：
 
 - Main 最近事件缓存已完成按 session 分区和 gap 检测第一轮。
-- renderer 已在 Worker ready 后按 session 请求补发，gap 时重新拉取 authoritative snapshot。
+- renderer 已在 Worker ready 后先拉 authoritative snapshot，再按 session 请求补发；仅流式恢复状态回放，gap 时保留快照并提示重新同步。
 - 仍需扩大缓存持久化、补发分页和窗口重新激活流程。
 - reload、窗口重新激活和 Worker restart 后的 snapshot/replay 流程。
 - snapshot 中完整包含 transcript、model、thinking、queue、compaction、retry、usage 和 session state。
