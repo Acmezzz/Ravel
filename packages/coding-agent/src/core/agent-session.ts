@@ -83,6 +83,7 @@ import {
 	type SessionBeforeTreeResult,
 	type SessionStartEvent,
 	type ShutdownHandler,
+	type ToolCallEvent,
 	type ToolDefinition,
 	type ToolExecutionEndEvent,
 	type ToolExecutionStartEvent,

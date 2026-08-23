@@ -85,6 +85,7 @@
 - Updater core：semver、HTTPS-only manifest、受控文件名、SHA-256/size 校验、临时文件、原子 rename、单飞下载和失败清理。
 - Windows electron-builder 目标为 unpacked `dir`，不使用 NSIS。
 - `scripts/release-gate.mjs` 和 `scripts/electron-smoke.mjs` 已提供离线发布门禁。
+- 本地打包已验证：完整 `electron-builder --dir` 需 `NODE_OPTIONS=--use-system-ca`（证书）且 winCodeSign 下载在当前网络会超时；可用的离线路径是复用既有 `release/win-unpacked` 外壳，用本地 `@electron/asar` 重打最新 `app.asar`（含刷新后的 coding-agent dist），并同步 `resources/omega-runtime/packages/coding-agent/dist`。已验证启动日志 `[main] agent worker ready` 且进程稳定。
 
 ## 3. 当前验证门禁
 
