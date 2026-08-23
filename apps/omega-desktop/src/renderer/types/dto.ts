@@ -295,6 +295,13 @@ export interface SessionSummary {
   parentSessionId?: string;
 }
 
+export interface SessionListPage {
+  items: SessionSummary[];
+  total: number;
+  nextOffset: number | null;
+  treeIndex?: Record<string, string[]>;
+}
+
 export interface SessionMessage {
   role: "user" | "assistant" | "tool";
   id: string;

@@ -88,6 +88,47 @@ test("disk-first session reader reads JSONL summaries without starting a runtime
     messageCount: 1,
   });
   assert.deepEqual((await readSessionSummaries(root, { allowedWorkspaces: [mkdtempSync(join(tmpdir(), "omega-other-"))] })).items, []);
+  assert.deepEqual(page.treeIndex, {});
+  assert.equal(page.nextOffset, null);
+});
+
+test("disk-first session reader paginates summaries and indexes parent/child sessions", async () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-jsonl-page-"));
+  const workspace = mkdtempSync(join(tmpdir(), "omega-jsonl-page-workspace-"));
+  for (let index = 0; index < 5; index += 1) {
+    const header = {
+      type: "session",
+      version: 3,
+      id: `session-${index}`,
+      timestamp: `2026-01-0${index + 1}T00:00:00.000Z`,
+      cwd: workspace,
+      ...(index === 1 ? { parentSession: "session-0.jsonl" } : {}),
+    };
+    writeFileSync(join(root, `session-${index}.jsonl`), [
+      JSON.stringify(header),
+      JSON.stringify({
+        type: "message",
+        id: `message-${index}`,
+        parentId: null,
+        timestamp: `2026-01-0${index + 1}T00:00:0${index}.000Z`,
+        message: { role: "user", content: `msg ${index}` },
+      }),
+    ].join("\n") + "\n");
+  }
+  const page1 = await readSessionSummaries(root, { allowedWorkspaces: [workspace], offset: 0, limit: 2 });
+  assert.equal(page1.total, 5);
+  assert.equal(page1.items.length, 2);
+  assert.equal(page1.nextOffset, 2);
+  assert.deepEqual(page1.items.map((item) => item.id), ["session-4", "session-3"]);
+  assert.deepEqual(page1.treeIndex["session-0"], ["session-1"]);
+  const page2 = await readSessionSummaries(root, { allowedWorkspaces: [workspace], offset: 2, limit: 2 });
+  assert.equal(page2.items.length, 2);
+  assert.equal(page2.nextOffset, 4);
+  const page3 = await readSessionSummaries(root, { allowedWorkspaces: [workspace], offset: 4, limit: 2 });
+  assert.equal(page3.items.length, 1);
+  assert.equal(page3.nextOffset, null);
+  const missing = await readSessionSummaries(join(root, "missing"), { allowedWorkspaces: [workspace] });
+  assert.deepEqual(missing, { items: [], total: 0, nextOffset: null, treeIndex: {} });
 });
 
 test("git snapshot token rejects changes made after the snapshot", () => {

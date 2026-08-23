@@ -101,8 +101,21 @@ async function readSummary(file) {
   return summary;
 }
 
+const treeIndexCache = new Map();
+
+function treeIndexOf(summaries) {
+  const byParent = new Map();
+  for (const summary of summaries) {
+    if (!summary.parentSessionId) continue;
+    const children = byParent.get(summary.parentSessionId) ?? [];
+    children.push(summary.id);
+    byParent.set(summary.parentSessionId, children);
+  }
+  return Object.fromEntries([...byParent.entries()]);
+}
+
 export async function readSessionSummaries(root, { allowedWorkspaces = [], offset = 0, limit = 100 } = {}) {
-  if (!existsSync(root)) return { items: [], total: 0, nextOffset: null };
+  if (!existsSync(root)) return { items: [], total: 0, nextOffset: null, treeIndex: {} };
   const normalize = (value) => process.platform === "win32" ? resolve(value).toLowerCase() : resolve(value);
   const allowed = new Set(allowedWorkspaces.map(normalize));
   const files = sessionFileList(root);
@@ -116,5 +129,14 @@ export async function readSessionSummaries(root, { allowedWorkspaces = [], offse
   summaries.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   const safeOffset = Number.isInteger(offset) && offset > 0 ? offset : 0;
   const safeLimit = Number.isInteger(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
-  return { items: summaries.slice(safeOffset, safeOffset + safeLimit), total: summaries.length, nextOffset: safeOffset + safeLimit < summaries.length ? safeOffset + safeLimit : null };
+  const stamp = `${files.length}:${summaries.map((item) => `${item.id}:${item.updatedAt}`).join("|")}`;
+  const cachedTree = treeIndexCache.get(root);
+  const treeIndex = cachedTree?.stamp === stamp ? cachedTree.index : treeIndexOf(summaries);
+  if (cachedTree?.stamp !== stamp) treeIndexCache.set(root, { stamp, index: treeIndex });
+  return {
+    items: summaries.slice(safeOffset, safeOffset + safeLimit),
+    total: summaries.length,
+    nextOffset: safeOffset + safeLimit < summaries.length ? safeOffset + safeLimit : null,
+    treeIndex,
+  };
 }

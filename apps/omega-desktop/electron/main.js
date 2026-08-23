@@ -1000,11 +1000,17 @@ ipcMain.handle("omega:queryExtensionState", (event, req) => {
   }
 });
 
-ipcMain.handle("omega:listSessions", async (event) => {
+ipcMain.handle("omega:listSessions", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
-    const page = await readSessionSummaries(piSessionsRoot(), { allowedWorkspaces: (workspaceRegistry?.list() ?? []).map((item) => item.realRoot) });
-    return okResult(page.items);
+    const offset = Number.isInteger(req?.offset) && req.offset > 0 ? req.offset : 0;
+    const limit = Number.isInteger(req?.limit) ? Math.max(1, Math.min(req.limit, 500)) : 100;
+    const page = await readSessionSummaries(piSessionsRoot(), {
+      allowedWorkspaces: (workspaceRegistry?.list() ?? []).map((item) => item.realRoot),
+      offset,
+      limit,
+    });
+    return okResult(page);
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }

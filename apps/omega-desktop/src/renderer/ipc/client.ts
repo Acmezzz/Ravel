@@ -10,6 +10,7 @@ import type {
   ProjectTrustInfo,
   ExtensionStateBundle,
   SessionSummary,
+  SessionListPage,
   SessionRecord,
   SessionMessage,
   WorkspaceDiff,
@@ -90,7 +91,7 @@ export interface OmegaBridge {
     projectKey?: string;
     taskId?: string;
   }): Promise<IpcResult<ExtensionStateBundle>>;
-  listSessions(): Promise<IpcResult<SessionSummary[]>>;
+  listSessions(req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>>;
   newSession(req: {
     projectKey?: string;
     title?: string;
@@ -190,7 +191,8 @@ export const ipc = {
     projectKey?: string;
     taskId?: string;
   }): Promise<IpcResult<ExtensionStateBundle>> => ok(await window.omega?.queryExtensionState?.(req)),
-  listSessions: async (): Promise<IpcResult<SessionSummary[]>> => ok(await window.omega?.listSessions?.()),
+  listSessions: async (req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>> =>
+    ok(await window.omega?.listSessions?.(req)),
   newSession: async (req: {
     projectKey?: string;
     title?: string;

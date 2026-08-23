@@ -48,13 +48,27 @@ export function SessionList(): React.ReactElement {
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const activeWorkspace = useAppStore((s) => s.agent?.cwd);
   const setActiveSession = useAppStore((s) => s.setActiveSession);
-  const setSessions = useAppStore((s) => s.setSessions);
+  const applySessionPage = useAppStore((s) => s.applySessionPage);
+  const sessionNextOffset = useAppStore((s) => s.sessionNextOffset);
+  const sessionTotal = useAppStore((s) => s.sessionTotal);
   const loadTranscript = useAppStore((s) => s.loadTranscript);
   const clearConversation = useAppStore((s) => s.clearConversation);
   const setAgent = useAppStore((s) => s.setAgent);
   const [query, setQuery] = React.useState("");
   const [renaming, setRenaming] = React.useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = React.useState<{ id: string; title: string } | null>(null);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+
+  const loadMore = React.useCallback(async () => {
+    if (sessionNextOffset == null || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const list = await ipc.listSessions({ offset: sessionNextOffset });
+      if (list.ok) applySessionPage(list.data, "append");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [sessionNextOffset, loadingMore, applySessionPage]);
 
   const handleLoad = React.useCallback(
     async (id: string) => {
@@ -65,10 +79,10 @@ export function SessionList(): React.ReactElement {
         const state = await ipc.getState();
         if (state.ok) setAgent(state.data);
         const list = await ipc.listSessions();
-        if (list.ok) setSessions(list.data);
+        if (list.ok) applySessionPage(list.data);
       }
     },
-    [setActiveSession, loadTranscript, setAgent, setSessions],
+    [setActiveSession, loadTranscript, setAgent, applySessionPage],
   );
 
   const openRename = React.useCallback(
@@ -89,9 +103,9 @@ export function SessionList(): React.ReactElement {
     if (res.ok) {
       setAgent(res.data);
       const list = await ipc.listSessions();
-      if (list.ok) setSessions(list.data);
+      if (list.ok) applySessionPage(list.data);
     }
-  }, [renaming, setAgent, setSessions]);
+  }, [renaming, setAgent, applySessionPage]);
 
   const commitDelete = React.useCallback(async () => {
     if (!deleting) return;
@@ -108,9 +122,9 @@ export function SessionList(): React.ReactElement {
         }
       }
       const list = await ipc.listSessions();
-      if (list.ok) setSessions(list.data);
+      if (list.ok) applySessionPage(list.data);
     }
-  }, [deleting, activeSessionId, clearConversation, setAgent, setActiveSession, setSessions]);
+  }, [deleting, activeSessionId, clearConversation, setAgent, setActiveSession, applySessionPage]);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -241,6 +255,19 @@ export function SessionList(): React.ReactElement {
           </List>
         </Box>
       ))}
+      {sessionNextOffset != null ? (
+        <Box sx={{ px: 1, pb: 1.5 }}>
+          <Button
+            fullWidth
+            size="small"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+            sx={{ textTransform: "none", fontSize: 12, color: "var(--omega-text-muted)" }}
+          >
+            {loadingMore ? "加载中…" : `加载更多（${sessions.length}/${sessionTotal}）`}
+          </Button>
+        </Box>
+      ) : null}
       <Dialog open={renaming !== null} onClose={() => setRenaming(null)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 700 }}>重命名会话</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>

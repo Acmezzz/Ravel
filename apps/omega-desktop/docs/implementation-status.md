@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
-> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust Dialog、workspace prune/remove 和 Worker 重启失败重试已落地。后续进入多会话和桌面工作区能力。
+> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表和会话列表分页已落地。后续进入 WorkerSlot pool 与桌面工作区能力。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**60/60 通过**。
+- 桌面和安全测试：**63/63 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -153,23 +153,25 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 #### 4.5 Shared IPC runtime schema
 
-静态 channel/error vocabulary 已完成，但还缺：
+静态 channel/error vocabulary 已完成第一轮：
 
-- preload、main、renderer 共用的运行时 schema。
-- handler registry 和 channel allowlist。
-- Worker init/request/response/event 的统一 schema。
-- channel ↔ handler 双向同步测试。
-- 统一错误码到所有 handler 的迁移。
+- 新增 `electron/ipc-registry.js`，作为 INVOKE/PUSH channel allowlist。
+- main `ipcMain.handle`、preload `ipcRenderer.invoke` 与 registry 有双向同步测试。
+- renderer/main 共享 `IPC_CHANNELS` 已覆盖窗口控制和 trust/retry 通道。
+- 仍缺：preload、main、renderer 共用的运行时 schema。
+- 仍缺：Worker init/request/response/event 的统一 schema。
+- 仍缺：统一错误码到所有 handler 的迁移。
 
 #### 4.6 Disk-first session reader 完善
 
-第一轮 JSONL 摘要读取已完成，还缺：
+第一轮 JSONL 摘要读取已完成：
 
 - mtime + size cache 已完成第一轮内存缓存。
-- 仍需分页和请求合并。
-- 历史消息按页加载。
-- session tree 的磁盘索引。
-- 大量 session 的后台扫描和取消。
+- `omega:listSessions` 返回 `{ items, total, nextOffset, treeIndex }` 分页对象。
+- Session Sidebar 支持「加载更多」，store 以 replace/append 合并分页。
+- session tree 磁盘索引已按 parentSessionId 生成 `treeIndex`。
+- 仍缺：历史消息按页加载。
+- 仍缺：请求合并、大量 session 的后台扫描和取消。
 
 #### 4.7 Session WorkerSlot pool
 
@@ -213,12 +215,11 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ## 5. 下一步实施顺序
 
-1. Shared IPC runtime schema 与 handler registry。
-2. Disk-first reader cache、分页和历史消息加载。
-3. Session WorkerSlot pool。
-4. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
-5. Model Center、safeStorage、Plugins/Skills、Extension UI。
-6. Typed settings、native integration、updater、签名发布和 Electron E2E。
+1. Session WorkerSlot pool。
+2. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
+3. Model Center、safeStorage、Plugins/Skills、Extension UI。
+4. Typed settings、native integration、updater、签名发布和 Electron E2E。
+5. 历史消息分页、IPC runtime schema 与 Worker 协议统一。
 
 ## 6. 明确不做
 

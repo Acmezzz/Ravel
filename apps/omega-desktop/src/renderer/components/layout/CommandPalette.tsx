@@ -49,7 +49,7 @@ export function CommandPalette(): React.ReactElement {
           useAppStore.getState().setActiveSession(record.data.id);
           useAppStore.getState().loadTranscript(record.data);
           const list = await ipc.listSessions();
-          if (list.ok) useAppStore.getState().setSessions(list.data);
+          if (list.ok) useAppStore.getState().applySessionPage(list.data);
         }
         return;
       }

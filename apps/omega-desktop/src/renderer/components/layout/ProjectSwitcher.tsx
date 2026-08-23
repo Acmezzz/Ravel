@@ -48,7 +48,7 @@ async function applyWorkspaceRecord(): Promise<void> {
   }
   if (models.ok) store.setModels(models.data);
   if (commands.ok) store.setCommands(commands.data);
-  if (sessions.ok) store.setSessions(sessions.data);
+  if (sessions.ok) store.applySessionPage(sessions.data);
   if (extensions.ok) store.setExtensionState(extensions.data);
   store.setGitSnapshot(git.ok ? git.data : null);
   store.setDiff(null);
@@ -62,7 +62,6 @@ export function ProjectSwitcher(): React.ReactElement {
   const connection = useAppStore((state) => state.connection);
   const shutdownPhase = useAppStore((state) => state.shutdownPhase);
   const setAgent = useAppStore((state) => state.setAgent);
-  const setSessions = useAppStore((state) => state.setSessions);
   const [anchor, setAnchor] = React.useState<HTMLElement | null>(null);
   const [workspaces, setWorkspaces] = React.useState<WorkspaceInfo[]>([]);
   const [busy, setBusy] = React.useState(false);

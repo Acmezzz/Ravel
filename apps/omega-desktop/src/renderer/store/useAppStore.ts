@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { ipc } from "../ipc/client";
 import type {
   SessionSummary,
+  SessionListPage,
   SessionRecord,
   SessionMessage,
   SessionTree,
@@ -93,6 +94,9 @@ export interface AppState {
   setThemeMode: (mode: ThemeMode, origin?: { x: number; y: number }) => void;
 
   sessions: SessionSummary[];
+  sessionTotal: number;
+  sessionNextOffset: number | null;
+  sessionTreeIndex: Record<string, string[]>;
   sessionActivity: Record<string, SessionActivity>;
   activeSessionId: string | null;
   messages: SessionMessage[];
@@ -140,6 +144,7 @@ export interface AppState {
   setWorkerError: (message: string | null, canRetry?: boolean) => void;
 
   setSessions: (sessions: SessionSummary[]) => void;
+  applySessionPage: (page: SessionListPage, mode?: "replace" | "append") => void;
   markSessionActivity: (sessionId: string, patch: Partial<SessionActivity>) => void;
   clearSessionUnread: (sessionId: string) => void;
   setActiveSession: (id: string | null) => void;
@@ -216,6 +221,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   sessions: [],
+  sessionTotal: 0,
+  sessionNextOffset: null,
+  sessionTreeIndex: {},
   sessionActivity: {},
   activeSessionId: null,
   messages: [],
@@ -266,6 +274,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   setWorkerError: (workerError, canRetry = false) => set({ workerError, canRetryWorker: Boolean(workerError) && canRetry }),
 
   setSessions: (sessions) => set({ sessions }),
+  applySessionPage: (page, mode = "replace") =>
+    set((state) => {
+      const incoming = Array.isArray(page?.items) ? page.items : [];
+      const merged =
+        mode === "append"
+          ? [...state.sessions.filter((session) => !incoming.some((item) => item.id === session.id)), ...incoming]
+          : incoming;
+      return {
+        sessions: merged,
+        sessionTotal: typeof page?.total === "number" ? page.total : merged.length,
+        sessionNextOffset: page?.nextOffset ?? null,
+        sessionTreeIndex: page?.treeIndex ?? (mode === "append" ? state.sessionTreeIndex : {}),
+      };
+    }),
   markSessionActivity: (sessionId, patch) =>
     set((state) => {
       const current = state.sessionActivity[sessionId] ?? { running: false, unread: false, compacting: false, failed: false };

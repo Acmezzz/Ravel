@@ -53,7 +53,7 @@ async function refreshControlPlane(): Promise<boolean> {
   if (modelsRes.ok) store.setModels(modelsRes.data);
   if (commandsRes.ok) store.setCommands(commandsRes.data);
   if (authRes.ok) store.setAuth(authRes.data);
-  if (sessionsRes.ok) store.setSessions(sessionsRes.data);
+  if (sessionsRes.ok) store.applySessionPage(sessionsRes.data);
   return stateRes.ok;
 }
 
@@ -92,7 +92,7 @@ async function startNewSession(): Promise<void> {
   const state = await ipc.getState();
   if (state.ok) store.setAgent(state.data);
   const list = await ipc.listSessions();
-  if (list.ok) store.setSessions(list.data);
+  if (list.ok) store.applySessionPage(list.data);
 }
 
 /**
@@ -103,7 +103,6 @@ export function App(): React.ReactElement {
   const setConnection = useAppStore((s) => s.setConnection);
   const setShutdownPhase = useAppStore((s) => s.setShutdownPhase);
   const setBootstrapError = useAppStore((s) => s.setBootstrapError);
-  const setSessions = useAppStore((s) => s.setSessions);
   const setExtensionState = useAppStore((s) => s.setExtensionState);
   const setExtensionLoading = useAppStore((s) => s.setExtensionLoading);
   const themeMode = useAppStore((s) => s.themeMode);
@@ -245,7 +244,7 @@ export function App(): React.ReactElement {
         case "session_info_changed":
           store.patchAgent({ sessionName: event.name ?? null });
           void ipc.listSessions().then((res) => {
-            if (res.ok) useAppStore.getState().setSessions(res.data);
+            if (res.ok) useAppStore.getState().applySessionPage(res.data);
           });
           break;
         case "auto_retry_start":
@@ -370,7 +369,7 @@ export function App(): React.ReactElement {
       offStatus();
       offTransport();
     };
-  }, [setConnection, setShutdownPhase, setBootstrapError, setSessions, setExtensionState, setExtensionLoading]);
+  }, [setConnection, setShutdownPhase, setBootstrapError, setExtensionState, setExtensionLoading]);
 
   React.useEffect(() => {
     // Workbench shortcuts: Ctrl+K toggles the command palette, Ctrl+Shift+N

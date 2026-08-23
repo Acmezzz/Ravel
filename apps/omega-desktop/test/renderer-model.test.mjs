@@ -262,6 +262,9 @@ test("session list supports search, rename, and delete affordances", async () =>
   assert.match(source, /运行中/);
   assert.match(source, /未读/);
   assert.match(source, /子会话/);
+  assert.match(source, /加载更多/);
+  assert.match(source, /applySessionPage/);
+  assert.match(source, /sessionNextOffset/);
 });
 
 test("workbench registers Ctrl+K palette and Ctrl+Shift+N new-session shortcuts", async () => {
@@ -405,8 +408,11 @@ test("session list uses disk-first JSONL reader instead of starting a live runti
   const reader = await read("../electron/session-reader.js");
   assert.match(main, /readSessionSummaries/);
   assert.match(main, /piSessionsRoot/);
+  assert.match(main, /okResult\(page\)/);
   assert.match(reader, /createReadStream/);
   assert.match(reader, /session_info/);
+  assert.match(reader, /treeIndex/);
+  assert.match(reader, /nextOffset/);
 });
 
 test("R3: deferred thinking and stats/export IPC surfaces", async () => {

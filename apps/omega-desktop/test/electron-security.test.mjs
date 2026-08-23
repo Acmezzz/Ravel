@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { toRendererEvent } from "../electron/agent-bridge.js";
+import { INVOKE_CHANNELS, PUSH_CHANNELS, extractHandleChannels, extractInvokeChannels, uniqueSorted, diffChannelSets } from "../electron/ipc-registry.js";
 
 const read = (rel) => readFile(new URL(rel, import.meta.url), "utf8");
 
@@ -186,6 +187,28 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
   assert.match(source, /ipcRenderer\.invoke\("agent:abort"\)/);
   // Untrusted inputs are validated before invoking.
   assert.match(source, /invalid_args/);
+});
+
+test("IPC registry stays in sync with main handlers and preload invokes", async () => {
+  const main = await read("../electron/main.js");
+  const preload = await read("../electron/preload.js");
+  const contracts = await read("../electron/ipc-contracts.js");
+  const shared = await read("../src/shared/ipc-contracts.ts");
+  const handles = uniqueSorted(extractHandleChannels(main));
+  const invokes = uniqueSorted(extractInvokeChannels(preload));
+  const expected = uniqueSorted(INVOKE_CHANNELS);
+  assert.deepEqual(diffChannelSets(expected, handles), { missing: [], extra: [] });
+  assert.deepEqual(diffChannelSets(expected, invokes), { missing: [], extra: [] });
+  for (const channel of INVOKE_CHANNELS) {
+    assert.match(contracts, new RegExp(`"${channel}"`));
+    assert.match(shared, new RegExp(`"${channel}"`));
+  }
+  for (const channel of PUSH_CHANNELS) {
+    assert.match(main, new RegExp(`webContents\\.send\\("${channel}"`));
+    assert.match(preload, new RegExp(`ipcRenderer\\.on\\("${channel}"`));
+    assert.match(contracts, new RegExp(`"${channel}"`));
+    assert.match(shared, new RegExp(`"${channel}"`));
+  }
 });
 
 test("index.html CSP carries the style nonce but no unsafe-inline / unsafe-eval", async () => {

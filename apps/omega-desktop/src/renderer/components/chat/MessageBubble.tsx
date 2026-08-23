@@ -75,7 +75,7 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
         const state = await ipc.getState();
         if (state.ok) setAgent(state.data);
         const list = await ipc.listSessions();
-        if (list.ok) useAppStore.getState().setSessions(list.data);
+        if (list.ok) useAppStore.getState().applySessionPage(list.data);
         if (res.data.selectedText) setComposerPrefill(res.data.selectedText);
       }
     } finally {
