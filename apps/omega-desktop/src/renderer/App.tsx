@@ -355,6 +355,10 @@ export function App(): React.ReactElement {
           useAppStore.getState().setWorkerError(data.error ?? "Agent worker 正在重启…", false);
           useAppStore.getState().setComposerError("Agent worker 正在重启…");
         }
+      } else if (data.state === "renderer-crashed" || data.state === "renderer-unresponsive") {
+        setConnection("error");
+        useAppStore.getState().setWorkerError(data.state === "renderer-crashed" ? "界面进程已崩溃，请重新加载" : "界面进程无响应，请稍候或重新加载", false);
+        useAppStore.getState().setComposerError(data.state === "renderer-crashed" ? "界面进程已崩溃，主进程正在等待操作" : "界面进程暂时无响应");
       } else if (data.state === "dead") {
         setConnection("error");
         const message = data.error ? `Agent worker 已断开：${data.error}` : "Agent worker 已断开";

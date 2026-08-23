@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**84/84 通过**。
+- 桌面和安全测试：**86/86 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -207,10 +207,9 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 ### P2：产品化与发布
 
 - Typed desktop settings 第一轮已落地：`electron/desktop-settings.js` 管理 theme、worker cap/TTL、right panel、last session/workspace、window bounds；Settings Dialog 可改 worker 上限。
-- 仍缺：single-instance、window bounds restore、多显示器修正、语言、通知和 keybindings 的统一权威边界。
-- Single-instance、second-instance focus、window bounds restore、多显示器修正。
-- Renderer crash/unresponsive 处理。
-- Native open/save/reveal dialog、深链恢复 workspace/session。
+- Typed desktop settings 第一轮已落地：`electron/desktop-settings.js` 管理 theme、worker cap/TTL、right panel、last session/workspace、window bounds 和 permission profile；Settings Dialog 可改 worker 上限及权限 profile。
+- Native integration 第一轮已落地：single-instance lock、second-instance focus、workspace/session 启动参数与 `omega://` 深链解析、window bounds restore、多显示器越界修正、renderer crash/unresponsive 事件处理、原生通知和 open/save/reveal 基础能力。
+- 仍缺：语言和 keybindings 的统一权威边界、关闭到托盘策略。
 - GitHub Release updater、下载进度、校验、失败恢复和忽略版本。
 - Windows Authenticode、macOS notarization、版本 manifest。
 - Electron E2E、electron-builder installer smoke、updater smoke、dependency audit 和 CI release gates。

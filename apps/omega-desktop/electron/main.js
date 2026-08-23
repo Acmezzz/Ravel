@@ -13,6 +13,7 @@ import {
   ipcMain,
   Menu,
   Notification,
+  screen,
   session as electronSession,
   shell,
   dialog,
@@ -65,7 +66,29 @@ let workspaceRegistry;
 let closeDecision = null;
 let closeHandling = false;
 let closeApproved = false;
+let singleInstancePrimary = true;
+let startupRequest = { workspace: process.env.OMEGA_WORKSPACE ?? null, sessionId: null };
+let persistBoundsTimer = null;
 const recentEventsBySession = new Map();
+
+function parseStartupRequest(argv = process.argv) {
+  const result = { workspace: process.env.OMEGA_WORKSPACE ?? null, sessionId: null };
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index];
+    if (value === "--workspace" && typeof argv[index + 1] === "string") result.workspace = argv[++index];
+    else if (value === "--session" && typeof argv[index + 1] === "string") result.sessionId = argv[++index];
+    else if (typeof value === "string" && value.startsWith("omega://")) {
+      try {
+        const url = new URL(value);
+        result.workspace = url.searchParams.get("workspace") ?? result.workspace;
+        result.sessionId = url.searchParams.get("session") ?? result.sessionId;
+      } catch {
+        /* ignore invalid deep links */
+      }
+    }
+  }
+  return result;
+}
 
 function rootOf() {
   return app.isPackaged ? (process.resourcesPath ? join(process.resourcesPath, "omega-runtime") : app.getAppPath()) : DEV_ROOT;
@@ -180,6 +203,45 @@ async function requestCloseDecision() {
       closeDecision = null;
     });
   return closeDecision;
+}
+
+function validWindowBounds(bounds) {
+  if (!bounds || typeof bounds !== "object") return null;
+  const displays = screen.getAllDisplays();
+  const visible = displays.some((display) => {
+    const area = display.workArea;
+    return bounds.x < area.x + area.width && bounds.x + bounds.width > area.x && bounds.y < area.y + area.height && bounds.y + bounds.height > area.y;
+  });
+  if (visible) return bounds;
+  const primary = screen.getPrimaryDisplay().workArea;
+  return { ...bounds, x: primary.x + 40, y: primary.y + 40, maximized: false };
+}
+
+function windowOptions() {
+  const bounds = validWindowBounds(desktopSettings?.get()?.windowBounds);
+  return {
+    ...(bounds ? { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height } : { width: 1180, height: 820 }),
+    minWidth: 760,
+    minHeight: 560,
+    show: false,
+  };
+}
+
+function persistWindowBounds() {
+  if (!win || win.isDestroyed() || !desktopSettings) return;
+  clearTimeout(persistBoundsTimer);
+  persistBoundsTimer = setTimeout(() => {
+    if (!win || win.isDestroyed()) return;
+    const bounds = win.getNormalBounds();
+    desktopSettings.update({ windowBounds: { ...bounds, maximized: win.isMaximized() } });
+  }, 150);
+}
+
+function focusMainWindow() {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
 }
 
 function rendererPath() {
@@ -309,6 +371,7 @@ async function rpc(method, args, fallbackCode = "call_failed") {
 
 async function bootstrap() {
   desktopSettings = createDesktopSettingsStore(desktopSettingsFile());
+  startupRequest = parseStartupRequest();
   credentialStore = createCredentialStore(credentialStoreFile(), {
     encryptString: (value) => safeStorage.encryptString(value),
     decryptString: (buffer) => safeStorage.decryptString(buffer),
@@ -317,11 +380,11 @@ async function bootstrap() {
   const prefs = desktopSettings.get();
   workerPool = createWorkerSlotPool({ cap: prefs.workerCap, idleTtlMs: prefs.workerIdleTtlMs });
   workspaceRegistry = createWorkspaceRegistry(workspaceRegistryFile());
-  const requested = process.env.OMEGA_WORKSPACE ? realRoot(resolve(process.env.OMEGA_WORKSPACE)) : realRoot(rootOf());
+  const requested = startupRequest.workspace ? realRoot(resolve(startupRequest.workspace)) : realRoot(rootOf());
   const cwd = workspaceRegistry.has(requested) ? workspaceRegistry.resolveAuthorized(requested) : workspaceRegistry.add(requested);
   activeCwd = cwd;
   process.stdout.write(`[main] cwd=${cwd}\n`);
-  const slot = await acquireSlot({ cwd, projectTrusted: projectTrust.isTrusted(cwd) });
+  const slot = await acquireSlot({ sessionId: startupRequest.sessionId, cwd, projectTrusted: projectTrust.isTrusted(cwd) });
   activeCwd = slot.cwd ?? cwd;
   agentReady = true;
   process.stdout.write("[main] agent worker ready\n");
@@ -354,11 +417,7 @@ function requireWorker() {
 async function createWindow() {
   const frameless = process.platform === "win32";
   win = new BrowserWindow({
-    width: 1180,
-    height: 820,
-    minWidth: 760,
-    minHeight: 560,
-    show: false,
+    ...windowOptions(),
     title: "Omega Desktop",
     frame: !frameless,
     webPreferences: {
@@ -381,8 +440,16 @@ async function createWindow() {
       event.preventDefault();
     }
   });
-  win.on("maximize", () => win?.webContents.send("window:maximizedChanged", true));
-  win.on("unmaximize", () => win?.webContents.send("window:maximizedChanged", false));
+  win.on("maximize", () => {
+    persistWindowBounds();
+    win?.webContents.send("window:maximizedChanged", true);
+  });
+  win.on("unmaximize", () => {
+    persistWindowBounds();
+    win?.webContents.send("window:maximizedChanged", false);
+  });
+  win.on("move", () => persistWindowBounds());
+  win.on("resize", () => persistWindowBounds());
   win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   win.webContents.on("will-navigate", (event, url) => {
     if (url !== expectedPageUrl()) event.preventDefault();
@@ -390,6 +457,20 @@ async function createWindow() {
   electronSession.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   win.webContents.on("console-message", (details) => {
     process.stdout.write(`[renderer] [${details.level}] ${details.message}\n`);
+  });
+  win.webContents.on("render-process-gone", (_event, details) => {
+    if (shuttingDown || !win || win.isDestroyed()) return;
+    const reason = details?.reason ?? "unknown";
+    sendTransportState("renderer-crashed", { reason, canRetry: true });
+    void dialog.showMessageBox(win, { type: "error", title: "Omega 渲染器已停止", message: "界面进程已崩溃，可以重新加载界面。", detail: `原因：${reason}`, buttons: ["重新加载", "退出"] }).then(({ response }) => {
+      if (!win || win.isDestroyed()) return;
+      if (response === 0) win.webContents.reloadIgnoringCache();
+      else void win.close();
+    });
+  });
+  win.webContents.on("unresponsive", () => {
+    if (!win || win.isDestroyed() || shuttingDown) return;
+    sendTransportState("renderer-unresponsive", { canRetry: true });
   });
   win.on("close", (event) => {
     if (closeApproved || closeHandling || !isAgentBusy()) return;
@@ -400,8 +481,10 @@ async function createWindow() {
     });
   });
   win.on("closed", () => {
+    persistWindowBounds();
     win = undefined;
   });
+  if (desktopSettings?.get()?.windowBounds?.maximized) win.maximize();
   if (bootstrapError) {
     await win.loadFile(rendererPath());
     win.webContents.send("app:bootstrap-error", { message: bootstrapError.slice(0, 2_000) });
@@ -1319,9 +1402,36 @@ async function shutdown() {
   await workerPool.disposeAll();
 }
 
+singleInstancePrimary = app.requestSingleInstanceLock();
+if (!singleInstancePrimary) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, commandLine) => {
+    startupRequest = parseStartupRequest(commandLine);
+    focusMainWindow();
+    if (startupRequest.workspace && workspaceRegistry) {
+      void (async () => {
+        try {
+          const root = authorizedWorkspace(startupRequest.workspace);
+          if (!isForegroundBusy() && root !== activeCwd) {
+            const trust = projectTrust.inspect(root);
+            if (!trust.requiresTrust || trust.decision === "trusted") {
+              const result = await rpc("newSession", { workspace: root, projectTrusted: trust.decision === "trusted" }, "write_failed");
+              if (result.ok) rememberActive(result.data);
+            }
+          }
+        } catch {
+          /* startup deep-link is best effort; keep the existing window usable */
+        }
+      })();
+    }
+  });
+}
+
 app
   .whenReady()
   .then(async () => {
+    if (!singleInstancePrimary) return;
     try {
       await bootstrap();
     } catch (error) {
