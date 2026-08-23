@@ -494,6 +494,24 @@ export interface FileReadResult {
   truncated?: boolean;
 }
 
+export interface GitWorktreeInfo {
+  path: string;
+  head: string;
+  branch: string;
+  bare: boolean;
+  detached: boolean;
+  locked: boolean;
+  prunable: boolean;
+  dirty: boolean;
+  current: boolean;
+}
+
+export interface GitWorktreeList {
+  repoRoot: string;
+  isGitRepo: boolean;
+  worktrees: GitWorktreeInfo[];
+}
+
 export interface BashResultDTO {
   output: string;
   exitCode: number | undefined;

@@ -57,8 +57,36 @@ export function CommandPalette(): React.ReactElement {
         kind: "ui",
         id: "tree",
         title: "打开会话分支树",
-        description: "查看并切换当前会话分支",
+        description: "查看、预览并回退当前会话分支",
         run: () => setTreeOpen(true),
+      },
+      {
+        kind: "ui",
+        id: "clone",
+        title: "复制当前分支",
+        description: "在当前位置创建独立 session",
+        run: () => {
+          void (async () => {
+            const res = await ipc.clone();
+            if (!res.ok) {
+              useAppStore.getState().setComposerError(res.message);
+              return;
+            }
+            useAppStore.getState().setActiveSession(res.data.record.id);
+            useAppStore.getState().loadTranscript(res.data.record);
+            const state = await ipc.getState();
+            if (state.ok) useAppStore.getState().setAgent(state.data);
+            const list = await ipc.listSessions();
+            if (list.ok) useAppStore.getState().applySessionPage(list.data);
+          })();
+        },
+      },
+      {
+        kind: "ui",
+        id: "worktree",
+        title: "打开 Worktree",
+        description: "查看、创建和删除 Git worktree",
+        run: () => useAppStore.getState().setRightTab("worktree"),
       },
     ],
     [setModelCenterOpen, setSettingsOpen, setTreeOpen],

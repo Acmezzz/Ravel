@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { resolveExisting, resolveForCreate, PathSecurityError } from "../electron/path-security.js";
 import * as persistence from "../electron/persistence.js";
 import { listDir } from "../electron/workspace-service.js";
-import { computeSnapshot, revertFiles } from "../electron/diff-service.js";
+import { computeSnapshot, revertFiles, parseWorktreeList } from "../electron/diff-service.js";
 import { createWorkspaceRegistry } from "../electron/workspace-registry.js";
 import { readSessionSummaries } from "../electron/session-reader.js";
 
@@ -160,6 +160,25 @@ test("git snapshot token rejects a path not present in the approved snapshot", (
   assert.equal(result.applied, false);
   assert.equal(result.revertedFiles.length, 0);
   assert.match(result.errors[0], /approved snapshot/);
+});
+
+test("worktree porcelain parser keeps branch names and flags", () => {
+  const worktrees = parseWorktreeList([
+    "worktree /repo",
+    "HEAD abc",
+    "branch refs/heads/main",
+    "",
+    "worktree /repo-feat",
+    "HEAD def",
+    "detached",
+    "locked reason",
+    "prunable",
+  ].join("\n"));
+  assert.equal(worktrees.length, 2);
+  assert.equal(worktrees[0].branch, "main");
+  assert.equal(worktrees[1].detached, true);
+  assert.equal(worktrees[1].locked, true);
+  assert.equal(worktrees[1].prunable, true);
 });
 
 test("busy close plans abort then flush/dispose/kill", async () => {

@@ -142,6 +142,11 @@ test("new IPC handlers stay behind senderAllowed and return an IpcResult envelop
     "omega:inspectProjectTrust",
     "omega:decideProjectTrust",
     "omega:retryWorker",
+    "omega:clone",
+    "omega:revealInFolder",
+    "omega:listWorktrees",
+    "omega:addWorktree",
+    "omega:removeWorktree",
     "agent:abort",
   ]) {
     assert.match(source, new RegExp(`ipcMain\\.handle\\("${channel}"`), `${channel} handler present`);
@@ -189,7 +194,12 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "getSessionTree",
     "getForkCandidates",
     "fork",
+    "clone",
     "navigateTree",
+    "revealInFolder",
+    "listWorktrees",
+    "addWorktree",
+    "removeWorktree",
   ]) {
     assert.match(source, new RegExp(`ipcRenderer\\.invoke\\("omega:${method}"`), `${method} invoke present`);
   }

@@ -18,6 +18,7 @@ import CompressIcon from "@mui/icons-material/Compress";
 import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import SettingsBrightnessIcon from "@mui/icons-material/SettingsBrightness";
@@ -468,6 +469,16 @@ export function Header(): React.ReactElement {
             variant={rightTab === "workflow" && rightOpen ? "filled" : "outlined"}
             color="primary"
             onClick={() => setRightTab("workflow")}
+            sx={{ cursor: "pointer", display: { xs: "none", sm: "inline-flex" }, fontSize: 11.5 }}
+          />
+        </Tooltip>
+        <Tooltip title="Worktree">
+          <Chip
+            icon={<AccountTreeOutlinedIcon sx={{ fontSize: 15 }} />}
+            label="Worktree"
+            size="small"
+            variant={rightTab === "worktree" && rightOpen ? "filled" : "outlined"}
+            onClick={() => setRightTab("worktree")}
             sx={{ cursor: "pointer", display: { xs: "none", sm: "inline-flex" }, fontSize: 11.5 }}
           />
         </Tooltip>

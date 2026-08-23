@@ -5,6 +5,7 @@ import Tooltip from "@mui/material/Tooltip";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import ExploreIcon from "@mui/icons-material/Explore";
 import DifferenceIcon from "@mui/icons-material/Difference";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import { useAppStore } from "../../store/useAppStore";
 import { TitleBar } from "./TitleBar";
 import { Header } from "./Header";
@@ -188,6 +189,15 @@ export function Workbench(): React.ReactElement {
                 sx={{ color: rightTab === "diff" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
               >
                 <DifferenceIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Worktree">
+              <IconButton
+                size="small"
+                onClick={() => setRightTab("worktree")}
+                sx={{ color: rightTab === "worktree" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
+              >
+                <AccountTreeOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>

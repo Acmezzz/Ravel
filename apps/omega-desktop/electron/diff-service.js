@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, isAbsolute, relative, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { isInside } from "./path-security.js";
 
 const snapshotTokens = new Map();
 const SNAPSHOT_TTL_MS = 5 * 60_000;
@@ -456,6 +457,141 @@ export function computeSnapshot(cwd) {
   const { gitState: _gitState, ...publicSnapshot } = snapshot;
   return { ...publicSnapshot, snapshotToken: rememberSnapshot(snapshot) };
 }
+
+function parseWorktreeList(text) {
+  const worktrees = [];
+  let current = null;
+  const flush = () => {
+    if (current) worktrees.push(current);
+    current = null;
+  };
+  for (const raw of String(text ?? "").split("\n")) {
+    const line = raw.trimEnd();
+    if (!line.trim()) {
+      flush();
+      continue;
+    }
+    if (line.startsWith("worktree ")) {
+      flush();
+      current = {
+        path: line.slice("worktree ".length),
+        head: "",
+        branch: "",
+        bare: false,
+        detached: false,
+        locked: false,
+        prunable: false,
+        dirty: false,
+        current: false,
+      };
+      continue;
+    }
+    if (!current) continue;
+    if (line.startsWith("HEAD ")) current.head = line.slice("HEAD ".length);
+    else if (line.startsWith("branch ")) current.branch = line.slice("branch ".length).replace(/^refs\/heads\//, "");
+    else if (line === "bare") current.bare = true;
+    else if (line === "detached") current.detached = true;
+    else if (line.startsWith("locked")) current.locked = true;
+    else if (line === "prunable") current.prunable = true;
+  }
+  flush();
+  return worktrees;
+}
+
+export function listWorktrees(cwd) {
+  if (!isInsideWorkTree(cwd)) return { repoRoot: cwd, isGitRepo: false, worktrees: [] };
+  const root = repoRoot(cwd);
+  let text = "";
+  try {
+    text = git(root, ["worktree", "list", "--porcelain"]);
+  } catch {
+    return { repoRoot: root, isGitRepo: true, worktrees: [] };
+  }
+  const worktrees = parseWorktreeList(text).map((worktree) => {
+    let dirty = false;
+    try {
+      dirty = Boolean(git(worktree.path, ["status", "--porcelain", "-uall"]).trim());
+    } catch {
+      dirty = false;
+    }
+    return {
+      ...worktree,
+      dirty,
+      current: isInside(worktree.path, cwd),
+    };
+  });
+  return { repoRoot: root, isGitRepo: true, worktrees };
+}
+
+function assertSafeWorktreePath(path) {
+  if (typeof path !== "string" || !path.trim()) {
+    const error = new Error("worktree path is required");
+    error.code = "invalid_args";
+    throw error;
+  }
+  const abs = resolve(path.trim());
+  if (!isAbsolute(abs)) {
+    const error = new Error("worktree path must be absolute");
+    error.code = "invalid_args";
+    throw error;
+  }
+  return abs;
+}
+
+export function addWorktree(cwd, { path, branch, createBranch = true } = {}) {
+  if (!isInsideWorkTree(cwd)) {
+    const error = new Error("当前目录不是 Git 仓库");
+    error.code = "not_a_git_repo";
+    throw error;
+  }
+  const root = repoRoot(cwd);
+  const abs = assertSafeWorktreePath(path);
+  const branchName = typeof branch === "string" ? branch.trim().slice(0, 128) : "";
+  if (branchName && !/^[A-Za-z0-9._/\-]+$/.test(branchName)) {
+    const error = new Error("branch name is invalid");
+    error.code = "invalid_args";
+    throw error;
+  }
+  const args = ["worktree", "add"];
+  if (createBranch && branchName) args.push("-b", branchName);
+  args.push(abs);
+  if (!createBranch && branchName) args.push(branchName);
+  git(root, args);
+  return listWorktrees(cwd);
+}
+
+export function removeWorktree(cwd, { path, force = false } = {}) {
+  if (!isInsideWorkTree(cwd)) {
+    const error = new Error("当前目录不是 Git 仓库");
+    error.code = "not_a_git_repo";
+    throw error;
+  }
+  const root = repoRoot(cwd);
+  const abs = assertSafeWorktreePath(path);
+  if (resolve(abs) === resolve(root) || resolve(abs) === resolve(cwd)) {
+    const error = new Error("不能删除当前正在使用的 worktree");
+    error.code = "workspace_in_use";
+    throw error;
+  }
+  const listed = listWorktrees(cwd).worktrees.find((item) => resolve(item.path) === abs);
+  if (!listed) {
+    const error = new Error("worktree not found");
+    error.code = "not_found";
+    throw error;
+  }
+  if (listed.dirty && !force) {
+    const error = new Error("worktree has uncommitted changes");
+    error.code = "worktree_dirty";
+    throw error;
+  }
+  const args = ["worktree", "remove"];
+  if (force) args.push("--force");
+  args.push(abs);
+  git(root, args);
+  return listWorktrees(cwd);
+}
+
+export { parseWorktreeList };
 
 function buildPatch(filePath, hunkRaws) {
   return [`diff --git a/${filePath} b/${filePath}`, `--- a/${filePath}`, `+++ b/${filePath}`, ...hunkRaws, ""].join("\n");

@@ -47,6 +47,11 @@ export function listDir(root, relPath) {
   return { path: relPath ?? "", entries };
 }
 
+export function revealPath(root, relPath) {
+  const resolved = resolveExisting(root, relPath || ".");
+  return { path: resolved.relative, absolutePath: resolved.path, isDir: statSync(resolved.path).isDirectory() };
+}
+
 export function readFile(root, relPath) {
   const abs = resolveUnder(root, relPath);
   const info = statSync(abs);

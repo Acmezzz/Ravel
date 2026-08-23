@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
-> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表、会话列表分页、WorkerSlot pool、Model Center 第一轮和 typed desktop settings 已落地。后续进入 Tree/FileViewer/Worktree 与 Plugins/Skills。
+> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表、会话列表分页、WorkerSlot pool、Model Center 第一轮、typed desktop settings、Session Tree/Clone、Worktree Manager 和 FileViewer 第一轮已落地。后续进入 Plugins/Skills、Extension UI 与产品化。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**71/71 通过**。
+- 桌面和安全测试：**72/72 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -186,13 +186,12 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ### P1：桌面工作区和会话体验
 
-- Session Sidebar 第一轮已完成：workspace 分组、当前工作区、unread/running/失败/压缩中、parent/child 缩进。
-- Session Sidebar 仍缺：worktree 分组、右键菜单、删除父 session 时安全重挂。
-- Session Tree：fork preview、clone、rewind 二次确认、parent/child 可视化。
-- FileViewer：多标签、source/preview/diff、行号引用、大文件分页。
-- Markdown、Mermaid、KaTeX、图片、PDF、DOCX 等预览。
-- 文件下载、Reveal in Folder、watch/live refresh、上传冲突处理。
-- Worktree Manager：创建、删除、dirty 检查、branch、remote、fetch。
+- Session Sidebar 第一轮已完成：workspace 分组、当前工作区、unread/running/失败/压缩中、parent/child 缩进；当前会话可 Clone。
+- Session Sidebar 仍缺：按 worktree 分组、完整右键菜单、删除父 session 时安全重挂。
+- Session Tree 第一轮已落地：单击预览将继承的上下文、双击/确认后 rewind、busy 时禁止破坏性切换、Clone 当前分支。
+- FileViewer 第一轮已落地：源码/Markdown 预览、行号、选区 `@file:start-end` 引用、Reveal in Folder。仍缺多标签、diff 模式、大文件分页、Mermaid/KaTeX/PDF/DOCX。
+- 文件下载、watch/live refresh、上传冲突处理仍待做。
+- Worktree Manager 第一轮已落地：列表、创建（原生目录选择器）、删除、dirty 二次确认；仍缺 remote/fetch 和按 worktree 聚合会话。
 - Git stale snapshot 自动刷新和更细粒度审查状态。
 
 ### P1：配置与生态
@@ -218,9 +217,9 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ## 5. 下一步实施顺序
 
-1. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
-2. Plugins/Skills、Extension UI、权限 profile。
-3. Model Center OAuth/custom provider/discovery、native integration、updater、签名发布和 Electron E2E。
+1. Plugins/Skills、Extension UI、权限 profile。
+2. Model Center OAuth/custom provider/discovery、FileViewer 多媒体预览、native integration。
+3. updater、签名发布和 Electron E2E。
 4. 历史消息分页、IPC runtime schema 与 Worker 协议统一。
 5. WorkerSlot 同 workspace 复用和后台 session-specific RPC。
 

@@ -239,6 +239,25 @@ const methods = {
       throw withBusyCode(error);
     }
   },
+  clone: async () => {
+    const leafId = runtime.session.sessionManager.getLeafId();
+    if (!leafId) {
+      const error = new Error("当前会话还没有可复制的内容");
+      error.code = "not_found";
+      throw error;
+    }
+    try {
+      const result = await runtime.fork(leafId, { position: "at" });
+      if (result.cancelled) {
+        const error = new Error("Clone cancelled");
+        error.code = "cancelled";
+        throw error;
+      }
+      return { record: bridge.sessionRecordOf(runtime) };
+    } catch (error) {
+      throw withBusyCode(error);
+    }
+  },
   navigateTree: ({ targetId }) =>
     runtime.session
       .navigateTree(targetId)

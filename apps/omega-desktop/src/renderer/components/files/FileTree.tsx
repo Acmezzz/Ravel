@@ -34,6 +34,7 @@ function TreeRow({
   expanded,
   onToggleDir,
   onOpenFile,
+  onReveal,
 }: {
   name: string;
   rel: string;
@@ -43,6 +44,7 @@ function TreeRow({
   expanded: boolean;
   onToggleDir: (rel: string) => void;
   onOpenFile: (rel: string) => void;
+  onReveal: (rel: string) => void;
 }): React.ReactElement {
   return (
     <Box
@@ -82,6 +84,18 @@ function TreeRow({
       {!isDir && size > 0 ? (
         <Typography sx={{ fontSize: 10, color: "var(--omega-text-dim)", ml: "auto", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
       ) : null}
+      <Tooltip title="在资源管理器中显示">
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            onReveal(rel);
+          }}
+          sx={{ ml: "auto", p: 0.25, color: "var(--omega-text-dim)", opacity: 0, ".MuiBox-root:hover &": { opacity: 1 } }}
+        >
+          <FolderOpenIcon sx={{ fontSize: 13 }} />
+        </IconButton>
+      </Tooltip>
     </Box>
   );
 }
@@ -90,6 +104,9 @@ function TreeRow({
 export function FileTree(): React.ReactElement {
   const openViewer = useAppStore((s) => s.openViewer);
   const workspaceEpoch = useAppStore((s) => s.workspaceEpoch);
+  const reveal = React.useCallback((rel: string) => {
+    void ipc.revealInFolder({ path: rel });
+  }, []);
   const [dirs, setDirs] = React.useState<Map<string, DirState>>(() => new Map([["", { loading: true, error: null, listing: null }]]));
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([""]));
 
@@ -146,6 +163,7 @@ export function FileTree(): React.ReactElement {
           expanded={expanded.has(rel)}
           onToggleDir={toggleDir}
           onOpenFile={() => undefined}
+          onReveal={reveal}
         />
       ),
     );
@@ -181,6 +199,7 @@ export function FileTree(): React.ReactElement {
               expanded={false}
               onToggleDir={toggleDir}
               onOpenFile={() => undefined}
+              onReveal={reveal}
             />,
           );
       } else {
@@ -195,6 +214,7 @@ export function FileTree(): React.ReactElement {
             expanded={false}
             onToggleDir={() => undefined}
             onOpenFile={(path) => void openViewer(path)}
+            onReveal={reveal}
           />,
         );
       }

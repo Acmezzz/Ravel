@@ -71,7 +71,7 @@ export interface SessionActivity {
 
 export interface LayoutState {
   rightPanelOpen: boolean;
-  rightTab: "workflow" | "scout" | "diff";
+  rightTab: "workflow" | "scout" | "diff" | "worktree";
   commandPaletteOpen: boolean;
   treeOpen: boolean;
   leftTab: "sessions" | "files";

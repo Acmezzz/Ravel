@@ -10,6 +10,7 @@ import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import EditIcon from "@mui/icons-material/EditOutlined";
 import DeleteIcon from "@mui/icons-material/DeleteOutline";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -58,6 +59,7 @@ export function SessionList(): React.ReactElement {
   const [renaming, setRenaming] = React.useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = React.useState<{ id: string; title: string } | null>(null);
   const [loadingMore, setLoadingMore] = React.useState(false);
+  const [cloning, setCloning] = React.useState(false);
 
   const loadMore = React.useCallback(async () => {
     if (sessionNextOffset == null || loadingMore) return;
@@ -109,6 +111,24 @@ export function SessionList(): React.ReactElement {
       if (list.ok) applySessionPage(list.data);
     }
   }, [renaming, setAgent, applySessionPage]);
+
+  const cloneActive = React.useCallback(async () => {
+    if (cloning || connection === "running") return;
+    setCloning(true);
+    try {
+      const res = await ipc.clone();
+      if (res.ok) {
+        setActiveSession(res.data.record.id);
+        loadTranscript(res.data.record);
+        const state = await ipc.getState();
+        if (state.ok) setAgent(state.data);
+        const list = await ipc.listSessions();
+        if (list.ok) applySessionPage(list.data);
+      }
+    } finally {
+      setCloning(false);
+    }
+  }, [cloning, connection, setActiveSession, loadTranscript, setAgent, applySessionPage]);
 
   const commitDelete = React.useCallback(async () => {
     if (!deleting) return;
@@ -229,15 +249,32 @@ export function SessionList(): React.ReactElement {
                   />
                   <Box className="row-actions" sx={{ display: "flex", transition: "opacity .12s ease" }}>
                     {active ? (
-                      <Tooltip title="重命名当前会话">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => openRename(session.id, e)}
-                          sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}
-                        >
-                          <EditIcon sx={{ fontSize: 15 }} />
-                        </IconButton>
-                      </Tooltip>
+                      <>
+                        <Tooltip title={connection === "running" ? "生成中无法复制" : cloning ? "复制中…" : "复制当前分支"}>
+                          <span>
+                            <IconButton
+                              size="small"
+                              disabled={connection === "running" || cloning}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void cloneActive();
+                              }}
+                              sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}
+                            >
+                              <ContentCopyIcon sx={{ fontSize: 15 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="重命名当前会话">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => openRename(session.id, e)}
+                            sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}
+                          >
+                            <EditIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </>
                     ) : null}
                     <Tooltip title="删除会话">
                       <IconButton

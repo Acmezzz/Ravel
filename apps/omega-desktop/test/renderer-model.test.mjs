@@ -319,16 +319,21 @@ test("theme system has dual palettes, system follow, and view transition", async
 test("fork, tree overlay, and model picker exist as surfaces", async () => {
   const tree = await read("../src/renderer/components/layout/TreeOverlay.tsx");
   assert.match(tree, /navigateTree/);
+  assert.match(tree, /回退到这里/);
+  assert.match(tree, /ipc\.clone/);
   const picker = await read("../src/renderer/components/layout/ModelPicker.tsx");
   assert.match(picker, /setModel/);
   assert.match(picker, /modelSwitchToken/);
   const bubble = await read("../src/renderer/components/chat/MessageBubble.tsx");
   assert.match(bubble, /ipc\.fork/);
+  const worker = await read("../electron/worker.mjs");
+  assert.match(worker, /position: "at"/);
+  assert.match(worker, /clone:/);
 });
 
 test("workspace layer IPC stays path-safe behind senderAllowed", async () => {
   const main = await read("../electron/main.js");
-  for (const channel of ["omega:listDir", "omega:readFile", "omega:fileIndex", "omega:bash", "omega:gitSnapshot", "omega:gitStage", "omega:gitUnstage", "omega:gitCommit"]) {
+  for (const channel of ["omega:listDir", "omega:readFile", "omega:fileIndex", "omega:revealInFolder", "omega:bash", "omega:gitSnapshot", "omega:listWorktrees", "omega:addWorktree", "omega:removeWorktree", "omega:gitStage", "omega:gitUnstage", "omega:gitCommit"]) {
     assert.ok(main.includes(`ipcMain.handle("${channel}",`), `${channel} handler present`);
   }
   const workspace = await read("../electron/workspace-service.js");
@@ -359,6 +364,10 @@ test("left nav exposes the files tab and viewer", async () => {
   assert.match(leftNav, /leftTab/);
   const viewer = await read("../src/renderer/components/files/FileViewer.tsx");
   assert.match(viewer, /binary/);
+  assert.match(viewer, /revealInFolder/);
+  assert.match(viewer, /source/);
+  assert.match(viewer, /preview/);
+  assert.match(viewer, /@\$\{viewer\.path\}:\$\{start\}-\$\{end\}/);
   const markdown = await read("../src/renderer/components/common/Markdown.tsx");
   assert.match(markdown, /openViewer/);
 });

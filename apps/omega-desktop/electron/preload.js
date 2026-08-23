@@ -214,6 +214,7 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:fork", { entryId: req.entryId });
   },
+  clone: () => ipcRenderer.invoke("omega:clone"),
   navigateTree: (req) => {
     if (!req || typeof req.targetId !== "string" || !req.targetId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "targetId is required" });
@@ -229,6 +230,7 @@ contextBridge.exposeInMainWorld("omega", {
     return ipcRenderer.invoke("omega:readFile", { path: req.path });
   },
   fileIndex: (req) => ipcRenderer.invoke("omega:fileIndex", { query: safeString(req?.query, 256) ?? "" }),
+  revealInFolder: (req) => ipcRenderer.invoke("omega:revealInFolder", { path: safeString(req?.path, 4096) ?? "" }),
   bash: (req) => {
     if (!req || typeof req.command !== "string" || !req.command.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "command is required" });
@@ -239,6 +241,18 @@ contextBridge.exposeInMainWorld("omega", {
     });
   },
   gitSnapshot: () => ipcRenderer.invoke("omega:gitSnapshot"),
+  listWorktrees: () => ipcRenderer.invoke("omega:listWorktrees"),
+  addWorktree: (req) => ipcRenderer.invoke("omega:addWorktree", {
+    path: safeString(req?.path, 4096),
+    branch: safeString(req?.branch, 128),
+    createBranch: req?.createBranch !== false,
+  }),
+  removeWorktree: (req) => {
+    if (!req || typeof req.path !== "string" || !req.path.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
+    }
+    return ipcRenderer.invoke("omega:removeWorktree", { path: req.path.slice(0, 4096), force: req.force === true });
+  },
   gitStage: (req) => {
     if (!Array.isArray(req?.items)) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "items[] is required" });

@@ -30,6 +30,7 @@ import type {
   GitSnapshot,
   GitApplyResult,
   GitStageItem,
+  GitWorktreeList,
   ResourceBundle,
 } from "../types/dto";
 
@@ -46,15 +47,20 @@ export interface OmegaBridge {
   getSessionTree(): Promise<IpcResult<SessionTree>>;
   getForkCandidates(): Promise<IpcResult<ForkCandidate[]>>;
   fork(req: { entryId: string }): Promise<IpcResult<{ record: SessionRecord; selectedText: string }>>;
+  clone(): Promise<IpcResult<{ record: SessionRecord }>>;
   navigateTree(req: { targetId: string }): Promise<IpcResult<SessionRecord>>;
   listDir(req: { path: string }): Promise<IpcResult<DirListing>>;
   readFile(req: { path: string }): Promise<IpcResult<FileReadResult>>;
   fileIndex(req: { query: string }): Promise<IpcResult<string[]>>;
+  revealInFolder(req: { path: string }): Promise<IpcResult<{ path: string }>>;
   bash(req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>>;
   gitSnapshot(): Promise<IpcResult<GitSnapshot>>;
   gitStage(req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>>;
   gitUnstage(req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>>;
   gitCommit(req: { message: string }): Promise<IpcResult<{ hash: string }>>;
+  listWorktrees(): Promise<IpcResult<GitWorktreeList>>;
+  addWorktree(req?: { path?: string; branch?: string; createBranch?: boolean }): Promise<IpcResult<GitWorktreeList>>;
+  removeWorktree(req: { path: string; force?: boolean }): Promise<IpcResult<GitWorktreeList>>;
   getThinking(req: { entryId: string }): Promise<IpcResult<{ text: string | null }>>;
   getSystemPrompt(): Promise<IpcResult<{ systemPrompt: string }>>;
   exportHtml(): Promise<IpcResult<{ path: string }>>;
@@ -143,17 +149,25 @@ export const ipc = {
   getForkCandidates: async (): Promise<IpcResult<ForkCandidate[]>> => ok(await window.omega?.getForkCandidates?.()),
   fork: async (req: { entryId: string }): Promise<IpcResult<{ record: SessionRecord; selectedText: string }>> =>
     ok(await window.omega?.fork?.(req)),
+  clone: async (): Promise<IpcResult<{ record: SessionRecord }>> => ok(await window.omega?.clone?.()),
   navigateTree: async (req: { targetId: string }): Promise<IpcResult<SessionRecord>> =>
     ok(await window.omega?.navigateTree?.(req)),
   listDir: async (req: { path: string }): Promise<IpcResult<DirListing>> => ok(await window.omega?.listDir?.(req)),
   readFile: async (req: { path: string }): Promise<IpcResult<FileReadResult>> => ok(await window.omega?.readFile?.(req)),
   fileIndex: async (req: { query: string }): Promise<IpcResult<string[]>> => ok(await window.omega?.fileIndex?.(req)),
+  revealInFolder: async (req: { path: string }): Promise<IpcResult<{ path: string }>> =>
+    ok(await window.omega?.revealInFolder?.(req)),
   bash: async (req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>> =>
     ok(await window.omega?.bash?.(req)),
   gitSnapshot: async (): Promise<IpcResult<GitSnapshot>> => ok(await window.omega?.gitSnapshot?.()),
   gitStage: async (req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>> => ok(await window.omega?.gitStage?.(req)),
   gitUnstage: async (req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>> => ok(await window.omega?.gitUnstage?.(req)),
   gitCommit: async (req: { message: string }): Promise<IpcResult<{ hash: string }>> => ok(await window.omega?.gitCommit?.(req)),
+  listWorktrees: async (): Promise<IpcResult<GitWorktreeList>> => ok(await window.omega?.listWorktrees?.()),
+  addWorktree: async (req?: { path?: string; branch?: string; createBranch?: boolean }): Promise<IpcResult<GitWorktreeList>> =>
+    ok(await window.omega?.addWorktree?.(req)),
+  removeWorktree: async (req: { path: string; force?: boolean }): Promise<IpcResult<GitWorktreeList>> =>
+    ok(await window.omega?.removeWorktree?.(req)),
   getThinking: async (req: { entryId: string }): Promise<IpcResult<{ text: string | null }>> =>
     ok(await window.omega?.getThinking?.(req)),
   getSystemPrompt: async (): Promise<IpcResult<{ systemPrompt: string }>> => ok(await window.omega?.getSystemPrompt?.()),

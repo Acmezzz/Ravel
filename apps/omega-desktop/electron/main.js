@@ -748,6 +748,13 @@ ipcMain.handle("omega:fork", async (event, req) => {
   return result;
 });
 
+ipcMain.handle("omega:clone", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const result = await rpc("clone", {}, "write_failed");
+  if (result.ok && result.data?.record) rememberActive(result.data.record);
+  return result;
+});
+
 ipcMain.handle("omega:navigateTree", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.targetId !== "string" || !req.targetId.trim()) {
@@ -1070,6 +1077,58 @@ ipcMain.handle("omega:fileIndex", (event, req) => {
     return okResult(workspaceService.fileIndex(activeCwd ?? rootOf(), query));
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:revealInFolder", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const rel = typeof req?.path === "string" ? req.path : "";
+    if (rel.length > 4096) return errorResult("invalid_args", "path too long");
+    const revealed = workspaceService.revealPath(activeCwd ?? rootOf(), rel);
+    void shell.showItemInFolder(revealed.absolutePath);
+    return okResult({ path: revealed.path });
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:listWorktrees", (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    return okResult(diffService.listWorktrees(activeCwd ?? rootOf()));
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:addWorktree", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const cwd = activeCwd ?? rootOf();
+    let path = typeof req?.path === "string" ? req.path.trim() : "";
+    if (!path && win) {
+      const picked = await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory", "promptToCreate"] });
+      if (picked.canceled || !picked.filePaths[0]) return errorResult("cancelled", "未选择 worktree 目录");
+      path = picked.filePaths[0];
+    }
+    return okResult(diffService.addWorktree(cwd, {
+      path,
+      branch: typeof req?.branch === "string" ? req.branch : "",
+      createBranch: req?.createBranch !== false,
+    }));
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:removeWorktree", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!req || typeof req.path !== "string" || !req.path.trim()) return errorResult("invalid_args", "path is required");
+  try {
+    return okResult(diffService.removeWorktree(activeCwd ?? rootOf(), { path: req.path, force: req.force === true }));
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
   }
 });
 

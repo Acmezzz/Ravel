@@ -10,6 +10,7 @@ import { ipc } from "../../ipc/client";
 import { WorkflowPanel } from "../panels/WorkflowPanel";
 import { ScoutPanel } from "../panels/ScoutPanel";
 import { DiffViewer } from "../panels/DiffViewer";
+import { WorktreePanel } from "../panels/WorktreePanel";
 
 export function RightPanel(): React.ReactElement {
   const rightTab = useAppStore((s) => s.layout.rightTab);
@@ -44,6 +45,7 @@ export function RightPanel(): React.ReactElement {
           <Tab label="Workflow" value="workflow" />
           <Tab label="Scout" value="scout" />
           <Tab label="Diff" value="diff" />
+          <Tab label="Worktree" value="worktree" />
         </Tabs>
         <Tooltip title="刷新扩展状态">
           <IconButton size="small" onClick={() => void refresh()} sx={{ color: "var(--omega-text-muted)", mr: 1 }} disabled={extensionLoading}>
@@ -55,6 +57,7 @@ export function RightPanel(): React.ReactElement {
         {rightTab === "workflow" ? <WorkflowPanel /> : null}
         {rightTab === "scout" ? <ScoutPanel /> : null}
         {rightTab === "diff" ? <DiffViewer /> : null}
+        {rightTab === "worktree" ? <WorktreePanel /> : null}
       </Box>
     </Box>
   );
