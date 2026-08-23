@@ -112,19 +112,15 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 优先级 P1：
 
-- thinking/tool detail 延迟读取已完成：ThinkingBlock 按 entryId 加载并缓存，ToolCard 展开时按 toolCallId 读取 args/result；首屏仍使用受控摘要。
-- retry 中间状态已记录 attempt/maxAttempts/delay/error 到受限 sessionRecovery；更复杂的跨重启自动继续执行仍不启用。
-- 删除父 session 时的非级联安全行为、右键菜单、重命名、复制 session ID 和删除已完成；孤立子 session 会被 Sidebar 提升为根节点。
-- Git Review 已支持窗口 focus/30 秒自动刷新，并在 stale snapshot 时自动重取快照、提示重新选择；Worktree 更细粒度审查状态仍可继续增强。
-- Worktree 按项目聚合会话、remote/fetch 需要跨 worktree/网络边界，暂列外部或后续增强。
-- FileViewer 已支持二进制/DOCX 通过受控 Main IPC 使用系统默认应用打开；仍缺内嵌 DOCX 预览、上传及冲突处理。
+- Worktree 更细粒度审查状态和按项目聚合会话；remote/fetch 需要跨 worktree/网络边界。
+- FileViewer 内嵌 DOCX 预览、上传及冲突处理；当前已支持系统默认应用打开 DOCX/二进制文件。
 - Model Center 自定义 provider/base URL/headers、model discovery、延迟测试和 catalog/recommendation。
 - Skills/Plugins package 内部资源过滤编辑、安装进度展示。
-- `electron/ipc-schemas.js` 已覆盖 workspace/session/file/replay/sessionRpc 常用入口；完整 JSON Schema 迁移到所有历史 handler 仍可继续推进。
+- `electron/ipc-schemas.js` 已覆盖 workspace/session/file/replay/sessionRpc 常用入口；完整 JSON Schema 迁移到所有历史 handler。
 
 优先级 P2：
 
-- 语言设置；统一 keybindings 设置中心已支持命令中心/新建会话/停止 Agent 三个快捷键的 typed desktop settings 配置，并校验格式和冲突。
+- 语言设置。
 - 可选关闭到托盘策略。
 - Renderer bundle 动态拆包和性能优化。
 - Permission profile 的 Docker/Gondolin/WSL sandbox backend。
@@ -145,8 +141,8 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 
 ## 5. 后续实施顺序
 
-1. 更复杂的 retry 跨重启自动继续执行仍不启用。
-2. Worktree 更细粒度审查状态、stale snapshot 自动刷新；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
+1. Worktree 更细粒度审查状态和本地聚合；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
+2. FileViewer 内嵌 DOCX、上传冲突和语言设置。
 3. FileViewer DOCX/watch/upload conflict。
 4. Model Center 自定义 provider/discovery/latency。
 5. 完整 IPC JSON Schema 迁移和性能拆包。
