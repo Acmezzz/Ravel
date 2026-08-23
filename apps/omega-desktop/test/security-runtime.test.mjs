@@ -52,7 +52,7 @@ test("workspace registry canonicalizes roots and rejects unauthorized directorie
   const canonical = registry.add(root);
   assert.equal(registry.has(root), true);
   assert.equal(registry.resolveAuthorized(root), canonical);
-  assert.deepEqual(registry.list(), [canonical]);
+  assert.deepEqual(registry.list().map((workspace) => workspace.realRoot), [canonical]);
   const reloaded = createWorkspaceRegistry(registryFile);
   assert.equal(reloaded.resolveAuthorized(root), canonical);
 });

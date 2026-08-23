@@ -104,7 +104,10 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:switchWorkspace", { workspace: req.workspace.slice(0, 4096) });
   },
-  recentEvents: (req) => ipcRenderer.invoke("omega:recentEvents", { after: Number.isFinite(req?.after) ? req.after : 0 }),
+  recentEvents: (req) => ipcRenderer.invoke("omega:recentEvents", {
+    sessionId: safeString(req?.sessionId, 128),
+    after: Number.isFinite(req?.after) ? req.after : 0,
+  }),
   sessionReady: () => ipcRenderer.invoke("omega:sessionReady"),
   getState: () => ipcRenderer.invoke("omega:getState"),
   listModels: () => ipcRenderer.invoke("omega:listModels"),

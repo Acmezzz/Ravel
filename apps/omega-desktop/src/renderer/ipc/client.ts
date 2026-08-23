@@ -5,6 +5,7 @@
  */
 import type {
   IpcResult,
+  WorkspaceInfo,
   ExtensionStateBundle,
   SessionSummary,
   SessionRecord,
@@ -62,10 +63,10 @@ export interface OmegaBridge {
   onStatus(callback: (data: unknown) => void): () => void;
   onTransport(callback: (data: { state: string }) => void): () => void;
   onEvent(callback: (data: unknown) => void): () => void;
-  listWorkspaces(): Promise<IpcResult<string[]>>;
-  chooseWorkspace(): Promise<IpcResult<{ root: string; workspaces: string[] }>>;
+  listWorkspaces(): Promise<IpcResult<WorkspaceInfo[]>>;
+  chooseWorkspace(): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[] }>>;
   switchWorkspace(req: { workspace: string }): Promise<IpcResult<SessionRecord>>;
-  recentEvents(req: { after: number }): Promise<IpcResult<Array<{ event: unknown; meta: unknown }>>>;
+  recentEvents(req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number }>>;
   sessionReady(): Promise<IpcResult<{ ready: boolean }>>;
   getState(): Promise<IpcResult<AgentStateSnapshot>>;
   listModels(): Promise<IpcResult<ModelInfo[]>>;
@@ -152,10 +153,10 @@ export const ipc = {
   isMaximized: async (): Promise<IpcResult<{ maximized: boolean }>> => ok(await window.omega?.isMaximized?.()),
   onWindowStateChanged: (callback: (data: { maximized: boolean }) => void): (() => void) =>
     window.omega?.onWindowStateChanged?.(callback) ?? (() => {}),
-  listWorkspaces: async (): Promise<IpcResult<string[]>> => ok(await window.omega?.listWorkspaces?.()),
-  chooseWorkspace: async (): Promise<IpcResult<{ root: string; workspaces: string[] }>> => ok(await window.omega?.chooseWorkspace?.()),
+  listWorkspaces: async (): Promise<IpcResult<WorkspaceInfo[]>> => ok(await window.omega?.listWorkspaces?.()),
+  chooseWorkspace: async (): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[] }>> => ok(await window.omega?.chooseWorkspace?.()),
   switchWorkspace: async (req: { workspace: string }): Promise<IpcResult<SessionRecord>> => ok(await window.omega?.switchWorkspace?.(req)),
-  recentEvents: async (req: { after: number }): Promise<IpcResult<Array<{ event: unknown; meta: unknown }>>> => ok(await window.omega?.recentEvents?.(req)),
+  recentEvents: async (req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number }>> => ok(await window.omega?.recentEvents?.(req)),
   sessionReady: async (): Promise<IpcResult<{ ready: boolean }>> =>
     ok(await window.omega?.sessionReady?.()),
   getState: async (): Promise<IpcResult<AgentStateSnapshot>> => ok(await window.omega?.getState?.()),

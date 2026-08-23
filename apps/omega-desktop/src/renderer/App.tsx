@@ -249,9 +249,11 @@ export function App(): React.ReactElement {
       if (data.state === "ready") {
         setBootstrapError(null);
         setConnection("ready");
-        void ipc.recentEvents({ after: 0 }).then((result) => {
+        const sessionId = useAppStore.getState().activeSessionId ?? undefined;
+        void ipc.recentEvents({ sessionId, after: 0 }).then((result) => {
           if (result.ok) {
-            for (const item of result.data) handleEvent({ event: item.event as SafeEvent, meta: item.meta as EventMeta });
+            if (result.data.gap) void refreshControlPlane();
+            for (const item of result.data.events) handleEvent({ event: item.event as SafeEvent, meta: item.meta as EventMeta });
           }
         });
         void refreshControlPlane();

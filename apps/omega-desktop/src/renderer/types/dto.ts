@@ -257,6 +257,14 @@ export interface ChangeApprovalResult {
   errors: string[];
 }
 
+// ===== workspace =====
+
+export interface WorkspaceInfo {
+  workspaceId: string;
+  realRoot: string;
+  displayPath: string;
+}
+
 // ===== sessions =====
 
 export interface SessionSummary {

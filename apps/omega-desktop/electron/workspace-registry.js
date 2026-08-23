@@ -7,11 +7,20 @@ function key(root) {
   return process.platform === "win32" ? value.toLowerCase() : value;
 }
 
+function workspaceId(root) {
+  return `workspace-${Buffer.from(key(root)).toString("base64url").slice(0, 32)}`;
+}
+
+function toWorkspace(root) {
+  return { workspaceId: workspaceId(root), realRoot: root, displayPath: root };
+}
+
 function readRoots(file) {
   if (!existsSync(file)) return [];
   try {
     const parsed = JSON.parse(readFileSync(file, "utf8"));
-    return Array.isArray(parsed) ? parsed.filter((value) => typeof value === "string") : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((value) => typeof value === "string" ? value : value?.realRoot).filter((value) => typeof value === "string");
   } catch {
     return [];
   }
@@ -20,7 +29,7 @@ function readRoots(file) {
 function writeRoots(file, roots) {
   mkdirSync(dirname(file), { recursive: true });
   const temp = `${file}.tmp-${process.pid}`;
-  writeFileSync(temp, `${JSON.stringify(roots, null, "\t")}\n`, { mode: 0o600 });
+  writeFileSync(temp, `${JSON.stringify(roots.map(toWorkspace), null, "\t")}\n`, { mode: 0o600 });
   renameSync(temp, file);
 }
 
@@ -50,7 +59,7 @@ export function createWorkspaceRegistry(file) {
       return root;
     },
     list() {
-      return [...roots.values()];
+      return [...roots.values()].map(toWorkspace);
     },
     resolveAuthorized(value) {
       const root = realRoot(value);

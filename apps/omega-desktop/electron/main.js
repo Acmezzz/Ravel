@@ -53,7 +53,7 @@ let workspaceRegistry;
 let closeDecision = null;
 let closeHandling = false;
 let closeApproved = false;
-const recentEventLog = [];
+const recentEventsBySession = new Map();
 
 function rootOf() {
   return app.isPackaged ? (process.resourcesPath ? join(process.resourcesPath, "omega-runtime") : app.getAppPath()) : DEV_ROOT;
@@ -375,9 +375,11 @@ async function bootstrap() {
   worker.onEvent = (event, meta) => {
     if (event?.type === "agent_start" || event?.type === "turn_start") agentRunning = true;
     if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") agentRunning = false;
-    if (meta?.sequence) {
-      recentEventLog.push({ event, meta });
-      if (recentEventLog.length > RECENT_EVENT_LIMIT) recentEventLog.splice(0, recentEventLog.length - RECENT_EVENT_LIMIT);
+    if (meta?.sequence && meta.sessionId) {
+      const bucket = recentEventsBySession.get(meta.sessionId) ?? [];
+      bucket.push({ event, meta });
+      if (bucket.length > RECENT_EVENT_LIMIT) bucket.splice(0, bucket.length - RECENT_EVENT_LIMIT);
+      recentEventsBySession.set(meta.sessionId, bucket);
     }
     if (!win || win.isDestroyed()) return;
     win.webContents.send("agent:event", { event, meta });
@@ -583,7 +585,7 @@ ipcMain.handle("omega:chooseWorkspace", async (event) => {
   if (result.canceled || !result.filePaths[0]) return errorResult("cancelled", "未选择工作区");
   try {
     const root = workspaceRegistry.add(result.filePaths[0]);
-    return okResult({ root, workspaces: workspaceRegistry.list() });
+    return okResult({ root, workspace: workspaceRegistry.list().find((item) => item.realRoot === root), workspaces: workspaceRegistry.list() });
   } catch (error) {
     return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
   }
@@ -609,8 +611,12 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
 
 ipcMain.handle("omega:recentEvents", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const sessionId = typeof req?.sessionId === "string" ? req.sessionId : worker?.sessionId;
   const after = typeof req?.after === "number" && Number.isFinite(req.after) ? req.after : 0;
-  return okResult(recentEventLog.filter((item) => item.meta?.sequence > after));
+  const bucket = sessionId ? recentEventsBySession.get(sessionId) ?? [] : [];
+  const first = bucket[0]?.meta?.sequence ?? 0;
+  const last = bucket.at(-1)?.meta?.sequence ?? 0;
+  return okResult({ events: bucket.filter((item) => item.meta?.sequence > after), gap: after > 0 && first > after + 1, first, last });
 });
 
 ipcMain.handle("window:isMaximized", (event) => {

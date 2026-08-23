@@ -23,11 +23,14 @@ test("main configures Electron isolation and navigation boundaries", async () =>
 test("worker and renderer use sequenced event envelopes for stale-event rejection", async () => {
   const worker = await read("../electron/worker.mjs");
   const app = await read("../src/renderer/App.tsx");
+  const main = await read("../electron/main.js");
   assert.match(worker, /sequence: \+\+eventSequence/);
   assert.match(worker, /sessionId:/);
   assert.match(worker, /generation/);
   assert.match(app, /meta\.sequence <= lastSequence/);
   assert.match(app, /meta\.generation < currentGeneration/);
+  assert.match(main, /recentEventsBySession/);
+  assert.match(main, /gap: after > 0/);
 });
 
 test("bridge filters raw agent events and does not forward sensitive payloads", async () => {

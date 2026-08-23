@@ -361,6 +361,7 @@ test("Project Switcher and event replay surfaces exist", async () => {
   const app = await read("../src/renderer/App.tsx");
   assert.match(switcher, /chooseWorkspace/);
   assert.match(switcher, /switchWorkspace/);
+  assert.match(switcher, /workspaceId/);
   assert.match(client, /recentEvents/);
   assert.match(app, /recentEvents/);
 });

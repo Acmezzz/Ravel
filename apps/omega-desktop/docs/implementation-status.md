@@ -113,7 +113,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 仍需完善：
 
-- workspace DTO：`workspaceId / realRoot / displayPath`。
+- workspace DTO 已完成第一轮：`workspaceId / realRoot / displayPath`，并兼容旧字符串 allowlist 文件。Project Switcher 使用稳定 workspaceId 渲染和切换。
 - 切换 workspace 时重新检查 trust、extensions、models 和资源缓存。
 - workspace 删除、移动、权限变化后的 registry 清理。
 - workspace 与 active session 的更明确 UI 绑定状态。
@@ -122,7 +122,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 主进程关闭保护和 flush 超时风险提示已完成第一轮，但还缺：
 
-- renderer 显示“正在停止 / 正在 flush / 正在退出”。
+- renderer 显示“正在停止 / 正在 flush / 正在退出”。（Main 已发送 `closing` transport 状态，待 UI 进一步视觉化。）
 - flush 超时后的用户可见风险提示和强制退出按钮。
 - 原生 close Dialog 的自动化测试。
 - 验证 abort、flush、dispose、kill 顺序的生命周期测试。
@@ -142,8 +142,9 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 事件 envelope、Main 最近事件缓存和 renderer ready 后补发已完成第一轮，但还缺：
 
-- 扩大 Main 侧最近事件短缓存的持久化和按 session 分区能力。
-- renderer 按 sequence 请求补发事件的分页和丢失区间提示。
+- Main 最近事件缓存已完成按 session 分区和 gap 检测第一轮。
+- renderer 已在 Worker ready 后按 session 请求补发，gap 时重新拉取 authoritative snapshot。
+- 仍需扩大缓存持久化、补发分页和窗口重新激活流程。
 - reload、窗口重新激活和 Worker restart 后的 snapshot/replay 流程。
 - snapshot 中完整包含 transcript、model、thinking、queue、compaction、retry、usage 和 session state。
 

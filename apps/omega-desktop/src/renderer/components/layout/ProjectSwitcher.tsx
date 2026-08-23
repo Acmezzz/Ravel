@@ -9,6 +9,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/useAppStore";
+import type { WorkspaceInfo } from "../../types/dto";
 
 function labelFor(root: string): string {
   const parts = root.split(/[\\/]/).filter(Boolean);
@@ -21,7 +22,7 @@ export function ProjectSwitcher(): React.ReactElement {
   const setAgent = useAppStore((state) => state.setAgent);
   const setSessions = useAppStore((state) => state.setSessions);
   const [anchor, setAnchor] = React.useState<HTMLElement | null>(null);
-  const [workspaces, setWorkspaces] = React.useState<string[]>([]);
+  const [workspaces, setWorkspaces] = React.useState<WorkspaceInfo[]>([]);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -85,11 +86,11 @@ export function ProjectSwitcher(): React.ReactElement {
         </Typography>
       </Button>
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-        {workspaces.map((root) => (
-          <MenuItem key={root} selected={root === current} disabled={busy} onClick={() => void switchTo(root)}>
+        {workspaces.map((workspace) => (
+          <MenuItem key={workspace.workspaceId} selected={workspace.realRoot === current} disabled={busy} onClick={() => void switchTo(workspace.realRoot)}>
             <Box sx={{ minWidth: 210 }}>
-              <Typography sx={{ fontSize: 13 }}>{labelFor(root)}</Typography>
-              <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }} noWrap>{root}</Typography>
+              <Typography sx={{ fontSize: 13 }}>{labelFor(workspace.displayPath)}</Typography>
+              <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }} noWrap>{workspace.displayPath}</Typography>
             </Box>
           </MenuItem>
         ))}
