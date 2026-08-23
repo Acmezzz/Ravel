@@ -290,6 +290,9 @@ contextBridge.exposeInMainWorld("omega", {
     if (!req || typeof req.path !== "string" || !req.path.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
     return ipcRenderer.invoke("omega:openFileDefault", { path: req.path.slice(0, 4096) });
   },
+  chooseFileForWorkspace: () => ipcRenderer.invoke("omega:chooseFileForWorkspace"),
+  inspectUploadTarget: (req) => ipcRenderer.invoke("omega:inspectUploadTarget", { path: safeString(req?.path, 4096) ?? "" }),
+  uploadFile: (req) => ipcRenderer.invoke("omega:uploadFile", { selectionId: safeString(req?.selectionId, 128) ?? "", path: safeString(req?.path, 4096) ?? "", conflict: req?.conflict, expectedToken: safeString(req?.expectedToken, 512) }),
   watchFile: (req) => {
     if (!req || typeof req.path !== "string" || !req.path.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
     return ipcRenderer.invoke("omega:watchFile", { path: req.path.slice(0, 4096) });

@@ -4,6 +4,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { resolveExisting } from "./path-security.js";
+import { isDocxPath, readDocxText } from "./docx-service.js";
 
 const IGNORED_DIRS = new Set([
   "node_modules", ".git", ".hg", ".svn", "dist", "build", "out", "release", "target",
@@ -63,6 +64,10 @@ export function readFile(root, relPath) {
   const info = statSync(abs);
   if (info.isDirectory()) throw new Error("Path is a directory");
   const size = info.size;
+  if (isDocxPath(relPath)) {
+    const docx = readDocxText(abs);
+    return { path: relPath, size, binary: false, content: docx.text, mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx: true, safe: true };
+  }
   const mimeType = mimeFor(relPath);
   const buffer = readFileSync(abs, { encoding: null, flag: "r" });
   const head = buffer.subarray(0, 8192);

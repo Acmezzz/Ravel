@@ -566,6 +566,17 @@ export interface DirListing {
   entries: DirEntryInfo[];
 }
 
+export type UploadConflictMode = "cancel" | "overwrite" | "keep-both";
+
+export interface UploadTargetInfo {
+  path: string;
+  exists: boolean;
+  size: number;
+  mtimeMs: number | null;
+  hash: string | null;
+  token: string | null;
+}
+
 export interface FileReadResult {
   path: string;
   size: number;
@@ -574,6 +585,8 @@ export interface FileReadResult {
   truncated?: boolean;
   mimeType?: string;
   dataUrl?: string;
+  docx?: boolean;
+  safe?: boolean;
   offset?: number;
   nextOffset?: number | null;
   totalLines?: number;

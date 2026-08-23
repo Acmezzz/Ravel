@@ -26,6 +26,8 @@ import type {
   ForkCandidate,
   DirListing,
   FileReadResult,
+  UploadConflictMode,
+  UploadTargetInfo,
   BashResultDTO,
   GitSnapshot,
   GitApplyResult,
@@ -57,6 +59,9 @@ export interface OmegaBridge {
   fileIndex(req: { query: string }): Promise<IpcResult<string[]>>;
   revealInFolder(req: { path: string }): Promise<IpcResult<{ path: string }>>;
   openFileDefault(req: { path: string }): Promise<IpcResult<{ path: string }>>;
+  chooseFileForWorkspace(): Promise<IpcResult<{ selectionId: string; name: string }>>;
+  inspectUploadTarget(req: { path: string }): Promise<IpcResult<UploadTargetInfo>>;
+  uploadFile(req: { selectionId: string; path: string; conflict?: UploadConflictMode; expectedToken?: string }): Promise<IpcResult<{ conflict: boolean; path?: string; target?: UploadTargetInfo; size?: number; hash?: string }>>;
   watchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
   unwatchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
   bash(req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>>;
@@ -185,6 +190,9 @@ export const ipc = {
   revealInFolder: async (req: { path: string }): Promise<IpcResult<{ path: string }>> =>
     ok(await window.omega?.revealInFolder?.(req)),
   openFileDefault: async (req: { path: string }): Promise<IpcResult<{ path: string }>> => ok(await window.omega?.openFileDefault?.(req)),
+  chooseFileForWorkspace: async (): Promise<IpcResult<{ selectionId: string; name: string }>> => ok(await window.omega?.chooseFileForWorkspace?.()),
+  inspectUploadTarget: async (req: { path: string }): Promise<IpcResult<UploadTargetInfo>> => ok(await window.omega?.inspectUploadTarget?.(req)),
+  uploadFile: async (req: { selectionId: string; path: string; conflict?: UploadConflictMode; expectedToken?: string }): Promise<IpcResult<{ conflict: boolean; path?: string; target?: UploadTargetInfo; size?: number; hash?: string }>> => ok(await window.omega?.uploadFile?.(req)),
   watchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.watchFile?.(req)),
   unwatchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.unwatchFile?.(req)),
   bash: async (req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>> =>

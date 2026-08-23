@@ -9,6 +9,13 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { DirListing } from "../../types/dto";
@@ -109,6 +116,10 @@ export function FileTree(): React.ReactElement {
   }, []);
   const [dirs, setDirs] = React.useState<Map<string, DirState>>(() => new Map([["", { loading: true, error: null, listing: null }]]));
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([""]));
+  const [upload, setUpload] = React.useState<{ selectionId: string; name: string } | null>(null);
+  const [target, setTarget] = React.useState("");
+  const [conflictTarget, setConflictTarget] = React.useState<{ path: string; token: string | null } | null>(null);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
 
   const loadDir = React.useCallback(async (rel: string) => {
     setDirs((prev) => new Map(prev).set(rel, { loading: true, error: null, listing: prev.get(rel)?.listing ?? null }));
@@ -222,10 +233,27 @@ export function FileTree(): React.ReactElement {
   };
   renderDir("", 0);
 
+  const chooseUpload = async () => {
+    setUploadError(null);
+    const result = await ipc.chooseFileForWorkspace();
+    if (result.ok) { setUpload(result.data); setTarget(result.data.name); }
+    else if (result.code !== "cancelled") setUploadError(result.message);
+  };
+  const uploadSelected = async (conflict: "cancel" | "overwrite" | "keep-both" = "cancel", expectedToken?: string) => {
+    if (!upload || !target.trim()) return;
+    setUploadError(null);
+    const result = await ipc.uploadFile({ selectionId: upload.selectionId, path: target.trim(), conflict, expectedToken });
+    if (result.ok && !result.data.conflict) { setUpload(null); setTarget(""); setConflictTarget(null); refreshAll(); }
+    else if (result.ok && result.data.target) setConflictTarget({ path: result.data.target.path, token: result.data.target.token });
+    else if (!result.ok) setUploadError(result.message);
+    else setUploadError("上传未完成，请重试");
+  };
+
   return (
     <Box sx={{ width: "100%" }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1, py: 0.5 }}>
         <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>工作区文件</Typography>
+        <Tooltip title="导入文件到工作区"><IconButton size="small" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)" }}><UploadFileIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
         <Tooltip title="刷新">
           <IconButton size="small" onClick={refreshAll} sx={{ color: "var(--omega-text-dim)" }}>
             <RefreshIcon sx={{ fontSize: 14 }} />
@@ -233,6 +261,20 @@ export function FileTree(): React.ReactElement {
         </Tooltip>
       </Box>
       <Box sx={{ maxHeight: "100%", overflowY: "auto", pb: 1 }}>{rows}</Box>
+      <Dialog open={Boolean(upload)} onClose={() => setUpload(null)} fullWidth maxWidth="xs">
+        <DialogTitle>导入文件到工作区</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+          <Typography sx={{ fontSize: 12 }}>源文件：{upload?.name}</Typography>
+          <TextField autoFocus size="small" label="目标相对路径" value={target} onChange={(event) => setTarget(event.target.value)} helperText="只能写入当前授权 workspace 内的相对路径。" />
+          {uploadError ? <Typography sx={{ color: "var(--omega-danger)", fontSize: 12 }}>{uploadError}</Typography> : null}
+        </DialogContent>
+        <DialogActions><Button onClick={() => setUpload(null)}>取消</Button><Button variant="contained" onClick={() => void uploadSelected()}>导入</Button></DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(conflictTarget)} onClose={() => setConflictTarget(null)} fullWidth maxWidth="xs">
+        <DialogTitle>目标文件已存在</DialogTitle>
+        <DialogContent><Typography sx={{ fontSize: 12 }}>「{conflictTarget?.path}」已存在。选择覆盖，或保留为新文件。</Typography></DialogContent>
+        <DialogActions><Button onClick={() => setConflictTarget(null)}>取消</Button><Button onClick={() => void uploadSelected("keep-both", conflictTarget?.token ?? undefined)}>保留两份</Button><Button color="error" variant="contained" onClick={() => void uploadSelected("overwrite", conflictTarget?.token ?? undefined)}>覆盖</Button></DialogActions>
+      </Dialog>
     </Box>
   );
 }

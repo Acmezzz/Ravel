@@ -36,6 +36,7 @@ function isAudio(file: { mimeType?: string; dataUrl?: string } | null): boolean 
 function isPdf(file: { mimeType?: string; dataUrl?: string } | null): boolean { return Boolean(file?.mimeType === "application/pdf" && file.dataUrl); }
 function isMermaid(path: string | null): boolean { return extOf(path) === "mmd" || extOf(path) === "mermaid"; }
 function isMath(path: string | null): boolean { return extOf(path) === "tex" || extOf(path) === "latex"; }
+function isDocx(file: { docx?: boolean } | null): boolean { return Boolean(file?.docx); }
 
 function numbered(content: string): Array<{ n: number; text: string }> {
   const lines = content.split("\n");
@@ -166,6 +167,8 @@ export function FileViewer(): React.ReactElement {
           <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>该二进制文件暂不支持内嵌预览，可用资源管理器打开。</Typography>
         ) : mode === "preview" && isMarkdown(viewer.path) ? (
           <Box sx={{ maxHeight: "64vh", overflow: "auto" }}><Markdown>{viewer.file?.content ?? ""}</Markdown></Box>
+        ) : isDocx(viewer.file) ? (
+          <Box sx={{ maxHeight: "64vh", overflow: "auto", p: 1.5, border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}><Typography component="pre" sx={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.7, m: 0 }}>{viewer.file?.content ?? ""}</Typography></Box>
         ) : mode === "preview" && isMermaid(viewer.path) ? (
           <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>Mermaid source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
         ) : mode === "preview" && isMath(viewer.path) ? (

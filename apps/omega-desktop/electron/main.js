@@ -20,7 +20,7 @@ import {
   safeStorage,
 } from "electron";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync, appendFileSync, readFileSync, watch } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
@@ -43,6 +43,7 @@ import { createCredentialStore } from "./credential-store.js";
 import { PERMISSION_PROFILES, sanitizePermissionProfile } from "./permission-profiles.js";
 import { fileRequest, replayRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
+import * as fileTransfer from "./file-transfer-service.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -71,6 +72,7 @@ let closeApproved = false;
 let singleInstancePrimary = true;
 let startupRequest = { workspace: process.env.OMEGA_WORKSPACE ?? null, sessionId: null };
 let persistBoundsTimer = null;
+const fileSelections = new Map();
 const fileWatchers = new Map();
 const recentEventsBySession = new Map();
 
@@ -1424,6 +1426,33 @@ ipcMain.handle("omega:openFileDefault", (event, req) => {
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }
+});
+
+ipcMain.handle("omega:chooseFileForWorkspace", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const picked = await dialog.showOpenDialog(win, { properties: ["openFile"], title: "选择要导入工作区的文件" });
+  if (picked.canceled || !picked.filePaths[0]) return errorResult("cancelled", "未选择文件");
+  const selectionId = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  fileSelections.set(selectionId, { path: picked.filePaths[0], createdAt: Date.now() });
+  return okResult({ selectionId, name: basename(picked.filePaths[0]) });
+});
+
+ipcMain.handle("omega:inspectUploadTarget", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (typeof req?.path !== "string" || !req.path.trim()) return errorResult("invalid_args", "path is required");
+  try { return okResult(fileTransfer.inspectTarget(activeCwd ?? rootOf(), req.path)); }
+  catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:uploadFile", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const selection = fileSelections.get(req?.selectionId);
+  if (!selection || Date.now() - selection.createdAt > 10 * 60_000) return errorResult("not_found", "文件选择已过期");
+  try {
+    const result = fileTransfer.uploadFile(activeCwd ?? rootOf(), selection.path, req.path, { conflict: req.conflict, expectedToken: req.expectedToken });
+    fileSelections.delete(req.selectionId);
+    return okResult(result);
+  } catch (error) { return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error)); }
 });
 
 ipcMain.handle("omega:watchFile", (event, req) => {

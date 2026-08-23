@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **111/111**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **116/116**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -60,7 +60,7 @@
 - Session Tree：上下文预览、确认后 rewind、fork/clone、busy 防护。
 - Worktree Manager：列表、原生目录选择器创建、dirty 删除确认。
 - Git Review：snapshot token、stage/unstage、hunk 校验、commit、reject 和 stale snapshot 防护。
-- FileViewer：源码/Markdown、行号、选区引用 `@file:start-end`、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页、diff 视图、Mermaid/LaTeX 安全源码预览、Main `fs.watch` 实时刷新。
+- FileViewer：源码/Markdown、受控 DOCX 纯文本预览、行号、选区引用 `@file:start-end`、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页、diff 视图、Mermaid/LaTeX 安全源码预览、Main `fs.watch` 实时刷新、二进制/DOCX 默认应用打开和 workspace 文件导入。
 - Mermaid/LaTeX 当前只做源码安全预览，不执行 HTML、脚本或任意外部内容。
 
 ### 2.6 配置、生态和 Extension UI
@@ -113,7 +113,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 优先级 P1：
 
 - Worktree 更细粒度审查状态和按项目聚合会话；remote/fetch 需要跨 worktree/网络边界。
-- FileViewer 内嵌 DOCX 预览、上传及冲突处理；当前已支持系统默认应用打开 DOCX/二进制文件。
+- FileViewer 内嵌 DOCX 富文本布局、上传进度仍可增强；当前已支持安全纯文本预览、系统默认应用打开、workspace 导入和冲突保护。
 - Model Center 自定义 provider/base URL/headers、model discovery、延迟测试和 catalog/recommendation。
 - Skills/Plugins package 内部资源过滤编辑、安装进度展示。
 - `electron/ipc-schemas.js` 已覆盖 workspace/session/file/replay/sessionRpc 常用入口；完整 JSON Schema 迁移到所有历史 handler。
@@ -141,10 +141,10 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 
 ## 5. 后续实施顺序
 
-1. Worktree 更细粒度审查状态和本地聚合；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
-2. FileViewer 内嵌 DOCX、上传冲突和语言设置。
-3. FileViewer DOCX/watch/upload conflict。
-4. Model Center 自定义 provider/discovery/latency。
+1. Worktree 元数据、细粒度审查状态和本地聚合；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
+2. FileViewer 内嵌 DOCX 富文本布局、上传进度和语言设置。
+3. Model Center 自定义 provider/discovery/latency。
+4. 完整 IPC JSON Schema 迁移和性能拆包。
 5. 完整 IPC JSON Schema 迁移和性能拆包。
 6. 只有在允许联网、签名和 CI 发布环境后，才实施真实 updater UI、OAuth、remote/fetch 和完整 release E2E。
 
