@@ -31,6 +31,12 @@ const windowApi = {
   toggleMaximize: () => ipcRenderer.invoke("window:toggleMaximize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),
   isMaximized: () => ipcRenderer.invoke("window:isMaximized"),
+  onFileChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const handler = (_event, data) => { try { callback(data); } catch (error) { console.error("omega file change callback failed", error); } };
+    ipcRenderer.on("file:changed", handler);
+    return () => ipcRenderer.removeListener("file:changed", handler);
+  },
   onWindowStateChanged: (callback) => {
     if (typeof callback !== "function") return () => {};
     const handler = (_event, data) => {
@@ -280,6 +286,14 @@ contextBridge.exposeInMainWorld("omega", {
     return ipcRenderer.invoke("omega:readFilePage", { path: req.path.slice(0, 4096), offset: Number.isInteger(req.offset) ? req.offset : 0, limit: Number.isInteger(req.limit) ? req.limit : 200 });
   },
   fileIndex: (req) => ipcRenderer.invoke("omega:fileIndex", { query: safeString(req?.query, 256) ?? "" }),
+  watchFile: (req) => {
+    if (!req || typeof req.path !== "string" || !req.path.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
+    return ipcRenderer.invoke("omega:watchFile", { path: req.path.slice(0, 4096) });
+  },
+  unwatchFile: (req) => {
+    if (!req || typeof req.path !== "string" || !req.path.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
+    return ipcRenderer.invoke("omega:unwatchFile", { path: req.path.slice(0, 4096) });
+  },
   revealInFolder: (req) => ipcRenderer.invoke("omega:revealInFolder", { path: safeString(req?.path, 4096) ?? "" }),
   bash: (req) => {
     if (!req || typeof req.command !== "string" || !req.command.trim()) {

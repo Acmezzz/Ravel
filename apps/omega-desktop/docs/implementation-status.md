@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **104/104**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **105/105**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -60,7 +60,7 @@
 - Session Tree：上下文预览、确认后 rewind、fork/clone、busy 防护。
 - Worktree Manager：列表、原生目录选择器创建、dirty 删除确认。
 - Git Review：snapshot token、stage/unstage、hunk 校验、commit、reject 和 stale snapshot 防护。
-- FileViewer：源码/Markdown、行号、选区引用 `@file:start-end`、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页、diff 视图、Mermaid/LaTeX 安全源码预览。
+- FileViewer：源码/Markdown、行号、选区引用 `@file:start-end`、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页、diff 视图、Mermaid/LaTeX 安全源码预览、Main `fs.watch` 实时刷新。
 - Mermaid/LaTeX 当前只做源码安全预览，不执行 HTML、脚本或任意外部内容。
 
 ### 2.6 配置、生态和 Extension UI
@@ -117,7 +117,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - 删除父 session 时的非级联安全行为、右键菜单、重命名、复制 session ID 和删除已完成；孤立子 session 会被 Sidebar 提升为根节点。
 - 删除父 session 时安全重挂子 session。
 - Worktree 按项目聚合会话、更细粒度 Git 审查状态和 stale snapshot 自动刷新。
-- FileViewer DOCX 预览、文件 watch/live refresh、上传及冲突处理。
+- FileViewer DOCX 预览、上传及冲突处理。
 - Model Center 自定义 provider/base URL/headers、model discovery、延迟测试和 catalog/recommendation。
 - Skills/Plugins package 内部资源过滤编辑、安装进度展示。
 - `electron/ipc-schemas.js` 已覆盖 workspace/session/file/replay/sessionRpc 常用入口；完整 JSON Schema 迁移到所有历史 handler 仍可继续推进。

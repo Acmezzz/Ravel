@@ -55,6 +55,8 @@ export const IPC_CHANNELS = {
   readFilePage: "omega:readFilePage",
   fileIndex: "omega:fileIndex",
   revealInFolder: "omega:revealInFolder",
+  watchFile: "omega:watchFile",
+  unwatchFile: "omega:unwatchFile",
   gitSnapshot: "omega:gitSnapshot",
   listWorktrees: "omega:listWorktrees",
   addWorktree: "omega:addWorktree",
@@ -77,6 +79,7 @@ export const IPC_CHANNELS = {
   windowClose: "window:close",
   windowIsMaximized: "window:isMaximized",
   windowMaximizedChanged: "window:maximizedChanged",
+  fileChanged: "file:changed",
   extensionUiRequest: "extension-ui:request",
 } as const;
 

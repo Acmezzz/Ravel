@@ -56,6 +56,8 @@ export interface OmegaBridge {
   readFilePage(req: { path: string; offset?: number; limit?: number }): Promise<IpcResult<FileReadResult & { offset: number; nextOffset: number | null; totalLines: number }>>;
   fileIndex(req: { query: string }): Promise<IpcResult<string[]>>;
   revealInFolder(req: { path: string }): Promise<IpcResult<{ path: string }>>;
+  watchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
+  unwatchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
   bash(req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>>;
   gitSnapshot(): Promise<IpcResult<GitSnapshot>>;
   gitStage(req: { snapshotToken: string; items: GitStageItem[] }): Promise<IpcResult<GitApplyResult>>;
@@ -88,6 +90,7 @@ export interface OmegaBridge {
   onStatus(callback: (data: unknown) => void): () => void;
   onTransport(callback: (data: { state: string; error?: string; canRetry?: boolean; sessionId?: string; foreground?: boolean }) => void): () => void;
   onEvent(callback: (data: unknown) => void): () => void;
+  onFileChanged(callback: (data: { path: string }) => void): () => void;
   onExtensionUiRequest(callback: (request: ExtensionUIRequest) => void): () => void;
   extensionUiResponse(response: ExtensionUIResponse): Promise<IpcResult<{ accepted: boolean }>>;
   extensionUiCancel(response: Omit<ExtensionUIResponse, "value" | "confirmed"> & { cancelled: true }): Promise<IpcResult<{ accepted: boolean }>>;
@@ -179,6 +182,8 @@ export const ipc = {
   fileIndex: async (req: { query: string }): Promise<IpcResult<string[]>> => ok(await window.omega?.fileIndex?.(req)),
   revealInFolder: async (req: { path: string }): Promise<IpcResult<{ path: string }>> =>
     ok(await window.omega?.revealInFolder?.(req)),
+  watchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.watchFile?.(req)),
+  unwatchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.unwatchFile?.(req)),
   bash: async (req: { command: string; excludeFromContext?: boolean }): Promise<IpcResult<BashResultDTO>> =>
     ok(await window.omega?.bash?.(req)),
   gitSnapshot: async (): Promise<IpcResult<GitSnapshot>> => ok(await window.omega?.gitSnapshot?.()),
@@ -217,6 +222,8 @@ export const ipc = {
   isMaximized: async (): Promise<IpcResult<{ maximized: boolean }>> => ok(await window.omega?.isMaximized?.()),
   onWindowStateChanged: (callback: (data: { maximized: boolean }) => void): (() => void) =>
     window.omega?.onWindowStateChanged?.(callback) ?? (() => {}),
+  onFileChanged: (callback: (data: { path: string }) => void): (() => void) =>
+    window.omega?.onFileChanged?.(callback) ?? (() => {}),
   onExtensionUiRequest: (callback: (request: ExtensionUIRequest) => void): (() => void) =>
     window.omega?.onExtensionUiRequest?.(callback) ?? (() => {}),
   extensionUiResponse: async (response: ExtensionUIResponse): Promise<IpcResult<{ accepted: boolean }>> =>

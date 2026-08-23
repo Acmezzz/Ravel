@@ -58,6 +58,8 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:readFilePage",
   "omega:fileIndex",
   "omega:revealInFolder",
+  "omega:watchFile",
+  "omega:unwatchFile",
   "omega:gitSnapshot",
   "omega:listWorktrees",
   "omega:addWorktree",
@@ -83,6 +85,7 @@ export const PUSH_CHANNELS = Object.freeze([
   "worker:transport",
   "app:bootstrap-error",
   "window:maximizedChanged",
+  "file:changed",
   "extension-ui:request",
 ]);
 

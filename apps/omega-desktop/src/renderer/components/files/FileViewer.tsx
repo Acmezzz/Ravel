@@ -54,7 +54,15 @@ export function FileViewer(): React.ReactElement {
   const [displayedContent, setDisplayedContent] = React.useState("");
   const [nextOffset, setNextOffset] = React.useState<number | null>(null);
   const [loadingMore, setLoadingMore] = React.useState(false);
+  const [watching, setWatching] = React.useState(false);
   const [diffMode, setDiffMode] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!viewer.path) return;
+    void ipc.watchFile({ path: viewer.path }).then((result) => { if (result.ok) setWatching(result.data.watching); });
+    const off = ipc.onFileChanged((data) => { if (data.path === viewer.path) void useAppStore.getState().openViewer(viewer.path!); });
+    return () => { off(); void ipc.unwatchFile({ path: viewer.path! }); setWatching(false); };
+  }, [viewer.path]);
 
   React.useEffect(() => {
     setMode(isMarkdown(viewer.path) || isMermaid(viewer.path) || isMath(viewer.path) ? "preview" : "source");
@@ -131,6 +139,7 @@ export function FileViewer(): React.ReactElement {
             </Typography>
           </Box>
         ) : null}
+        <Typography sx={{ fontSize: 10, color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
         <Tooltip title="在资源管理器中显示">
           <IconButton size="small" onClick={() => void reveal()} sx={{ color: "var(--omega-text-dim)" }}>
             <FolderOpenIcon sx={{ fontSize: 16 }} />

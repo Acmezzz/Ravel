@@ -19,7 +19,7 @@ import {
   dialog,
   safeStorage,
 } from "electron";
-import { existsSync, mkdirSync, unlinkSync, writeFileSync, appendFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync, appendFileSync, readFileSync, watch } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
@@ -70,6 +70,7 @@ let closeApproved = false;
 let singleInstancePrimary = true;
 let startupRequest = { workspace: process.env.OMEGA_WORKSPACE ?? null, sessionId: null };
 let persistBoundsTimer = null;
+const fileWatchers = new Map();
 const recentEventsBySession = new Map();
 
 function parseStartupRequest(argv = process.argv) {
@@ -230,6 +231,25 @@ function windowOptions() {
     minHeight: 560,
     show: false,
   };
+}
+
+function stopFileWatch(filePath) {
+  const watcher = fileWatchers.get(filePath);
+  if (watcher) watcher.close();
+  fileWatchers.delete(filePath);
+}
+
+function startFileWatch(filePath) {
+  stopFileWatch(filePath);
+  try {
+    const watcher = watch(filePath, { persistent: false }, () => {
+      if (win && !win.isDestroyed()) win.webContents.send("file:changed", { path: filePath });
+    });
+    watcher.on("error", () => stopFileWatch(filePath));
+    fileWatchers.set(filePath, watcher);
+  } catch {
+    /* watching is best effort */
+  }
 }
 
 function persistWindowBounds() {
@@ -1374,6 +1394,32 @@ ipcMain.handle("omega:fileIndex", (event, req) => {
   try {
     const query = typeof req?.query === "string" ? req.query.slice(0, 256) : "";
     return okResult(workspaceService.fileIndex(activeCwd ?? rootOf(), query));
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:watchFile", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = fileRequest(req);
+  if (!normalized) return errorResult("invalid_args", "path is required");
+  try {
+    const revealed = workspaceService.revealPath(activeCwd ?? rootOf(), normalized.path);
+    startFileWatch(revealed.absolutePath);
+    return okResult({ path: normalized.path, watching: true });
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:unwatchFile", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = fileRequest(req);
+  if (!normalized) return errorResult("invalid_args", "path is required");
+  try {
+    const revealed = workspaceService.revealPath(activeCwd ?? rootOf(), normalized.path);
+    stopFileWatch(revealed.absolutePath);
+    return okResult({ path: normalized.path, watching: false });
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }
