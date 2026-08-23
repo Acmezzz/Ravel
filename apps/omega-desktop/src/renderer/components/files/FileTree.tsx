@@ -89,6 +89,7 @@ function TreeRow({
 /** Lazy-expanding workspace file tree (loads one directory per IPC call). */
 export function FileTree(): React.ReactElement {
   const openViewer = useAppStore((s) => s.openViewer);
+  const workspaceEpoch = useAppStore((s) => s.workspaceEpoch);
   const [dirs, setDirs] = React.useState<Map<string, DirState>>(() => new Map([["", { loading: true, error: null, listing: null }]]));
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([""]));
 
@@ -103,8 +104,10 @@ export function FileTree(): React.ReactElement {
   }, []);
 
   React.useEffect(() => {
+    setDirs(new Map([["", { loading: true, error: null, listing: null }]]));
+    setExpanded(new Set([""]));
     void loadDir("");
-  }, [loadDir]);
+  }, [loadDir, workspaceEpoch]);
 
   const toggleDir = React.useCallback(
     (rel: string) => {

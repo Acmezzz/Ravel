@@ -12,6 +12,7 @@ import type {
   SessionSummary,
   SessionRecord,
   SessionMessage,
+  SessionTree,
   ExtensionStateBundle,
   WorkspaceDiff,
   ChangeApprovalResult,
@@ -112,6 +113,8 @@ export interface AppState {
   diff: WorkspaceDiff | null;
   approval: ChangeApprovalResult | null;
   gitSnapshot: GitSnapshot | null;
+  sessionTree: SessionTree | null;
+  workspaceEpoch: number;
   viewer: ViewerState;
 
   permission: AgentPermissionState | null;
@@ -158,6 +161,8 @@ export interface AppState {
   setDiff: (diff: WorkspaceDiff | null) => void;
   setApproval: (result: ChangeApprovalResult | null) => void;
   setGitSnapshot: (snapshot: GitSnapshot | null) => void;
+  setSessionTree: (tree: SessionTree | null) => void;
+  bumpWorkspaceEpoch: () => void;
   openViewer: (path: string) => Promise<void>;
   closeViewer: () => void;
 
@@ -222,6 +227,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   diff: null,
   approval: null,
   gitSnapshot: null,
+  sessionTree: null,
+  workspaceEpoch: 0,
   viewer: { open: false, path: null, loading: false, error: null, file: null },
 
   permission: null,
@@ -421,6 +428,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setDiff: (diff) => set({ diff }),
   setApproval: (approval) => set({ approval }),
   setGitSnapshot: (gitSnapshot) => set({ gitSnapshot }),
+  setSessionTree: (sessionTree) => set({ sessionTree }),
+  bumpWorkspaceEpoch: () => set((state) => ({ workspaceEpoch: state.workspaceEpoch + 1 })),
   openViewer: async (path) => {
     set({ viewer: { open: true, path, loading: true, error: null, file: null } });
     const res = await ipc.readFile({ path });

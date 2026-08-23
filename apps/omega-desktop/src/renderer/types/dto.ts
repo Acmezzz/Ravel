@@ -355,6 +355,12 @@ export interface AgentStateSnapshot {
     totalMessages: number;
   };
   modelFallbackMessage: string | null;
+  queuedMessages?: {
+    steering: string[];
+    followUp: string[];
+    pendingCount: number;
+  };
+  tree?: SessionTree;
   messages?: SessionMessage[];
   toolCards?: ToolCardSummary[];
 }

@@ -41,10 +41,30 @@ export function ProjectSwitcher(): React.ReactElement {
     setError(null);
     const result = await ipc.switchWorkspace({ workspace: root });
     if (result.ok) {
-      const state = await ipc.getState();
-      if (state.ok) setAgent(state.data);
-      const sessions = await ipc.listSessions();
+      const store = useAppStore.getState();
+      store.loadTranscript(result.data);
+      const [state, models, commands, sessions, extensions, git] = await Promise.all([
+        ipc.getState(),
+        ipc.listModels(),
+        ipc.listCommands(),
+        ipc.listSessions(),
+        ipc.queryExtensionState({ scope: "all" }),
+        ipc.gitSnapshot(),
+      ]);
+      if (state.ok) {
+        setAgent(state.data);
+        if (state.data.queuedMessages) store.setQueuedMessages({ steering: state.data.queuedMessages.steering, followUp: state.data.queuedMessages.followUp });
+        if (state.data.tree) store.setSessionTree(state.data.tree);
+      }
+      if (models.ok) store.setModels(models.data);
+      if (commands.ok) store.setCommands(commands.data);
       if (sessions.ok) setSessions(sessions.data);
+      if (extensions.ok) store.setExtensionState(extensions.data);
+      store.setGitSnapshot(git.ok ? git.data : null);
+      store.setDiff(null);
+      store.setApproval(null);
+      store.closeViewer();
+      store.bumpWorkspaceEpoch();
       setAnchor(null);
     } else {
       setError(result.message);

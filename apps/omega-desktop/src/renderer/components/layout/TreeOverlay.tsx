@@ -29,9 +29,13 @@ export function TreeOverlay(): React.ReactElement {
       setError(null);
       return;
     }
+    const cached = useAppStore.getState().sessionTree;
+    if (cached) setTree(cached);
     void ipc.getSessionTree().then((res) => {
-      if (res.ok) setTree(res.data);
-      else setError(res.message);
+      if (res.ok) {
+        setTree(res.data);
+        useAppStore.getState().setSessionTree(res.data);
+      } else setError(res.message);
     });
   }, [open]);
 

@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
-> 当前状态：Milestone A 已完成，Milestone B 已完成第一轮基础设施，单 Worker 恢复和关闭状态已进一步收口，后续进入多会话和桌面工作区能力。
+> 当前状态：Milestone A 已完成，Milestone B 已完成第一轮基础设施；单 Worker 恢复已纳入 queue/tree，工作区切换会刷新资源缓存。后续进入多会话和桌面工作区能力。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -114,7 +114,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 仍需完善：
 
 - workspace DTO 已完成第一轮：`workspaceId / realRoot / displayPath`，并兼容旧字符串 allowlist 文件。Project Switcher 使用稳定 workspaceId 渲染和切换。
-- 切换 workspace 时重新检查 trust、extensions、models 和资源缓存。
+- 切换 workspace 后已刷新 models、commands、extensions、Git snapshot、文件树和设置资源清单；完整 Project Trust Dialog 仍未做。
 - workspace 删除、移动、权限变化后的 registry 清理。
 - workspace 与 active session 的更明确 UI 绑定状态。
 
@@ -134,8 +134,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 精确 session 恢复已完成，但还缺：
 
 - Worker ready 后先读取 authoritative snapshot，再决定是否按 session 回放最近事件；空闲快照不重复追加历史事件，gap 时保留权威快照并提示重新同步。
-- 已清理 renderer 的 running/thinking/compaction/retry/queue 瞬态并恢复 model、usage、transcript 等基础状态；仍需恢复 queue、branch/tree 的更细粒度 reconcile。
-- 丢失 prompt 的恢复提示，不静默重发。
+- Worker ready 后会把 queue、tree、compaction、model、usage 和 transcript 纳入同一份 authoritative snapshot；空闲恢复不重复追加历史事件。
+- 未确认发送的 prompt 只提示用户手动重发，不自动重放。
 - restart failure 的可操作错误界面。
 - Worker 崩溃前运行状态、未读状态和错误原因的持久化。
 
@@ -149,7 +149,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - renderer 已在 Worker ready 后先拉 authoritative snapshot，再按 session 请求补发；仅流式恢复状态回放，gap 时保留快照并提示重新同步。
 - 仍需扩大缓存持久化、补发分页和窗口重新激活流程。
 - reload、窗口重新激活和 Worker restart 后的 snapshot/replay 流程。
-- snapshot 中完整包含 transcript、model、thinking、queue、compaction、retry、usage 和 session state。
+- snapshot 已包含 transcript、model、thinking、queue、compaction、usage、session tree；retry 未完成状态和窗口重新激活仍需完善。
 
 #### 4.5 Shared IPC runtime schema
 

@@ -60,7 +60,7 @@ test("index.html keeps a CSP boundary and references the built bundle", async ()
   assert.match(html, /lang="zh-CN"/);
   assert.match(html, /Content-Security-Policy/);
   assert.match(html, /\.\/dist\/assets\/index\.js/);
-  assert.match(html, /\.\/dist\/assets\/index\.css/);
+  assert.match(html, /\.\/dist\/assets\/style\.css/);
 });
 
 test("bridge source still wires the agent event channel", async () => {
@@ -365,9 +365,17 @@ test("Project Switcher, replay, and worker recovery reconcile surfaces exist", a
   assert.match(client, /recentEvents/);
   assert.match(app, /recentEvents/);
   assert.match(app, /streamingAssistantId: null/);
-  assert.match(app, /queuedMessages: \{ steering: \[\], followUp: \[\] \}/);
+  assert.match(app, /queuedMessages/);
+  assert.match(app, /setSessionTree/);
+  assert.match(app, /未确认发送的消息没有自动重发/);
   assert.match(app, /const reconciled = await refreshControlPlane\(\)/);
   assert.match(app, /state\?\.isStreaming !== true/);
+  assert.match(switcher, /bumpWorkspaceEpoch/);
+  assert.match(switcher, /queryExtensionState/);
+  assert.match(switcher, /listModels/);
+  const bridge = await read("../electron/agent-bridge.js");
+  assert.match(bridge, /queuedMessages: queueSnapshotOf/);
+  assert.match(bridge, /tree: sessionTreeOf/);
 });
 
 test("session list uses disk-first JSONL reader instead of starting a live runtime", async () => {

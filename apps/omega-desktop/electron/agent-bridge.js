@@ -534,7 +534,20 @@ export function snapshotOf(runtime) {
       totalMessages: stats.totalMessages ?? 0,
     },
     modelFallbackMessage: runtime.modelFallbackMessage ?? null,
+    queuedMessages: queueSnapshotOf(session),
+    tree: sessionTreeOf(runtime),
     ...sanitizeTranscript(session),
+  };
+}
+
+function queueSnapshotOf(session) {
+  const queued = typeof session.getQueuedMessages === "function" ? session.getQueuedMessages() : session.queuedMessages;
+  const steering = Array.isArray(queued?.steering) ? queued.steering.map((item) => (typeof item === "string" ? item : String(item?.text ?? item ?? ""))).filter(Boolean) : [];
+  const followUp = Array.isArray(queued?.followUp) ? queued.followUp.map((item) => (typeof item === "string" ? item : String(item?.text ?? item ?? ""))).filter(Boolean) : [];
+  return {
+    steering,
+    followUp,
+    pendingCount: steering.length + followUp.length,
   };
 }
 

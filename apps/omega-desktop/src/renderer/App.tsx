@@ -20,6 +20,14 @@ async function refreshControlPlane(): Promise<boolean> {
   if (stateRes.ok) {
     store.setAgent(stateRes.data);
     store.setActiveSession(stateRes.data.sessionId);
+    if (stateRes.data.queuedMessages) {
+      store.setQueuedMessages({
+        steering: stateRes.data.queuedMessages.steering,
+        followUp: stateRes.data.queuedMessages.followUp,
+      });
+    }
+    if (stateRes.data.tree) store.setSessionTree(stateRes.data.tree);
+    store.setCompacting(Boolean(stateRes.data.isCompacting));
     // Replace the transcript only when idle — during a run the streaming
     // bubbles are ahead of the persisted branch entries.
     if (stateRes.data.messages && !stateRes.data.isStreaming) {
@@ -33,6 +41,13 @@ async function refreshControlPlane(): Promise<boolean> {
         messages: stateRes.data.messages,
         toolCards: stateRes.data.toolCards,
       });
+      if (stateRes.data.queuedMessages) {
+        store.setQueuedMessages({
+          steering: stateRes.data.queuedMessages.steering,
+          followUp: stateRes.data.queuedMessages.followUp,
+        });
+      }
+      if (stateRes.data.tree) store.setSessionTree(stateRes.data.tree);
     }
   }
   if (modelsRes.ok) store.setModels(modelsRes.data);
@@ -45,9 +60,10 @@ async function refreshControlPlane(): Promise<boolean> {
 async function refreshTranscriptWhenIdle(): Promise<void> {
   const res = await ipc.getState();
   if (!res.ok || res.data.isStreaming) return;
-  useAppStore.getState().setAgent(res.data);
+  const store = useAppStore.getState();
+  store.setAgent(res.data);
   if (res.data.messages) {
-    useAppStore.getState().loadTranscript({
+    store.loadTranscript({
       id: res.data.sessionId,
       title: res.data.sessionName || "未命名会话",
       workspace: res.data.cwd,
@@ -58,6 +74,13 @@ async function refreshTranscriptWhenIdle(): Promise<void> {
       toolCards: res.data.toolCards,
     });
   }
+  if (res.data.queuedMessages) {
+    store.setQueuedMessages({
+      steering: res.data.queuedMessages.steering,
+      followUp: res.data.queuedMessages.followUp,
+    });
+  }
+  if (res.data.tree) store.setSessionTree(res.data.tree);
 }
 
 async function startNewSession(): Promise<void> {
@@ -252,15 +275,23 @@ export function App(): React.ReactElement {
         setShutdownPhase("idle");
         setBootstrapError(null);
         setConnection("ready");
-        useAppStore.setState({ streamingAssistantId: null, thinkingActive: false, compacting: false, retrying: false, bashTail: "", queuedMessages: { steering: [], followUp: [] } });
+        useAppStore.setState({ streamingAssistantId: null, thinkingActive: false, compacting: false, retrying: false, bashTail: "" });
         void (async () => {
           const reconciled = await refreshControlPlane();
-          if (!reconciled) return;
-          const state = useAppStore.getState().agent;
-          const sessionId = state?.sessionId ?? useAppStore.getState().activeSessionId ?? undefined;
+          if (!reconciled) {
+            useAppStore.getState().setComposerError("会话已恢复，但状态未完全同步。请手动刷新或重试。");
+            return;
+          }
+          const store = useAppStore.getState();
+          const state = store.agent;
+          const sessionId = state?.sessionId ?? store.activeSessionId ?? undefined;
+          if (store.optimisticKey) {
+            store.dropLastIfOptimistic(store.optimisticKey);
+            store.setComposerError("Worker 已恢复。未确认发送的消息没有自动重发，请检查后手动发送。");
+          }
           const result = await ipc.recentEvents({ sessionId, after: 0 });
           if (!result.ok || result.data.gap || state?.isStreaming !== true) {
-            if (result.ok && result.data.gap) useAppStore.getState().setComposerError("会话已恢复，事件缓存已重新同步");
+            if (result.ok && result.data.gap && !store.composerError) store.setComposerError("会话已恢复，事件缓存已重新同步");
             return;
           }
           for (const item of result.data.events) handleEvent({ event: item.event as SafeEvent, meta: item.meta as EventMeta });

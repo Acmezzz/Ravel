@@ -43,6 +43,7 @@ function ResourceGroup({ title, children }: { title: string; children: React.Rea
 export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElement {
   const agent = useAppStore((s) => s.agent);
   const setAgent = useAppStore((s) => s.setAgent);
+  const workspaceEpoch = useAppStore((s) => s.workspaceEpoch);
   const [resources, setResources] = React.useState<ResourceBundle | null>(null);
 
   React.useEffect(() => {
@@ -53,7 +54,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
     void ipc.listResources().then((res) => {
       if (res.ok) setResources(res.data);
     });
-  }, [open]);
+  }, [open, workspaceEpoch]);
 
   const apply = React.useCallback(
     async (patch: {
