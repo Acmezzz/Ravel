@@ -126,6 +126,7 @@ export function ModelCenter(): React.ReactElement {
   const [pendingModel, setPendingModel] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
   const [customProviderOpen, setCustomProviderOpen] = React.useState(false);
+  const [latencyStatus, setLatencyStatus] = React.useState("离线模式：未执行真实 latency test");
   const [customProvider, setCustomProvider] = React.useState({ id: "local-ai", name: "Local AI", baseUrl: "http://127.0.0.1:8080/v1", api: "openai-completions", modelId: "demo", modelName: "Demo", contextWindow: "128000" });
 
   React.useEffect(() => {
@@ -219,7 +220,7 @@ export function ModelCenter(): React.ReactElement {
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>模型</Typography><Button size="small" onClick={() => setCustomProviderOpen(true)} sx={{ textTransform: "none" }}>添加本地 Provider</Button></Box>
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>本地配置不会联网 discovery；真实 OAuth 和在线目录需外部环境。</Typography>
+          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>本地配置不会联网 discovery；真实 OAuth 和在线目录需外部环境。{latencyStatus}</Typography>
           <TextField size="small" placeholder="搜索模型…" value={query} onChange={(e) => setQuery(e.target.value)} />
           <Box sx={{ overflowY: "auto", maxHeight: 420, pr: 0.5 }}>
             {groups.length === 0 ? (
