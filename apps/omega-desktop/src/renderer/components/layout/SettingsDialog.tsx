@@ -43,8 +43,21 @@ function ResourceGroup({ title, children }: { title: string; children: React.Rea
 export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElement {
   const agent = useAppStore((s) => s.agent);
   const setAgent = useAppStore((s) => s.setAgent);
+  const desktopSettings = useAppStore((s) => s.desktopSettings);
+  const setDesktopSettings = useAppStore((s) => s.setDesktopSettings);
+  const setModelCenterOpen = useAppStore((s) => s.setModelCenterOpen);
   const workspaceEpoch = useAppStore((s) => s.workspaceEpoch);
   const [resources, setResources] = React.useState<ResourceBundle | null>(null);
+  const [workerCap, setWorkerCap] = React.useState(String(desktopSettings?.workerCap ?? 3));
+  const [idleTtl, setIdleTtl] = React.useState(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
+  const [desktopError, setDesktopError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setWorkerCap(String(desktopSettings?.workerCap ?? 3));
+    setIdleTtl(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
+    setDesktopError(null);
+  }, [open, desktopSettings]);
 
   React.useEffect(() => {
     if (!open) {
@@ -68,6 +81,29 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
     },
     [setAgent],
   );
+
+  const applyDesktop = React.useCallback(async () => {
+    const cap = Number.parseInt(workerCap, 10);
+    const minutes = Number.parseInt(idleTtl, 10);
+    if (!Number.isInteger(cap) || cap < 1 || cap > 8) {
+      setDesktopError("后台会话上限必须是 1–8 的整数");
+      return;
+    }
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
+      setDesktopError("空闲回收时间必须是 1–60 分钟");
+      return;
+    }
+    const res = await ipc.updateDesktopSettings({
+      workerCap: cap,
+      workerIdleTtlMs: minutes * 60_000,
+    });
+    if (!res.ok) {
+      setDesktopError(res.message);
+      return;
+    }
+    setDesktopSettings(res.data);
+    setDesktopError(null);
+  }, [workerCap, idleTtl, setDesktopSettings]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -122,6 +158,41 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
             }
             label={<Typography sx={{ fontSize: 13 }}>请求失败时自动重试</Typography>}
           />
+        </Box>
+
+        <Box sx={{ borderTop: "1px solid var(--omega-border)", pt: 1.5, display: "flex", flexDirection: "column", gap: 1.25 }}>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+            桌面运行时
+          </Typography>
+          <TextField
+            size="small"
+            label="后台会话上限"
+            value={workerCap}
+            onChange={(e) => setWorkerCap(e.target.value)}
+            onBlur={() => void applyDesktop()}
+            helperText="同时保留的 live Worker 数量，超出后需先停止一个会话"
+          />
+          <TextField
+            size="small"
+            label="空闲回收（分钟）"
+            value={idleTtl}
+            onChange={(e) => setIdleTtl(e.target.value)}
+            onBlur={() => void applyDesktop()}
+            helperText="后台空闲 Worker 超过该时间后回收"
+          />
+          {desktopError ? (
+            <Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{desktopError}</Typography>
+          ) : null}
+          <Button
+            size="small"
+            onClick={() => {
+              onClose();
+              setModelCenterOpen(true);
+            }}
+            sx={{ textTransform: "none", alignSelf: "flex-start" }}
+          >
+            打开模型中心
+          </Button>
         </Box>
 
         <Box sx={{ borderTop: "1px solid var(--omega-border)", pt: 1.5 }}>
@@ -190,7 +261,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         </Box>
 
         <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>
-          设置通过 pi 的 SettingsManager 持久化，与 CLI 共享。
+          Agent 行为通过 pi SettingsManager 持久化；窗口、主题和 Worker 上限保存在桌面设置里。
         </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>

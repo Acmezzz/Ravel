@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
-> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表、会话列表分页和 Session WorkerSlot pool 第一轮已落地。后续进入 Tree/FileViewer/Worktree 与配置中心。
+> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表、会话列表分页、WorkerSlot pool、Model Center 第一轮和 typed desktop settings 已落地。后续进入 Tree/FileViewer/Worktree 与 Plugins/Skills。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**67/67 通过**。
+- 桌面和安全测试：**71/71 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -197,8 +197,9 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ### P1：配置与生态
 
-- Model Center：provider、OAuth、API key、custom provider、model discovery、延迟测试。
-- Electron `safeStorage` credential store，凭据不返回 renderer。
+- Model Center 第一轮已落地：Header / Command Palette 打开桌面对话框，列出 provider、添加/替换/删除 API key、搜索并选择模型。明文 key 不回显、不返回 renderer。
+- Electron `safeStorage` credential vault 已落地，并同步写入 Pi `modelRuntime.setRuntimeApiKey`，Agent 实际可用。
+- 仍缺：OAuth 登录/登出、自定义 provider/base URL、model discovery、延迟测试、catalog/recommendation。
 - Project Trust Dialog 第一轮已完成；完整 Trust Center（批量管理、父目录继承 UI）仍待做。
 - Skills/Plugins Center：安装、更新、删除、启用、scope、进度和 trust gate。
 - Extension UI bridge：select、confirm、input、editor、notify、status、widget、title。
@@ -206,7 +207,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ### P2：产品化与发布
 
-- Typed settings store，统一 userData、Pi settings、localStorage 和 runtime state 的权威边界。
+- Typed desktop settings 第一轮已落地：`electron/desktop-settings.js` 管理 theme、worker cap/TTL、right panel、last session/workspace、window bounds；Settings Dialog 可改 worker 上限。
+- 仍缺：single-instance、window bounds restore、多显示器修正、语言、通知和 keybindings 的统一权威边界。
 - Single-instance、second-instance focus、window bounds restore、多显示器修正。
 - Renderer crash/unresponsive 处理。
 - Native open/save/reveal dialog、深链恢复 workspace/session。
@@ -217,8 +219,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 ## 5. 下一步实施顺序
 
 1. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
-2. Model Center、safeStorage、Plugins/Skills、Extension UI。
-3. Typed settings、native integration、updater、签名发布和 Electron E2E。
+2. Plugins/Skills、Extension UI、权限 profile。
+3. Model Center OAuth/custom provider/discovery、native integration、updater、签名发布和 Electron E2E。
 4. 历史消息分页、IPC runtime schema 与 Worker 协议统一。
 5. WorkerSlot 同 workspace 复用和后台 session-specific RPC。
 

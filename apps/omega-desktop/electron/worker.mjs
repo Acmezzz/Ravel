@@ -155,6 +155,29 @@ const methods = {
   abort: () => runtime.session.abort(),
   getState: () => bridge.snapshotOf(runtime),
   listModels: () => bridge.listModels(runtime),
+  setProviderApiKey: async ({ providerId, apiKey }) => {
+    if (typeof providerId !== "string" || !providerId.trim()) {
+      const error = new Error("providerId is required");
+      error.code = "invalid_args";
+      throw error;
+    }
+    if (typeof apiKey !== "string" || !apiKey.trim()) {
+      const error = new Error("apiKey is required");
+      error.code = "invalid_args";
+      throw error;
+    }
+    await runtime.session.modelRuntime.setRuntimeApiKey(providerId.trim(), apiKey.trim());
+    return bridge.authStatusOf(runtime);
+  },
+  removeProviderApiKey: async ({ providerId }) => {
+    if (typeof providerId !== "string" || !providerId.trim()) {
+      const error = new Error("providerId is required");
+      error.code = "invalid_args";
+      throw error;
+    }
+    await runtime.session.modelRuntime.removeRuntimeApiKey(providerId.trim());
+    return bridge.authStatusOf(runtime);
+  },
   setModel: ({ provider, modelId }) => {
     const model = bridge.findModel(runtime, provider, modelId);
     if (!model) {

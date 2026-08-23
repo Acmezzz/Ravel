@@ -8,6 +8,19 @@ import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
 import type { EventMeta, SafeEvent } from "./types/events";
 
+async function applyDesktopSettings(): Promise<void> {
+  const store = useAppStore.getState();
+  const res = await ipc.getDesktopSettings();
+  if (!res.ok) return;
+  store.setDesktopSettings(res.data);
+  if (res.data.themeMode && res.data.themeMode !== store.themeMode) {
+    store.setThemeMode(res.data.themeMode);
+  }
+  if (typeof res.data.rightPanelOpen === "boolean" && res.data.rightPanelOpen !== store.layout.rightPanelOpen) {
+    store.setLayout({ rightPanelOpen: res.data.rightPanelOpen });
+  }
+}
+
 async function refreshControlPlane(): Promise<boolean> {
   const store = useAppStore.getState();
   const [stateRes, modelsRes, commandsRes, authRes, sessionsRes] = await Promise.all([
@@ -357,6 +370,7 @@ export function App(): React.ReactElement {
         if (cancelled) return;
         if (res.ok && res.data.ready) {
           setConnection("ready");
+          await applyDesktopSettings();
           await refreshControlPlane();
           return;
         }

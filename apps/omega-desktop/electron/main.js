@@ -16,6 +16,7 @@ import {
   session as electronSession,
   shell,
   dialog,
+  safeStorage,
 } from "electron";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -34,6 +35,8 @@ import { isIpcEnvelope } from "./ipc-contracts.js";
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 import { WorkerHost } from "./worker-host.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
+import { createDesktopSettingsStore } from "./desktop-settings.js";
+import { createCredentialStore } from "./credential-store.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -47,6 +50,8 @@ const RECENT_EVENT_LIMIT = 300;
 let win;
 let worker = null;
 let workerPool = createWorkerSlotPool();
+let desktopSettings = null;
+let credentialStore = null;
 let bootstrapError = null;
 let shuttingDown = false;
 let quitRequested = false;
@@ -73,6 +78,14 @@ function sessionsRoot() {
 
 function workspaceRegistryFile() {
   return join(app.getPath("userData"), "omega", "workspaces.json");
+}
+
+function desktopSettingsFile() {
+  return join(app.getPath("userData"), "omega", "desktop-settings.json");
+}
+
+function credentialStoreFile() {
+  return join(app.getPath("userData"), "omega", "credentials.bin.json");
 }
 
 function authorizedWorkspace(value) {
@@ -266,6 +279,14 @@ function rememberActive(record) {
     if (slot) slot.cwd = record.workspace;
     if (worker) worker.cwd = record.workspace;
   }
+  try {
+    desktopSettings?.update({
+      lastSessionId: record.id ?? null,
+      lastWorkspace: record.workspace ?? activeCwd ?? null,
+    });
+  } catch {
+    /* best effort */
+  }
 }
 
 /** Wrap a worker RPC into an IpcResult, mapping worker error codes through. */
@@ -278,6 +299,14 @@ async function rpc(method, args, fallbackCode = "call_failed") {
 }
 
 async function bootstrap() {
+  desktopSettings = createDesktopSettingsStore(desktopSettingsFile());
+  credentialStore = createCredentialStore(credentialStoreFile(), {
+    encryptString: (value) => safeStorage.encryptString(value),
+    decryptString: (buffer) => safeStorage.decryptString(buffer),
+    isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+  });
+  const prefs = desktopSettings.get();
+  workerPool = createWorkerSlotPool({ cap: prefs.workerCap, idleTtlMs: prefs.workerIdleTtlMs });
   workspaceRegistry = createWorkspaceRegistry(workspaceRegistryFile());
   const requested = process.env.OMEGA_WORKSPACE ? realRoot(resolve(process.env.OMEGA_WORKSPACE)) : realRoot(rootOf());
   const cwd = workspaceRegistry.has(requested) ? workspaceRegistry.resolveAuthorized(requested) : workspaceRegistry.add(requested);
@@ -730,6 +759,60 @@ ipcMain.handle("omega:navigateTree", async (event, req) => {
 ipcMain.handle("omega:authStatus", (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   return rpc("authStatus", {}, "read_failed");
+});
+
+ipcMain.handle("omega:getDesktopSettings", (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  return okResult(desktopSettings?.get() ?? null);
+});
+
+ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!desktopSettings) return errorResult("unavailable", "Desktop settings are not ready");
+  const patch = {};
+  if (req?.themeMode === "system" || req?.themeMode === "light" || req?.themeMode === "dark") patch.themeMode = req.themeMode;
+  if (Number.isInteger(req?.workerCap)) patch.workerCap = req.workerCap;
+  if (Number.isInteger(req?.workerIdleTtlMs)) patch.workerIdleTtlMs = req.workerIdleTtlMs;
+  if (typeof req?.rightPanelOpen === "boolean") patch.rightPanelOpen = req.rightPanelOpen;
+  if (typeof req?.lastSessionId === "string" || req?.lastSessionId === null) patch.lastSessionId = req.lastSessionId;
+  if (typeof req?.lastWorkspace === "string" || req?.lastWorkspace === null) patch.lastWorkspace = req.lastWorkspace;
+  const next = desktopSettings.update(patch);
+  workerPool.configure({ cap: next.workerCap, idleTtlMs: next.workerIdleTtlMs });
+  return okResult(next);
+});
+
+ipcMain.handle("omega:setProviderApiKey", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) return errorResult("invalid_args", "providerId is required");
+  if (typeof req.apiKey !== "string" || !req.apiKey.trim()) return errorResult("invalid_args", "apiKey is required");
+  const providerId = req.providerId.trim().slice(0, 128);
+  const apiKey = req.apiKey.trim().slice(0, 8192);
+  try {
+    credentialStore?.set(providerId, apiKey);
+  } catch (error) {
+    return errorResult(error?.code ?? "encryption_unavailable", error instanceof Error ? error.message : String(error));
+  }
+  const result = await rpc("setProviderApiKey", { providerId, apiKey }, "write_failed");
+  if (!result.ok) {
+    try {
+      credentialStore?.remove(providerId);
+    } catch {
+      /* best effort */
+    }
+  }
+  return result;
+});
+
+ipcMain.handle("omega:removeProviderApiKey", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) return errorResult("invalid_args", "providerId is required");
+  const providerId = req.providerId.trim().slice(0, 128);
+  try {
+    credentialStore?.remove(providerId);
+  } catch {
+    /* best effort */
+  }
+  return rpc("removeProviderApiKey", { providerId }, "write_failed");
 });
 
 ipcMain.handle("omega:listPiSessions", async (event) => {

@@ -410,6 +410,24 @@ export interface AuthStatus {
   ready: boolean;
 }
 
+export interface DesktopWindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  maximized: boolean;
+}
+
+export interface DesktopSettings {
+  themeMode: "system" | "light" | "dark";
+  workerCap: number;
+  workerIdleTtlMs: number;
+  lastSessionId: string | null;
+  lastWorkspace: string | null;
+  rightPanelOpen: boolean;
+  windowBounds: DesktopWindowBounds | null;
+}
+
 export interface TreeNodeRow {
   id: string;
   parentId: string | null;

@@ -10,6 +10,10 @@ import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { SlashCommandInfo } from "../../types/dto";
 
+type PaletteItem =
+  | { kind: "ui"; id: string; title: string; description: string; run: () => void }
+  | { kind: "command"; command: SlashCommandInfo };
+
 function commandLabel(command: SlashCommandInfo): string {
   return command.name.startsWith("/") ? command.name : `/${command.name}`;
 }
@@ -19,6 +23,9 @@ export function CommandPalette(): React.ReactElement {
   const setOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setConnection = useAppStore((s) => s.setConnection);
   const setAgent = useAppStore((s) => s.setAgent);
+  const setModelCenterOpen = useAppStore((s) => s.setModelCenterOpen);
+  const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
+  const setTreeOpen = useAppStore((s) => s.setTreeOpen);
   const commands = useAppStore((s) => s.commands);
   const [query, setQuery] = React.useState("");
 
@@ -30,12 +37,46 @@ export function CommandPalette(): React.ReactElement {
     });
   }, [open]);
 
-  const filtered = commands.filter((command) => {
-    const hay = `${commandLabel(command)} ${command.description} ${command.source}`;
-    return hay.toLowerCase().includes(query.toLowerCase());
-  });
+  const uiItems = React.useMemo<Array<Extract<PaletteItem, { kind: "ui" }>>>(
+    () => [
+      {
+        kind: "ui",
+        id: "model-center",
+        title: "打开模型中心",
+        description: "配置提供商 API key 并选择模型",
+        run: () => setModelCenterOpen(true),
+      },
+      {
+        kind: "ui",
+        id: "settings",
+        title: "打开设置",
+        description: "Agent 行为、后台会话上限和桌面偏好",
+        run: () => setSettingsOpen(true),
+      },
+      {
+        kind: "ui",
+        id: "tree",
+        title: "打开会话分支树",
+        description: "查看并切换当前会话分支",
+        run: () => setTreeOpen(true),
+      },
+    ],
+    [setModelCenterOpen, setSettingsOpen, setTreeOpen],
+  );
 
-  const run = React.useCallback(
+  const items = React.useMemo(() => {
+    const hay = query.trim().toLowerCase();
+    const desktop = uiItems.filter((item) => !hay || `${item.title} ${item.description} ${item.id}`.toLowerCase().includes(hay));
+    const commandItems: PaletteItem[] = commands
+      .filter((command) => {
+        const label = `${commandLabel(command)} ${command.description} ${command.source}`;
+        return !hay || label.toLowerCase().includes(hay);
+      })
+      .map((command) => ({ kind: "command", command }));
+    return [...desktop, ...commandItems];
+  }, [commands, query, uiItems]);
+
+  const runCommand = React.useCallback(
     async (command: SlashCommandInfo) => {
       setOpen(false);
       if (command.action === "compact") {
@@ -68,6 +109,18 @@ export function CommandPalette(): React.ReactElement {
     [setOpen, setConnection, setAgent],
   );
 
+  const runItem = React.useCallback(
+    (item: PaletteItem) => {
+      if (item.kind === "ui") {
+        setOpen(false);
+        item.run();
+        return;
+      }
+      void runCommand(item.command);
+    },
+    [runCommand, setOpen],
+  );
+
   return (
     <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
       <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>命令面板</DialogTitle>
@@ -76,24 +129,33 @@ export function CommandPalette(): React.ReactElement {
           autoFocus
           fullWidth
           size="small"
-          placeholder="输入 / 选择命令…"
+          placeholder="搜索桌面操作或 / 命令…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && filtered[0]) void run(filtered[0]);
+            if (e.key === "Enter" && items[0]) runItem(items[0]);
           }}
         />
       </Box>
       <List sx={{ px: 2, pb: 2, pt: 0 }}>
-        {filtered.map((command) => (
-          <ListItemButton key={`${command.source}:${command.name}`} onClick={() => void run(command)} sx={{ borderRadius: "10px", mb: 0.5 }}>
-            <ListItemText
-              primary={<span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: "var(--omega-accent)" }}>{commandLabel(command)}</span>}
-              secondary={<span style={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{command.description || command.source}</span>}
-            />
-          </ListItemButton>
-        ))}
-        {filtered.length === 0 ? (
+        {items.map((item) =>
+          item.kind === "ui" ? (
+            <ListItemButton key={item.id} onClick={() => runItem(item)} sx={{ borderRadius: "10px", mb: 0.5 }}>
+              <ListItemText
+                primary={<span style={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{item.title}</span>}
+                secondary={<span style={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{item.description}</span>}
+              />
+            </ListItemButton>
+          ) : (
+            <ListItemButton key={`${item.command.source}:${item.command.name}`} onClick={() => runItem(item)} sx={{ borderRadius: "10px", mb: 0.5 }}>
+              <ListItemText
+                primary={<span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: "var(--omega-accent)" }}>{commandLabel(item.command)}</span>}
+                secondary={<span style={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{item.command.description || item.command.source}</span>}
+              />
+            </ListItemButton>
+          ),
+        )}
+        {items.length === 0 ? (
           <ListItemText primary={<span style={{ fontSize: 12, color: "var(--omega-text-dim)" }}>无匹配命令</span>} />
         ) : null}
       </List>

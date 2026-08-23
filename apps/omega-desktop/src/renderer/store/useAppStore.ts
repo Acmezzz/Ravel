@@ -24,6 +24,7 @@ import type {
   ThinkingLevel,
   SlashCommandInfo,
   AuthStatus,
+  DesktopSettings,
   UsageSnapshot,
   GitSnapshot,
   FileReadResult,
@@ -74,6 +75,8 @@ export interface LayoutState {
   commandPaletteOpen: boolean;
   treeOpen: boolean;
   leftTab: "sessions" | "files";
+  modelCenterOpen: boolean;
+  settingsOpen: boolean;
 }
 
 export interface ViewerState {
@@ -113,6 +116,7 @@ export interface AppState {
   models: ModelInfo[];
   commands: SlashCommandInfo[];
   auth: AuthStatus | null;
+  desktopSettings: DesktopSettings | null;
   thinkingActive: boolean;
   compacting: boolean;
   retrying: boolean;
@@ -170,6 +174,7 @@ export interface AppState {
   setModels: (models: ModelInfo[]) => void;
   setCommands: (commands: SlashCommandInfo[]) => void;
   setAuth: (auth: AuthStatus | null) => void;
+  setDesktopSettings: (settings: DesktopSettings | null) => void;
   setThinkingActive: (active: boolean) => void;
   setCompacting: (compacting: boolean) => void;
   setRetrying: (retrying: boolean) => void;
@@ -189,6 +194,8 @@ export interface AppState {
   setRightTab: (tab: LayoutState["rightTab"]) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setTreeOpen: (open: boolean) => void;
+  setModelCenterOpen: (open: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
 }
 
 const EMPTY_USAGE: UsageSnapshot = {
@@ -218,6 +225,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     applyModeWithTransition(resolved, origin);
     set({ themeMode: mode, resolvedMode: resolved });
+    const current = get().desktopSettings;
+    if (current && current.themeMode !== mode) {
+      void ipc.updateDesktopSettings({ themeMode: mode }).then((res) => {
+        if (res.ok) get().setDesktopSettings(res.data);
+      });
+    }
   },
 
   sessions: [],
@@ -237,6 +250,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   models: [],
   commands: [],
   auth: null,
+  desktopSettings: null,
   thinkingActive: false,
   compacting: false,
   retrying: false,
@@ -264,6 +278,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     commandPaletteOpen: false,
     treeOpen: false,
     leftTab: "sessions",
+    modelCenterOpen: false,
+    settingsOpen: false,
   },
 
   setConnection: (connection) => set({ connection }),
@@ -478,6 +494,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setModels: (models) => set({ models }),
   setCommands: (commands) => set({ commands }),
   setAuth: (auth) => set({ auth }),
+  setDesktopSettings: (desktopSettings) => set({ desktopSettings }),
   setThinkingActive: (thinkingActive) => set({ thinkingActive }),
   setCompacting: (compacting) => set({ compacting }),
   setRetrying: (retrying) => set({ retrying }),
@@ -501,13 +518,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setLayout: (patch) =>
     set((state) => ({ layout: { ...state.layout, ...patch } })),
-  toggleRightPanel: () =>
+  toggleRightPanel: () => {
+    const next = !get().layout.rightPanelOpen;
     set((state) => ({
       layout: {
         ...state.layout,
-        rightPanelOpen: !state.layout.rightPanelOpen,
+        rightPanelOpen: next,
       },
-    })),
+    }));
+    void ipc.updateDesktopSettings({ rightPanelOpen: next }).then((res) => {
+      if (res.ok) get().setDesktopSettings(res.data);
+    });
+  },
   setRightTab: (rightTab) =>
     set((state) => ({
       layout: { ...state.layout, rightTab, rightPanelOpen: true },
@@ -519,6 +541,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTreeOpen: (treeOpen) =>
     set((state) => ({
       layout: { ...state.layout, treeOpen },
+    })),
+  setModelCenterOpen: (modelCenterOpen) =>
+    set((state) => ({
+      layout: { ...state.layout, modelCenterOpen },
+    })),
+  setSettingsOpen: (settingsOpen) =>
+    set((state) => ({
+      layout: { ...state.layout, settingsOpen },
     })),
 }));
 

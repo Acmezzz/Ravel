@@ -29,6 +29,7 @@ import type { ThemeMode } from "../../theme/palettes";
 import { SettingsDialog } from "./SettingsDialog";
 import { SessionInfoDialog } from "./SessionInfoDialog";
 import { ModelPicker } from "./ModelPicker";
+import { ModelCenter } from "./ModelCenter";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 
 const THINKING_LABEL: Record<ThinkingLevel, string> = {
@@ -226,7 +227,9 @@ export function Header(): React.ReactElement {
   const setThemeMode = useAppStore((s) => s.setThemeMode);
 
   const [thinkingAnchor, setThinkingAnchor] = React.useState<HTMLElement | null>(null);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const settingsOpen = useAppStore((s) => s.layout.settingsOpen);
+  const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
+  const setModelCenterOpen = useAppStore((s) => s.setModelCenterOpen);
   const [infoOpen, setInfoOpen] = React.useState(false);
   const [modelAnchor, setModelAnchor] = React.useState<HTMLElement | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -308,30 +311,41 @@ export function Header(): React.ReactElement {
         <Divider />
 
         {/* model cluster */}
-        <Box
-            onClick={(e) => {
-              if (!shuttingDown) setModelAnchor(e.currentTarget);
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Box
+              onClick={(e) => {
+                if (!shuttingDown) setModelAnchor(e.currentTarget);
+              }}
+              sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 1.25,
+              py: 0.5,
+              borderRadius: "10px",
+              border: "1px solid var(--omega-border)",
+              cursor: shuttingDown ? "default" : "pointer",
+              opacity: shuttingDown ? 0.55 : 1,
+              maxWidth: 230,
+              "&:hover": { borderColor: "var(--omega-accent)", background: "var(--omega-hover-fill)" },
             }}
-            sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.25,
-            py: 0.5,
-            borderRadius: "10px",
-            border: "1px solid var(--omega-border)",
-            cursor: shuttingDown ? "default" : "pointer",
-            opacity: shuttingDown ? 0.55 : 1,
-            maxWidth: 230,
-            "&:hover": { borderColor: "var(--omega-accent)", background: "var(--omega-hover-fill)" },
-          }}
-        >
-          <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {modelLabel}
-          </Typography>
-          <ExpandMoreIcon sx={{ fontSize: 15, color: "var(--omega-text-muted)", flex: "0 0 auto" }} />
+          >
+            <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {modelLabel}
+            </Typography>
+            <ExpandMoreIcon sx={{ fontSize: 15, color: "var(--omega-text-muted)", flex: "0 0 auto" }} />
+          </Box>
+          <Button
+            size="small"
+            disabled={shuttingDown}
+            onClick={() => setModelCenterOpen(true)}
+            sx={{ textTransform: "none", fontSize: 11.5, color: "var(--omega-text-muted)", minWidth: 0, px: 1 }}
+          >
+            模型中心
+          </Button>
         </Box>
         <ModelPicker anchor={modelAnchor} onClose={() => setModelAnchor(null)} />
+        <ModelCenter />
 
           <Chip
           size="small"

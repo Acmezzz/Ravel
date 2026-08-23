@@ -20,6 +20,7 @@ import type {
   ThinkingLevel,
   SlashCommandInfo,
   AuthStatus,
+  DesktopSettings,
   PromptImage,
   SessionTree,
   ForkCandidate,
@@ -83,6 +84,10 @@ export interface OmegaBridge {
   listCommands(): Promise<IpcResult<SlashCommandInfo[]>>;
   compact(): Promise<IpcResult<AgentStateSnapshot>>;
   authStatus(): Promise<IpcResult<AuthStatus>>;
+  getDesktopSettings(): Promise<IpcResult<DesktopSettings>>;
+  updateDesktopSettings(req: Partial<DesktopSettings>): Promise<IpcResult<DesktopSettings>>;
+  setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
+  removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
   listPiSessions(): Promise<IpcResult<SessionSummary[]>>;
   newPiSession(req: { title?: string; workspace?: string }): Promise<IpcResult<SessionRecord>>;
   switchPiSession(req: { sessionId: string }): Promise<IpcResult<SessionRecord>>;
@@ -181,6 +186,13 @@ export const ipc = {
   listCommands: async (): Promise<IpcResult<SlashCommandInfo[]>> => ok(await window.omega?.listCommands?.()),
   compact: async (): Promise<IpcResult<AgentStateSnapshot>> => ok(await window.omega?.compact?.()),
   authStatus: async (): Promise<IpcResult<AuthStatus>> => ok(await window.omega?.authStatus?.()),
+  getDesktopSettings: async (): Promise<IpcResult<DesktopSettings>> => ok(await window.omega?.getDesktopSettings?.()),
+  updateDesktopSettings: async (req: Partial<DesktopSettings>): Promise<IpcResult<DesktopSettings>> =>
+    ok(await window.omega?.updateDesktopSettings?.(req)),
+  setProviderApiKey: async (req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>> =>
+    ok(await window.omega?.setProviderApiKey?.(req)),
+  removeProviderApiKey: async (req: { providerId: string }): Promise<IpcResult<AuthStatus>> =>
+    ok(await window.omega?.removeProviderApiKey?.(req)),
   listPiSessions: async (): Promise<IpcResult<SessionSummary[]>> => ok(await window.omega?.listPiSessions?.()),
   newPiSession: async (req: { title?: string; workspace?: string }): Promise<IpcResult<SessionRecord>> =>
     ok(await window.omega?.newPiSession?.(req)),

@@ -152,6 +152,26 @@ contextBridge.exposeInMainWorld("omega", {
   listCommands: () => ipcRenderer.invoke("omega:listCommands"),
   compact: () => ipcRenderer.invoke("omega:compact"),
   authStatus: () => ipcRenderer.invoke("omega:authStatus"),
+  getDesktopSettings: () => ipcRenderer.invoke("omega:getDesktopSettings"),
+  updateDesktopSettings: (req) => ipcRenderer.invoke("omega:updateDesktopSettings", isPlainObject(req) ? req : {}),
+  setProviderApiKey: (req) => {
+    if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "providerId is required" });
+    }
+    if (typeof req.apiKey !== "string" || !req.apiKey.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "apiKey is required" });
+    }
+    return ipcRenderer.invoke("omega:setProviderApiKey", {
+      providerId: req.providerId.trim().slice(0, 128),
+      apiKey: req.apiKey.trim().slice(0, 8192),
+    });
+  },
+  removeProviderApiKey: (req) => {
+    if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "providerId is required" });
+    }
+    return ipcRenderer.invoke("omega:removeProviderApiKey", { providerId: req.providerId.trim().slice(0, 128) });
+  },
   listPiSessions: () => ipcRenderer.invoke("omega:listPiSessions"),
   newPiSession: (req) => {
     if (req && req.title !== undefined && (typeof req.title !== "string" || req.title.length > 256)) {

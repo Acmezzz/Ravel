@@ -206,9 +206,19 @@ export function createWorkerSlotPool({
     }
   }
 
+  function configure(next = {}) {
+    if (Number.isInteger(next.cap)) cap = Math.min(8, Math.max(1, next.cap));
+    if (Number.isInteger(next.idleTtlMs)) idleTtlMs = Math.min(60 * 60 * 1000, Math.max(30_000, next.idleTtlMs));
+  }
+
   return {
-    cap,
-    idleTtlMs,
+    get cap() {
+      return cap;
+    },
+    get idleTtlMs() {
+      return idleTtlMs;
+    },
+    configure,
     get,
     list,
     snapshots,
