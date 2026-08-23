@@ -170,7 +170,7 @@ function attach(session) {
 let projectTrusted = true;
 let permissionProfile = "trusted";
 
-async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, runtimeCredentials = {} }) {
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, runtimeCredentials = {}, customProviders = {} }) {
   permissionProfile = sanitizePermissionProfile(profile);
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
@@ -181,6 +181,9 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   runtime = await bridge.createRuntime({ cwd, extensionsRoot: root, projectTrusted });
   for (const [providerId, apiKey] of Object.entries(runtimeCredentials ?? {})) {
     if (typeof apiKey === "string" && apiKey.length > 0) await runtime.session.modelRuntime.setRuntimeApiKey(providerId, apiKey);
+  }
+  for (const provider of Object.values(customProviders ?? {})) {
+    try { runtime.session.modelRuntime.registerProvider(provider.id, { name: provider.name, baseUrl: provider.baseUrl, api: provider.api, headers: provider.headers, authHeader: provider.authHeader, models: provider.models }); } catch { /* invalid persisted provider is ignored; builtin providers remain usable */ }
   }
   if (sessionId && sessionId !== runtime.session.sessionId) {
     const sessionPath = await bridge.resolveSessionPath(sessionId);

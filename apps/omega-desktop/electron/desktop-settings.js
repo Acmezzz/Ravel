@@ -17,6 +17,7 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   permissionProfile: "trusted",
   sessionRecovery: {},
   keybindings: DEFAULT_KEYBINDINGS,
+  customProviders: {},
   windowBounds: null,
 });
 
@@ -42,6 +43,7 @@ export function sanitizeDesktopSettings(input, base = DESKTOP_SETTINGS_DEFAULTS)
     permissionProfile: PERMISSION_PROFILES.has(source.permissionProfile) ? source.permissionProfile : base.permissionProfile,
     sessionRecovery: source.sessionRecovery && typeof source.sessionRecovery === "object" ? Object.fromEntries(Object.entries(source.sessionRecovery).slice(-100).map(([id, value]) => [String(id).slice(0, 128), { state: typeof value?.state === "string" ? value.state.slice(0, 64) : "unknown", running: Boolean(value?.running), unread: Boolean(value?.unread), error: typeof value?.error === "string" ? value.error.slice(0, 1000) : null, retryAttempt: Number.isInteger(value?.retryAttempt) ? value.retryAttempt : 0, retryMaxAttempts: Number.isInteger(value?.retryMaxAttempts) ? value.retryMaxAttempts : 0, retryDelayMs: Number.isInteger(value?.retryDelayMs) ? value.retryDelayMs : 0, updatedAt: typeof value?.updatedAt === "string" ? value.updatedAt : new Date().toISOString() }])) : { ...base.sessionRecovery },
     keybindings: (() => { const normalized = sanitizeKeybindings(source.keybindings); return normalized.conflicts.length === 0 ? { commandPalette: normalized.commandPalette, newSession: normalized.newSession, abort: normalized.abort } : { ...base.keybindings }; })(),
+    customProviders: source.customProviders && typeof source.customProviders === "object" ? Object.fromEntries(Object.entries(source.customProviders).slice(-50)) : { ...base.customProviders },
     windowBounds: bounds
       ? {
           x: clampInt(bounds.x, -10_000, 10_000, 80),

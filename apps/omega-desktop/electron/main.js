@@ -370,6 +370,7 @@ function createBoundHost() {
   if (credentialStore) {
     host.runtimeCredentials = Object.fromEntries(credentialStore.listIds().map((id) => [id, credentialStore.read(id)]).filter(([, value]) => typeof value === "string" && value.length > 0));
   }
+  host.customProviders = desktopSettings?.get()?.customProviders ?? {};
   return bindHost(host);
 }
 
@@ -995,7 +996,11 @@ ipcMain.handle("omega:configureCustomProvider", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = customProviderRequest(req);
   if (!normalized) return errorResult("invalid_args", "provider config is required");
-  return rpc("configureCustomProvider", normalized, "write_failed");
+  const result = await rpc("configureCustomProvider", normalized, "write_failed");
+  if (!result.ok) return result;
+  const current = desktopSettings.get().customProviders ?? {};
+  desktopSettings.update({ customProviders: { ...current, [result.data.provider.id]: result.data.provider } });
+  return result;
 });
 
 ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
