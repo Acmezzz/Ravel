@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { useAppStore } from "../../store/useAppStore";
+import { ipc } from "../../ipc/client";
 import { MessageBubble } from "./MessageBubble";
 import { ToolCard } from "./ToolCard";
 import type { SessionMessage } from "../../types/dto";
@@ -41,14 +42,33 @@ export function MessageList(): React.ReactElement {
   const bashRef = React.useRef<HTMLPreElement | null>(null);
   const stickRef = React.useRef(true);
   const [windowSize, setWindowSize] = React.useState(WINDOW_SIZE);
+  const [historyOffset, setHistoryOffset] = React.useState(0);
+  const [historyNextOffset, setHistoryNextOffset] = React.useState<number | null>(null);
+  const [historyLoading, setHistoryLoading] = React.useState(false);
 
   // Reset the render window when the session changes.
   React.useEffect(() => {
     setWindowSize(WINDOW_SIZE);
+    setHistoryOffset(0);
+    setHistoryNextOffset(null);
   }, [activeSessionId]);
+
+  const loadHistoricalMessages = React.useCallback(async () => {
+    if (!activeSessionId || historyLoading) return;
+    setHistoryLoading(true);
+    const result = await ipc.readSessionMessages({ sessionId: activeSessionId, offset: historyOffset, limit: WINDOW_SIZE });
+    if (result.ok) {
+      useAppStore.getState().prependMessages(result.data.items);
+      setHistoryNextOffset(result.data.nextOffset);
+      setHistoryOffset((current) => current + result.data.items.length);
+      setWindowSize((current) => current + result.data.items.length);
+    }
+    setHistoryLoading(false);
+  }, [activeSessionId, historyLoading, historyOffset]);
 
   const visibleAll = React.useMemo(() => messages.filter((m) => m.role !== "tool"), [messages]);
   const hiddenCount = Math.max(0, visibleAll.length - windowSize);
+  const canLoadHistorical = historyNextOffset !== null || (historyOffset === 0 && visibleAll.length >= WINDOW_SIZE);
   const visible = React.useMemo(
     () => (hiddenCount > 0 ? visibleAll.slice(visibleAll.length - windowSize) : visibleAll),
     [visibleAll, windowSize, hiddenCount],
@@ -106,16 +126,10 @@ export function MessageList(): React.ReactElement {
       sx={{ height: "100%", overflowY: "auto", px: { xs: 2, sm: 4 }, py: 3 }}
     >
       <Box sx={{ maxWidth: 860, mx: "auto" }}>
-        {hiddenCount > 0 ? (
-          <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setWindowSize((prev) => prev + WINDOW_SIZE)}
-              sx={{ textTransform: "none", borderRadius: "999px" }}
-            >
-              加载更早消息（剩余 {hiddenCount} 条）
-            </Button>
+        {hiddenCount > 0 || canLoadHistorical ? (
+          <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mb: 2 }}>
+            {hiddenCount > 0 ? <Button size="small" variant="outlined" onClick={() => setWindowSize((prev) => prev + WINDOW_SIZE)} sx={{ textTransform: "none", borderRadius: "999px" }}>加载更早消息（剩余 {hiddenCount} 条）</Button> : null}
+            {canLoadHistorical ? <Button size="small" variant="text" onClick={() => void loadHistoricalMessages()} disabled={historyLoading} sx={{ textTransform: "none" }}>{historyLoading ? "读取历史中…" : "从磁盘读取更早消息"}</Button> : null}
           </Box>
         ) : null}
         {visible.map((message) => (

@@ -170,6 +170,7 @@ export interface AppState {
   clearConversation: () => void;
 
   appendMessage: (message: SessionMessage) => void;
+  prependMessages: (messages: SessionMessage[]) => void;
   appendDelta: (messageId: string, delta: string) => void;
   appendThinkingDelta: (delta: string) => void;
   /** Replace-or-consume the trailing optimistic bubble with the delivered user message. */
@@ -391,6 +392,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   appendMessage: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
+  prependMessages: (messages) =>
+    set((state) => {
+      const known = new Set(state.messages.map((message) => message.id));
+      const incoming = messages.filter((message) => !known.has(message.id));
+      return incoming.length ? { messages: [...incoming, ...state.messages] } : {};
+    }),
   appendDelta: (messageId, delta) =>
     set((state) => ({
       messages: state.messages.map((message) =>

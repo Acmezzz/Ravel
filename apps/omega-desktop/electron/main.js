@@ -288,7 +288,9 @@ function bindHost(host) {
       if (bucket.length > RECENT_EVENT_LIMIT) bucket.splice(0, bucket.length - RECENT_EVENT_LIMIT);
       recentEventsBySession.set(sessionId, bucket);
       try {
-        appendFileSync(recentEventsFile(sessionId), `${JSON.stringify({ event, meta })}\n`);
+        const cacheFile = recentEventsFile(sessionId);
+        mkdirSync(dirname(cacheFile), { recursive: true });
+        appendFileSync(cacheFile, `${JSON.stringify({ event, meta })}\n`);
       } catch {
         /* event cache is best effort and never blocks the agent */
       }
@@ -755,7 +757,7 @@ ipcMain.handle("omega:recentEvents", (event, req) => {
   let bucket = sessionId ? recentEventsBySession.get(sessionId) ?? [] : [];
   if (sessionId && bucket.length === 0) {
     try {
-      bucket = readFileSync(recentEventsFile(sessionId), "utf8").split("\n").filter(Boolean).slice(-RECENT_EVENT_LIMIT).map((line) => JSON.parse(line));
+      bucket = readFileSync(recentEventsFile(sessionId), "utf8").split("\n").filter(Boolean).slice(-RECENT_EVENT_LIMIT).map((line) => JSON.parse(line)).filter((item) => item && item.event && item.meta);
     } catch {
       bucket = [];
     }
