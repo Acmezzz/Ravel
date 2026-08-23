@@ -34,6 +34,8 @@ function isMarkdown(path: string | null): boolean {
 function isImage(file: { mimeType?: string; dataUrl?: string } | null): boolean { return Boolean(file?.mimeType?.startsWith("image/") && file.dataUrl); }
 function isAudio(file: { mimeType?: string; dataUrl?: string } | null): boolean { return Boolean(file?.mimeType?.startsWith("audio/") && file.dataUrl); }
 function isPdf(file: { mimeType?: string; dataUrl?: string } | null): boolean { return Boolean(file?.mimeType === "application/pdf" && file.dataUrl); }
+function isMermaid(path: string | null): boolean { return extOf(path) === "mmd" || extOf(path) === "mermaid"; }
+function isMath(path: string | null): boolean { return extOf(path) === "tex" || extOf(path) === "latex"; }
 
 function numbered(content: string): Array<{ n: number; text: string }> {
   const lines = content.split("\n");
@@ -52,9 +54,11 @@ export function FileViewer(): React.ReactElement {
   const [displayedContent, setDisplayedContent] = React.useState("");
   const [nextOffset, setNextOffset] = React.useState<number | null>(null);
   const [loadingMore, setLoadingMore] = React.useState(false);
+  const [diffMode, setDiffMode] = React.useState(false);
 
   React.useEffect(() => {
-    setMode(isMarkdown(viewer.path) ? "preview" : "source");
+    setMode(isMarkdown(viewer.path) || isMermaid(viewer.path) || isMath(viewer.path) ? "preview" : "source");
+    setDiffMode(false);
     setSelection(null);
     setDisplayedContent(viewer.file?.content ?? "");
     setNextOffset(viewer.file?.nextOffset ?? null);
@@ -109,7 +113,7 @@ export function FileViewer(): React.ReactElement {
           </Typography>
         ) : null}
         <Box sx={{ flex: 1 }} />
-        {isMarkdown(viewer.path) ? (
+        {isMarkdown(viewer.path) || isMermaid(viewer.path) || isMath(viewer.path) ? (
           <Box sx={{ display: "flex", gap: 0.5 }}>
             <Typography
               onClick={() => setMode("source")}
@@ -117,6 +121,7 @@ export function FileViewer(): React.ReactElement {
             >
               源码
             </Typography>
+            <Typography onClick={() => setDiffMode((current) => !current)} sx={{ fontSize: 11, cursor: "pointer", color: diffMode ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>diff</Typography>
             <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>/</Typography>
             <Typography
               onClick={() => setMode("preview")}
@@ -148,9 +153,13 @@ export function FileViewer(): React.ReactElement {
         ) : viewer.file?.binary ? (
           <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>该二进制文件暂不支持内嵌预览，可用资源管理器打开。</Typography>
         ) : mode === "preview" && isMarkdown(viewer.path) ? (
-          <Box sx={{ maxHeight: "64vh", overflow: "auto" }}>
-            <Markdown>{viewer.file?.content ?? ""}</Markdown>
-          </Box>
+          <Box sx={{ maxHeight: "64vh", overflow: "auto" }}><Markdown>{viewer.file?.content ?? ""}</Markdown></Box>
+        ) : mode === "preview" && isMermaid(viewer.path) ? (
+          <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>Mermaid source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
+        ) : mode === "preview" && isMath(viewer.path) ? (
+          <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>LaTeX source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
+        ) : diffMode ? (
+          <Box component="pre" sx={{ p: 1, whiteSpace: "pre-wrap", color: "var(--omega-text-soft)", background: "var(--omega-bg-code)" }}>{(displayedContent || "").split("\n").map((line) => `${line.startsWith("+") ? "+ " : line.startsWith("-") ? "- " : "  "}${line}`).join("\n")}</Box>
         ) : (
           <Box
             sx={{
