@@ -37,9 +37,19 @@ export function LeftNav(): React.ReactElement {
         {leftTab === "sessions" ? (
           <Button
             size="small"
-            startIcon={<AddIcon />}
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
             onClick={() => setNewOpen(true)}
-            sx={{ textTransform: "none", borderRadius: "999px", flex: "0 0 auto" }}
+            sx={{
+              textTransform: "none",
+              borderRadius: "999px",
+              flex: "0 0 auto",
+              fontWeight: 600,
+              fontSize: 12,
+              px: 1.5,
+              color: "var(--omega-accent)",
+              background: "var(--omega-accent-soft)",
+              "&:hover": { background: "var(--omega-accent-soft)", transform: "translateY(-1px)", boxShadow: "var(--omega-shadow-sm)" },
+            }}
           >
             新建
           </Button>
@@ -48,8 +58,8 @@ export function LeftNav(): React.ReactElement {
       <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", px: 0.75, pb: 1.5, pt: 0.5 }}>
         {leftTab === "sessions" ? <SessionList /> : <FileTree />}
       </Box>
-      <Box sx={{ p: 1.25, pt: 1, borderTop: "1px solid var(--omega-border)" }}>
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)", lineHeight: 1.5 }}>JSONL 与扩展面板在右栏。</Typography>
+      <Box sx={{ px: 1.5, py: 1, borderTop: "1px solid var(--omega-border)" }}>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", lineHeight: 1.5, letterSpacing: "0.01em" }}>JSONL 与扩展面板在右栏。</Typography>
       </Box>
       <NewSessionDialog open={newOpen} onClose={() => setNewOpen(false)} />
     </Box>

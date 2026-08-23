@@ -160,10 +160,12 @@ export function MessageList(): React.ReactElement {
               borderRadius: "12px",
               border: "1px solid var(--omega-border)",
               background: "var(--omega-bg-code)",
+              boxShadow: "var(--omega-inset-highlight)",
               overflow: "hidden",
             }}
           >
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", px: 1.5, py: 0.5, letterSpacing: "0.05em" }}>
+            <Typography className="overline-label" sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.5, py: 0.75 }}>
+              <Box component="span" className="pulse-dot" sx={{ width: 6, height: 6, borderRadius: "50%", background: "var(--omega-accent)", boxShadow: "0 0 6px var(--omega-accent)" }} />
               BASH 实时输出
             </Typography>
             <Box

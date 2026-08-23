@@ -22,19 +22,51 @@ export function CodeBlock({ language, className, children }: CodeBlockProps): Re
   }, [children]);
 
   return (
-    <Box sx={{ position: "relative", my: 1 }}>
-      {language ? (
-        <Box sx={{ position: "absolute", top: 8, right: 44, fontSize: 11, color: "var(--omega-text-muted)", zIndex: 1 }}>{language}</Box>
-      ) : null}
-      <Tooltip title="复制">
-        <IconButton
-          size="small"
-          onClick={copy}
-          sx={{ position: "absolute", top: 4, right: 4, color: "var(--omega-text-muted)", zIndex: 1 }}
-        >
-          <ContentCopyIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
+    <Box
+      sx={{
+        position: "relative",
+        my: 1,
+        "& .code-actions": { opacity: 0, transition: "opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" },
+        "&:hover .code-actions": { opacity: 1 },
+      }}
+    >
+      <Box className="code-actions" sx={{ position: "absolute", top: 6, right: 6, display: "flex", alignItems: "center", gap: 0.5, zIndex: 1 }}>
+        {language ? (
+          <Box
+            sx={{
+              fontSize: 10,
+              fontWeight: 650,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "var(--omega-text-dim)",
+              background: "var(--omega-bg-elevated)",
+              border: "1px solid var(--omega-border)",
+              borderRadius: "5px",
+              px: 0.75,
+              py: "1px",
+            }}
+          >
+            {language}
+          </Box>
+        ) : null}
+        <Tooltip title="复制">
+          <IconButton
+            size="small"
+            onClick={copy}
+            sx={{
+              color: "var(--omega-text-dim)",
+              background: "var(--omega-bg-elevated)",
+              border: "1px solid var(--omega-border)",
+              borderRadius: "6px",
+              width: 24,
+              height: 24,
+              "&:hover": { color: "var(--omega-accent)", borderColor: "var(--omega-accent-line)" },
+            }}
+          >
+            <ContentCopyIcon sx={{ fontSize: 13 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <pre>
         <code className={className}>{children}</code>
       </pre>

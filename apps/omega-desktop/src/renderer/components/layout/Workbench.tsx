@@ -135,14 +135,15 @@ export function Workbench(): React.ReactElement {
           onPointerDown={startDrag("left")}
           sx={{
             position: "absolute",
-            right: 0,
+            right: -1,
             top: 0,
             bottom: 0,
             width: 5,
             cursor: "col-resize",
             zIndex: 5,
             touchAction: "none",
-            "&:hover": { background: "var(--omega-accent-soft)" },
+            transition: "background 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+            "&:hover": { background: "var(--omega-accent-line)" },
             "&:active": { background: "var(--omega-accent)" },
           }}
         />
@@ -160,8 +161,10 @@ export function Workbench(): React.ReactElement {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 1,
-              pt: 2,
+              gap: 0.5,
+              pt: 1.5,
+              background: "var(--omega-bg-rail)",
+              height: "100%",
             }}
           >
             <Tooltip title="工作流">
@@ -207,14 +210,15 @@ export function Workbench(): React.ReactElement {
             onPointerDown={startDrag("right")}
             sx={{
               position: "absolute",
-              left: 0,
+              left: -1,
               top: 0,
               bottom: 0,
               width: 5,
               cursor: "col-resize",
               zIndex: 5,
               touchAction: "none",
-              "&:hover": { background: "var(--omega-accent-soft)" },
+              transition: "background 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+              "&:hover": { background: "var(--omega-accent-line)" },
               "&:active": { background: "var(--omega-accent)" },
             }}
           />

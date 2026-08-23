@@ -89,18 +89,19 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
           gap: 0.75,
           px: 1.25,
           py: 0.4,
-          borderRadius: "10px",
+          borderRadius: "999px",
           border: "1px solid var(--omega-border)",
           background: "var(--omega-bg-soft)",
           cursor: "pointer",
           userSelect: "none",
-          "&:hover": { borderColor: "var(--omega-border-strong)" },
+          transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+          "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
         }}
       >
-        <EmojiObjectsIcon sx={{ fontSize: 14, color: "var(--omega-text-muted)" }} />
+        <EmojiObjectsIcon sx={{ fontSize: 13, color: "var(--omega-accent)" }} />
         <Typography
           className={streaming ? "thinking-shimmer" : undefined}
-          sx={{ fontSize: 11.5, color: "var(--omega-text-muted)", fontWeight: 600 }}
+          sx={{ fontSize: 11.5, color: "var(--omega-text-muted)", fontWeight: 550, letterSpacing: "0.005em" }}
         >
           {streaming
             ? ["思考中", "推理中", "整理中", "斟酌中"][Math.floor(Date.now() / 1600) % 4]
@@ -109,7 +110,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
               : `思考了 ${elapsed || 1}s`}
         </Typography>
         {loading ? <CircularProgress size={10} sx={{ color: "var(--omega-accent)" }} /> : null}
-        <ExpandMoreIcon sx={{ fontSize: 14, color: "var(--omega-text-dim)", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+        <ExpandMoreIcon sx={{ fontSize: 14, color: "var(--omega-text-dim)", transform: open ? "rotate(180deg)" : "none", transition: "transform 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" }} />
       </Box>
       {open && (loaded ?? "") ? (
         <Box
@@ -117,10 +118,11 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
             mt: 0.75,
             p: 1.25,
             borderRadius: "10px",
-            border: "1px dashed var(--omega-border)",
+            border: "1px dashed var(--omega-border-strong)",
             background: "var(--omega-bg-code)",
             maxHeight: 260,
             overflowY: "auto",
+            animation: "omega-rise .16s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
           }}
         >
           <Typography component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontSize: 12, lineHeight: 1.6, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace" }}>

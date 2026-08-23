@@ -1,24 +1,24 @@
 /**
  * Tailwind configuration. Colors are mirrored from `theme/tokens.ts` (which is
  * the single source of truth for design tokens) so Tailwind utility classes and
- * MUI's palette never drift apart. See system_design.md §5.
+ * MUI's palette never drift apart. See docs/system_design.md §5.
  */
 import type { Config } from "tailwindcss";
 
 const tokens = {
-  bgApp: "#0d1016",
-  bgPanel: "#151923",
-  bgElevated: "#1d2330",
-  bgSoft: "#171d29",
-  border: "#2b3444",
-  borderStrong: "#3a465b",
-  text: "#f3f6fb",
-  muted: "#8d99ad",
-  accent: "#86a9ff",
-  accentStrong: "#5d86f2",
-  success: "#6bd59a",
-  warning: "#e8bd68",
-  danger: "#f17f8d",
+  bgApp: "#0a0c12",
+  bgPanel: "#12151e",
+  bgElevated: "#1a1f2d",
+  bgSoft: "#161a26",
+  border: "rgba(148,163,197,0.10)",
+  borderStrong: "rgba(148,163,197,0.20)",
+  text: "#eceff7",
+  muted: "#98a1b6",
+  accent: "#8fa8ff",
+  accentStrong: "#6d8dff",
+  success: "#63d69c",
+  warning: "#e5b96e",
+  danger: "#ee7d8a",
 };
 
 export default {
@@ -27,9 +27,10 @@ export default {
     extend: {
       colors: tokens,
       borderRadius: {
-        lg: "18px",
-        md: "12px",
-        sm: "9px",
+        sm: "6px",
+        md: "10px",
+        lg: "14px",
+        xl: "20px",
       },
       spacing: {
         1: "4px",
@@ -40,7 +41,11 @@ export default {
         6: "24px",
       },
       boxShadow: {
-        panel: "0 22px 60px rgba(0, 0, 0, .28)",
+        panel: "0 6px 20px rgba(0,0,0,.42), 0 1px 4px rgba(0,0,0,.30)",
+        overlay: "0 20px 56px rgba(0,0,0,.55), 0 4px 16px rgba(0,0,0,.35)",
+      },
+      transitionTimingFunction: {
+        omega: "cubic-bezier(0.22, 1, 0.36, 1)",
       },
     },
   },

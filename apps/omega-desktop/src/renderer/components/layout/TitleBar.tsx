@@ -19,11 +19,13 @@ const dragStyle = { WebkitAppRegion: "drag" } as React.CSSProperties;
 const noDragStyle = { WebkitAppRegion: "no-drag" } as React.CSSProperties;
 
 const controlSx = {
-  width: 44,
-  height: 32,
-  borderRadius: "8px",
+  width: 42,
+  height: 30,
+  borderRadius: "7px",
   color: "var(--omega-text-muted)",
+  transition: "all 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
   "&:hover": { color: "var(--omega-text)", background: "var(--omega-hover-fill)" },
+  "&:active": { transform: "scale(0.92)" },
 } as const;
 
 export function TitleBar(): React.ReactElement {
@@ -60,20 +62,21 @@ export function TitleBar(): React.ReactElement {
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <Box
           sx={{
-            width: 18,
-            height: 18,
+            width: 19,
+            height: 19,
             display: "grid",
             placeItems: "center",
             borderRadius: "6px",
-            border: "1px solid var(--omega-border-strong)",
-            color: "var(--omega-accent)",
+            background: "var(--omega-accent-gradient)",
+            boxShadow: "0 1px 4px var(--omega-accent-soft)",
+            color: "#fff",
             fontSize: 11,
             fontWeight: 700,
           }}
         >
           Ω
         </Box>
-        <Typography sx={{ fontSize: 12.5, fontWeight: 700, letterSpacing: "0.06em", color: "var(--omega-accent)" }}>
+        <Typography sx={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-muted)" }}>
           OMEGA DESKTOP
         </Typography>
       </Box>

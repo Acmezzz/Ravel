@@ -201,7 +201,7 @@ export function SessionList(): React.ReactElement {
       </Box>
       {[...groups.entries()].map(([workspace, items]) => (
         <Box key={workspace} sx={{ mb: 1.25 }}>
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)", px: 1, py: 0.5 }} noWrap>
+          <Typography className="overline-label" sx={{ px: 1, py: 0.5, display: "block" }} noWrap>
             {workspace}
             {items[0] && activeWorkspace && items[0].workspace === activeWorkspace ? " · 当前工作区" : ""}
           </Typography>
@@ -225,11 +225,18 @@ export function SessionList(): React.ReactElement {
                     setContextMenu({ mouseX: event.clientX - 2, mouseY: event.clientY - 4, id: session.id });
                   }}
                   sx={{
-                    borderRadius: "10px",
-                    mb: 0.5,
+                    borderRadius: "9px",
+                    mb: 0.25,
                     px: 1.25,
+                    py: 0.75,
                     pl: nested ? 2.75 : 1.25,
-                    "&.Mui-selected": { background: "var(--omega-selected)" },
+                    border: "1px solid transparent",
+                    transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+                    "&.Mui-selected": {
+                      background: "var(--omega-selected)",
+                      borderColor: "var(--omega-accent-line)",
+                    },
+                    "&.Mui-selected:hover": { background: "var(--omega-selected)" },
                     "&:hover": { background: "var(--omega-hover-fill)" },
                     "& .row-actions": { opacity: 0 },
                     "&:hover .row-actions": { opacity: 1 },
@@ -238,15 +245,28 @@ export function SessionList(): React.ReactElement {
                   <ListItemText
                     primary={
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
-                        {unread ? <Box sx={{ width: 7, height: 7, borderRadius: "50%", background: "var(--omega-accent)", flex: "0 0 auto" }} /> : null}
-                        <Typography sx={{ fontSize: 13, fontWeight: active || unread ? 700 : 500, color: "var(--omega-text)", minWidth: 0 }} noWrap>
+                        {unread ? <Box className="pulse-dot" sx={{ width: 6, height: 6, borderRadius: "50%", background: "var(--omega-accent)", boxShadow: "0 0 6px var(--omega-accent)", flex: "0 0 auto" }} /> : null}
+                        <Typography sx={{ fontSize: 13, fontWeight: active || unread ? 600 : 500, letterSpacing: "0.002em", color: "var(--omega-text)", minWidth: 0 }} noWrap>
                           {nested ? `↳ ${session.title}` : session.title}
                         </Typography>
-                        {status ? <Chip size="small" label={status} sx={{ height: 18, fontSize: 10 }} /> : null}
+                        {status ? (
+                          <Chip
+                            size="small"
+                            label={status}
+                            sx={{
+                              height: 17,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              border: "none",
+                              background: failed ? "var(--omega-danger-soft)" : isCompacting ? "var(--omega-warning-soft)" : "var(--omega-accent-soft)",
+                              color: failed ? "var(--omega-danger)" : isCompacting ? "var(--omega-warning)" : "var(--omega-accent)",
+                            }}
+                          />
+                        ) : null}
                       </Box>
                     }
                     secondary={
-                      <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)" }} component="span" noWrap>
+                      <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} component="span" noWrap>
                         {relativeTime(session.updatedAt)}
                         {session.messageCount ? ` · ${session.messageCount} 条` : ""}
                         {session.parentSessionId ? " · 分支" : ""}

@@ -48,8 +48,34 @@ export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected
   }, [selectedFiles, snapshotToken, onApplied]);
 
   return (
-    <Box sx={{ position: "sticky", bottom: 0, mt: 1, p: 1.25, background: "var(--omega-bg-elevated)", border: "1px solid var(--omega-border)", borderRadius: "12px", display: "flex", gap: 1 }}>
-      <Button variant="outlined" onClick={() => void accept()} disabled={busy} sx={{ textTransform: "none", color: "var(--omega-success)", borderColor: "var(--omega-border)" }}>
+    <Box
+      sx={{
+        position: "sticky",
+        bottom: 0,
+        mt: 1,
+        p: 1.25,
+        background: "var(--omega-panel-glass)",
+        backdropFilter: "blur(16px) saturate(1.3)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.3)",
+        border: "1px solid var(--omega-border-strong)",
+        borderRadius: "12px",
+        boxShadow: "var(--omega-shadow-md), var(--omega-inset-highlight)",
+        display: "flex",
+        gap: 1,
+      }}
+    >
+      <Button
+        variant="outlined"
+        onClick={() => void accept()}
+        disabled={busy}
+        sx={{
+          textTransform: "none",
+          fontWeight: 600,
+          color: "var(--omega-success)",
+          borderColor: "var(--omega-border-strong)",
+          "&:hover": { borderColor: "var(--omega-success)", background: "var(--omega-success-soft)" },
+        }}
+      >
         全部接受（保留改动）
       </Button>
       <Button
@@ -57,7 +83,7 @@ export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected
         color="error"
         onClick={openReject}
         disabled={busy || selectedFiles.length === 0}
-        sx={{ textTransform: "none" }}
+        sx={{ textTransform: "none", fontWeight: 600, background: "var(--omega-danger)", "&:hover": { background: "var(--omega-danger)", filter: "brightness(1.06)" } }}
       >
         还原所选（{selectedFiles.length}）
       </Button>

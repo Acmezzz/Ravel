@@ -80,30 +80,39 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
         borderRadius: "12px !important",
         mb: 1,
         maxWidth: "min(78%, 720px)",
+        overflow: "hidden",
+        transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+        "&:hover": {
+          borderColor: card.isError ? "var(--omega-danger)" : "var(--omega-border-strong)",
+          boxShadow: "var(--omega-shadow-sm)",
+        },
         "&:before": { display: "none" },
       }}
     >
-      <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "var(--omega-text-muted)" }} />} sx={{ px: 1.5, py: 0.25, "& .MuiAccordionSummary-content": { minWidth: 0 } }}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "var(--omega-text-dim)", fontSize: 18, transition: "transform 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" }} />} sx={{ px: 1.5, py: 0.25, "& .MuiAccordionSummary-content": { minWidth: 0 } }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, width: "100%" }}>
-          <Box sx={{ width: 7, height: 7, borderRadius: 999, background: color, flex: "0 0 auto" }} />
+          <Box
+            className={card.status === "running" ? "pulse-dot" : undefined}
+            sx={{ width: 6, height: 6, borderRadius: 999, background: color, flex: "0 0 auto", boxShadow: `0 0 6px ${color}` }}
+          />
           <Box sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", display: "grid", placeItems: "center" }}>
             {KIND_ICON[card.kind] ?? <DescriptionIcon sx={{ fontSize: 15 }} />}
           </Box>
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600, flex: "0 0 auto" }} noWrap>
+          <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", fontWeight: 600, letterSpacing: "0.005em", flex: "0 0 auto" }} noWrap>
             {KIND_LABEL[card.kind] ?? "工具"} · {card.toolName}
           </Typography>
           {card.target ? (
-            <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap title={card.target}>
+            <Typography className="mono-num" sx={{ fontSize: 11.5, color: "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap title={card.target}>
               {card.target}
             </Typography>
           ) : null}
           {stat ? (
-            <Box sx={{ display: "flex", gap: 0.75, flex: "0 0 auto", fontFamily: "ui-monospace, Consolas, monospace", fontSize: 11 }}>
+            <Box sx={{ display: "flex", gap: 0.75, flex: "0 0 auto", fontFamily: "ui-monospace, Consolas, monospace", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
               <span style={{ color: "var(--omega-success)" }}>+{stat.added}</span>
               <span style={{ color: "var(--omega-danger)" }}>-{stat.removed}</span>
             </Box>
           ) : null}
-          <Typography sx={{ fontSize: 11, color, flex: "0 0 auto" }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 550, color, flex: "0 0 auto" }}>
             {card.status === "running" ? "运行中" : card.status === "error" ? "失败" : "完成"}
           </Typography>
         </Box>
@@ -112,7 +121,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {card.argsJson ? (
             <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", letterSpacing: "0.05em", mb: 0.5 }}>
+              <Typography className="overline-label" sx={{ mb: 0.5 }}>
                 参数
               </Typography>
               <Box
@@ -139,7 +148,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
           ) : null}
           {card.resultText ? (
             <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", letterSpacing: "0.05em", mb: 0.5 }}>
+              <Typography className="overline-label" sx={{ mb: 0.5 }}>
                 结果{card.isError ? "（出错）" : ""}
               </Typography>
               <Box

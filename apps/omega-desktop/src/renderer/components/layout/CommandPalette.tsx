@@ -1,6 +1,5 @@
 import * as React from "react";
 import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
 import TextField from "@mui/material/TextField";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -158,9 +157,19 @@ export function CommandPalette(): React.ReactElement {
   );
 
   return (
-    <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>命令面板</DialogTitle>
-      <Box sx={{ px: 3, pb: 1 }}>
+    <Dialog
+      open={open}
+      onClose={() => setOpen(false)}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          overflow: "hidden",
+          animation: "omega-rise .18s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
+        },
+      }}
+    >
+      <Box sx={{ px: 2, pt: 2, pb: 1 }}>
         <TextField
           autoFocus
           fullWidth
@@ -173,26 +182,48 @@ export function CommandPalette(): React.ReactElement {
           }}
         />
       </Box>
-      <List sx={{ px: 2, pb: 2, pt: 0 }}>
-        {items.map((item) =>
+      <List sx={{ px: 1.25, pb: 1.25, pt: 0, maxHeight: 420 }}>
+        {items.map((item, index) =>
           item.kind === "ui" ? (
-            <ListItemButton key={item.id} onClick={() => runItem(item)} sx={{ borderRadius: "10px", mb: 0.5 }}>
+            <ListItemButton
+              key={item.id}
+              onClick={() => runItem(item)}
+              sx={{
+                borderRadius: "9px",
+                mb: 0.25,
+                border: "1px solid transparent",
+                "&:hover": { borderColor: "var(--omega-border)" },
+                ...(index === 0 ? { background: "var(--omega-selected)", borderColor: "var(--omega-accent-line)" } : null),
+              }}
+            >
               <ListItemText
                 primary={<span style={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{item.title}</span>}
                 secondary={<span style={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{item.description}</span>}
               />
+              {index === 0 ? <kbd className="kbd">↵</kbd> : null}
             </ListItemButton>
           ) : (
-            <ListItemButton key={`${item.command.source}:${item.command.name}`} onClick={() => runItem(item)} sx={{ borderRadius: "10px", mb: 0.5 }}>
+            <ListItemButton
+              key={`${item.command.source}:${item.command.name}`}
+              onClick={() => runItem(item)}
+              sx={{
+                borderRadius: "9px",
+                mb: 0.25,
+                border: "1px solid transparent",
+                "&:hover": { borderColor: "var(--omega-border)" },
+                ...(index === 0 ? { background: "var(--omega-selected)", borderColor: "var(--omega-accent-line)" } : null),
+              }}
+            >
               <ListItemText
-                primary={<span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: "var(--omega-accent)" }}>{commandLabel(item.command)}</span>}
+                primary={<span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--omega-accent)" }}>{commandLabel(item.command)}</span>}
                 secondary={<span style={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{item.command.description || item.command.source}</span>}
               />
+              {index === 0 ? <kbd className="kbd">↵</kbd> : null}
             </ListItemButton>
           ),
         )}
         {items.length === 0 ? (
-          <ListItemText primary={<span style={{ fontSize: 12, color: "var(--omega-text-dim)" }}>无匹配命令</span>} />
+          <ListItemText primary={<span style={{ fontSize: 12, color: "var(--omega-text-dim)", padding: "8px" }}>无匹配命令</span>} />
         ) : null}
       </List>
     </Dialog>

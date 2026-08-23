@@ -465,13 +465,15 @@ export function Composer(): React.ReactElement {
             right: 0,
             maxHeight: 260,
             overflowY: "auto",
-            border: "1px solid var(--omega-border)",
-            borderRadius: "14px",
+            border: "1px solid var(--omega-border-strong)",
+            borderRadius: "12px",
+            background: "var(--omega-bg-overlay)",
+            boxShadow: "var(--omega-shadow-lg), var(--omega-inset-highlight)",
             p: 0.75,
             zIndex: 20,
           }}
         >
-          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", px: 1, py: 0.5, letterSpacing: "0.05em" }}>
+          <Typography className="overline-label" sx={{ px: 1, py: 0.5 }}>
             输入历史（↑↓ 选择，Enter 应用）
           </Typography>
           {inputHistory.map((entry, index) => (
@@ -508,13 +510,15 @@ export function Composer(): React.ReactElement {
             right: 0,
             maxHeight: 220,
             overflowY: "auto",
-            border: "1px solid var(--omega-border)",
-            borderRadius: "14px",
+            border: "1px solid var(--omega-border-strong)",
+            borderRadius: "12px",
+            background: "var(--omega-bg-overlay)",
+            boxShadow: "var(--omega-shadow-lg), var(--omega-inset-highlight)",
             p: 0.75,
             zIndex: 20,
           }}
         >
-          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", px: 1, py: 0.5, letterSpacing: "0.05em" }}>
+          <Typography className="overline-label" sx={{ px: 1, py: 0.5 }}>
             文件（@ 引用，↑↓ 选择）
           </Typography>
           {atItems.map((path, index) => (
@@ -600,11 +604,13 @@ export function Composer(): React.ReactElement {
           border: "1px solid var(--omega-border)",
           borderRadius: "16px",
           background: "var(--omega-composer-bg)",
-          boxShadow: "0 8px 22px var(--omega-shadow)",
-          transition: "border-color .16s ease, box-shadow .16s ease",
+          backdropFilter: "blur(18px) saturate(1.4)",
+          WebkitBackdropFilter: "blur(18px) saturate(1.4)",
+          boxShadow: "var(--omega-shadow-md), var(--omega-inset-highlight)",
+          transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
           "&:focus-within": {
-            borderColor: "var(--omega-border-strong)",
-            boxShadow: "0 8px 22px var(--omega-shadow), 0 0 0 3px var(--omega-accent-soft)",
+            borderColor: "var(--omega-accent-line)",
+            boxShadow: "var(--omega-shadow-md), 0 0 0 3px var(--omega-accent-soft)",
           },
         }}
       >
@@ -675,17 +681,20 @@ export function Composer(): React.ReactElement {
                 onClick={() => send("steer")}
                 disabled={shuttingDown || canSend}
                 sx={{
-                  color: "#fff",
-                  background: "var(--omega-warning)",
+                  color: "var(--omega-warning)",
+                  background: "var(--omega-warning-soft)",
+                  border: "1px solid transparent",
                   borderRadius: "12px",
-                  width: 42,
-                  height: 42,
+                  width: 40,
+                  height: 40,
                   mb: 0.25,
-                  "&:hover": { filter: "brightness(1.08)" },
-                  "&:disabled": { opacity: 0.5, background: "var(--omega-border-strong)" },
+                  transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+                  "&:hover": { borderColor: "var(--omega-warning)", transform: "translateY(-1px)" },
+                  "&:active": { transform: "scale(0.94)" },
+                  "&:disabled": { opacity: 0.45 },
                 }}
               >
-                <BoltIcon />
+                <BoltIcon sx={{ fontSize: 20 }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="彻底停止生成">
@@ -693,16 +702,19 @@ export function Composer(): React.ReactElement {
                 onClick={() => void abort()}
                 disabled={shuttingDown}
                 sx={{
-                  color: "#fff",
-                  background: "var(--omega-danger)",
+                  color: "var(--omega-danger)",
+                  background: "var(--omega-danger-soft)",
+                  border: "1px solid transparent",
                   borderRadius: "12px",
-                  width: 42,
-                  height: 42,
+                  width: 40,
+                  height: 40,
                   mb: 0.25,
-                  "&:hover": { filter: "brightness(1.08)" },
+                  transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+                  "&:hover": { borderColor: "var(--omega-danger)", transform: "translateY(-1px)" },
+                  "&:active": { transform: "scale(0.94)" },
                 }}
               >
-                <StopIcon />
+                <StopIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
           </>
@@ -712,16 +724,19 @@ export function Composer(): React.ReactElement {
             disabled={shuttingDown || canSend}
             sx={{
               color: "#fff",
-              background: "var(--omega-accent-strong)",
+              background: "var(--omega-accent-gradient)",
               borderRadius: "12px",
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               mb: 0.25,
-              "&:hover": { filter: "brightness(1.08)" },
-              "&:disabled": { opacity: 0.5, background: "var(--omega-border-strong)" },
+              boxShadow: "0 2px 8px var(--omega-accent-soft)",
+              transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+              "&:hover": { filter: "brightness(1.08)", transform: "translateY(-1px)", boxShadow: "0 4px 14px var(--omega-accent-soft)" },
+              "&:active": { transform: "scale(0.94)" },
+              "&:disabled": { opacity: 0.4, background: "var(--omega-border-strong)", boxShadow: "none" },
             }}
           >
-            <SendIcon />
+            <SendIcon sx={{ fontSize: 18 }} />
           </IconButton>
         )}
       </Box>

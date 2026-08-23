@@ -30,12 +30,12 @@ const STATUS_COLOR: Record<DiffFile["status"], "success" | "warning" | "error" |
 };
 
 function HunkLine({ line }: { line: DiffFile["hunks"][number]["lines"][number] }) {
-  const bg = line.type === "add" ? "rgba(107,213,154,0.12)" : line.type === "del" ? "rgba(241,127,141,0.12)" : "transparent";
-  const color = line.type === "add" ? "var(--omega-success)" : line.type === "del" ? "var(--omega-danger)" : "var(--omega-text-muted)";
+  const bg = line.type === "add" ? "var(--omega-success-soft)" : line.type === "del" ? "var(--omega-danger-soft)" : "transparent";
+  const color = line.type === "add" ? "var(--omega-success)" : line.type === "del" ? "var(--omega-danger)" : "var(--omega-text-dim)";
   const prefix = line.type === "add" ? "+" : line.type === "del" ? "-" : " ";
   return (
-    <Box component="div" sx={{ display: "flex", bgcolor: bg, fontFamily: "ui-monospace, monospace", fontSize: 12, whiteSpace: "pre" }}>
-      <Box component="span" sx={{ color, flex: "0 0 auto", userSelect: "none", px: 0.5 }}>
+    <Box component="div" sx={{ display: "flex", bgcolor: bg, fontFamily: "ui-monospace, monospace", fontSize: 12, lineHeight: 1.65, whiteSpace: "pre" }}>
+      <Box component="span" sx={{ color, flex: "0 0 auto", userSelect: "none", px: 0.75, fontWeight: 600 }}>
         {prefix}
       </Box>
       <Box component="span" sx={{ color: "var(--omega-text-soft)", flex: 1, overflowX: "auto" }}>

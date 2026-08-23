@@ -8,86 +8,153 @@ body,
   height: 100%;
 }
 
+/* ============================================================
+ * Omega Design Tokens — "modern dev-tool premium"
+ * Flat layered surfaces + translucent hairlines + one restrained
+ * blue-violet accent. Values mirror theme/palettes.ts exactly.
+ * ========================================================== */
 :root {
   color-scheme: light;
-  --omega-bg: #f2f3f8;
+
+  /* Surfaces — L0 canvas → L4 overlay, ~4% luminance steps */
+  --omega-bg: #f3f4f7;
+  --omega-bg-rail: #ebecf1;
   --omega-bg-panel: #ffffff;
-  --omega-bg-rail: #f4f5f9;
-  --omega-bg-soft: #f7f8fb;
+  --omega-bg-soft: #f6f7fa;
   --omega-bg-elevated: #ffffff;
-  --omega-bg-code: #f4f5f9;
-  --omega-border: #e2e5ec;
-  --omega-border-strong: #c9cedb;
-  --omega-text: #1a1e2a;
+  --omega-bg-overlay: #ffffff;
+  --omega-bg-code: #f0f1f6;
+
+  /* Hairline borders — translucent, never solid swatches */
+  --omega-border: rgba(28, 38, 66, 0.08);
+  --omega-border-strong: rgba(28, 38, 66, 0.16);
+
+  /* Text — four-step hierarchy */
+  --omega-text: #171b28;
   --omega-text-soft: #2a3040;
-  --omega-text-muted: #5c6474;
-  --omega-text-dim: #8b93a5;
-  --omega-accent: #4a6fe0;
-  --omega-accent-strong: #3f63d6;
-  --omega-accent-soft: rgba(74, 111, 224, 0.1);
-  --omega-selected: rgba(74, 111, 224, 0.14);
-  --omega-success: #189a5a;
-  --omega-warning: #b8860b;
-  --omega-danger: #d9506a;
+  --omega-text-muted: #5a6178;
+  --omega-text-dim: #8c93a9;
+
+  /* Accent — one restrained blue-violet */
+  --omega-accent: #4763e8;
+  --omega-accent-strong: #3a55dd;
+  --omega-accent-soft: rgba(71, 99, 232, 0.09);
+  --omega-accent-line: rgba(71, 99, 232, 0.32);
+  --omega-accent-gradient: linear-gradient(135deg, #3a55dd 0%, #6f5ee8 100%);
+  --omega-selected: rgba(71, 99, 232, 0.10);
+
+  /* Semantic colors + their soft fills */
+  --omega-success: #15945c;
+  --omega-warning: #a97c14;
+  --omega-danger: #d34a5c;
+  --omega-success-soft: rgba(21, 148, 92, 0.10);
+  --omega-warning-soft: rgba(169, 124, 20, 0.10);
+  --omega-danger-soft: rgba(211, 74, 92, 0.10);
   --omega-error-text: #a12639;
-  --omega-panel-glass: rgba(255, 255, 255, 0.88);
+
+  /* Glass & fills */
+  --omega-panel-glass: rgba(255, 255, 255, 0.86);
   --omega-composer-bg: rgba(255, 255, 255, 0.92);
-  --omega-hover-fill: rgba(0, 0, 0, 0.05);
-  --omega-inline-code-bg: rgba(74, 111, 224, 0.1);
+  --omega-hover-fill: rgba(23, 27, 40, 0.045);
+  --omega-inline-code-bg: rgba(71, 99, 232, 0.09);
   --omega-inline-code-fg: #33509f;
-  --omega-scrollbar: #c9cedb;
-  --omega-scrollbar-hover: #aab2c5;
-  --omega-selection: rgba(74, 111, 224, 0.24);
-  --omega-shadow: rgba(30, 40, 70, 0.14);
-  --omega-glow-1: rgba(93, 134, 242, 0.1);
-  --omega-glow-2: rgba(128, 103, 219, 0.08);
+
+  /* Chrome */
+  --omega-scrollbar: rgba(28, 38, 66, 0.18);
+  --omega-scrollbar-hover: rgba(28, 38, 66, 0.30);
+  --omega-selection: rgba(71, 99, 232, 0.20);
+
+  /* Shadows — three-level scale */
+  --omega-shadow: rgba(23, 27, 40, 0.14);
+  --omega-shadow-sm: 0 1px 2px rgba(23, 27, 40, 0.05);
+  --omega-shadow-md: 0 4px 16px rgba(23, 27, 40, 0.08), 0 1px 3px rgba(23, 27, 40, 0.05);
+  --omega-shadow-lg: 0 16px 48px rgba(23, 27, 40, 0.14), 0 4px 12px rgba(23, 27, 40, 0.06);
+  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+
+  /* Ambient glow — much subtler than before, barely-there tint */
+  --omega-glow-1: rgba(71, 99, 232, 0.05);
+  --omega-glow-2: rgba(111, 94, 232, 0.04);
+
+  /* Motion — one shared easing family */
+  --omega-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --omega-ease-spring: cubic-bezier(0.34, 1.4, 0.44, 1);
+  --omega-dur-fast: 120ms;
+  --omega-dur-normal: 200ms;
+  --omega-dur-slow: 320ms;
 }
 
 html.dark {
   color-scheme: dark;
-  --omega-bg: #0c0f15;
-  --omega-bg-panel: #151923;
-  --omega-bg-rail: #12151d;
-  --omega-bg-soft: #171d29;
-  --omega-bg-elevated: #1d2330;
-  --omega-bg-code: #0b0e14;
-  --omega-border: #2b3444;
-  --omega-border-strong: #3a465b;
-  --omega-text: #f3f6fb;
-  --omega-text-soft: #e7ebf3;
-  --omega-text-muted: #8d99ad;
-  --omega-text-dim: #5c6a82;
-  --omega-accent: #86a9ff;
-  --omega-accent-strong: #5d86f2;
-  --omega-accent-soft: rgba(134, 169, 255, 0.12);
-  --omega-selected: rgba(93, 134, 242, 0.16);
-  --omega-success: #6bd59a;
-  --omega-warning: #e8bd68;
-  --omega-danger: #f17f8d;
+
+  --omega-bg: #0a0c12;
+  --omega-bg-rail: #0e1118;
+  --omega-bg-panel: #12151e;
+  --omega-bg-soft: #161a26;
+  --omega-bg-elevated: #1a1f2d;
+  --omega-bg-overlay: #1f2433;
+  --omega-bg-code: #0c0f16;
+
+  --omega-border: rgba(148, 163, 197, 0.10);
+  --omega-border-strong: rgba(148, 163, 197, 0.20);
+
+  --omega-text: #eceff7;
+  --omega-text-soft: #dfe4ef;
+  --omega-text-muted: #98a1b6;
+  --omega-text-dim: #626c85;
+
+  --omega-accent: #8fa8ff;
+  --omega-accent-strong: #6d8dff;
+  --omega-accent-soft: rgba(125, 151, 255, 0.12);
+  --omega-accent-line: rgba(125, 151, 255, 0.38);
+  --omega-accent-gradient: linear-gradient(135deg, #6d8dff 0%, #8a7df2 100%);
+  --omega-selected: rgba(125, 151, 255, 0.14);
+
+  --omega-success: #63d69c;
+  --omega-warning: #e5b96e;
+  --omega-danger: #ee7d8a;
+  --omega-success-soft: rgba(99, 214, 156, 0.12);
+  --omega-warning-soft: rgba(229, 185, 110, 0.12);
+  --omega-danger-soft: rgba(238, 125, 138, 0.12);
   --omega-error-text: #ffd4d9;
-  --omega-panel-glass: rgba(21, 25, 35, 0.78);
-  --omega-composer-bg: rgba(29, 35, 48, 0.9);
-  --omega-hover-fill: rgba(255, 255, 255, 0.08);
-  --omega-inline-code-bg: rgba(134, 169, 255, 0.12);
+
+  --omega-panel-glass: rgba(18, 21, 30, 0.82);
+  --omega-composer-bg: rgba(26, 31, 45, 0.88);
+  --omega-hover-fill: rgba(236, 239, 247, 0.055);
+  --omega-inline-code-bg: rgba(143, 168, 255, 0.12);
   --omega-inline-code-fg: #a8c2ff;
-  --omega-scrollbar: #333f55;
-  --omega-scrollbar-hover: #46587a;
-  --omega-selection: rgba(93, 134, 242, 0.32);
+
+  --omega-scrollbar: rgba(148, 163, 197, 0.22);
+  --omega-scrollbar-hover: rgba(148, 163, 197, 0.36);
+  --omega-selection: rgba(109, 141, 255, 0.30);
+
   --omega-shadow: rgba(0, 0, 0, 0.45);
-  --omega-glow-1: rgba(27, 39, 64, 0.55);
-  --omega-glow-2: rgba(35, 29, 63, 0.5);
+  --omega-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --omega-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.42), 0 1px 4px rgba(0, 0, 0, 0.30);
+  --omega-shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
+  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --omega-glow-1: rgba(109, 141, 255, 0.06);
+  --omega-glow-2: rgba(138, 125, 242, 0.05);
 }
 
+/* ============================================================
+ * Base
+ * ========================================================== */
 body {
   margin: 0;
   color: var(--omega-text);
   background:
-    radial-gradient(circle at 12% -4%, var(--omega-glow-1) 0, transparent 30%),
-    radial-gradient(circle at 88% 108%, var(--omega-glow-2) 0, transparent 34%),
+    radial-gradient(ellipse 80% 50% at 15% -10%, var(--omega-glow-1) 0, transparent 60%),
+    radial-gradient(ellipse 70% 55% at 90% 110%, var(--omega-glow-2) 0, transparent 60%),
     var(--omega-bg);
   font: 14px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "ss01", "cv05", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overflow: hidden;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color var(--omega-dur-normal) var(--omega-ease-out),
+    color var(--omega-dur-normal) var(--omega-ease-out);
 }
 
 * {
@@ -112,15 +179,18 @@ body {
   z-index: 2;
 }
 
-/* Markdown rendering inside message bubbles */
+/* ============================================================
+ * Markdown rendering inside message bubbles
+ * ========================================================== */
 .md-body {
   word-break: break-word;
   overflow-wrap: anywhere;
   font-size: 14px;
-  line-height: 1.68;
+  line-height: 1.7;
+  letter-spacing: 0.001em;
 }
 .md-body p {
-  margin: 0 0 0.6em;
+  margin: 0 0 0.65em;
 }
 .md-body p:last-child {
   margin-bottom: 0;
@@ -129,12 +199,14 @@ body {
 .md-body h2,
 .md-body h3,
 .md-body h4 {
-  margin: 1em 0 0.45em;
+  margin: 1.1em 0 0.5em;
   line-height: 1.35;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--omega-text);
 }
 .md-body h1 {
-  font-size: 1.3em;
+  font-size: 1.32em;
 }
 .md-body h2 {
   font-size: 1.18em;
@@ -143,36 +215,44 @@ body {
   font-size: 1.06em;
 }
 .md-body pre {
-  margin: 0.6em 0;
-  border-radius: 12px;
+  margin: 0.65em 0;
+  border-radius: 10px;
   border: 1px solid var(--omega-border);
   background: var(--omega-bg-code);
   padding: 12px 14px;
   overflow-x: auto;
+  box-shadow: var(--omega-inset-highlight);
 }
 .md-body code {
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
 }
 .md-body :not(pre) > code {
   background: var(--omega-inline-code-bg);
   color: var(--omega-inline-code-fg);
-  padding: 1px 5px;
-  border-radius: 6px;
+  padding: 1.5px 5px;
+  border-radius: 5px;
+  font-size: 0.88em;
 }
 .md-body ul,
 .md-body ol {
-  margin: 0 0 0.6em;
-  padding-left: 1.3em;
+  margin: 0 0 0.65em;
+  padding-left: 1.35em;
 }
 .md-body li {
-  margin: 0.15em 0;
+  margin: 0.18em 0;
+}
+.md-body li::marker {
+  color: var(--omega-text-dim);
 }
 .md-body table {
   border-collapse: collapse;
-  margin: 0.6em 0;
+  margin: 0.65em 0;
   width: 100%;
   font-size: 13px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 .md-body th,
 .md-body td {
@@ -182,27 +262,36 @@ body {
 }
 .md-body th {
   background: var(--omega-accent-soft);
+  font-weight: 600;
 }
 .md-body a {
   color: var(--omega-accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--omega-accent-line);
+  transition: border-color var(--omega-dur-fast) var(--omega-ease-out);
+}
+.md-body a:hover {
+  border-bottom-color: var(--omega-accent);
 }
 .md-body blockquote {
-  margin: 0.6em 0;
-  padding-left: 12px;
-  border-left: 3px solid var(--omega-border);
+  margin: 0.65em 0;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--omega-accent-line);
   color: var(--omega-text-muted);
 }
 .md-body hr {
   border: none;
   border-top: 1px solid var(--omega-border);
-  margin: 1em 0;
+  margin: 1.1em 0;
 }
 .md-body .hljs {
   background: transparent;
   color: var(--omega-text);
 }
 
-/* Streaming caret on the last assistant message */
+/* ============================================================
+ * Streaming & thinking indicators
+ * ========================================================== */
 .stream-caret::after {
   content: "▍";
   display: inline-block;
@@ -216,9 +305,13 @@ body {
   }
 }
 
-/* Thinking shimmer while streaming */
 .thinking-shimmer {
-  background: linear-gradient(90deg, var(--omega-text-dim) 25%, var(--omega-accent) 50%, var(--omega-text-dim) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--omega-text-dim) 25%,
+    var(--omega-accent) 50%,
+    var(--omega-text-dim) 75%
+  );
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -231,40 +324,51 @@ body {
   }
 }
 
-/* Thin scrollbars */
+/* ============================================================
+ * Scrollbars — slim, fade-in on hover of the scrollable area
+ * ========================================================== */
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  border: 3px solid transparent;
+  border: 2px solid transparent;
   border-radius: 999px;
   background: var(--omega-scrollbar);
   background-clip: padding-box;
+  transition: background var(--omega-dur-fast) var(--omega-ease-out);
 }
 *::-webkit-scrollbar-thumb:hover {
   background: var(--omega-scrollbar-hover);
   background-clip: padding-box;
 }
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ============================================================
+ * Shared primitives
+ * ========================================================== */
 
 /* Keyboard hint chips — one shared treatment, no per-element inline dup. */
 .kbd {
   display: inline-flex;
   align-items: center;
   height: 18px;
-  padding: 0 6px;
+  padding: 0 5.5px;
   border-radius: 5px;
-  border: 1px solid var(--omega-border);
-  border-bottom-color: var(--omega-border-strong);
+  border: 1px solid var(--omega-border-strong);
+  border-bottom-width: 2px;
   background: var(--omega-bg-elevated);
   color: var(--omega-text-muted);
-  font-size: 11px;
+  font-size: 10.5px;
+  font-weight: 550;
   font-family: inherit;
   line-height: 1;
-  box-shadow: 0 1px 0 var(--omega-border);
+  letter-spacing: 0.01em;
   user-select: none;
 }
 
@@ -275,6 +379,22 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Overline label — the small caps section header used across panels */
+.overline-label {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--omega-text-dim);
+}
+
+/* Glass surface — composer, floating popovers */
+.glass {
+  background: var(--omega-panel-glass);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
 /* Visible keyboard focus everywhere */
 :focus-visible {
   outline: 2px solid var(--omega-accent);
@@ -282,7 +402,40 @@ body {
   border-radius: 4px;
 }
 
-/* Status glyph — the one live instrument (signature element) */
+/* Shared entrance motion — rise + fade */
+@keyframes omega-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise-in {
+  animation: omega-rise var(--omega-dur-normal) var(--omega-ease-out) both;
+}
+
+/* Subtle pulse dot (live status indicator) */
+@keyframes omega-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+}
+.pulse-dot {
+  animation: omega-pulse 1.6s var(--omega-ease-out) infinite;
+}
+
+/* ============================================================
+ * Status glyph — the one live instrument (signature element)
+ * ========================================================== */
 @keyframes omega-ring-spin {
   to {
     transform: rotate(360deg);
@@ -317,7 +470,9 @@ body {
   .status-ring,
   .status-core,
   .thinking-shimmer,
-  .stream-caret::after {
+  .stream-caret::after,
+  .rise-in,
+  .pulse-dot {
     animation: none !important;
   }
 }

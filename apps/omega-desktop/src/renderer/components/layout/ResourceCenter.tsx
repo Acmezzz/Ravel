@@ -189,7 +189,7 @@ export function ResourceCenter(): React.ReactElement {
         {error ? <Typography sx={{ fontSize: 12.5, color: "var(--omega-danger)" }}>{error}</Typography> : null}
         {status ? <Typography sx={{ fontSize: 12.5, color: "var(--omega-accent)" }}>{status}</Typography> : null}
 
-        <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+        <Typography className="overline-label">
           扩展（{extensions.length}）
         </Typography>
         {extensions.length === 0 ? (
@@ -226,7 +226,7 @@ export function ResourceCenter(): React.ReactElement {
           ))
         )}
 
-        <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+        <Typography className="overline-label">
           Skills（{skills.length}）
         </Typography>
         {skills.length === 0 ? (
@@ -273,7 +273,7 @@ export function ResourceCenter(): React.ReactElement {
           ))
         )}
 
-        <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+        <Typography className="overline-label">
           Prompt 模板（{prompts.length}）
         </Typography>
         {prompts.length === 0 ? (
@@ -305,7 +305,7 @@ export function ResourceCenter(): React.ReactElement {
           ))
         )}
 
-        <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+        <Typography className="overline-label">
           已配置包（{packages.length}）
         </Typography>
         {packages.length === 0 ? (

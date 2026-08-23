@@ -43,43 +43,70 @@ export function EmptyState(): React.ReactElement {
         pointerEvents: "none",
       }}
     >
-      <Box sx={{ pointerEvents: "auto" }}>
+      <Box sx={{ pointerEvents: "auto", animation: "omega-rise .32s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both" }}>
         <Box
           sx={{
-            width: 76,
-            height: 76,
+            width: 72,
+            height: 72,
             mx: "auto",
             display: "grid",
             placeItems: "center",
-            borderRadius: "50%",
-            border: "1px solid var(--omega-border)",
-            background: "var(--omega-bg-soft)",
+            borderRadius: "22px",
+            border: "1px solid var(--omega-accent-line)",
+            background: "var(--omega-accent-soft)",
+            boxShadow: "var(--omega-shadow-md), var(--omega-inset-highlight)",
             color: "var(--omega-accent)",
-            fontSize: 38,
+            fontSize: 34,
+            fontWeight: 700,
           }}
         >
           Ω
         </Box>
-        <Typography variant="h5" sx={{ mt: 2.5, fontWeight: 700, letterSpacing: "-0.02em" }}>
+        <Typography
+          variant="h5"
+          sx={{
+            mt: 2.5,
+            fontWeight: 700,
+            fontSize: 22,
+            letterSpacing: "-0.02em",
+            background: "var(--omega-accent-gradient)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
           开始与 Omega 协作
         </Typography>
-        <Typography sx={{ maxWidth: 500, mx: "auto", color: "var(--omega-text-muted)" }}>
+        <Typography sx={{ maxWidth: 500, mx: "auto", mt: 0.75, color: "var(--omega-text-muted)", lineHeight: 1.7 }}>
           描述一个问题、目标或需要探索的方向，Agent 会在当前工作区中协助你。
         </Typography>
-        <Typography sx={{ mt: 1.5, fontSize: 12, color: "var(--omega-text-dim)" }}>
+        <Typography sx={{ mt: 2, fontSize: 12, color: "var(--omega-text-dim)" }}>
           <kbd className="kbd">Ctrl+K</kbd>
           {" "}命令面板 ·{" "}
           <kbd className="kbd">Ctrl+Shift+N</kbd>
           {" "}新建会话 · 生成中可发送转向指令或停止
         </Typography>
-        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1, mt: 2.5 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1, mt: 3 }}>
           {SUGGESTIONS.map((s) => (
             <Button
               key={s}
               variant="outlined"
               size="small"
               onClick={() => void sendSuggestion(s)}
-              sx={{ borderRadius: "999px", textTransform: "none", color: "var(--omega-text-muted)", borderColor: "var(--omega-border)" }}
+              sx={{
+                borderRadius: "999px",
+                textTransform: "none",
+                px: 1.75,
+                fontWeight: 500,
+                color: "var(--omega-text-muted)",
+                borderColor: "var(--omega-border-strong)",
+                "&:hover": {
+                  color: "var(--omega-accent)",
+                  borderColor: "var(--omega-accent-line)",
+                  background: "var(--omega-accent-soft)",
+                  transform: "translateY(-1px)",
+                },
+              }}
             >
               {s}
             </Button>

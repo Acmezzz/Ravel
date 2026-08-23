@@ -94,12 +94,8 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
         gap: 1.5,
         mb: 2.75,
         justifyContent: isUser ? "flex-end" : "flex-start",
-        animation: "rise .22s ease both",
-        "@keyframes rise": {
-          from: { opacity: 0, transform: "translateY(5px)" },
-          to: { opacity: 1, transform: "translateY(0)" },
-        },
-        "&:hover .msg-actions": { opacity: 1 },
+        animation: "omega-rise .2s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
+        "&:hover .msg-actions": { opacity: 1, transform: "translateY(0)" },
       }}
     >
       <Box sx={{ minWidth: 0, maxWidth: isUser ? "min(78%, 720px)" : "100%" }}>
@@ -118,14 +114,14 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
               ? {
                   order: 2,
                   color: "#fff",
-                  background: "var(--omega-accent-strong)",
-                  border: "1px solid var(--omega-border-strong)",
+                  background: "var(--omega-accent-gradient)",
+                  border: "1px solid var(--omega-accent-line)",
                   borderRadius: "16px 4px 16px 16px",
                   px: 1.75,
                   py: 1.1,
                   whiteSpace: "pre-wrap",
                   overflowWrap: "anywhere",
-                  boxShadow: "0 2px 8px var(--omega-shadow)",
+                  boxShadow: "0 2px 10px var(--omega-accent-soft)",
                 }
               : {
                   color: isError ? "var(--omega-error-text)" : "var(--omega-text-soft)",
@@ -141,7 +137,18 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
           )}
         </Box>
         {!isError && message.text ? (
-          <Box className="msg-actions" sx={{ opacity: 0, transition: "opacity .15s ease", mt: 0.25, px: 0.25, display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
+          <Box
+            className="msg-actions"
+            sx={{
+              opacity: 0,
+              transform: "translateY(-2px)",
+              transition: "opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), transform 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+              mt: 0.25,
+              px: 0.25,
+              display: "flex",
+              justifyContent: isUser ? "flex-end" : "flex-start",
+            }}
+          >
             <Tooltip title={copied ? "已复制" : "复制消息"}>
               <IconButton size="small" onClick={() => void handleCopy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
                 {copied ? <CheckIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 15 }} />}

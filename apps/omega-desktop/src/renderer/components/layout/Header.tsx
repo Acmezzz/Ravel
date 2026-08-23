@@ -52,7 +52,18 @@ const THEME_LABEL: Record<ThemeMode, string> = {
 
 /** Vertical hairline separating header clusters — grouping is information. */
 function Divider(): React.ReactElement {
-  return <Box sx={{ width: 1, alignSelf: "stretch", my: 1.25, background: "var(--omega-border)", flex: "0 0 auto" }} />;
+  return (
+    <Box
+      sx={{
+        width: 1,
+        height: 20,
+        alignSelf: "center",
+        background: "var(--omega-border-strong)",
+        opacity: 0.55,
+        flex: "0 0 auto",
+      }}
+    />
+  );
 }
 
 /**
@@ -159,9 +170,13 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
             border: `1px solid ${failed ? "var(--omega-danger)" : "var(--omega-border-strong)"}`,
             color: failed ? "var(--omega-danger)" : "var(--omega-accent)",
             background: "var(--omega-accent-soft)",
-            fontSize: 16,
+            boxShadow: "var(--omega-inset-highlight)",
+            fontSize: 15,
             fontWeight: 700,
+            letterSpacing: "-0.02em",
+            transition: "transform 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 140ms",
             cursor: canRetryWorker ? "pointer" : "default",
+            "&:hover": canRetryWorker ? { transform: "scale(1.05)" } : undefined,
           }}
         >
           Ω
@@ -293,7 +308,7 @@ export function Header(): React.ReactElement {
           gap: 1.25,
           px: { xs: 1.5, md: 2 },
           rowGap: 0.75,
-          minHeight: { xs: 56, md: 60 },
+          minHeight: { xs: 54, md: 58 },
           flexWrap: "wrap",
           "& > *": { flexShrink: 0 },
         }}
@@ -301,7 +316,7 @@ export function Header(): React.ReactElement {
         {/* identity cluster */}
         <StatusGlyph bootstrapError={bootstrapError} />
         <Box sx={{ minWidth: 0, maxWidth: 200 }}>
-          <Typography sx={{ fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.15 }}>Omega</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 14.5, letterSpacing: "-0.01em", lineHeight: 1.15 }}>Omega</Typography>
           <Typography className="mono-num" sx={{ color: "var(--omega-text-muted)", fontSize: 11 }} noWrap title={workerError ?? undefined}>
             {workerError ? "Worker 未就绪" : extensionTitle || agent?.sessionName || "新会话"}
           </Typography>
@@ -324,13 +339,15 @@ export function Header(): React.ReactElement {
               alignItems: "center",
               gap: 0.5,
               px: 1.25,
-              py: 0.5,
-              borderRadius: "10px",
+              height: 30,
+              borderRadius: "9px",
               border: "1px solid var(--omega-border)",
+              background: "var(--omega-bg-soft)",
               cursor: shuttingDown ? "default" : "pointer",
               opacity: shuttingDown ? 0.55 : 1,
               maxWidth: 230,
-              "&:hover": { borderColor: "var(--omega-accent)", background: "var(--omega-hover-fill)" },
+              transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+              "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
             }}
           >
             <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -366,7 +383,15 @@ export function Header(): React.ReactElement {
             if (!shuttingDown) setThinkingAnchor(e.currentTarget);
           }}
           disabled={shuttingDown || agent?.supportsThinking === false}
-          sx={{ cursor: "pointer", fontSize: 11.5 }}
+          sx={{
+            cursor: "pointer",
+            fontSize: 11,
+            height: 24,
+            border: "1px solid var(--omega-border)",
+            background: "var(--omega-bg-soft)",
+            color: "var(--omega-text-muted)",
+            "&:hover": { borderColor: "var(--omega-accent-line)", color: "var(--omega-accent)" },
+          }}
         />
         <Menu anchorEl={thinkingAnchor} open={Boolean(thinkingAnchor)} onClose={() => setThinkingAnchor(null)}>
           {thinkingLevels.map((level) => (
@@ -410,18 +435,26 @@ export function Header(): React.ReactElement {
               })();
             }}
             disabled={busy}
-            sx={{ textTransform: "none", borderRadius: "999px" }}
+            sx={{ textTransform: "none", borderRadius: "999px", px: 1.75 }}
           >
             重试 Worker
           </Button>
         ) : running ? (
           <Button
             size="small"
-            color="error"
-            startIcon={<StopIcon />}
+            startIcon={<StopIcon sx={{ fontSize: 15 }} />}
             onClick={() => void handleAbort()}
             disabled={busy}
-            sx={{ textTransform: "none", borderRadius: "999px" }}
+            sx={{
+              textTransform: "none",
+              borderRadius: "999px",
+              px: 1.75,
+              fontWeight: 600,
+              color: "var(--omega-danger)",
+              background: "var(--omega-danger-soft)",
+              border: "1px solid transparent",
+              "&:hover": { background: "var(--omega-danger-soft)", borderColor: "var(--omega-danger)" },
+            }}
           >
             停止
           </Button>
@@ -472,38 +505,69 @@ export function Header(): React.ReactElement {
 
         <Divider />
 
-        <Tooltip title="工作流">
-          <Chip
-            icon={<AssessmentIcon sx={{ fontSize: 15 }} />}
-            label="Workflow"
-            size="small"
-            variant={rightTab === "workflow" && rightOpen ? "filled" : "outlined"}
-            color="primary"
-            onClick={() => setRightTab("workflow")}
-            sx={{ cursor: "pointer", display: { xs: "none", sm: "inline-flex" }, fontSize: 11.5 }}
-          />
-        </Tooltip>
-        <Tooltip title="Worktree">
-          <Chip
-            icon={<AccountTreeOutlinedIcon sx={{ fontSize: 15 }} />}
-            label="Worktree"
-            size="small"
-            variant={rightTab === "worktree" && rightOpen ? "filled" : "outlined"}
-            onClick={() => setRightTab("worktree")}
-            sx={{ cursor: "pointer", display: { xs: "none", sm: "inline-flex" }, fontSize: 11.5 }}
-          />
-        </Tooltip>
-        <Tooltip title="探索 Scout">
-          <Chip
-            icon={<ExploreIcon sx={{ fontSize: 15 }} />}
-            label="Scout"
-            size="small"
-            variant={rightTab === "scout" && rightOpen ? "filled" : "outlined"}
-            color="secondary"
-            onClick={() => setRightTab("scout")}
-            sx={{ cursor: "pointer", display: { xs: "none", sm: "inline-flex" }, fontSize: 11.5 }}
-          />
-        </Tooltip>
+        <Box
+          sx={{
+            display: { xs: "none", sm: "flex" },
+            alignItems: "center",
+            gap: "2px",
+            p: "2px",
+            borderRadius: "10px",
+            border: "1px solid var(--omega-border)",
+            background: "var(--omega-bg-soft)",
+          }}
+        >
+          <Tooltip title="工作流">
+            <Chip
+              icon={<AssessmentIcon sx={{ fontSize: 14 }} />}
+              label="Workflow"
+              size="small"
+              onClick={() => setRightTab("workflow")}
+              sx={{
+                cursor: "pointer",
+                fontSize: 11.5,
+                border: "none",
+                background: rightTab === "workflow" && rightOpen ? "var(--omega-bg-elevated)" : "transparent",
+                color: rightTab === "workflow" && rightOpen ? "var(--omega-accent)" : "var(--omega-text-muted)",
+                boxShadow: rightTab === "workflow" && rightOpen ? "var(--omega-shadow-sm)" : "none",
+                "&:hover": { background: "var(--omega-hover-fill)" },
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Worktree">
+            <Chip
+              icon={<AccountTreeOutlinedIcon sx={{ fontSize: 14 }} />}
+              label="Worktree"
+              size="small"
+              onClick={() => setRightTab("worktree")}
+              sx={{
+                cursor: "pointer",
+                fontSize: 11.5,
+                border: "none",
+                background: rightTab === "worktree" && rightOpen ? "var(--omega-bg-elevated)" : "transparent",
+                color: rightTab === "worktree" && rightOpen ? "var(--omega-accent)" : "var(--omega-text-muted)",
+                boxShadow: rightTab === "worktree" && rightOpen ? "var(--omega-shadow-sm)" : "none",
+                "&:hover": { background: "var(--omega-hover-fill)" },
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="探索 Scout">
+            <Chip
+              icon={<ExploreIcon sx={{ fontSize: 14 }} />}
+              label="Scout"
+              size="small"
+              onClick={() => setRightTab("scout")}
+              sx={{
+                cursor: "pointer",
+                fontSize: 11.5,
+                border: "none",
+                background: rightTab === "scout" && rightOpen ? "var(--omega-bg-elevated)" : "transparent",
+                color: rightTab === "scout" && rightOpen ? "var(--omega-accent)" : "var(--omega-text-muted)",
+                boxShadow: rightTab === "scout" && rightOpen ? "var(--omega-shadow-sm)" : "none",
+                "&:hover": { background: "var(--omega-hover-fill)" },
+              }}
+            />
+          </Tooltip>
+        </Box>
 
         <Tooltip title={rightOpen ? "收起右栏" : "展开右栏"}>
           <IconButton size="small" onClick={toggleRightPanel} sx={{ color: "var(--omega-text-muted)" }}>
