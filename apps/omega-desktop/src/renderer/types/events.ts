@@ -114,6 +114,11 @@ export interface SessionInfoChangedEvent {
 export interface AutoRetryEvent {
   type: "auto_retry_start" | "auto_retry_end";
   status: "start" | "done" | "error";
+  attempt?: number;
+  maxAttempts?: number;
+  delayMs?: number;
+  errorMessage?: string;
+  finalError?: string;
 }
 
 /**

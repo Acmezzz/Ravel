@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **106/106**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **107/107**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -113,7 +113,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 优先级 P1：
 
 - thinking/tool detail 延迟读取已完成：ThinkingBlock 按 entryId 加载并缓存，ToolCard 展开时按 toolCallId 读取 args/result；首屏仍使用受控摘要。
-- 更细粒度 retry 未完成状态恢复。
+- retry 中间状态已记录 attempt/maxAttempts/delay/error 到受限 sessionRecovery；更复杂的跨重启自动继续执行仍不启用。
 - 删除父 session 时的非级联安全行为、右键菜单、重命名、复制 session ID 和删除已完成；孤立子 session 会被 Sidebar 提升为根节点。
 - Worktree 更细粒度 Git 审查状态和 stale snapshot 自动刷新。
 - Worktree 按项目聚合会话、remote/fetch 需要跨 worktree/网络边界，暂列外部或后续增强。
@@ -145,7 +145,7 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 
 ## 5. 后续实施顺序
 
-1. thinking/tool detail 延迟读取和 retry 中间状态恢复。
+1. 更复杂的 retry 跨重启自动继续执行仍不启用。
 2. Worktree 更细粒度审查状态、stale snapshot 自动刷新；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
 3. FileViewer DOCX/watch/upload conflict。
 4. Model Center 自定义 provider/discovery/latency。

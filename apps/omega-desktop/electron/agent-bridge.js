@@ -297,10 +297,10 @@ export function toRendererEvent(event) {
     return [{ type, ...(name ? { name } : {}) }];
   }
   if (type === "auto_retry_start") {
-    return [{ type, status: "start" }];
+    return [{ type, status: "start", attempt: Number(event.attempt) || 0, maxAttempts: Number(event.maxAttempts) || 0, delayMs: Number(event.delayMs) || 0, errorMessage: cap(textValue(event.errorMessage)) }];
   }
   if (type === "auto_retry_end") {
-    return [{ type, status: event.success === true ? "done" : "error" }];
+    return [{ type, status: event.success === true ? "done" : "error", attempt: Number(event.attempt) || 0, finalError: cap(textValue(event.finalError)) }];
   }
   if (type === "error" || type.endsWith("_error")) {
     return [{ type: "error", message: textValue(event.message) ?? "Agent error" }];

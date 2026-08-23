@@ -317,6 +317,8 @@ function bindHost(host) {
       workerPool.markRunning(sessionId, false);
       persistSessionRecovery(sessionId, { state: "error", running: false, error: typeof event.message === "string" ? event.message : "Agent error" });
     }
+    if (event?.type === "auto_retry_start") persistSessionRecovery(sessionId, { state: "retrying", running: true, retryAttempt: event.attempt, retryMaxAttempts: event.maxAttempts, retryDelayMs: event.delayMs, error: event.errorMessage ?? null });
+    if (event?.type === "auto_retry_end") persistSessionRecovery(sessionId, { state: event.status === "done" ? "ready" : "error", running: false, retryAttempt: event.attempt, error: event.finalError ?? null });
     agentRunning = Boolean(workerPool.foreground()?.running);
     if (meta?.sequence && sessionId) {
       const bucket = recentEventsBySession.get(sessionId) ?? [];
