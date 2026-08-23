@@ -36,7 +36,7 @@ import type {
   ToolExecutionEndEvent,
 } from "../types/events";
 
-export type ConnectionState = "connecting" | "ready" | "running" | "error";
+export type ConnectionState = "connecting" | "ready" | "running" | "closing" | "error";
 
 export interface ToolCardState {
   toolCallId: string;

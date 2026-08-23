@@ -868,8 +868,8 @@ ipcMain.handle("omega:queryExtensionState", (event, req) => {
 ipcMain.handle("omega:listSessions", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
-    const summaries = await readSessionSummaries(piSessionsRoot(), { allowedWorkspaces: workspaceRegistry?.list() ?? [] });
-    return okResult(summaries);
+    const page = await readSessionSummaries(piSessionsRoot(), { allowedWorkspaces: (workspaceRegistry?.list() ?? []).map((item) => item.realRoot) });
+    return okResult(page.items);
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }

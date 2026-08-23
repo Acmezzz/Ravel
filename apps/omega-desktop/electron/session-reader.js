@@ -101,7 +101,7 @@ async function readSummary(file) {
   return summary;
 }
 
-export async function readSessionSummaries(root, { allowedWorkspaces = [] } = {}) {
+export async function readSessionSummaries(root, { allowedWorkspaces = [], offset = 0, limit = 100 } = {}) {
   if (!existsSync(root)) return [];
   const normalize = (value) => process.platform === "win32" ? resolve(value).toLowerCase() : resolve(value);
   const allowed = new Set(allowedWorkspaces.map(normalize));
@@ -114,5 +114,7 @@ export async function readSessionSummaries(root, { allowedWorkspaces = [] } = {}
     summaries.push(summary);
   }
   summaries.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-  return summaries;
+  const safeOffset = Number.isInteger(offset) && offset > 0 ? offset : 0;
+  const safeLimit = Number.isInteger(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
+  return { items: summaries.slice(safeOffset, safeOffset + safeLimit), total: summaries.length, nextOffset: safeOffset + safeLimit < summaries.length ? safeOffset + safeLimit : null };
 }

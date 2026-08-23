@@ -67,9 +67,10 @@ test("disk-first session reader reads JSONL summaries without starting a runtime
     JSON.stringify({ type: "message", id: "message-1", parentId: null, timestamp: "2026-01-01T00:00:02.000Z", message: { role: "user", content: "你好 Omega" } }),
   ].join("\n") + "\n");
   writeFileSync(join(root, "invalid.jsonl"), "{\"type\":\"not-session\"}\n");
-  const summaries = await readSessionSummaries(root, { allowedWorkspaces: [workspace] });
-  assert.equal(summaries.length, 1);
-  assert.deepEqual(summaries[0], {
+  const page = await readSessionSummaries(root, { allowedWorkspaces: [workspace] });
+  assert.equal(page.total, 1);
+  assert.equal(page.items.length, 1);
+  assert.deepEqual(page.items[0], {
     id: "session-1",
     title: "工作会话",
     workspace,
@@ -78,7 +79,7 @@ test("disk-first session reader reads JSONL summaries without starting a runtime
     status: "active",
     messageCount: 1,
   });
-  assert.deepEqual(await readSessionSummaries(root, { allowedWorkspaces: [mkdtempSync(join(tmpdir(), "omega-other-"))] }), []);
+  assert.deepEqual((await readSessionSummaries(root, { allowedWorkspaces: [mkdtempSync(join(tmpdir(), "omega-other-"))] })).items, []);
 });
 
 test("git snapshot token rejects changes made after the snapshot", () => {

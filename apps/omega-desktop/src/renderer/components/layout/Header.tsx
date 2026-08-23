@@ -81,7 +81,9 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
           ? "运行中"
           : connection === "error"
             ? "错误"
-            : connection === "connecting"
+            : connection === "closing"
+              ? "保存并退出"
+              : connection === "connecting"
               ? "连接中"
               : "就绪";
 

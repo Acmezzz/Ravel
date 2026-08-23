@@ -355,7 +355,7 @@ test("left nav exposes the files tab and viewer", async () => {
   assert.match(markdown, /openViewer/);
 });
 
-test("Project Switcher and event replay surfaces exist", async () => {
+test("Project Switcher, replay, and worker recovery reconcile surfaces exist", async () => {
   const switcher = await read("../src/renderer/components/layout/ProjectSwitcher.tsx");
   const client = await read("../src/renderer/ipc/client.ts");
   const app = await read("../src/renderer/App.tsx");
@@ -364,6 +364,8 @@ test("Project Switcher and event replay surfaces exist", async () => {
   assert.match(switcher, /workspaceId/);
   assert.match(client, /recentEvents/);
   assert.match(app, /recentEvents/);
+  assert.match(app, /streamingAssistantId: null/);
+  assert.match(app, /queuedMessages: \{ steering: \[\], followUp: \[\] \}/);
 });
 
 test("session list uses disk-first JSONL reader instead of starting a live runtime", async () => {

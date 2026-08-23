@@ -122,7 +122,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 主进程关闭保护和 flush 超时风险提示已完成第一轮，但还缺：
 
-- renderer 显示“正在停止 / 正在 flush / 正在退出”。（Main 已发送 `closing` transport 状态，待 UI 进一步视觉化。）
+- renderer 已区分 `closing` 状态，并显示“保存并退出”；Main 已发送 `closing` transport 状态。
+- 仍需补充更细的 flush 阶段进度和自动化 close Dialog 测试。
 - flush 超时后的用户可见风险提示和强制退出按钮。
 - 原生 close Dialog 的自动化测试。
 - 验证 abort、flush、dispose、kill 顺序的生命周期测试。
@@ -131,7 +132,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 精确 session 恢复已完成，但还缺：
 
-- 恢复 model、thinking level、queue、branch/tree 的完整 reconcile。
+- Worker ready 后已清理 renderer 的 running/thinking/compaction/retry/queue 瞬态，再用 authoritative snapshot 对账。
+- 仍需恢复 model、thinking level、queue、branch/tree 的更细粒度 reconcile。
 - 丢失 prompt 的恢复提示，不静默重发。
 - restart failure 的可操作错误界面。
 - Worker 崩溃前运行状态、未读状态和错误原因的持久化。

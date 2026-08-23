@@ -249,6 +249,7 @@ export function App(): React.ReactElement {
       if (data.state === "ready") {
         setBootstrapError(null);
         setConnection("ready");
+        useAppStore.setState({ streamingAssistantId: null, thinkingActive: false, compacting: false, retrying: false, bashTail: "", queuedMessages: { steering: [], followUp: [] } });
         const sessionId = useAppStore.getState().activeSessionId ?? undefined;
         void ipc.recentEvents({ sessionId, after: 0 }).then((result) => {
           if (result.ok) {
@@ -257,6 +258,9 @@ export function App(): React.ReactElement {
           }
         });
         void refreshControlPlane();
+      } else if (data.state === "closing") {
+        setConnection("closing");
+        useAppStore.getState().setComposerError("正在保存会话并退出…");
       } else if (data.state === "starting" || data.state === "restarting" || data.state === "stopping") {
         setConnection("connecting");
       } else if (data.state === "dead") {
