@@ -754,6 +754,7 @@ ipcMain.handle("omega:recentEvents", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const sessionId = typeof req?.sessionId === "string" ? req.sessionId : worker?.sessionId;
   const after = typeof req?.after === "number" && Number.isFinite(req.after) ? req.after : 0;
+  const limit = Number.isInteger(req?.limit) ? Math.max(1, Math.min(req.limit, 100)) : RECENT_EVENT_LIMIT;
   let bucket = sessionId ? recentEventsBySession.get(sessionId) ?? [] : [];
   if (sessionId && bucket.length === 0) {
     try {
@@ -764,7 +765,7 @@ ipcMain.handle("omega:recentEvents", (event, req) => {
   }
   const first = bucket[0]?.meta?.sequence ?? 0;
   const last = bucket.at(-1)?.meta?.sequence ?? 0;
-  return okResult({ events: bucket.filter((item) => item.meta?.sequence > after), gap: after > 0 && first > after + 1, first, last });
+  return okResult({ events: bucket.filter((item) => item.meta?.sequence > after).slice(0, limit), gap: after > 0 && first > after + 1, first, last, nextAfter: bucket.find((item) => item.meta?.sequence > after + limit)?.meta?.sequence ?? null });
 });
 
 ipcMain.handle("window:isMaximized", (event) => {

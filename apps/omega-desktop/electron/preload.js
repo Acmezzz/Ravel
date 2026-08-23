@@ -161,6 +161,7 @@ contextBridge.exposeInMainWorld("omega", {
   recentEvents: (req) => ipcRenderer.invoke("omega:recentEvents", {
     sessionId: safeString(req?.sessionId, 128),
     after: Number.isFinite(req?.after) ? req.after : 0,
+    limit: Number.isInteger(req?.limit) ? req.limit : 300,
   }),
   sessionRpc: (req) => {
     if (!req || typeof req.sessionId !== "string" || !req.sessionId.trim() || typeof req.method !== "string" || !req.method.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId and method are required" });

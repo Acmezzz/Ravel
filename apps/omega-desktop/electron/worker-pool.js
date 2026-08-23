@@ -11,12 +11,14 @@ export const DEFAULT_IDLE_TTL_MS = 5 * 60 * 1000;
 
 export function createWorkerSlotPool({
   cap = DEFAULT_WORKER_CAP,
-  idleTtlMs = DEFAULT_IDLE_TTL_MS,
-  now = Date.now,
-  timers = { setTimeout, clearTimeout },
+    idleTtlMs = DEFAULT_IDLE_TTL_MS,
+    healthTtlMs = 60_000,
+    now = Date.now,
+    timers = { setTimeout, clearTimeout },
 } = {}) {
   const slots = new Map();
   let foregroundSessionId = null;
+  let healthTimer = null;
 
   function snapshotOf(slot) {
     return {
@@ -26,6 +28,8 @@ export function createWorkerSlotPool({
       running: Boolean(slot.running),
       foreground: slot.sessionId === foregroundSessionId,
       lastUsedAt: slot.lastUsedAt,
+      lastHealthAt: slot.lastHealthAt ?? 0,
+      health: slot.health ?? "unknown",
     };
   }
 
@@ -122,7 +126,33 @@ export function createWorkerSlotPool({
 
   async function disposeAll() {
     const ids = [...slots.keys()];
+    if (healthTimer) timers.clearTimeout(healthTimer);
+    healthTimer = null;
     for (const sessionId of ids) await dispose(sessionId);
+  }
+
+  async function checkHealth() {
+    for (const slot of list()) {
+      if (slot.host?.state !== "ready" || slot.health === "checking") continue;
+      slot.health = "checking";
+      try {
+        await slot.host.call("getState");
+        slot.health = "healthy";
+        slot.lastHealthAt = now();
+      } catch {
+        slot.health = "unhealthy";
+        if (!slot.running && slot.sessionId !== foregroundSessionId) await dispose(slot.sessionId);
+      }
+    }
+    healthTimer = timers.setTimeout(() => void checkHealth(), healthTtlMs);
+    healthTimer?.unref?.();
+  }
+
+  function startHealthChecks() {
+    if (!healthTimer) {
+      healthTimer = timers.setTimeout(() => void checkHealth(), healthTtlMs);
+      healthTimer?.unref?.();
+    }
   }
 
   async function evictToFit() {
@@ -165,6 +195,7 @@ export function createWorkerSlotPool({
   }
 
   async function acquire({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, createHost }) {
+    startHealthChecks();
     if (sessionId && slots.has(sessionId)) return activate(sessionId);
     await evictToFit();
     if (slots.size >= cap && idleCandidates().length === 0) {
@@ -187,6 +218,8 @@ export function createWorkerSlotPool({
       running: false,
       lastUsedAt: now(),
       idleTimer: null,
+      lastHealthAt: 0,
+      health: "unknown",
     };
     const previousId = foregroundSessionId;
     slots.set(pendingId, slot);

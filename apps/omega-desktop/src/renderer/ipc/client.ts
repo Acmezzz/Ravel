@@ -98,7 +98,7 @@ export interface OmegaBridge {
   inspectProjectTrust(req?: { workspace?: string }): Promise<IpcResult<ProjectTrustInfo>>;
   decideProjectTrust(req: { workspace: string; decision: ProjectTrustChoice }): Promise<IpcResult<{ trust: ProjectTrustInfo; reloaded?: boolean; sessionId?: string; workspaces: WorkspaceInfo[] }>>;
   retryWorker(): Promise<IpcResult<{ state: string; sessionId?: string; cwd?: string }>>;
-  recentEvents(req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number }>>;
+  recentEvents(req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number; nextAfter?: number | null }>>;
   sessionRpc(req: { sessionId: string; method: string; args?: Record<string, unknown> }): Promise<IpcResult<unknown>>;
   sessionReady(): Promise<IpcResult<{ ready: boolean }>>;
   getState(): Promise<IpcResult<AgentStateSnapshot>>;

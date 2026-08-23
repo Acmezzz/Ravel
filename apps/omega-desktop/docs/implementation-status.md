@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**94/94 通过**。
+- 桌面和安全测试：**96/96 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -147,7 +147,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 - Main 最近事件缓存已完成按 session 分区和 gap 检测第一轮。
 - renderer 已在 Worker ready 后先拉 authoritative snapshot，再按 session 请求补发；仅流式恢复状态回放，gap 时保留快照并提示重新同步。
-- 事件缓存已按 session 持久化到 userData/event-cache，并支持 Main 内存为空时恢复最近窗口；补发分页和窗口重新激活的精细 reconcile 仍可继续加强。
+- 事件缓存已按 session 持久化到 userData/event-cache，并支持 Main 内存为空时恢复最近窗口；`recentEvents` 支持 limit/nextAfter 分页，窗口重新激活的精细 reconcile 仍可继续加强。
 - reload、窗口重新激活和 Worker restart 后的 snapshot/replay 流程。
 - snapshot 已包含 transcript、model、thinking、queue、compaction、usage、session tree；retry 未完成状态和窗口重新激活仍需完善。
 
@@ -180,7 +180,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - 空闲 slot 可被回收；全部忙碌时返回 `worker_cap_exceeded`。
 - load/switch 已有 session 会激活已有 slot，前台忙碌时再开新 slot。
 - 关闭路径会对所有 slot abort/flush。
-- 同 workspace 空闲 slot 复用和后台 slot 只读 `omega:sessionRpc` 已落地；stale slot 主动健康检查仍可继续加强。
+- 同 workspace 空闲 slot 复用、后台 slot 只读 `omega:sessionRpc` 和 unref stale health check 已落地；更细粒度的故障自动隔离仍可继续加强。
 
 ### P1：桌面工作区和会话体验
 
