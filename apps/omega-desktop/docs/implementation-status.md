@@ -115,8 +115,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - thinking/tool detail 延迟读取。
 - 更细粒度 retry 未完成状态恢复。
 - 删除父 session 时的非级联安全行为、右键菜单、重命名、复制 session ID 和删除已完成；孤立子 session 会被 Sidebar 提升为根节点。
-- 删除父 session 时安全重挂子 session。
-- Worktree 按项目聚合会话、更细粒度 Git 审查状态和 stale snapshot 自动刷新。
+- Worktree 更细粒度 Git 审查状态和 stale snapshot 自动刷新。
+- Worktree 按项目聚合会话、remote/fetch 需要跨 worktree/网络边界，暂列外部或后续增强。
 - FileViewer DOCX 预览、上传及冲突处理。
 - Model Center 自定义 provider/base URL/headers、model discovery、延迟测试和 catalog/recommendation。
 - Skills/Plugins package 内部资源过滤编辑、安装进度展示。
@@ -145,8 +145,8 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 
 ## 5. 后续实施顺序
 
-1. 历史消息请求合并、thinking/tool detail 延迟读取和 retry 中间状态恢复。
-2. 父子 session 删除重挂、Worktree 聚合。
+1. thinking/tool detail 延迟读取和 retry 中间状态恢复。
+2. Worktree 更细粒度审查状态、stale snapshot 自动刷新；跨 worktree 聚合与 remote/fetch 等待明确环境边界。
 3. FileViewer DOCX/watch/upload conflict。
 4. Model Center 自定义 provider/discovery/latency。
 5. 完整 IPC JSON Schema 迁移和性能拆包。
