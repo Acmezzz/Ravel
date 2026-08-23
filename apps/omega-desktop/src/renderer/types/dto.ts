@@ -602,6 +602,11 @@ export interface GitWorktreeInfo {
   prunable: boolean;
   dirty: boolean;
   current: boolean;
+  headShort?: string;
+  staged?: number;
+  unstaged?: number;
+  untracked?: number;
+  recentCommit?: { hash: string; message: string; timestamp: string };
 }
 
 export interface GitWorktreeList {

@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **116/116**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **117/117**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -112,7 +112,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 优先级 P1：
 
-- Worktree 更细粒度审查状态和按项目聚合会话；remote/fetch 需要跨 worktree/网络边界。
+- Worktree 元数据已增强：staged/unstaged/untracked 计数、HEAD short hash、最近提交信息和当前分支状态；按项目聚合会话和 remote/fetch 需要跨 worktree/网络边界。
 - FileViewer 内嵌 DOCX 富文本布局、上传进度仍可增强；当前已支持安全纯文本预览、系统默认应用打开、workspace 导入和冲突保护。
 - Model Center 自定义 provider/base URL/headers、model discovery、延迟测试和 catalog/recommendation。
 - Skills/Plugins package 内部资源过滤编辑、安装进度展示。

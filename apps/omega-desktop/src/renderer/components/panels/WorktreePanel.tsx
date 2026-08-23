@@ -107,12 +107,13 @@ export function WorktreePanel(): React.ReactElement {
                 {worktree.branch || (worktree.detached ? "detached" : "worktree")}
               </Typography>
               {worktree.current ? <Chip size="small" label="当前" sx={{ height: 18, fontSize: 10 }} /> : null}
-              {worktree.dirty ? <Chip size="small" label="有未提交更改" sx={{ height: 18, fontSize: 10 }} /> : null}
+              {worktree.dirty ? <Chip size="small" label={`改动 ${worktree.staged ?? 0}/${worktree.unstaged ?? 0}/${worktree.untracked ?? 0}`} sx={{ height: 18, fontSize: 10 }} /> : null}
               {worktree.locked ? <Chip size="small" label="锁定" sx={{ height: 18, fontSize: 10 }} /> : null}
             </Box>
             <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }} noWrap title={worktree.path}>
-              {worktree.path}
+              {worktree.path} · {worktree.headShort || "no HEAD"}
             </Typography>
+            {worktree.recentCommit?.message ? <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>{worktree.recentCommit.message}</Typography> : null}
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button size="small" disabled={worktree.current || busy} onClick={() => setRemoving(worktree)} sx={{ textTransform: "none" }}>
                 删除

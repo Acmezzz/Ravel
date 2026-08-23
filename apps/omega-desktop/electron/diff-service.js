@@ -514,10 +514,16 @@ export function listWorktrees(cwd) {
     } catch {
       dirty = false;
     }
+    const status = (() => { try { return git(worktree.path, ["status", "--porcelain", "-uall"]).split("\n").filter(Boolean); } catch { return []; } })();
+    const recent = (() => { try { const line = git(worktree.path, ["log", "-1", "--format=%h%x09%s%x09%cI"]).trim().split("\t"); return { hash: line[0] || "", message: line[1] || "", timestamp: line[2] || "" }; } catch { return { hash: "", message: "", timestamp: "" }; } })();
+    const counts = { staged: status.filter((line) => line[0] !== " " && line[0] !== "?").length, unstaged: status.filter((line) => line[1] !== " " && line[0] !== "?").length, untracked: status.filter((line) => line.startsWith("??")).length };
     return {
       ...worktree,
       dirty,
       current: isInside(worktree.path, cwd),
+      headShort: worktree.head.slice(0, 9),
+      recentCommit: recent,
+      ...counts,
     };
   });
   return { repoRoot: root, isGitRepo: true, worktrees };
