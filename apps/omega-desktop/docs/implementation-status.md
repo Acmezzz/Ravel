@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**92/92 通过**。
+- 桌面和安全测试：**94/94 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -209,9 +209,9 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - Typed desktop settings 第一轮已落地：`electron/desktop-settings.js` 管理 theme、worker cap/TTL、right panel、last session/workspace、window bounds 和 permission profile；Settings Dialog 可改 worker 上限及权限 profile。
 - Native integration 第一轮已落地：single-instance lock、second-instance focus、workspace/session 启动参数与 `omega://` 深链解析、window bounds restore、多显示器越界修正、renderer crash/unresponsive 事件处理、原生通知和 open/save/reveal 基础能力。
 - 仍缺：语言和 keybindings 的统一权威边界、关闭到托盘策略。
-- GitHub Release updater、下载进度、校验、失败恢复和忽略版本。
-- Windows Authenticode、macOS notarization、版本 manifest。
-- Electron E2E、electron-builder installer smoke、updater smoke、dependency audit 和 CI release gates。
+- Updater/release 第一轮已落地：`electron/updater-service.js` 提供 semver、HTTPS-only manifest、受控文件名、SHA-256/size 校验、临时文件、原子 rename、单飞下载和失败清理；不自动联网，不执行安装。
+- `scripts/release-gate.mjs` 校验 semver、禁止 NSIS、要求 Windows unpacked `dir` 目标；`scripts/electron-smoke.mjs` 检查 unpacked executable。`electron-builder.yml` 已改为 Windows `dir`，遵循本地离线约束。
+- 仍缺：真实 GitHub Release UI、下载进度 UI、重启安装、签名/notarization、CI 依赖审计和完整 Electron 黑盒 E2E；这些需要外部发布环境，不在本地离线阶段伪造成功。
 
 ## 5. 下一步实施顺序
 

@@ -22,7 +22,7 @@ linux:
     - AppImage
 win:
   target:
-    - nsis
+    - dir
 mac:
   target:
     - dmg
