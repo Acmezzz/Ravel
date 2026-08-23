@@ -5,6 +5,7 @@
 import { utilityProcess } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isWorkerEvent, isWorkerResponse } from "./worker-protocol.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_RPC_TIMEOUT = 120_000;
@@ -36,11 +37,12 @@ export class WorkerHost {
     this._initTimer = null;
   }
 
-  async start(cwd, extensionsRoot, sessionId = this.sessionId, projectTrusted = this.projectTrusted) {
+  async start(cwd, extensionsRoot, sessionId = this.sessionId, projectTrusted = this.projectTrusted, permissionProfile = this.permissionProfile) {
     this.cwd = cwd;
     this.extensionsRoot = extensionsRoot;
     this.sessionId = sessionId ?? null;
     this.projectTrusted = projectTrusted !== false;
+    this.permissionProfile = permissionProfile ?? this.permissionProfile;
     this.stopping = false;
     this.state = "starting";
     const generation = ++this.generation;
@@ -110,7 +112,7 @@ export class WorkerHost {
       this.onTransport?.("restarting", { error: message });
       setTimeout(() => {
         if (this.stopping) return;
-        void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted).catch((restartError) => {
+        void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted, this.permissionProfile).catch((restartError) => {
           const restartMessage = restartError instanceof Error ? restartError.message : String(restartError);
           this.onTransport?.("dead", { error: restartMessage, canRetry: true });
         });
@@ -135,10 +137,12 @@ export class WorkerHost {
       return;
     }
     if (message.type === "app-event") {
+      if (!isWorkerEvent(message)) return;
       this.onEvent?.(message.event, message.meta);
       return;
     }
     if (message.type === "extension-ui-request") {
+      if (!isWorkerEvent(message)) return;
       this.onExtensionUIRequest?.(message.request);
       return;
     }
@@ -152,6 +156,7 @@ export class WorkerHost {
       return;
     }
     if (message.type === "resp") {
+      if (!isWorkerResponse(message)) return;
       const pending = this.pending.get(message.id);
       if (!pending || pending.generation !== generation) return;
       this.pending.delete(message.id);

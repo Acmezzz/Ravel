@@ -57,6 +57,12 @@ export function createWorkerSlotPool({
     return list().some((slot) => slot.cwd === cwd && slot.running);
   }
 
+  function reusableWorkspaceSlot(cwd, excludeSessionId = null) {
+    return list()
+      .filter((slot) => slot.cwd === cwd && !slot.running && slot.sessionId !== foregroundSessionId && slot.sessionId !== excludeSessionId && slot.host?.state === "ready")
+      .sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0] ?? null;
+  }
+
   function clearIdle(slot) {
     if (slot?.idleTimer) {
       timers.clearTimeout(slot.idleTimer);
@@ -226,6 +232,7 @@ export function createWorkerSlotPool({
     hasRunning,
     isRunning,
     workspaceBusy,
+    reusableWorkspaceSlot,
     activate,
     acquire,
     rekey,

@@ -316,6 +316,25 @@ function createBoundHost() {
   return bindHost(new WorkerHost({ timeout: WORKER_RPC_TIMEOUT }));
 }
 
+async function sessionWorkspaceOf(sessionId) {
+  try {
+    const page = await readSessionSummaries(piSessionsRoot(), { offset: 0, limit: 5000 });
+    return page.items.find((item) => item.id === sessionId)?.workspace ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function reuseIdleWorkspaceSlot(sessionId, cwd) {
+  const reusable = workerPool.reusableWorkspaceSlot(cwd, sessionId);
+  if (!reusable) return null;
+  const previousId = reusable.sessionId;
+  await reusable.host.call("switchSession", { sessionId });
+  workerPool.rekey(previousId, sessionId);
+  const slot = workerPool.activate(sessionId);
+  return adoptSlot(slot);
+}
+
 async function adoptSlot(slot) {
   worker = slot.host;
   activeCwd = slot.cwd ?? activeCwd;
@@ -324,13 +343,13 @@ async function adoptSlot(slot) {
   return slot;
 }
 
-async function acquireSlot({ sessionId = null, cwd, projectTrusted } = {}) {
+async function acquireSlot({ sessionId = null, cwd, projectTrusted, permissionProfile } = {}) {
   const slot = await workerPool.acquire({
     sessionId,
     cwd: cwd ?? activeCwd ?? rootOf(),
     extensionsRoot: extensionsRootOf(),
     projectTrusted: projectTrusted !== false,
-    permissionProfile: desktopSettings?.get()?.permissionProfile ?? "trusted",
+    permissionProfile: permissionProfile ?? desktopSettings?.get()?.permissionProfile ?? "trusted",
     createHost: createBoundHost,
   });
   return adoptSlot(slot);
@@ -974,7 +993,13 @@ ipcMain.handle("omega:switchPiSession", async (event, req) => {
       return okResult(record);
     }
     if (isForegroundBusy() && worker?.state === "ready") {
-      const workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
+      const workspace = req?.workspace ? authorizedWorkspace(req.workspace) : (await sessionWorkspaceOf(req.sessionId)) ?? activeCwd ?? rootOf();
+      const reused = await reuseIdleWorkspaceSlot(req.sessionId, workspace);
+      if (reused) {
+        const record = await worker.call("sessionRecord");
+        rememberActive(record);
+        return okResult(record);
+      }
       await acquireSlot({ sessionId: req.sessionId, cwd: workspace, projectTrusted: projectTrust.isTrusted(workspace) });
       const record = await worker.call("sessionRecord");
       rememberActive(record);
@@ -1185,6 +1210,12 @@ ipcMain.handle("omega:loadSession", async (event, req) => {
     }
     if (isForegroundBusy() && worker?.state === "ready") {
       const workspace = activeCwd ?? rootOf();
+      const reused = await reuseIdleWorkspaceSlot(req.sessionId, workspace);
+      if (reused) {
+        const record = await worker.call("sessionRecord");
+        rememberActive(record);
+        return okResult(record);
+      }
       await acquireSlot({ sessionId: req.sessionId, cwd: workspace, projectTrusted: projectTrust.isTrusted(workspace) });
       const record = await worker.call("sessionRecord");
       rememberActive(record);

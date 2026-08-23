@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**90/90 通过**。
+- 桌面和安全测试：**92/92 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -219,7 +219,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 2. Model Center OAuth/custom provider/discovery、FileViewer 多媒体预览、native integration。
 3. updater、签名发布和 Electron E2E。
 4. 历史消息分页第一轮已落地：Main 通过 disk-first session reader 按 sessionId/offset/limit 返回受控消息页，使用 mtime:size 缓存；实时会话仍以 Pi SessionManager 为权威。仍缺 Renderer 聊天滚动触发的完整历史拼接和 thinking/tool detail 延迟读取。
-5. IPC runtime schema、Worker 协议统一、WorkerSlot 同 workspace 复用和后台 session-specific RPC。
+5. IPC runtime schema 第一轮已落地：Worker init/request/response/event 有共享校验器，generation 和响应 envelope 在 WorkerHost 入口校验；WorkerSlot 已支持同 workspace 空闲 slot 复用。仍缺持久化 event cache、后台 session-specific RPC 的独立主进程入口和 Renderer 历史消息滚动拼接。
 
 ## 6. 明确不做
 
