@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
-> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表和会话列表分页已落地。后续进入 WorkerSlot pool 与桌面工作区能力。
+> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust、Session Sidebar 活动状态、IPC 注册表、会话列表分页和 Session WorkerSlot pool 第一轮已落地。后续进入 Tree/FileViewer/Worktree 与配置中心。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -91,7 +91,7 @@
 - Electron Node syntax check：通过。
 - Renderer TypeScript check：通过。
 - Vite renderer build（`build:renderer`）：通过。
-- 桌面和安全测试：**63/63 通过**。
+- 桌面和安全测试：**67/67 通过**。
 - Offline SDK event projection smoke：通过。
 - `git diff --check`：通过。
 
@@ -175,13 +175,14 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 #### 4.7 Session WorkerSlot pool
 
-当前仍是单 Worker、单 active session。需要：
+第一轮已落地：
 
-- `Map<sessionId, WorkerSlot>`。
-- 后台 session running/unread 状态。
-- worker 数量上限和 idle TTL。
-- session-specific RPC。
-- 同 workspace 复用和 stale slot 清理。
+- `electron/worker-pool.js` 维护 `Map<sessionId, WorkerSlot>`，默认 cap=3、idle TTL=5 分钟。
+- 前台 session 立即切换；后台 running session 保留独立 Worker。
+- 空闲 slot 可被回收；全部忙碌时返回 `worker_cap_exceeded`。
+- load/switch 已有 session 会激活已有 slot，前台忙碌时再开新 slot。
+- 关闭路径会对所有 slot abort/flush。
+- 仍缺：同 workspace 复用策略、stale slot 主动健康检查、后台 slot 的独立 RPC 入口（当前 RPC 仍走前台 worker）。
 
 ### P1：桌面工作区和会话体验
 
@@ -215,11 +216,11 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ## 5. 下一步实施顺序
 
-1. Session WorkerSlot pool。
-2. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
-3. Model Center、safeStorage、Plugins/Skills、Extension UI。
-4. Typed settings、native integration、updater、签名发布和 Electron E2E。
-5. 历史消息分页、IPC runtime schema 与 Worker 协议统一。
+1. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
+2. Model Center、safeStorage、Plugins/Skills、Extension UI。
+3. Typed settings、native integration、updater、签名发布和 Electron E2E。
+4. 历史消息分页、IPC runtime schema 与 Worker 协议统一。
+5. WorkerSlot 同 workspace 复用和后台 session-specific RPC。
 
 ## 6. 明确不做
 

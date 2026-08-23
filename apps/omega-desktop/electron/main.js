@@ -16,12 +16,11 @@ import {
   session as electronSession,
   shell,
   dialog,
-  utilityProcess,
 } from "electron";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { piSessionsRoot, THINKING_LEVELS } from "./agent-bridge.js";
+import { piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
 import * as persistence from "./persistence.js";
 import * as stateReader from "./state-reader.js";
@@ -33,6 +32,8 @@ import { realRoot } from "./path-security.js";
 import { readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
+import { WorkerHost } from "./worker-host.js";
+import { createWorkerSlotPool } from "./worker-pool.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -45,6 +46,7 @@ const CLOSE_FLUSH_TIMEOUT = 10_000;
 const RECENT_EVENT_LIMIT = 300;
 let win;
 let worker = null;
+let workerPool = createWorkerSlotPool();
 let bootstrapError = null;
 let shuttingDown = false;
 let quitRequested = false;
@@ -84,10 +86,11 @@ function authorizedWorkspace(value) {
 
 /** Bounded flush; on timeout ("wait" path only) offer an explicit force-exit risk prompt. */
 async function flushWithRiskPrompt(decision) {
+  const hosts = workerPool.list().map((slot) => slot.host).filter(Boolean);
   for (;;) {
     try {
       await Promise.race([
-        worker?.call("flush"),
+        Promise.all(hosts.map((host) => host.call?.("flush").catch(() => {}))),
         new Promise((_, reject) => setTimeout(() => reject(new Error("close_flush_timeout")), CLOSE_FLUSH_TIMEOUT)),
       ]);
       return true;
@@ -115,10 +118,12 @@ async function runCloseSequence(finish) {
   if (decision === "cancel") return;
   sendTransportState("closing");
   if (decision === "stop") {
-    try {
-      await worker?.call("abort");
-    } catch {
-      /* best effort */
+    for (const slot of workerPool.list()) {
+      try {
+        await slot.host?.call?.("abort");
+      } catch {
+        /* best effort */
+      }
     }
   }
   sendTransportState("flushing");
@@ -133,7 +138,11 @@ function sendTransportState(state, extra = {}) {
 }
 
 function isAgentBusy() {
-  return agentRunning;
+  return workerPool.hasRunning();
+}
+
+function isForegroundBusy() {
+  return Boolean(workerPool.foreground()?.running);
 }
 
 async function requestCloseDecision() {
@@ -184,204 +193,78 @@ function assertIpcResult(value) {
   return value;
 }
 
-// ---------------------------------------------------------------------------
-// Worker host (requestId RPC + event forwarding, port of pi-app's slot logic)
-// ---------------------------------------------------------------------------
-
-class WorkerHost {
-  constructor() {
-    this.child = null;
-    this.pending = new Map();
-    this.seq = 0;
-    this.generation = 0;
-    this.state = "dead";
-    this.restartCount = 0;
-    this.stopping = false;
-    this.cwd = null;
-    this.extensionsRoot = null;
-    this.sessionId = null;
-    this.projectTrusted = true;
-    this.onEvent = null;
-    this.onSettled = null;
-    this.onError = null;
-    this.onTransport = null;
-    this._initResolve = null;
-    this._initReject = null;
-    this._initTimer = null;
-  }
-
-  async start(cwd, extensionsRoot, sessionId = this.sessionId, projectTrusted = this.projectTrusted) {
-    this.cwd = cwd;
-    this.extensionsRoot = extensionsRoot;
-    this.sessionId = sessionId ?? null;
-    this.projectTrusted = projectTrusted !== false;
-    this.stopping = false;
-    this.state = "starting";
-    const generation = ++this.generation;
-    const child = utilityProcess.fork(join(MAIN_DIR, "worker.mjs"), [], { stdio: "ignore" });
-    this.child = child;
-    child.on("message", (message) => this._handle(message, generation));
-    child.on("error", (error) => this._handleDeath(generation, error));
-    child.on("exit", (code, signal) => {
-      if (code === 0 && this.stopping) return;
-      this._handleDeath(generation, new Error(`Worker exited (${code ?? "unknown"}${signal ? `, ${signal}` : ""})`));
-    });
-    const done = new Promise((resolvePromise, rejectPromise) => {
-      this._initResolve = resolvePromise;
-      this._initReject = rejectPromise;
-      this._initTimer = setTimeout(() => rejectPromise(new Error("Worker init timeout (60s)")), 60_000);
-    });
-    this.onTransport?.("starting");
-    child.postMessage({
-      type: "init",
-      cwd,
-      extensionsRoot,
-      sessionId: this.sessionId,
-      generation,
-      projectTrusted: this.projectTrusted,
-    });
-    try {
-      const info = await done;
-      if (generation === this.generation && this.state === "starting") {
-        this.sessionId = info.sessionId ?? this.sessionId;
-        this.restartCount = 0;
-        this.state = "ready";
-        this.onTransport?.("ready");
-      }
-      return info;
-    } catch (error) {
-      if (generation === this.generation) this._handleDeath(generation, error);
-      throw error;
+function bindHost(host) {
+  host.onEvent = (event, meta) => {
+    const sessionId = meta?.sessionId ?? host.sessionId;
+    if (event?.type === "agent_start" || event?.type === "turn_start") workerPool.markRunning(sessionId, true);
+    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") workerPool.markRunning(sessionId, false);
+    if (event?.type === "error") workerPool.markRunning(sessionId, false);
+    agentRunning = Boolean(workerPool.foreground()?.running);
+    if (meta?.sequence && sessionId) {
+      const bucket = recentEventsBySession.get(sessionId) ?? [];
+      bucket.push({ event, meta });
+      if (bucket.length > RECENT_EVENT_LIMIT) bucket.splice(0, bucket.length - RECENT_EVENT_LIMIT);
+      recentEventsBySession.set(sessionId, bucket);
     }
-  }
-
-  _handleDeath(generation, error) {
-    if (generation !== this.generation || this.state === "dead" || this.state === "stopping") return;
-    this.state = "dead";
-    clearTimeout(this._initTimer);
-    this._initTimer = null;
-    this._initReject?.(error);
-    this._initResolve = null;
-    this._initReject = null;
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
-      pending.reject(Object.assign(new Error("worker unavailable"), { code: "worker_unavailable" }));
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send("agent:event", { event, meta });
+  };
+  host.onTransport = (state, extra = {}) => {
+    const foreground = host === worker;
+    if (foreground) {
+      agentReady = state === "ready";
+      if (state !== "ready") agentRunning = Boolean(workerPool.foreground()?.running);
     }
-    this.pending.clear();
-    const message = error instanceof Error ? error.message : String(error);
-    this.onError?.(message);
+    sendTransportState(state, { ...extra, sessionId: host.sessionId, foreground });
+  };
+  host.onSettled = () => {
+    if (!win || win.isDestroyed() || win.isFocused()) return;
+    if (!Notification.isSupported()) return;
     try {
-      this.child?.kill();
+      new Notification({ title: "Omega Desktop", body: "回复已完成，点击查看" }).show();
     } catch {
-      /* already gone */
+      /* best effort */
     }
-    if (this.child && generation === this.generation) this.child = null;
-    const canAutoRestart = !this.stopping && this.restartCount < 1 && this.cwd && this.extensionsRoot;
-    if (canAutoRestart) {
-      this.restartCount += 1;
-      this.state = "restarting";
-      this.onTransport?.("restarting", { error: message });
-      setTimeout(() => {
-        if (this.stopping) return;
-        void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted).catch((restartError) => {
-          const restartMessage = restartError instanceof Error ? restartError.message : String(restartError);
-          this.onTransport?.("dead", { error: restartMessage, canRetry: true });
-        });
-      }, 250);
-      return;
-    }
-    this.onTransport?.("dead", { error: message, canRetry: !this.stopping });
-  }
+  };
+  return host;
+}
 
-  _handle(message, generation) {
-    if (generation !== this.generation || !message || typeof message !== "object") return;
-    if (message.type === "init-done") {
-      clearTimeout(this._initTimer);
-      this._initTimer = null;
-      this._initResolve?.(message);
-      this._initResolve = null;
-      this._initReject = null;
-      return;
-    }
-    if (message.type === "init-error") {
-      this._initReject?.(new Error(message.error));
-      return;
-    }
-    if (message.type === "app-event") {
-      this.onEvent?.(message.event, message.meta);
-      return;
-    }
-    if (message.type === "settled") {
-      this.onSettled?.(message.meta);
-      return;
-    }
-    if (message.type === "worker-error") {
-      process.stderr.write(`[worker] ${message.error}\n`);
-      this.onError?.(message.error);
-      return;
-    }
-    if (message.type === "resp") {
-      const pending = this.pending.get(message.id);
-      if (!pending || pending.generation !== generation) return;
-      this.pending.delete(message.id);
-      clearTimeout(pending.timer);
-      if (message.error) {
-        const error = new Error(message.error);
-        if (message.code) error.code = message.code;
-        pending.reject(error);
-      } else {
-        pending.resolve(message.data ?? null);
-      }
-    }
-  }
+function createBoundHost() {
+  return bindHost(new WorkerHost({ timeout: WORKER_RPC_TIMEOUT }));
+}
 
-  call(method, args) {
-    if (!this.child || (this.state !== "ready" && !(this.state === "stopping" && (method === "dispose" || method === "flush"))) || (this.stopping && method !== "dispose" && method !== "flush")) return Promise.reject(new Error("session not ready"));
-    const id = `req-${++this.seq}`;
-    const generation = this.generation;
-    return new Promise((resolvePromise, rejectPromise) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        rejectPromise(Object.assign(new Error(`Worker RPC timeout: ${method}`), { code: "worker_timeout" }));
-      }, WORKER_RPC_TIMEOUT);
-      this.pending.set(id, { resolve: resolvePromise, reject: rejectPromise, timer, generation });
-      const wireArgs = { ...(args ?? {}), generation };
-      this.child.postMessage({ type: "req", id, method, args: wireArgs, generation });
-    });
-  }
+async function adoptSlot(slot) {
+  worker = slot.host;
+  activeCwd = slot.cwd ?? activeCwd;
+  agentReady = slot.host?.state === "ready";
+  agentRunning = Boolean(slot.running);
+  return slot;
+}
 
-  async kill() {
-    if (!this.child && this.state === "dead") return;
-    this.stopping = true;
-    const child = this.child;
-    const canDispose = Boolean(child && this.state === "ready");
-    this.state = "stopping";
-    this.onTransport?.("stopping");
-    if (canDispose) {
-      try {
-        await this.call("flush");
-      } catch {
-        /* best effort: dispose still has a bounded path */
-      }
-      try {
-        await this.call("dispose");
-      } catch {
-        /* best effort */
-      }
-    }
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
-      pending.reject(Object.assign(new Error("worker disposed"), { code: "worker_disposed" }));
-    }
-    this.pending.clear();
-    try {
-      child?.kill();
-    } catch {
-      /* already gone */
-    }
-    this.child = null;
-    this.state = "dead";
-    this.onTransport?.("dead");
+async function acquireSlot({ sessionId = null, cwd, projectTrusted } = {}) {
+  const slot = await workerPool.acquire({
+    sessionId,
+    cwd: cwd ?? activeCwd ?? rootOf(),
+    extensionsRoot: extensionsRootOf(),
+    projectTrusted: projectTrusted !== false,
+    createHost: createBoundHost,
+  });
+  return adoptSlot(slot);
+}
+
+function rememberActive(record) {
+  if (!record) return;
+  if (record.id && worker) {
+    const previousId = worker.sessionId;
+    worker.sessionId = record.id;
+    if (previousId && previousId !== record.id) workerPool.rekey(previousId, record.id);
+    workerPool.activate(record.id);
+  }
+  if (record.workspace) {
+    activeCwd = record.workspace;
+    const slot = workerPool.foreground();
+    if (slot) slot.cwd = record.workspace;
+    if (worker) worker.cwd = record.workspace;
   }
 }
 
@@ -399,37 +282,9 @@ async function bootstrap() {
   const requested = process.env.OMEGA_WORKSPACE ? realRoot(resolve(process.env.OMEGA_WORKSPACE)) : realRoot(rootOf());
   const cwd = workspaceRegistry.has(requested) ? workspaceRegistry.resolveAuthorized(requested) : workspaceRegistry.add(requested);
   activeCwd = cwd;
-  const extensionsRoot = extensionsRootOf();
   process.stdout.write(`[main] cwd=${cwd}\n`);
-  worker = new WorkerHost();
-  worker.onEvent = (event, meta) => {
-    if (event?.type === "agent_start" || event?.type === "turn_start") agentRunning = true;
-    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") agentRunning = false;
-    if (meta?.sequence && meta.sessionId) {
-      const bucket = recentEventsBySession.get(meta.sessionId) ?? [];
-      bucket.push({ event, meta });
-      if (bucket.length > RECENT_EVENT_LIMIT) bucket.splice(0, bucket.length - RECENT_EVENT_LIMIT);
-      recentEventsBySession.set(meta.sessionId, bucket);
-    }
-    if (!win || win.isDestroyed()) return;
-    win.webContents.send("agent:event", { event, meta });
-  };
-  worker.onTransport = (state, extra = {}) => {
-    agentReady = state === "ready";
-    if (state !== "ready") agentRunning = false;
-    sendTransportState(state, extra);
-  };
-  worker.onSettled = () => {
-    if (!win || win.isDestroyed() || win.isFocused()) return;
-    if (!Notification.isSupported()) return;
-    try {
-      new Notification({ title: "Omega Desktop", body: "回复已完成，点击查看" }).show();
-    } catch {
-      /* best effort */
-    }
-  };
-  const info = await worker.start(cwd, extensionsRoot, undefined, projectTrust.isTrusted(cwd));
-  activeCwd = info.cwd ?? cwd;
+  const slot = await acquireSlot({ cwd, projectTrusted: projectTrust.isTrusted(cwd) });
+  activeCwd = slot.cwd ?? cwd;
   agentReady = true;
   process.stdout.write("[main] agent worker ready\n");
 }
@@ -662,20 +517,12 @@ ipcMain.handle("omega:decideProjectTrust", async (event, req) => {
   try {
     const root = authorizedWorkspace(req.workspace);
     const trust = projectTrust.decide(root, req.decision);
-    if (activeCwd && root === activeCwd && worker) {
-      const sessionId = worker.sessionId;
-      try {
-        await worker.kill();
-      } catch {
-        /* best effort */
-      }
-      worker.restartCount = 0;
-      const info = await worker.start(root, extensionsRootOf(), sessionId, trust.decision === "trusted");
-      agentReady = true;
-      activeCwd = info.cwd ?? root;
-      worker.sessionId = info.sessionId ?? sessionId;
-      worker.projectTrusted = trust.decision === "trusted";
-      return okResult({ trust, reloaded: true, sessionId: worker.sessionId, workspaces: listedWorkspaces() });
+    if (activeCwd && root === activeCwd) {
+      const sessionId = worker?.sessionId ?? null;
+      await workerPool.disposeAll();
+      worker = null;
+      const slot = await acquireSlot({ sessionId, cwd: root, projectTrusted: trust.decision === "trusted" });
+      return okResult({ trust, reloaded: true, sessionId: slot.sessionId, workspaces: listedWorkspaces() });
     }
     return okResult({ trust, reloaded: false, workspaces: listedWorkspaces() });
   } catch (error) {
@@ -685,17 +532,15 @@ ipcMain.handle("omega:decideProjectTrust", async (event, req) => {
 
 ipcMain.handle("omega:retryWorker", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (!worker) return errorResult("worker_unavailable", "Agent worker 不可用");
-  if (worker.state === "ready" || worker.state === "starting" || worker.state === "restarting") {
+  if (worker && (worker.state === "ready" || worker.state === "starting" || worker.state === "restarting")) {
     return okResult({ state: worker.state });
   }
   const cwd = activeCwd ?? rootOf();
+  const sessionId = worker?.sessionId ?? workerPool.foreground()?.sessionId ?? null;
   try {
-    worker.restartCount = 0;
-    const info = await worker.start(cwd, extensionsRootOf(), worker.sessionId, projectTrust.isTrusted(cwd));
-    agentReady = true;
-    activeCwd = info.cwd ?? cwd;
-    return okResult({ state: "ready", sessionId: info.sessionId, cwd: activeCwd });
+    if (sessionId) await workerPool.dispose(sessionId);
+    const slot = await acquireSlot({ sessionId, cwd, projectTrusted: projectTrust.isTrusted(cwd) });
+    return okResult({ state: "ready", sessionId: slot.sessionId, cwd: activeCwd });
   } catch (error) {
     agentReady = false;
     return errorResult("worker_unavailable", error instanceof Error ? error.message : String(error));
@@ -704,7 +549,7 @@ ipcMain.handle("omega:retryWorker", async (event) => {
 
 ipcMain.handle("omega:chooseWorkspace", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (isAgentBusy()) return errorResult("session_busy", "生成中无法切换工作区，请先停止或等待完成");
+  if (isForegroundBusy()) return errorResult("session_busy", "生成中无法切换工作区，请先停止或等待完成");
   const result = await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory", "promptToCreate"] });
   if (result.canceled || !result.filePaths[0]) return errorResult("cancelled", "未选择工作区");
   try {
@@ -724,7 +569,7 @@ ipcMain.handle("omega:chooseWorkspace", async (event) => {
 ipcMain.handle("omega:switchWorkspace", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req?.workspace || typeof req.workspace !== "string") return errorResult("invalid_args", "workspace is required");
-  if (isAgentBusy()) return errorResult("session_busy", "生成中无法切换工作区，请先停止或等待完成");
+  if (isForegroundBusy()) return errorResult("session_busy", "生成中无法切换工作区，请先停止或等待完成");
   let root;
   try {
     root = authorizedWorkspace(req.workspace);
@@ -736,11 +581,7 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
     return errorResult("trust_required", "打开该项目前需要确认是否信任其中的扩展和技能");
   }
   const result = await rpc("newSession", { workspace: root, projectTrusted: trust.decision === "trusted" }, "write_failed");
-  if (result.ok) {
-    activeCwd = result.data.workspace || root;
-    worker.sessionId = result.data.id ?? worker.sessionId;
-    worker.projectTrusted = trust.decision === "trusted";
-  }
+  if (result.ok) rememberActive(result.data);
   return result;
 });
 
@@ -873,7 +714,9 @@ ipcMain.handle("omega:fork", async (event, req) => {
   if (!req || typeof req.entryId !== "string" || !req.entryId.trim()) {
     return errorResult("invalid_args", "entryId is required");
   }
-  return rpc("fork", { entryId: req.entryId }, "write_failed");
+  const result = await rpc("fork", { entryId: req.entryId }, "write_failed");
+  if (result.ok && result.data?.record) rememberActive(result.data.record);
+  return result;
 });
 
 ipcMain.handle("omega:navigateTree", async (event, req) => {
@@ -904,7 +747,7 @@ ipcMain.handle("omega:listPiSessions", async (event) => {
 
 ipcMain.handle("omega:newPiSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (isAgentBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
+  if (isForegroundBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
   let workspace;
   try {
     workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
@@ -912,22 +755,33 @@ ipcMain.handle("omega:newPiSession", async (event, req) => {
     return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
   }
   const result = await rpc("newSession", { workspace, title: req?.title }, "write_failed");
-  if (result.ok) {
-    activeCwd = result.data.workspace || workspace;
-    worker.sessionId = result.data.id ?? worker.sessionId;
-  }
+  if (result.ok) rememberActive(result.data);
   return result;
 });
 
 ipcMain.handle("omega:switchPiSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (isAgentBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
   if (!req?.sessionId) return errorResult("invalid_args", "sessionId is required");
-  const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
-  if (result.ok) {
-    activeCwd = result.data.workspace || activeCwd;
-    worker.sessionId = result.data.id ?? req.sessionId;
+  try {
+    const existing = workerPool.get(req.sessionId);
+    if (existing) {
+      await adoptSlot(workerPool.activate(req.sessionId));
+      const record = await worker.call("sessionRecord");
+      rememberActive(record);
+      return okResult(record);
+    }
+    if (isForegroundBusy() && worker?.state === "ready") {
+      const workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
+      await acquireSlot({ sessionId: req.sessionId, cwd: workspace, projectTrusted: projectTrust.isTrusted(workspace) });
+      const record = await worker.call("sessionRecord");
+      rememberActive(record);
+      return okResult(record);
+    }
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
   }
+  const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
+  if (result.ok) rememberActive(result.data);
   return result;
 });
 
@@ -1018,7 +872,7 @@ ipcMain.handle("omega:listSessions", async (event, req) => {
 
 ipcMain.handle("omega:newSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (isAgentBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
+  if (isForegroundBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
   let workspace;
   try {
     workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
@@ -1026,18 +880,33 @@ ipcMain.handle("omega:newSession", async (event, req) => {
     return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
   }
   const result = await rpc("newSession", { workspace, title: req?.title }, "write_failed");
-  if (result.ok) activeCwd = result.data.workspace || workspace;
+  if (result.ok) rememberActive(result.data);
   return result;
 });
 
 ipcMain.handle("omega:loadSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req?.sessionId) return errorResult("invalid_args", "sessionId is required");
-  const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
-  if (result.ok) {
-    activeCwd = result.data.workspace || activeCwd;
-    worker.sessionId = result.data.id ?? req.sessionId;
+  try {
+    const existing = workerPool.get(req.sessionId);
+    if (existing) {
+      await adoptSlot(workerPool.activate(req.sessionId));
+      const record = await worker.call("sessionRecord");
+      rememberActive(record);
+      return okResult(record);
+    }
+    if (isForegroundBusy() && worker?.state === "ready") {
+      const workspace = activeCwd ?? rootOf();
+      await acquireSlot({ sessionId: req.sessionId, cwd: workspace, projectTrusted: projectTrust.isTrusted(workspace) });
+      const record = await worker.call("sessionRecord");
+      rememberActive(record);
+      return okResult(record);
+    }
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
   }
+  const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
+  if (result.ok) rememberActive(result.data);
   return result;
 });
 
@@ -1052,12 +921,15 @@ ipcMain.handle("omega:deleteSession", async (event, req) => {
   if (!req?.sessionId || typeof req.sessionId !== "string") return errorResult("invalid_args", "sessionId is required");
   try {
     const target = req.sessionId;
+    if (workerPool.get(target)?.running) return errorResult("session_busy", "生成中无法删除会话，请先停止或等待完成");
     const state = await requireWorker().call("getState");
     if (state?.sessionId === target) {
       const result = await rpc("newSession", {}, "write_failed");
       if (!result.ok) return result;
+      if (result.ok) rememberActive(result.data);
     }
-    const sessionPath = await requireWorker().call("resolveSessionPath", { sessionId: target });
+    await workerPool.dispose(target);
+    const sessionPath = await resolveSessionPath(target);
     if (sessionPath) {
       // Defense in depth: only ever delete files inside the pi sessions root.
       const root = resolve(piSessionsRoot()).toLowerCase();
@@ -1198,9 +1070,8 @@ async function shutdown() {
   shuttingDown = true;
   agentReady = false;
   agentRunning = false;
-  const currentWorker = worker;
   worker = null;
-  await currentWorker?.kill();
+  await workerPool.disposeAll();
 }
 
 app
@@ -1212,7 +1083,7 @@ app
       showBootstrapError(error);
       agentReady = false;
       try {
-        await worker?.kill();
+        await workerPool.disposeAll();
       } catch {
         /* best effort */
       }

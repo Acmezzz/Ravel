@@ -64,7 +64,7 @@ export interface OmegaBridge {
   isMaximized(): Promise<IpcResult<{ maximized: boolean }>>;
   onWindowStateChanged(callback: (data: { maximized: boolean }) => void): () => void;
   onStatus(callback: (data: unknown) => void): () => void;
-  onTransport(callback: (data: { state: string; error?: string; canRetry?: boolean }) => void): () => void;
+  onTransport(callback: (data: { state: string; error?: string; canRetry?: boolean; sessionId?: string; foreground?: boolean }) => void): () => void;
   onEvent(callback: (data: unknown) => void): () => void;
   listWorkspaces(): Promise<IpcResult<WorkspaceInfo[]>>;
   chooseWorkspace(): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[]; trust?: ProjectTrustInfo }>>;

@@ -14,7 +14,7 @@ test("main configures Electron isolation and navigation boundaries", async () =>
   assert.match(source, /setWindowOpenHandler/);
   assert.match(source, /will-navigate/);
   assert.match(source, /senderAllowed/);
-  assert.match(source, /await worker\?\.kill/);
+  assert.match(source, /await workerPool\.disposeAll/);
   assert.match(source, /requestCloseDecision/);
   assert.match(source, /CLOSE_DIALOG_BUTTONS/);
   assert.match(source, /closeDecisionFromIndex/);
@@ -36,7 +36,8 @@ test("worker and renderer use sequenced event envelopes for stale-event rejectio
   assert.match(main, /gap: after > 0/);
   assert.match(main, /sendTransportState\("flushing"\)/);
   assert.match(main, /sendTransportState\("exiting"\)/);
-  assert.match(main, /canRetry: !this\.stopping/);
+  const host = await read("../electron/worker-host.js");
+  assert.match(host, /canRetry: !this\.stopping/);
   assert.match(main, /omega:retryWorker/);
   assert.match(app, /setShutdownPhase\("flushing"\)/);
   assert.match(app, /state\?\.isStreaming !== true/);

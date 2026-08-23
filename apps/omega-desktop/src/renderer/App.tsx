@@ -54,6 +54,9 @@ async function refreshControlPlane(): Promise<boolean> {
   if (commandsRes.ok) store.setCommands(commandsRes.data);
   if (authRes.ok) store.setAuth(authRes.data);
   if (sessionsRes.ok) store.applySessionPage(sessionsRes.data);
+  if (stateRes.ok) {
+    store.setConnection(stateRes.data.isStreaming ? "running" : "ready");
+  }
   return stateRes.ok;
 }
 
@@ -90,7 +93,10 @@ async function startNewSession(): Promise<void> {
   store.setActiveSession(record.data.id);
   store.loadTranscript(record.data);
   const state = await ipc.getState();
-  if (state.ok) store.setAgent(state.data);
+  if (state.ok) {
+    store.setAgent(state.data);
+    store.setConnection(state.data.isStreaming ? "running" : "ready");
+  }
   const list = await ipc.listSessions();
   if (list.ok) store.applySessionPage(list.data);
 }
@@ -290,6 +296,7 @@ export function App(): React.ReactElement {
       if (payload?.message) setBootstrapError(payload.message);
     });
     const offTransport = window.omega.onTransport((data) => {
+      if (data.foreground === false) return;
       if (data.state === "ready") {
         setShutdownPhase("idle");
         setBootstrapError(null);

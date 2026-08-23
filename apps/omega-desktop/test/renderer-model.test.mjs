@@ -403,6 +403,16 @@ test("Project Switcher, replay, and worker recovery reconcile surfaces exist", a
   assert.match(bridge, /tree: sessionTreeOf/);
 });
 
+test("session worker pool is session-keyed with a cap and idle TTL", async () => {
+  const main = await read("../electron/main.js");
+  const pool = await read("../electron/worker-pool.js");
+  assert.match(main, /createWorkerSlotPool/);
+  assert.match(main, /acquireSlot/);
+  assert.match(pool, /worker_cap_exceeded/);
+  assert.match(pool, /idleTtlMs/);
+  assert.match(pool, /Map/);
+});
+
 test("session list uses disk-first JSONL reader instead of starting a live runtime", async () => {
   const main = await read("../electron/main.js");
   const reader = await read("../electron/session-reader.js");

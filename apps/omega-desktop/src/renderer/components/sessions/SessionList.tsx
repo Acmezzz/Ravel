@@ -77,7 +77,10 @@ export function SessionList(): React.ReactElement {
         setActiveSession(id);
         loadTranscript(res.data);
         const state = await ipc.getState();
-        if (state.ok) setAgent(state.data);
+        if (state.ok) {
+          setAgent(state.data);
+          useAppStore.getState().setConnection(state.data.isStreaming ? "running" : "ready");
+        }
         const list = await ipc.listSessions();
         if (list.ok) applySessionPage(list.data);
       }

@@ -1,0 +1,212 @@
+/**
+ * Single utilityProcess worker host. Session-keyed pooling lives in
+ * worker-pool.js; this class only owns one child, generation, and RPC map.
+ */
+import { utilityProcess } from "electron";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_RPC_TIMEOUT = 120_000;
+
+export class WorkerHost {
+  constructor({ workerPath = join(MAIN_DIR, "worker.mjs"), timeout = DEFAULT_RPC_TIMEOUT } = {}) {
+    this.workerPath = workerPath;
+    this.timeout = timeout;
+    this.child = null;
+    this.pending = new Map();
+    this.seq = 0;
+    this.generation = 0;
+    this.state = "dead";
+    this.restartCount = 0;
+    this.stopping = false;
+    this.cwd = null;
+    this.extensionsRoot = null;
+    this.sessionId = null;
+    this.projectTrusted = true;
+    this.activating = false;
+    this.onEvent = null;
+    this.onSettled = null;
+    this.onError = null;
+    this.onTransport = null;
+    this._initResolve = null;
+    this._initReject = null;
+    this._initTimer = null;
+  }
+
+  async start(cwd, extensionsRoot, sessionId = this.sessionId, projectTrusted = this.projectTrusted) {
+    this.cwd = cwd;
+    this.extensionsRoot = extensionsRoot;
+    this.sessionId = sessionId ?? null;
+    this.projectTrusted = projectTrusted !== false;
+    this.stopping = false;
+    this.state = "starting";
+    const generation = ++this.generation;
+    const child = utilityProcess.fork(this.workerPath, [], { stdio: "ignore" });
+    this.child = child;
+    child.on("message", (message) => this._handle(message, generation));
+    child.on("error", (error) => this._handleDeath(generation, error));
+    child.on("exit", (code, signal) => {
+      if (code === 0 && this.stopping) return;
+      this._handleDeath(generation, new Error(`Worker exited (${code ?? "unknown"}${signal ? `, ${signal}` : ""})`));
+    });
+    const done = new Promise((resolvePromise, rejectPromise) => {
+      this._initResolve = resolvePromise;
+      this._initReject = rejectPromise;
+      this._initTimer = setTimeout(() => rejectPromise(new Error("Worker init timeout (60s)")), 60_000);
+    });
+    this.onTransport?.("starting");
+    child.postMessage({
+      type: "init",
+      cwd,
+      extensionsRoot,
+      sessionId: this.sessionId,
+      generation,
+      projectTrusted: this.projectTrusted,
+    });
+    try {
+      const info = await done;
+      if (generation === this.generation && this.state === "starting") {
+        this.sessionId = info.sessionId ?? this.sessionId;
+        this.restartCount = 0;
+        this.state = "ready";
+        this.onTransport?.("ready");
+      }
+      return info;
+    } catch (error) {
+      if (generation === this.generation) this._handleDeath(generation, error);
+      throw error;
+    }
+  }
+
+  _handleDeath(generation, error) {
+    if (generation !== this.generation || this.state === "dead" || this.state === "stopping") return;
+    this.state = "dead";
+    clearTimeout(this._initTimer);
+    this._initTimer = null;
+    this._initReject?.(error);
+    this._initResolve = null;
+    this._initReject = null;
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(Object.assign(new Error("worker unavailable"), { code: "worker_unavailable" }));
+    }
+    this.pending.clear();
+    const message = error instanceof Error ? error.message : String(error);
+    this.onError?.(message);
+    try {
+      this.child?.kill();
+    } catch {
+      /* already gone */
+    }
+    if (this.child && generation === this.generation) this.child = null;
+    const canAutoRestart = !this.stopping && this.restartCount < 1 && this.cwd && this.extensionsRoot && !this.activating;
+    if (canAutoRestart) {
+      this.restartCount += 1;
+      this.state = "restarting";
+      this.onTransport?.("restarting", { error: message });
+      setTimeout(() => {
+        if (this.stopping) return;
+        void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted).catch((restartError) => {
+          const restartMessage = restartError instanceof Error ? restartError.message : String(restartError);
+          this.onTransport?.("dead", { error: restartMessage, canRetry: true });
+        });
+      }, 250);
+      return;
+    }
+    this.onTransport?.("dead", { error: message, canRetry: !this.stopping });
+  }
+
+  _handle(message, generation) {
+    if (generation !== this.generation || !message || typeof message !== "object") return;
+    if (message.type === "init-done") {
+      clearTimeout(this._initTimer);
+      this._initTimer = null;
+      this._initResolve?.(message);
+      this._initResolve = null;
+      this._initReject = null;
+      return;
+    }
+    if (message.type === "init-error") {
+      this._initReject?.(new Error(message.error));
+      return;
+    }
+    if (message.type === "app-event") {
+      this.onEvent?.(message.event, message.meta);
+      return;
+    }
+    if (message.type === "settled") {
+      this.onSettled?.(message.meta);
+      return;
+    }
+    if (message.type === "worker-error") {
+      process.stderr.write(`[worker] ${message.error}\n`);
+      this.onError?.(message.error);
+      return;
+    }
+    if (message.type === "resp") {
+      const pending = this.pending.get(message.id);
+      if (!pending || pending.generation !== generation) return;
+      this.pending.delete(message.id);
+      clearTimeout(pending.timer);
+      if (message.error) {
+        const error = new Error(message.error);
+        if (message.code) error.code = message.code;
+        pending.reject(error);
+      } else {
+        pending.resolve(message.data ?? null);
+      }
+    }
+  }
+
+  call(method, args) {
+    if (!this.child || (this.state !== "ready" && !(this.state === "stopping" && (method === "dispose" || method === "flush"))) || (this.stopping && method !== "dispose" && method !== "flush")) {
+      return Promise.reject(new Error("session not ready"));
+    }
+    const id = `req-${++this.seq}`;
+    const generation = this.generation;
+    return new Promise((resolvePromise, rejectPromise) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        rejectPromise(Object.assign(new Error(`Worker RPC timeout: ${method}`), { code: "worker_timeout" }));
+      }, this.timeout);
+      this.pending.set(id, { resolve: resolvePromise, reject: rejectPromise, timer, generation });
+      const wireArgs = { ...(args ?? {}), generation };
+      this.child.postMessage({ type: "req", id, method, args: wireArgs, generation });
+    });
+  }
+
+  async kill() {
+    if (!this.child && this.state === "dead") return;
+    this.stopping = true;
+    const child = this.child;
+    const canDispose = Boolean(child && this.state === "ready");
+    this.state = "stopping";
+    this.onTransport?.("stopping");
+    if (canDispose) {
+      try {
+        await this.call("flush");
+      } catch {
+        /* best effort: dispose still has a bounded path */
+      }
+      try {
+        await this.call("dispose");
+      } catch {
+        /* best effort */
+      }
+    }
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(Object.assign(new Error("worker disposed"), { code: "worker_disposed" }));
+    }
+    this.pending.clear();
+    try {
+      child?.kill();
+    } catch {
+      /* already gone */
+    }
+    this.child = null;
+    this.state = "dead";
+    this.onTransport?.("dead");
+  }
+}
