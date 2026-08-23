@@ -275,12 +275,27 @@ function assertIpcResult(value) {
   return value;
 }
 
+function persistSessionRecovery(sessionId, patch) {
+  if (!desktopSettings || !sessionId) return;
+  const current = desktopSettings.get().sessionRecovery ?? {};
+  desktopSettings.update({ sessionRecovery: { ...current, [sessionId]: { ...(current[sessionId] ?? {}), ...patch, updatedAt: new Date().toISOString() } } });
+}
+
 function bindHost(host) {
   host.onEvent = (event, meta) => {
     const sessionId = meta?.sessionId ?? host.sessionId;
-    if (event?.type === "agent_start" || event?.type === "turn_start") workerPool.markRunning(sessionId, true);
-    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") workerPool.markRunning(sessionId, false);
-    if (event?.type === "error") workerPool.markRunning(sessionId, false);
+    if (event?.type === "agent_start" || event?.type === "turn_start") {
+      workerPool.markRunning(sessionId, true);
+      persistSessionRecovery(sessionId, { state: "running", running: true, error: null });
+    }
+    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") {
+      workerPool.markRunning(sessionId, false);
+      persistSessionRecovery(sessionId, { state: "ready", running: false, error: null });
+    }
+    if (event?.type === "error") {
+      workerPool.markRunning(sessionId, false);
+      persistSessionRecovery(sessionId, { state: "error", running: false, error: typeof event.message === "string" ? event.message : "Agent error" });
+    }
     agentRunning = Boolean(workerPool.foreground()?.running);
     if (meta?.sequence && sessionId) {
       const bucket = recentEventsBySession.get(sessionId) ?? [];
@@ -309,6 +324,7 @@ function bindHost(host) {
       agentReady = state === "ready";
       if (state !== "ready") agentRunning = Boolean(workerPool.foreground()?.running);
     }
+    persistSessionRecovery(host.sessionId, { state, running: Boolean(workerPool.get(host.sessionId)?.running), error: typeof extra.error === "string" ? extra.error : null });
     sendTransportState(state, { ...extra, sessionId: host.sessionId, foreground });
   };
   host.onSettled = () => {
@@ -501,6 +517,10 @@ async function createWindow() {
   win.webContents.on("unresponsive", () => {
     if (!win || win.isDestroyed() || shuttingDown) return;
     sendTransportState("renderer-unresponsive", { canRetry: true });
+  });
+  win.on("focus", () => {
+    if (!win || win.isDestroyed() || shuttingDown) return;
+    win.webContents.send("worker:transport", { state: "reconcile", sessionId: worker?.sessionId ?? null, foreground: true });
   });
   win.on("close", (event) => {
     if (closeApproved || closeHandling || !isAgentBusy()) return;

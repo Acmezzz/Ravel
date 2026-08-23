@@ -14,6 +14,7 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   lastWorkspace: null,
   rightPanelOpen: true,
   permissionProfile: "trusted",
+  sessionRecovery: {},
   windowBounds: null,
 });
 
@@ -37,6 +38,7 @@ export function sanitizeDesktopSettings(input, base = DESKTOP_SETTINGS_DEFAULTS)
     lastWorkspace: typeof source.lastWorkspace === "string" && source.lastWorkspace.trim() ? source.lastWorkspace.trim().slice(0, 4096) : null,
     rightPanelOpen: typeof source.rightPanelOpen === "boolean" ? source.rightPanelOpen : base.rightPanelOpen,
     permissionProfile: PERMISSION_PROFILES.has(source.permissionProfile) ? source.permissionProfile : base.permissionProfile,
+    sessionRecovery: source.sessionRecovery && typeof source.sessionRecovery === "object" ? Object.fromEntries(Object.entries(source.sessionRecovery).slice(-100).map(([id, value]) => [String(id).slice(0, 128), { state: typeof value?.state === "string" ? value.state.slice(0, 64) : "unknown", running: Boolean(value?.running), unread: Boolean(value?.unread), error: typeof value?.error === "string" ? value.error.slice(0, 1000) : null, updatedAt: typeof value?.updatedAt === "string" ? value.updatedAt : new Date().toISOString() }])) : { ...base.sessionRecovery },
     windowBounds: bounds
       ? {
           x: clampInt(bounds.x, -10_000, 10_000, 80),

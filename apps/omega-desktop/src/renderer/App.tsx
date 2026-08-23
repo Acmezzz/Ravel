@@ -312,6 +312,10 @@ export function App(): React.ReactElement {
     });
     const offTransport = window.omega.onTransport((data) => {
       if (data.foreground === false) return;
+      if (data.state === "reconcile") {
+        void refreshControlPlane();
+        return;
+      }
       if (data.state === "ready") {
         setShutdownPhase("idle");
         setBootstrapError(null);
