@@ -976,6 +976,7 @@ ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
   if (!desktopSettings) return errorResult("unavailable", "Desktop settings are not ready");
   const patch = {};
   if (req?.themeMode === "system" || req?.themeMode === "light" || req?.themeMode === "dark") patch.themeMode = req.themeMode;
+  if (req?.language === "zh-CN" || req?.language === "en-US") patch.language = req.language;
   if (Number.isInteger(req?.workerCap)) patch.workerCap = req.workerCap;
   if (Number.isInteger(req?.workerIdleTtlMs)) patch.workerIdleTtlMs = req.workerIdleTtlMs;
   if (typeof req?.rightPanelOpen === "boolean") patch.rightPanelOpen = req.rightPanelOpen;

@@ -220,7 +220,7 @@ export function ModelCenter(): React.ReactElement {
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>模型</Typography><Button size="small" onClick={() => setCustomProviderOpen(true)} sx={{ textTransform: "none" }}>添加本地 Provider</Button></Box>
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>本地配置不会联网 discovery；真实 OAuth 和在线目录需外部环境。{latencyStatus}</Typography>
+          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>本地配置不会联网 discovery；真实 OAuth 和在线目录需外部环境。{latencyStatus}（静态 builtin catalog 可离线使用）</Typography>
           <TextField size="small" placeholder="搜索模型…" value={query} onChange={(e) => setQuery(e.target.value)} />
           <Box sx={{ overflowY: "auto", maxHeight: 420, pr: 0.5 }}>
             {groups.length === 0 ? (

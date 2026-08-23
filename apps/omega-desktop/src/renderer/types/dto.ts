@@ -420,6 +420,7 @@ export interface DesktopWindowBounds {
 
 export interface DesktopSettings {
   themeMode: "system" | "light" | "dark";
+  language: "zh-CN" | "en-US";
   workerCap: number;
   workerIdleTtlMs: number;
   lastSessionId: string | null;

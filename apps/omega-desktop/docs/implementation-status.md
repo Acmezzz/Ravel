@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **124/124**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **125/125**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -120,7 +120,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 优先级 P2：
 
-- 语言设置。
+- 语言设置已支持 zh-CN/en-US 偏好持久化（English 当前为实验占位，不伪造完整翻译）。
 - 可选关闭到托盘策略。
 - Renderer bundle 动态拆包和性能优化。
 - Permission profile 的 Docker/Gondolin/WSL sandbox backend。

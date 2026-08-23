@@ -197,6 +197,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
           </Typography>
           {(["commandPalette", "newSession", "abort"] as const).map((key) => <TextField key={key} size="small" label={key === "commandPalette" ? "打开命令中心" : key === "newSession" ? "新建会话" : "停止 Agent"} value={keybindings[key]} onChange={(event) => setKeybindings((current) => ({ ...current, [key]: event.target.value }))} onBlur={() => void ipc.updateDesktopSettings({ keybindings }).then((res) => { if (!res.ok) setDesktopError(res.message); })} helperText="快捷键格式如 Ctrl+K；重复快捷键会被拒绝。" />)}
           <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
+            语言
+          </Typography>
+          <TextField select size="small" label="界面语言" value={desktopSettings?.language ?? "zh-CN"} onChange={(event) => void ipc.updateDesktopSettings({ language: event.target.value as "zh-CN" | "en-US" }).then((res) => { if (res.ok) setDesktopSettings(res.data); })}>
+            <MenuItem value="zh-CN">简体中文</MenuItem><MenuItem value="en-US">English（实验）</MenuItem>
+          </TextField>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
             桌面运行时
           </Typography>
           <TextField

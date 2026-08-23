@@ -9,6 +9,7 @@ import { DEFAULT_KEYBINDINGS, sanitizeKeybindings } from "./keybindings.js";
 
 export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   themeMode: "system",
+  language: "zh-CN",
   workerCap: 3,
   workerIdleTtlMs: 5 * 60 * 1000,
   lastSessionId: null,
@@ -35,6 +36,7 @@ export function sanitizeDesktopSettings(input, base = DESKTOP_SETTINGS_DEFAULTS)
   const bounds = source.windowBounds && typeof source.windowBounds === "object" ? source.windowBounds : null;
   return {
     themeMode: THEME_MODES.has(source.themeMode) ? source.themeMode : base.themeMode,
+    language: source.language === "zh-CN" || source.language === "en-US" ? source.language : base.language,
     workerCap: clampInt(source.workerCap, 1, 8, base.workerCap),
     workerIdleTtlMs: clampInt(source.workerIdleTtlMs, 30_000, 60 * 60 * 1000, base.workerIdleTtlMs),
     lastSessionId: typeof source.lastSessionId === "string" && source.lastSessionId.trim() ? source.lastSessionId.trim().slice(0, 128) : null,
