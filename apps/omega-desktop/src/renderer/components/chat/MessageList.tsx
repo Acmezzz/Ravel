@@ -45,6 +45,7 @@ export function MessageList(): React.ReactElement {
   const [historyOffset, setHistoryOffset] = React.useState(0);
   const [historyNextOffset, setHistoryNextOffset] = React.useState<number | null>(null);
   const [historyLoading, setHistoryLoading] = React.useState(false);
+  const historyRequestRef = React.useRef<Promise<void> | null>(null);
 
   // Reset the render window when the session changes.
   React.useEffect(() => {
@@ -55,15 +56,24 @@ export function MessageList(): React.ReactElement {
 
   const loadHistoricalMessages = React.useCallback(async () => {
     if (!activeSessionId || historyLoading) return;
-    setHistoryLoading(true);
-    const result = await ipc.readSessionMessages({ sessionId: activeSessionId, offset: historyOffset, limit: WINDOW_SIZE });
-    if (result.ok) {
-      useAppStore.getState().prependMessages(result.data.items);
-      setHistoryNextOffset(result.data.nextOffset);
-      setHistoryOffset((current) => current + result.data.items.length);
-      setWindowSize((current) => current + result.data.items.length);
-    }
-    setHistoryLoading(false);
+    if (historyRequestRef.current) return historyRequestRef.current;
+    const request = (async () => {
+      setHistoryLoading(true);
+      try {
+        const result = await ipc.readSessionMessages({ sessionId: activeSessionId, offset: historyOffset, limit: WINDOW_SIZE });
+        if (result.ok) {
+          useAppStore.getState().prependMessages(result.data.items);
+          setHistoryNextOffset(result.data.nextOffset);
+          setHistoryOffset((current) => current + result.data.items.length);
+          setWindowSize((current) => current + result.data.items.length);
+        }
+      } finally {
+        setHistoryLoading(false);
+        historyRequestRef.current = null;
+      }
+    })();
+    historyRequestRef.current = request;
+    return request;
   }, [activeSessionId, historyLoading, historyOffset]);
 
   const visibleAll = React.useMemo(() => messages.filter((m) => m.role !== "tool"), [messages]);
