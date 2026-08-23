@@ -445,6 +445,7 @@ const methods = {
     return bridge.snapshotOf(runtime);
   },
   getThinking: ({ entryId }) => ({ text: bridge.getThinking(runtime, entryId) }),
+  getToolDetail: ({ toolCallId }) => bridge.getToolDetail(runtime, toolCallId),
   getSystemPrompt: () => ({ systemPrompt: runtime.session.systemPrompt ?? "" }),
   bash: ({ command, excludeFromContext }) =>
     runtime.session.executeBash(command, undefined, {

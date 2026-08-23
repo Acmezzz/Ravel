@@ -42,6 +42,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:clone",
   "omega:navigateTree",
   "omega:getThinking",
+  "omega:getToolDetail",
   "omega:listResources",
   "omega:reloadResources",
   "omega:installLocalResource",

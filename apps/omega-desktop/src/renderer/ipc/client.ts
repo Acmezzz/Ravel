@@ -67,6 +67,7 @@ export interface OmegaBridge {
   addWorktree(req?: { path?: string; branch?: string; createBranch?: boolean }): Promise<IpcResult<GitWorktreeList>>;
   removeWorktree(req: { path: string; force?: boolean }): Promise<IpcResult<GitWorktreeList>>;
   getThinking(req: { entryId: string }): Promise<IpcResult<{ text: string | null }>>;
+  getToolDetail(req: { toolCallId: string }): Promise<IpcResult<{ toolCallId: string; toolName?: string; argsJson?: string; resultText?: string; isError?: boolean }>>;
   getSystemPrompt(): Promise<IpcResult<{ systemPrompt: string }>>;
   exportHtml(): Promise<IpcResult<{ path: string }>>;
   listResources(): Promise<IpcResult<ResourceBundle>>;
@@ -197,6 +198,7 @@ export const ipc = {
     ok(await window.omega?.removeWorktree?.(req)),
   getThinking: async (req: { entryId: string }): Promise<IpcResult<{ text: string | null }>> =>
     ok(await window.omega?.getThinking?.(req)),
+  getToolDetail: async (req: { toolCallId: string }): Promise<IpcResult<{ toolCallId: string; toolName?: string; argsJson?: string; resultText?: string; isError?: boolean }>> => ok(await window.omega?.getToolDetail?.(req)),
   getSystemPrompt: async (): Promise<IpcResult<{ systemPrompt: string }>> => ok(await window.omega?.getSystemPrompt?.()),
   exportHtml: async (): Promise<IpcResult<{ path: string }>> => ok(await window.omega?.exportHtml?.()),
   listResources: async (): Promise<IpcResult<ResourceBundle>> => ok(await window.omega?.listResources?.()),

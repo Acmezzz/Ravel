@@ -335,6 +335,10 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:gitCommit", { message: req.message.slice(0, 8000) });
   },
+  getToolDetail: (req) => {
+    if (!req || typeof req.toolCallId !== "string" || !req.toolCallId.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "toolCallId is required" });
+    return ipcRenderer.invoke("omega:getToolDetail", { toolCallId: req.toolCallId.slice(0, 256) });
+  },
   getThinking: (req) => {
     if (!req || typeof req.entryId !== "string" || !req.entryId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "entryId is required" });

@@ -11,6 +11,7 @@ import TerminalIcon from "@mui/icons-material/Terminal";
 import EditIcon from "@mui/icons-material/EditOutlined";
 import NoteAddIcon from "@mui/icons-material/NoteAddOutlined";
 import type { ToolCardState } from "../../store/useAppStore";
+import { ipc } from "../../ipc/client";
 
 const STATUS_COLOR: Record<string, string> = {
   running: "var(--omega-warning)",
@@ -57,12 +58,22 @@ export interface ToolCardProps {
  */
 function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
   const color = STATUS_COLOR[card.status] ?? "var(--omega-text-muted)";
-  const stat = card.kind === "edit" || card.kind === "write" ? diffStat(card.resultText) : null;
+  const [detail, setDetail] = React.useState<{ argsJson?: string; resultText?: string; isError?: boolean } | null>(null);
+  const [expanded, setExpanded] = React.useState(false);
+  const stat = card.kind === "edit" || card.kind === "write" ? diffStat(detail?.resultText ?? card.resultText) : null;
+
+  const loadDetail = React.useCallback(async () => {
+    if (detail || !card.toolCallId) return;
+    const result = await ipc.getToolDetail({ toolCallId: card.toolCallId });
+    if (result.ok) setDetail(result.data);
+  }, [card.toolCallId, detail]);
 
   return (
     <Accordion
       disableGutters
       elevation={0}
+      expanded={expanded}
+      onChange={(_event, next) => { setExpanded(next); if (next) void loadDetail(); }}
       sx={{
         background: "var(--omega-bg-soft)",
         border: `1px solid ${card.isError ? "var(--omega-danger)" : "var(--omega-border)"}`,
@@ -122,7 +133,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
                   overflowWrap: "anywhere",
                 }}
               >
-                {card.argsJson}
+                {detail?.argsJson ?? card.argsJson}
               </Box>
             </Box>
           ) : null}
@@ -149,7 +160,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
                   overflowWrap: "anywhere",
                 }}
               >
-                {card.resultText}
+                {detail?.resultText ?? card.resultText}
               </Box>
             </Box>
           ) : null}

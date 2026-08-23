@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **105/105**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **106/106**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -112,7 +112,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 优先级 P1：
 
-- thinking/tool detail 延迟读取。
+- thinking/tool detail 延迟读取已完成：ThinkingBlock 按 entryId 加载并缓存，ToolCard 展开时按 toolCallId 读取 args/result；首屏仍使用受控摘要。
 - 更细粒度 retry 未完成状态恢复。
 - 删除父 session 时的非级联安全行为、右键菜单、重命名、复制 session ID 和删除已完成；孤立子 session 会被 Sidebar 提升为根节点。
 - Worktree 更细粒度 Git 审查状态和 stale snapshot 自动刷新。

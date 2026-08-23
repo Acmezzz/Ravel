@@ -1098,6 +1098,12 @@ ipcMain.handle("omega:setSessionName", (event, req) => {
   return rpc("setSessionName", { name: req.name.trim() }, "write_failed");
 });
 
+ipcMain.handle("omega:getToolDetail", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (typeof req?.toolCallId !== "string" || !req.toolCallId.trim()) return errorResult("invalid_args", "toolCallId is required");
+  return rpc("getToolDetail", { toolCallId: req.toolCallId.slice(0, 256) }, "read_failed");
+});
+
 ipcMain.handle("omega:getThinking", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.entryId !== "string" || !req.entryId.trim()) {

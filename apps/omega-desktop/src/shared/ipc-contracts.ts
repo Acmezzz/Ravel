@@ -39,6 +39,7 @@ export const IPC_CHANNELS = {
   clone: "omega:clone",
   navigateTree: "omega:navigateTree",
   getThinking: "omega:getThinking",
+  getToolDetail: "omega:getToolDetail",
   listResources: "omega:listResources",
   reloadResources: "omega:reloadResources",
   installLocalResource: "omega:installLocalResource",

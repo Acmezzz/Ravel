@@ -430,6 +430,22 @@ export function getThinking(runtime, entryId) {
   return cap(thinkingFromContent(entry.message.content)) ?? null;
 }
 
+export function getToolDetail(runtime, toolCallId) {
+  const entries = runtime.session.sessionManager.getBranch();
+  let call;
+  let result;
+  for (const entry of entries) {
+    const message = entry?.message;
+    if (!message || typeof message !== "object") continue;
+    if (message.role === "assistant" && Array.isArray(message.content)) {
+      const part = message.content.find((item) => item?.type === "toolCall" && textValue(item.id) === toolCallId);
+      if (part) call = { argsJson: safeJson(part.arguments ?? part.args ?? part.input), toolName: textValue(part.name) ?? "tool" };
+    }
+    if (message.role === "toolResult" && textValue(message.toolCallId) === toolCallId) result = { resultText: cap(textFromContent(message.content)), isError: message.isError === true };
+  }
+  return { toolCallId, ...(call ?? {}), ...(result ?? {}) };
+}
+
 export async function resolveSessionPath(sessionId) {
   if (!sessionId) return undefined;
   if (sessionPaths.has(sessionId)) return sessionPaths.get(sessionId);
