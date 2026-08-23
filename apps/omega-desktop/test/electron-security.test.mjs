@@ -33,8 +33,12 @@ test("worker and renderer use sequenced event envelopes for stale-event rejectio
   assert.match(main, /gap: after > 0/);
   assert.match(main, /sendTransportState\("flushing"\)/);
   assert.match(main, /sendTransportState\("exiting"\)/);
+  assert.match(main, /canRetry: !this\.stopping/);
+  assert.match(main, /omega:retryWorker/);
   assert.match(app, /setShutdownPhase\("flushing"\)/);
   assert.match(app, /state\?\.isStreaming !== true/);
+  assert.match(app, /setWorkerError/);
+  assert.match(app, /canRetry/);
 });
 
 test("bridge filters raw agent events and does not forward sensitive payloads", async () => {
@@ -126,6 +130,10 @@ test("new IPC handlers stay behind senderAllowed and return an IpcResult envelop
     "omega:compact",
     "omega:authStatus",
     "omega:setSessionName",
+    "omega:removeWorkspace",
+    "omega:inspectProjectTrust",
+    "omega:decideProjectTrust",
+    "omega:retryWorker",
     "agent:abort",
   ]) {
     assert.match(source, new RegExp(`ipcMain\\.handle\\("${channel}"`), `${channel} handler present`);

@@ -125,6 +125,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         </Box>
 
         <Box sx={{ borderTop: "1px solid var(--omega-border)", pt: 1.5 }}>
+          {agent?.projectTrusted === false ? (
+            <Typography sx={{ fontSize: 12.5, color: "var(--omega-warning)", mb: 1 }}>
+              当前项目未信任，项目扩展、技能和 prompt 处于休眠状态。可在项目切换器中重新设置信任。
+            </Typography>
+          ) : null}
           {!resources ? (
             <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载扩展资源…</Typography>
           ) : (

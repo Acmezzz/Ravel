@@ -13,6 +13,7 @@ import {
   createAgentSessionRuntime,
   createAgentSessionServices,
   SessionManager,
+  SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import { existsSync } from "node:fs";
@@ -50,16 +51,18 @@ function additionalExtensionPaths(omegaExtensions) {
  * Create an AgentSessionRuntime bound to cwd, with Omega extensions loaded.
  * First boot continues the most recent CLI JSONL session for that workspace.
  */
-export async function createRuntime({ cwd, extensionsRoot }) {
+export async function createRuntime({ cwd, extensionsRoot, projectTrusted = true }) {
   const omegaExtensions = extensionsRootOf(extensionsRoot);
   const extraPaths = additionalExtensionPaths(omegaExtensions);
   let sharedModelRuntime;
+  const trusted = projectTrusted !== false;
 
   const createRuntimeFactory = async ({ cwd: nextCwd, agentDir, sessionManager, sessionStartEvent }) => {
     const services = await createAgentSessionServices({
       cwd: nextCwd,
       agentDir,
       modelRuntime: sharedModelRuntime,
+      settingsManager: SettingsManager.create(nextCwd, agentDir, { projectTrusted: trusted }),
       resourceLoaderOptions: { additionalExtensionPaths: extraPaths },
     });
     sharedModelRuntime = services.modelRuntime;
@@ -534,6 +537,7 @@ export function snapshotOf(runtime) {
       totalMessages: stats.totalMessages ?? 0,
     },
     modelFallbackMessage: runtime.modelFallbackMessage ?? null,
+    projectTrusted: session.settingsManager?.isProjectTrusted?.() !== false,
     queuedMessages: queueSnapshotOf(session),
     tree: sessionTreeOf(runtime),
     ...sanitizeTranscript(session),

@@ -259,10 +259,26 @@ export interface ChangeApprovalResult {
 
 // ===== workspace =====
 
+export type ProjectTrustDecision = "trusted" | "untrusted" | "undecided";
+export type ProjectTrustChoice = "once" | "always" | "never";
+
+export interface ProjectTrustInfo {
+  cwd: string;
+  requiresTrust: boolean;
+  decision: ProjectTrustDecision;
+  saved: ProjectTrustDecision;
+  sessionOnly: boolean;
+  resourcesDormant: boolean;
+}
+
 export interface WorkspaceInfo {
   workspaceId: string;
   realRoot: string;
   displayPath: string;
+  active?: boolean;
+  trust?: ProjectTrustDecision;
+  requiresTrust?: boolean;
+  resourcesDormant?: boolean;
 }
 
 // ===== sessions =====
@@ -276,6 +292,7 @@ export interface SessionSummary {
   updatedAt: string;
   status: "active" | "archived";
   messageCount?: number;
+  parentSessionId?: string;
 }
 
 export interface SessionMessage {
@@ -355,6 +372,7 @@ export interface AgentStateSnapshot {
     totalMessages: number;
   };
   modelFallbackMessage: string | null;
+  projectTrusted?: boolean;
   queuedMessages?: {
     steering: string[];
     followUp: string[];

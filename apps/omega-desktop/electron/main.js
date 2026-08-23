@@ -28,6 +28,7 @@ import * as stateReader from "./state-reader.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
+import { projectTrust } from "./project-trust.js";
 import { realRoot } from "./path-security.js";
 import { readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
@@ -126,8 +127,8 @@ async function runCloseSequence(finish) {
   finish();
 }
 
-function sendTransportState(state) {
-  if (win && !win.isDestroyed()) win.webContents.send("worker:transport", { state });
+function sendTransportState(state, extra = {}) {
+  if (win && !win.isDestroyed()) win.webContents.send("worker:transport", { state, ...extra });
 }
 
 function isAgentBusy() {
@@ -198,6 +199,7 @@ class WorkerHost {
     this.cwd = null;
     this.extensionsRoot = null;
     this.sessionId = null;
+    this.projectTrusted = true;
     this.onEvent = null;
     this.onSettled = null;
     this.onError = null;
@@ -207,10 +209,11 @@ class WorkerHost {
     this._initTimer = null;
   }
 
-  async start(cwd, extensionsRoot, sessionId = this.sessionId) {
+  async start(cwd, extensionsRoot, sessionId = this.sessionId, projectTrusted = this.projectTrusted) {
     this.cwd = cwd;
     this.extensionsRoot = extensionsRoot;
     this.sessionId = sessionId ?? null;
+    this.projectTrusted = projectTrusted !== false;
     this.stopping = false;
     this.state = "starting";
     const generation = ++this.generation;
@@ -228,11 +231,19 @@ class WorkerHost {
       this._initTimer = setTimeout(() => rejectPromise(new Error("Worker init timeout (60s)")), 60_000);
     });
     this.onTransport?.("starting");
-    child.postMessage({ type: "init", cwd, extensionsRoot, sessionId: this.sessionId, generation });
+    child.postMessage({
+      type: "init",
+      cwd,
+      extensionsRoot,
+      sessionId: this.sessionId,
+      generation,
+      projectTrusted: this.projectTrusted,
+    });
     try {
       const info = await done;
       if (generation === this.generation && this.state === "starting") {
         this.sessionId = info.sessionId ?? this.sessionId;
+        this.restartCount = 0;
         this.state = "ready";
         this.onTransport?.("ready");
       }
@@ -256,17 +267,29 @@ class WorkerHost {
       pending.reject(Object.assign(new Error("worker unavailable"), { code: "worker_unavailable" }));
     }
     this.pending.clear();
-    this.onError?.(error instanceof Error ? error.message : String(error));
-    this.onTransport?.("dead");
+    const message = error instanceof Error ? error.message : String(error);
+    this.onError?.(message);
+    try {
+      this.child?.kill();
+    } catch {
+      /* already gone */
+    }
     if (this.child && generation === this.generation) this.child = null;
-    if (!this.stopping && this.restartCount < 1 && this.cwd && this.extensionsRoot) {
+    const canAutoRestart = !this.stopping && this.restartCount < 1 && this.cwd && this.extensionsRoot;
+    if (canAutoRestart) {
       this.restartCount += 1;
       this.state = "restarting";
-      this.onTransport?.("restarting");
+      this.onTransport?.("restarting", { error: message });
       setTimeout(() => {
-        if (!this.stopping) void this.start(this.cwd, this.extensionsRoot, this.sessionId).catch(() => {});
+        if (this.stopping) return;
+        void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted).catch((restartError) => {
+          const restartMessage = restartError instanceof Error ? restartError.message : String(restartError);
+          this.onTransport?.("dead", { error: restartMessage, canRetry: true });
+        });
       }, 250);
+      return;
     }
+    this.onTransport?.("dead", { error: message, canRetry: !this.stopping });
   }
 
   _handle(message, generation) {
@@ -390,10 +413,10 @@ async function bootstrap() {
     if (!win || win.isDestroyed()) return;
     win.webContents.send("agent:event", { event, meta });
   };
-  worker.onTransport = (state) => {
+  worker.onTransport = (state, extra = {}) => {
     agentReady = state === "ready";
     if (state !== "ready") agentRunning = false;
-    if (win && !win.isDestroyed()) win.webContents.send("worker:transport", { state });
+    sendTransportState(state, extra);
   };
   worker.onSettled = () => {
     if (!win || win.isDestroyed() || win.isFocused()) return;
@@ -404,10 +427,25 @@ async function bootstrap() {
       /* best effort */
     }
   };
-  const info = await worker.start(cwd, extensionsRoot);
+  const info = await worker.start(cwd, extensionsRoot, undefined, projectTrust.isTrusted(cwd));
   activeCwd = info.cwd ?? cwd;
   agentReady = true;
   process.stdout.write("[main] agent worker ready\n");
+}
+
+function workspaceDto(workspace) {
+  const trust = projectTrust.inspect(workspace.realRoot);
+  return {
+    ...workspace,
+    active: Boolean(activeCwd && workspace.realRoot === activeCwd),
+    trust: trust.decision,
+    requiresTrust: trust.requiresTrust,
+    resourcesDormant: trust.resourcesDormant,
+  };
+}
+
+function listedWorkspaces() {
+  return (workspaceRegistry?.prune() ?? []).map(workspaceDto);
 }
 
 function showBootstrapError(error) {
@@ -581,7 +619,86 @@ ipcMain.handle("window:close", (event) => {
 
 ipcMain.handle("omega:listWorkspaces", (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  return okResult(workspaceRegistry?.list() ?? []);
+  return okResult(listedWorkspaces());
+});
+
+ipcMain.handle("omega:removeWorkspace", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!req?.workspace || typeof req.workspace !== "string") return errorResult("invalid_args", "workspace is required");
+  if (isAgentBusy()) return errorResult("session_busy", "生成中无法移除工作区，请先停止或等待完成");
+  let root;
+  try {
+    root = authorizedWorkspace(req.workspace);
+  } catch (error) {
+    return errorResult(error?.code ?? "workspace_not_authorized", error instanceof Error ? error.message : String(error));
+  }
+  if (activeCwd && root === activeCwd) {
+    return errorResult("workspace_in_use", "不能移除当前正在使用的工作区");
+  }
+  workspaceRegistry.remove(root);
+  return okResult(listedWorkspaces());
+});
+
+ipcMain.handle("omega:inspectProjectTrust", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const target = typeof req?.workspace === "string" && req.workspace.trim() ? req.workspace : activeCwd;
+  if (!target) return errorResult("invalid_args", "workspace is required");
+  try {
+    const root = authorizedWorkspace(target);
+    return okResult(projectTrust.inspect(root));
+  } catch (error) {
+    return errorResult(error?.code ?? "workspace_not_authorized", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:decideProjectTrust", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (isAgentBusy()) return errorResult("session_busy", "生成中无法更改项目信任，请先停止或等待完成");
+  if (!req?.workspace || typeof req.workspace !== "string") return errorResult("invalid_args", "workspace is required");
+  if (!["once", "always", "never"].includes(req?.decision)) {
+    return errorResult("invalid_args", "decision must be once, always, or never");
+  }
+  try {
+    const root = authorizedWorkspace(req.workspace);
+    const trust = projectTrust.decide(root, req.decision);
+    if (activeCwd && root === activeCwd && worker) {
+      const sessionId = worker.sessionId;
+      try {
+        await worker.kill();
+      } catch {
+        /* best effort */
+      }
+      worker.restartCount = 0;
+      const info = await worker.start(root, extensionsRootOf(), sessionId, trust.decision === "trusted");
+      agentReady = true;
+      activeCwd = info.cwd ?? root;
+      worker.sessionId = info.sessionId ?? sessionId;
+      worker.projectTrusted = trust.decision === "trusted";
+      return okResult({ trust, reloaded: true, sessionId: worker.sessionId, workspaces: listedWorkspaces() });
+    }
+    return okResult({ trust, reloaded: false, workspaces: listedWorkspaces() });
+  } catch (error) {
+    return errorResult(error?.code ?? "invalid_args", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:retryWorker", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  if (!worker) return errorResult("worker_unavailable", "Agent worker 不可用");
+  if (worker.state === "ready" || worker.state === "starting" || worker.state === "restarting") {
+    return okResult({ state: worker.state });
+  }
+  const cwd = activeCwd ?? rootOf();
+  try {
+    worker.restartCount = 0;
+    const info = await worker.start(cwd, extensionsRootOf(), worker.sessionId, projectTrust.isTrusted(cwd));
+    agentReady = true;
+    activeCwd = info.cwd ?? cwd;
+    return okResult({ state: "ready", sessionId: info.sessionId, cwd: activeCwd });
+  } catch (error) {
+    agentReady = false;
+    return errorResult("worker_unavailable", error instanceof Error ? error.message : String(error));
+  }
 });
 
 ipcMain.handle("omega:chooseWorkspace", async (event) => {
@@ -591,7 +708,13 @@ ipcMain.handle("omega:chooseWorkspace", async (event) => {
   if (result.canceled || !result.filePaths[0]) return errorResult("cancelled", "未选择工作区");
   try {
     const root = workspaceRegistry.add(result.filePaths[0]);
-    return okResult({ root, workspace: workspaceRegistry.list().find((item) => item.realRoot === root), workspaces: workspaceRegistry.list() });
+    const workspaces = listedWorkspaces();
+    return okResult({
+      root,
+      workspace: workspaces.find((item) => item.realRoot === root),
+      workspaces,
+      trust: projectTrust.inspect(root),
+    });
   } catch (error) {
     return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
   }
@@ -607,10 +730,15 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
   } catch (error) {
     return errorResult(error?.code ?? "workspace_not_authorized", error instanceof Error ? error.message : String(error));
   }
-  const result = await rpc("newSession", { workspace: root }, "write_failed");
+  const trust = projectTrust.inspect(root);
+  if (trust.requiresTrust && trust.decision === "undecided") {
+    return errorResult("trust_required", "打开该项目前需要确认是否信任其中的扩展和技能");
+  }
+  const result = await rpc("newSession", { workspace: root, projectTrusted: trust.decision === "trusted" }, "write_failed");
   if (result.ok) {
     activeCwd = result.data.workspace || root;
     worker.sessionId = result.data.id ?? worker.sessionId;
+    worker.projectTrusted = trust.decision === "trusted";
   }
   return result;
 });

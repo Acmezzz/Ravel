@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
-> 当前状态：Milestone A 已完成，Milestone B 已完成第一轮基础设施；单 Worker 恢复已纳入 queue/tree，工作区切换会刷新资源缓存。后续进入多会话和桌面工作区能力。
+> 当前状态：Milestone A 已完成，Milestone B 第一轮基础设施已完成。Project Trust Dialog、workspace prune/remove 和 Worker 重启失败重试已落地。后续进入多会话和桌面工作区能力。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构，不迁移 Next.js/Tauri，也不把原生 CLI 交互直接复制成 slash command。
 
@@ -114,9 +114,10 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 仍需完善：
 
 - workspace DTO 已完成第一轮：`workspaceId / realRoot / displayPath`，并兼容旧字符串 allowlist 文件。Project Switcher 使用稳定 workspaceId 渲染和切换。
-- 切换 workspace 后已刷新 models、commands、extensions、Git snapshot、文件树和设置资源清单；完整 Project Trust Dialog 仍未做。
-- workspace 删除、移动、权限变化后的 registry 清理。
-- workspace 与 active session 的更明确 UI 绑定状态。
+- 切换 workspace 后已刷新 models、commands、extensions、Git snapshot、文件树和设置资源清单。
+- Project Trust Dialog 已落地：Trust once / always / never，未信任时项目资源 dormant，决策写入 Pi `trust.json`。
+- workspace 删除、移动、权限变化后 registry 会 prune，并支持从 Project Switcher 移除非当前工作区。
+- Project Switcher 和会话列表会标明当前工作区；未信任项目显示「资源休眠」。
 
 #### 4.2 关闭状态 UI 与测试
 
@@ -136,8 +137,8 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - Worker ready 后先读取 authoritative snapshot，再决定是否按 session 回放最近事件；空闲快照不重复追加历史事件，gap 时保留权威快照并提示重新同步。
 - Worker ready 后会把 queue、tree、compaction、model、usage 和 transcript 纳入同一份 authoritative snapshot；空闲恢复不重复追加历史事件。
 - 未确认发送的 prompt 只提示用户手动重发，不自动重放。
-- restart failure 的可操作错误界面。
-- Worker 崩溃前运行状态、未读状态和错误原因的持久化。
+- restart failure 已有可操作错误界面：自动重启失败后 Header 提供「重试 Worker」，不再吞掉 `.catch(() => {})`。
+- Worker 崩溃前运行状态、未读状态和错误原因的持久化仍待做。
 
 ### P1：可靠多会话工作台
 
@@ -195,7 +196,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 - Model Center：provider、OAuth、API key、custom provider、model discovery、延迟测试。
 - Electron `safeStorage` credential store，凭据不返回 renderer。
-- Project Trust Center：Trust once/always/never 和资源 dormant/reload。
+- Project Trust Dialog 第一轮已完成；完整 Trust Center（批量管理、父目录继承 UI）仍待做。
 - Skills/Plugins Center：安装、更新、删除、启用、scope、进度和 trust gate。
 - Extension UI bridge：select、confirm、input、editor、notify、status、widget、title。
 - 权限 profile：Trusted、Workspace-only、Read-only、Ask before command。
@@ -212,16 +213,13 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 ## 5. 下一步实施顺序
 
-1. Workspace Project Switcher 和 workspace DTO。
-2. 关闭状态 UI、flush 超时交互和生命周期测试。
-3. Worker 恢复后的 snapshot reconcile。
-4. Event snapshot/replay 和最近事件补发。
-5. Shared IPC runtime schema 与 handler registry。
-6. Disk-first reader cache、分页和历史消息加载。
-7. Session WorkerSlot pool。
-8. Session Sidebar、Tree/Fork/Clone、Worktree。
-9. Model Center、safeStorage、Trust、Plugins/Skills、Extension UI。
-10. Typed settings、native integration、updater、签名发布和 Electron E2E。
+1. Session Sidebar unread/running/parent-child 与 close-path 自动化测试。
+2. Shared IPC runtime schema 与 handler registry。
+3. Disk-first reader cache、分页和历史消息加载。
+4. Session WorkerSlot pool。
+5. Session Tree/Fork/Clone、Worktree、FileViewer 升级。
+6. Model Center、safeStorage、Plugins/Skills、Extension UI。
+7. Typed settings、native integration、updater、签名发布和 Electron E2E。
 
 ## 6. 明确不做
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -55,6 +55,14 @@ test("workspace registry canonicalizes roots and rejects unauthorized directorie
   assert.deepEqual(registry.list().map((workspace) => workspace.realRoot), [canonical]);
   const reloaded = createWorkspaceRegistry(registryFile);
   assert.equal(reloaded.resolveAuthorized(root), canonical);
+  assert.equal(registry.remove(root), true);
+  assert.equal(registry.has(root), false);
+  const missing = mkdtempSync(join(tmpdir(), "omega-missing-"));
+  const gone = createWorkspaceRegistry(join(missing, "workspaces.json"));
+  const vanished = mkdtempSync(join(tmpdir(), "omega-vanished-"));
+  gone.add(vanished);
+  rmSync(vanished, { recursive: true, force: true });
+  assert.deepEqual(gone.prune(), []);
 });
 
 test("disk-first session reader reads JSONL summaries without starting a runtime", async () => {

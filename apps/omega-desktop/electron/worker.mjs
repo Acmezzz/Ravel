@@ -54,13 +54,16 @@ function attach(session) {
   });
 }
 
-async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration }) {
+let projectTrusted = true;
+
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted }) {
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
   activeRunId = null;
   disposed = false;
   extensionsRoot = root;
-  runtime = await bridge.createRuntime({ cwd, extensionsRoot: root });
+  projectTrusted = trusted !== false;
+  runtime = await bridge.createRuntime({ cwd, extensionsRoot: root, projectTrusted });
   if (sessionId && sessionId !== runtime.session.sessionId) {
     const sessionPath = await bridge.resolveSessionPath(sessionId);
     if (!sessionPath) {
@@ -138,7 +141,7 @@ async function recreateForWorkspace(workspace) {
   }
   unsubscribe = undefined;
   await runtime.dispose();
-  runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot });
+  runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot, projectTrusted });
   runtime.setRebindSession(async (session) => attach(session));
   attach(runtime.session);
 }
@@ -169,9 +172,12 @@ const methods = {
   compact: () => runtime.session.compact().then(() => bridge.snapshotOf(runtime)),
   authStatus: () => bridge.authStatusOf(runtime),
   listPiSessions: ({ cwd }) => bridge.listPiSessions(cwd),
-  newSession: async ({ workspace, title }) => {
-    if (workspace && workspace !== runtime.cwd) {
-      await recreateForWorkspace(workspace);
+  newSession: async ({ workspace, title, projectTrusted: trusted }) => {
+    const nextTrusted = typeof trusted === "boolean" ? trusted : projectTrusted;
+    const trustChanged = nextTrusted !== projectTrusted;
+    projectTrusted = nextTrusted;
+    if ((workspace && workspace !== runtime.cwd) || trustChanged) {
+      await recreateForWorkspace(workspace || runtime.cwd);
     }
     const cancelled = await runtime.newSession();
     if (cancelled.cancelled) {

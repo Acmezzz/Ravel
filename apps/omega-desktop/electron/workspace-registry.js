@@ -35,13 +35,20 @@ function writeRoots(file, roots) {
 
 export function createWorkspaceRegistry(file) {
   const roots = new Map();
+  let droppedOnLoad = false;
   for (const value of readRoots(file)) {
     try {
       const root = realRoot(value);
       roots.set(key(root), root);
     } catch {
       // Drop projects that no longer exist or are no longer directories.
+      droppedOnLoad = true;
     }
+  }
+  if (droppedOnLoad) writeRoots(file, [...roots.values()]);
+
+  function persist() {
+    writeRoots(file, [...roots.values()]);
   }
 
   return {
@@ -55,8 +62,37 @@ export function createWorkspaceRegistry(file) {
     add(value) {
       const root = realRoot(value);
       roots.set(key(root), root);
-      writeRoots(file, [...roots.values()]);
+      persist();
       return root;
+    },
+    remove(value) {
+      let changed = false;
+      try {
+        const root = realRoot(value);
+        changed = roots.delete(key(root));
+      } catch {
+        changed = roots.delete(key(resolve(value)));
+      }
+      if (changed) persist();
+      return changed;
+    },
+    prune() {
+      let changed = false;
+      for (const [entryKey, root] of [...roots.entries()]) {
+        try {
+          const next = realRoot(root);
+          if (next !== root) {
+            roots.delete(entryKey);
+            roots.set(key(next), next);
+            changed = true;
+          }
+        } catch {
+          roots.delete(entryKey);
+          changed = true;
+        }
+      }
+      if (changed) persist();
+      return [...roots.values()].map(toWorkspace);
     },
     list() {
       return [...roots.values()].map(toWorkspace);

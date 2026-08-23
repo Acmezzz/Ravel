@@ -63,7 +63,9 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
   const thinkingActive = useAppStore((s) => s.thinkingActive);
   const compacting = useAppStore((s) => s.compacting);
 
-  const failed = Boolean(bootstrapError) || connection === "error";
+  const workerError = useAppStore((s) => s.workerError);
+  const canRetryWorker = useAppStore((s) => s.canRetryWorker);
+  const failed = Boolean(bootstrapError) || Boolean(workerError) || connection === "error";
   const ringColor =
     failed
       ? "var(--omega-danger)"
@@ -76,7 +78,11 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
             : "transparent";
   const label = bootstrapError
     ? "初始化失败"
-    : shutdownPhase === "closing"
+    : workerError && canRetryWorker
+      ? "可重试"
+      : workerError
+        ? "Worker 失败"
+        : shutdownPhase === "closing"
       ? "正在停止"
       : shutdownPhase === "flushing"
         ? "保存会话"
@@ -94,8 +100,20 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
                     ? "连接中"
                     : "就绪";
 
+  const retryWorker = React.useCallback(async () => {
+    if (!canRetryWorker) return;
+    useAppStore.getState().setConnection("connecting");
+    useAppStore.getState().setComposerError("正在重试 Agent worker…");
+    const result = await ipc.retryWorker();
+    if (!result.ok) {
+      useAppStore.getState().setWorkerError(result.message, true);
+      useAppStore.getState().setComposerError(`重试失败：${result.message}`);
+      useAppStore.getState().setConnection("error");
+    }
+  }, [canRetryWorker]);
+
   return (
-    <Tooltip title={`状态：${label}${bootstrapError ? "（详见日志）" : ""}`}>
+    <Tooltip title={`状态：${label}${bootstrapError || workerError ? `（${bootstrapError ?? workerError}）` : ""}`}>
       <Box
         data-omega-glyph={label}
         sx={{
@@ -126,6 +144,9 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
         </svg>
         <Box
           className={`status-core ${thinkingActive && !failed ? "is-thinking" : ""}`}
+          onClick={() => {
+            if (canRetryWorker) void retryWorker();
+          }}
           sx={{
             width: 28,
             height: 28,
@@ -137,6 +158,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
             background: "var(--omega-accent-soft)",
             fontSize: 16,
             fontWeight: 700,
+            cursor: canRetryWorker ? "pointer" : "default",
           }}
         >
           Ω
@@ -196,6 +218,8 @@ export function Header(): React.ReactElement {
   const running = useAppStore((s) => s.connection === "running");
   const compacting = useAppStore((s) => s.compacting);
   const shuttingDown = shutdownPhase !== "idle";
+  const canRetryWorker = useAppStore((s) => s.canRetryWorker);
+  const workerError = useAppStore((s) => s.workerError);
   const setAgent = useAppStore((s) => s.setAgent);
   const setConnection = useAppStore((s) => s.setConnection);
   const themeMode = useAppStore((s) => s.themeMode);
@@ -272,8 +296,8 @@ export function Header(): React.ReactElement {
         <StatusGlyph bootstrapError={bootstrapError} />
         <Box sx={{ minWidth: 0, maxWidth: 200 }}>
           <Typography sx={{ fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1.15 }}>Omega</Typography>
-          <Typography className="mono-num" sx={{ color: "var(--omega-text-muted)", fontSize: 11 }} noWrap>
-            {agent?.sessionName || "新会话"}
+          <Typography className="mono-num" sx={{ color: "var(--omega-text-muted)", fontSize: 11 }} noWrap title={workerError ?? undefined}>
+            {workerError ? "Worker 未就绪" : agent?.sessionName || "新会话"}
           </Typography>
         </Box>
 
@@ -341,7 +365,30 @@ export function Header(): React.ReactElement {
         <Divider />
 
         {/* action cluster */}
-        {running ? (
+        {canRetryWorker ? (
+          <Button
+            size="small"
+            color="error"
+            onClick={() => {
+              void (async () => {
+                setBusy(true);
+                useAppStore.getState().setConnection("connecting");
+                useAppStore.getState().setComposerError("正在重试 Agent worker…");
+                const result = await ipc.retryWorker();
+                if (!result.ok) {
+                  useAppStore.getState().setWorkerError(result.message, true);
+                  useAppStore.getState().setComposerError(`重试失败：${result.message}`);
+                  useAppStore.getState().setConnection("error");
+                }
+                setBusy(false);
+              })();
+            }}
+            disabled={busy}
+            sx={{ textTransform: "none", borderRadius: "999px" }}
+          >
+            重试 Worker
+          </Button>
+        ) : running ? (
           <Button
             size="small"
             color="error"

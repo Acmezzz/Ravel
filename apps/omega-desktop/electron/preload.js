@@ -104,6 +104,28 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:switchWorkspace", { workspace: req.workspace.slice(0, 4096) });
   },
+  removeWorkspace: (req) => {
+    if (!req || typeof req.workspace !== "string" || !req.workspace.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "workspace is required" });
+    }
+    return ipcRenderer.invoke("omega:removeWorkspace", { workspace: req.workspace.slice(0, 4096) });
+  },
+  inspectProjectTrust: (req) => ipcRenderer.invoke("omega:inspectProjectTrust", {
+    workspace: safeString(req?.workspace, 4096),
+  }),
+  decideProjectTrust: (req) => {
+    if (!req || typeof req.workspace !== "string" || !req.workspace.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "workspace is required" });
+    }
+    if (!["once", "always", "never"].includes(req.decision)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "decision must be once, always, or never" });
+    }
+    return ipcRenderer.invoke("omega:decideProjectTrust", {
+      workspace: req.workspace.slice(0, 4096),
+      decision: req.decision,
+    });
+  },
+  retryWorker: () => ipcRenderer.invoke("omega:retryWorker"),
   recentEvents: (req) => ipcRenderer.invoke("omega:recentEvents", {
     sessionId: safeString(req?.sessionId, 128),
     after: Number.isFinite(req?.after) ? req.after : 0,

@@ -275,6 +275,7 @@ export function App(): React.ReactElement {
         setShutdownPhase("idle");
         setBootstrapError(null);
         setConnection("ready");
+        useAppStore.getState().setWorkerError(null);
         useAppStore.setState({ streamingAssistantId: null, thinkingActive: false, compacting: false, retrying: false, bashTail: "" });
         void (async () => {
           const reconciled = await refreshControlPlane();
@@ -310,9 +311,15 @@ export function App(): React.ReactElement {
         useAppStore.getState().setComposerError("正在退出…");
       } else if (data.state === "starting" || data.state === "restarting" || data.state === "stopping") {
         setConnection("connecting");
+        if (data.state === "restarting") {
+          useAppStore.getState().setWorkerError(data.error ?? "Agent worker 正在重启…", false);
+          useAppStore.getState().setComposerError("Agent worker 正在重启…");
+        }
       } else if (data.state === "dead") {
         setConnection("error");
-        useAppStore.getState().setComposerError("Agent worker 已断开，正在等待恢复");
+        const message = data.error ? `Agent worker 已断开：${data.error}` : "Agent worker 已断开";
+        useAppStore.getState().setWorkerError(message, data.canRetry !== false);
+        useAppStore.getState().setComposerError(data.canRetry === false ? message : `${message}。可点击重试。`);
       }
     });
 

@@ -42,6 +42,7 @@ function relativeTime(iso: string): string {
 export function SessionList(): React.ReactElement {
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
+  const activeWorkspace = useAppStore((s) => s.agent?.cwd);
   const setActiveSession = useAppStore((s) => s.setActiveSession);
   const setSessions = useAppStore((s) => s.setSessions);
   const loadTranscript = useAppStore((s) => s.loadTranscript);
@@ -154,6 +155,7 @@ export function SessionList(): React.ReactElement {
         <Box key={workspace} sx={{ mb: 1.25 }}>
           <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)", px: 1, py: 0.5 }} noWrap>
             {workspace}
+            {items[0] && activeWorkspace && items[0].workspace === activeWorkspace ? " · 当前工作区" : ""}
           </Typography>
           <List dense sx={{ p: 0 }}>
             {items.map((session) => {
@@ -183,6 +185,7 @@ export function SessionList(): React.ReactElement {
                       <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)" }} component="span" noWrap>
                         {relativeTime(session.updatedAt)}
                         {session.messageCount ? ` · ${session.messageCount} 条` : ""}
+                        {session.parentSessionId ? " · 分支" : ""}
                       </Typography>
                     }
                   />

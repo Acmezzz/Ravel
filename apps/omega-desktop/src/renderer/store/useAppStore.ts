@@ -107,6 +107,8 @@ export interface AppState {
   composerError: string | null;
   composerPrefill: string | null;
   bashTail: string;
+  workerError: string | null;
+  canRetryWorker: boolean;
 
   extensionState: ExtensionStateBundle;
   extensionLoading: boolean;
@@ -127,6 +129,7 @@ export interface AppState {
   setBootstrapError: (message: string | null) => void;
   setComposerError: (message: string | null) => void;
   setComposerPrefill: (text: string | null) => void;
+  setWorkerError: (message: string | null, canRetry?: boolean) => void;
 
   setSessions: (sessions: SessionSummary[]) => void;
   setActiveSession: (id: string | null) => void;
@@ -221,6 +224,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   composerError: null,
   composerPrefill: null,
   bashTail: "",
+  workerError: null,
+  canRetryWorker: false,
 
   extensionState: {},
   extensionLoading: false,
@@ -247,6 +252,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setBootstrapError: (bootstrapError) => set({ bootstrapError }),
   setComposerError: (composerError) => set({ composerError }),
   setComposerPrefill: (composerPrefill) => set({ composerPrefill }),
+  setWorkerError: (workerError, canRetry = false) => set({ workerError, canRetryWorker: Boolean(workerError) && canRetry }),
 
   setSessions: (sessions) => set({ sessions }),
   setActiveSession: (activeSessionId) => set({ activeSessionId }),

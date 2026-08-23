@@ -6,6 +6,8 @@
 import type {
   IpcResult,
   WorkspaceInfo,
+  ProjectTrustChoice,
+  ProjectTrustInfo,
   ExtensionStateBundle,
   SessionSummary,
   SessionRecord,
@@ -61,11 +63,15 @@ export interface OmegaBridge {
   isMaximized(): Promise<IpcResult<{ maximized: boolean }>>;
   onWindowStateChanged(callback: (data: { maximized: boolean }) => void): () => void;
   onStatus(callback: (data: unknown) => void): () => void;
-  onTransport(callback: (data: { state: string }) => void): () => void;
+  onTransport(callback: (data: { state: string; error?: string; canRetry?: boolean }) => void): () => void;
   onEvent(callback: (data: unknown) => void): () => void;
   listWorkspaces(): Promise<IpcResult<WorkspaceInfo[]>>;
-  chooseWorkspace(): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[] }>>;
+  chooseWorkspace(): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[]; trust?: ProjectTrustInfo }>>;
   switchWorkspace(req: { workspace: string }): Promise<IpcResult<SessionRecord>>;
+  removeWorkspace(req: { workspace: string }): Promise<IpcResult<WorkspaceInfo[]>>;
+  inspectProjectTrust(req?: { workspace?: string }): Promise<IpcResult<ProjectTrustInfo>>;
+  decideProjectTrust(req: { workspace: string; decision: ProjectTrustChoice }): Promise<IpcResult<{ trust: ProjectTrustInfo; reloaded?: boolean; sessionId?: string; workspaces: WorkspaceInfo[] }>>;
+  retryWorker(): Promise<IpcResult<{ state: string; sessionId?: string; cwd?: string }>>;
   recentEvents(req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number }>>;
   sessionReady(): Promise<IpcResult<{ ready: boolean }>>;
   getState(): Promise<IpcResult<AgentStateSnapshot>>;
@@ -154,8 +160,12 @@ export const ipc = {
   onWindowStateChanged: (callback: (data: { maximized: boolean }) => void): (() => void) =>
     window.omega?.onWindowStateChanged?.(callback) ?? (() => {}),
   listWorkspaces: async (): Promise<IpcResult<WorkspaceInfo[]>> => ok(await window.omega?.listWorkspaces?.()),
-  chooseWorkspace: async (): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[] }>> => ok(await window.omega?.chooseWorkspace?.()),
+  chooseWorkspace: async (): Promise<IpcResult<{ root: string; workspace?: WorkspaceInfo; workspaces: WorkspaceInfo[]; trust?: ProjectTrustInfo }>> => ok(await window.omega?.chooseWorkspace?.()),
   switchWorkspace: async (req: { workspace: string }): Promise<IpcResult<SessionRecord>> => ok(await window.omega?.switchWorkspace?.(req)),
+  removeWorkspace: async (req: { workspace: string }): Promise<IpcResult<WorkspaceInfo[]>> => ok(await window.omega?.removeWorkspace?.(req)),
+  inspectProjectTrust: async (req?: { workspace?: string }): Promise<IpcResult<ProjectTrustInfo>> => ok(await window.omega?.inspectProjectTrust?.(req)),
+  decideProjectTrust: async (req: { workspace: string; decision: ProjectTrustChoice }): Promise<IpcResult<{ trust: ProjectTrustInfo; reloaded?: boolean; sessionId?: string; workspaces: WorkspaceInfo[] }>> => ok(await window.omega?.decideProjectTrust?.(req)),
+  retryWorker: async (): Promise<IpcResult<{ state: string; sessionId?: string; cwd?: string }>> => ok(await window.omega?.retryWorker?.()),
   recentEvents: async (req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number }>> => ok(await window.omega?.recentEvents?.(req)),
   sessionReady: async (): Promise<IpcResult<{ ready: boolean }>> =>
     ok(await window.omega?.sessionReady?.()),
