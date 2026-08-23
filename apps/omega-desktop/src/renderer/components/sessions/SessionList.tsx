@@ -8,6 +8,8 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import EditIcon from "@mui/icons-material/EditOutlined";
 import DeleteIcon from "@mui/icons-material/DeleteOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -60,6 +62,7 @@ export function SessionList(): React.ReactElement {
   const [deleting, setDeleting] = React.useState<{ id: string; title: string } | null>(null);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [cloning, setCloning] = React.useState(false);
+  const [contextMenu, setContextMenu] = React.useState<{ mouseX: number; mouseY: number; id: string } | null>(null);
 
   const loadMore = React.useCallback(async () => {
     if (sessionNextOffset == null || loadingMore) return;
@@ -218,6 +221,10 @@ export function SessionList(): React.ReactElement {
                   key={session.id}
                   selected={active}
                   onClick={() => void handleLoad(session.id)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setContextMenu({ mouseX: event.clientX - 2, mouseY: event.clientY - 4, id: session.id });
+                  }}
                   sx={{
                     borderRadius: "10px",
                     mb: 0.5,
@@ -295,6 +302,11 @@ export function SessionList(): React.ReactElement {
           </List>
         </Box>
       ))}
+      <Menu open={contextMenu !== null} onClose={() => setContextMenu(null)} anchorReference="anchorPosition" anchorPosition={contextMenu ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined}>
+        <MenuItem onClick={() => { const item = sessions.find((session) => session.id === contextMenu?.id); if (item) setRenaming({ id: item.id, name: item.title }); setContextMenu(null); }}>重命名</MenuItem>
+        <MenuItem onClick={() => { if (contextMenu?.id) void navigator.clipboard?.writeText(contextMenu.id); setContextMenu(null); }}>复制 session ID</MenuItem>
+        <MenuItem onClick={() => { const item = sessions.find((session) => session.id === contextMenu?.id); if (item) setDeleting({ id: item.id, title: item.title }); setContextMenu(null); }}>删除会话</MenuItem>
+      </Menu>
       {sessionNextOffset != null ? (
         <Box sx={{ px: 1, pb: 1.5 }}>
           <Button

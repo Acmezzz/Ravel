@@ -3,7 +3,7 @@
 > 更新日期：2026-08-23
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：`8d225e53e feat(omega): add safe viewer modes`
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **102/102**、release gate 均通过。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、offline SDK smoke、桌面安全测试 **103/103**、release gate 均通过。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -114,7 +114,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 
 - thinking/tool detail 延迟读取。
 - 更细粒度 retry 未完成状态恢复。
-- Session Sidebar 完整右键菜单。
+- 删除父 session 时的完整安全重挂策略；当前右键菜单、重命名、复制 session ID、删除和非级联行为已完成。
 - 删除父 session 时安全重挂子 session。
 - Worktree 按项目聚合会话、更细粒度 Git 审查状态和 stale snapshot 自动刷新。
 - FileViewer DOCX 预览、文件 watch/live refresh、上传及冲突处理。
@@ -146,7 +146,7 @@ Updater 的本地安全核心和 release gate 已完成，但不会自动联网�
 ## 5. 后续实施顺序
 
 1. 历史消息请求合并、thinking/tool detail 延迟读取和 retry 中间状态恢复。
-2. Session Sidebar 右键菜单、父子 session 删除重挂、Worktree 聚合。
+2. 父子 session 删除重挂、Worktree 聚合。
 3. FileViewer DOCX/watch/upload conflict。
 4. Model Center 自定义 provider/discovery/latency。
 5. 完整 IPC JSON Schema 迁移和性能拆包。
