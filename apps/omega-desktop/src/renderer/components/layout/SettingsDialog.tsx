@@ -195,7 +195,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
           <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
             快捷键
           </Typography>
-          {(["commandPalette", "newSession", "abort"] as const).map((key) => <TextField key={key} size="small" label={key === "commandPalette" ? "打开命令中心" : key === "newSession" ? "新建会话" : "停止 Agent"} value={keybindings[key]} onChange={(event) => setKeybindings((current) => ({ ...current, [key]: event.target.value }))} onBlur={() => void ipc.updateDesktopSettings({ keybindings })} helperText="当前版本支持默认快捷键；可先保存偏好，后续扩展更多组合键。" />)}
+          {(["commandPalette", "newSession", "abort"] as const).map((key) => <TextField key={key} size="small" label={key === "commandPalette" ? "打开命令中心" : key === "newSession" ? "新建会话" : "停止 Agent"} value={keybindings[key]} onChange={(event) => setKeybindings((current) => ({ ...current, [key]: event.target.value }))} onBlur={() => void ipc.updateDesktopSettings({ keybindings }).then((res) => { if (!res.ok) setDesktopError(res.message); })} helperText="快捷键格式如 Ctrl+K；重复快捷键会被拒绝。" />)}
           <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em" }}>
             桌面运行时
           </Typography>

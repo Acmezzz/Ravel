@@ -42,6 +42,7 @@ import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { PERMISSION_PROFILES, sanitizePermissionProfile } from "./permission-profiles.js";
 import { fileRequest, replayRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
+import { sanitizeKeybindings } from "./keybindings.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEV_ROOT = resolve(MAIN_DIR, "..", "..", "..");
@@ -971,7 +972,11 @@ ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
   if (Number.isInteger(req?.workerCap)) patch.workerCap = req.workerCap;
   if (Number.isInteger(req?.workerIdleTtlMs)) patch.workerIdleTtlMs = req.workerIdleTtlMs;
   if (typeof req?.rightPanelOpen === "boolean") patch.rightPanelOpen = req.rightPanelOpen;
-  if (req?.keybindings && typeof req.keybindings === "object") patch.keybindings = { commandPalette: String(req.keybindings.commandPalette ?? "").slice(0, 64), newSession: String(req.keybindings.newSession ?? "").slice(0, 64), abort: String(req.keybindings.abort ?? "").slice(0, 64) };
+  if (req?.keybindings && typeof req.keybindings === "object") {
+    const normalized = sanitizeKeybindings(req.keybindings);
+    if (normalized.conflicts.length > 0) return errorResult("invalid_args", `快捷键冲突：${normalized.conflicts.map((item) => item.binding).join(", ")}`);
+    patch.keybindings = { commandPalette: normalized.commandPalette, newSession: normalized.newSession, abort: normalized.abort };
+  }
   if (typeof req?.permissionProfile === "string" && PERMISSION_PROFILES.includes(req.permissionProfile)) patch.permissionProfile = sanitizePermissionProfile(req.permissionProfile);
   if (typeof req?.lastSessionId === "string" || req?.lastSessionId === null) patch.lastSessionId = req.lastSessionId;
   if (typeof req?.lastWorkspace === "string" || req?.lastWorkspace === null) patch.lastWorkspace = req.lastWorkspace;
