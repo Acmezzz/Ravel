@@ -649,7 +649,7 @@ export function Composer(): React.ReactElement {
           aria-autocomplete="list"
           aria-expanded={atOpen || historyOpen}
           aria-controls={atOpen ? "omega-at-list" : historyOpen ? "omega-history-list" : undefined}
-          aria-activedescendant={atOpen && atItems[atIndex] ? `omega-at-option-${atIndex}` : undefined}
+          aria-activedescendant={atOpen && atItems[atIndex] ? `omega-at-option-${atIndex}` : historyOpen && inputHistory[historyIndex] ? `omega-history-option-${historyIndex}` : undefined}
           aria-describedby={composerError ? "omega-composer-error" : undefined}
           value={text}
           disabled={shuttingDown}

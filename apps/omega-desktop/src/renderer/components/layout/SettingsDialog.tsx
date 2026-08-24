@@ -80,6 +80,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
   const [idleTtl, setIdleTtl] = React.useState(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
   const [keybindings, setKeybindings] = React.useState(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
   const [desktopError, setDesktopError] = React.useState<string | null>(null);
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
 
   React.useEffect(() => {
     if (!open) return;
@@ -106,8 +107,20 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
       autoCompaction?: boolean;
       autoRetry?: boolean;
     }) => {
-      const res = await ipc.updateSettings(patch);
-      if (res.ok) setAgent(res.data);
+      setSaveState("saving");
+      try {
+        const res = await ipc.updateSettings(patch);
+        if (res.ok) {
+          setAgent(res.data);
+          setSaveState("saved");
+        } else {
+          setDesktopError(res.message);
+          setSaveState("idle");
+        }
+      } catch (reason) {
+        setDesktopError(reason instanceof Error ? reason.message : String(reason));
+        setSaveState("idle");
+      }
     },
     [setAgent],
   );
@@ -129,10 +142,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
     });
     if (!res.ok) {
       setDesktopError(res.message);
+      setSaveState("idle");
       return;
     }
     setDesktopSettings(res.data);
     setDesktopError(null);
+    setSaveState("saved");
   }, [workerCap, idleTtl, setDesktopSettings]);
 
   return (
@@ -304,7 +319,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 />
               </Box>
               {desktopError ? (
-                <Typography sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 0.75 }}>{desktopError}</Typography>
+                <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 0.75 }}>{desktopError}</Typography>
+              ) : saveState === "saving" ? (
+                <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-text-muted)", mt: 0.75 }}>正在保存设置…</Typography>
+              ) : saveState === "saved" ? (
+                <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-success)", mt: 0.75 }}>设置已保存</Typography>
               ) : null}
             </Box>
 

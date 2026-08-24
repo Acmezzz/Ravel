@@ -32,11 +32,15 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
   const models = useAppStore((s) => s.models);
   const setAgent = useAppStore((s) => s.setAgent);
   const [query, setQuery] = React.useState("");
+  const [activeIndex, setActiveIndex] = React.useState(0);
   const [pending, setPending] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (anchor) setQuery("");
+    if (anchor) {
+      setQuery("");
+      setActiveIndex(0);
+    }
   }, [anchor]);
 
   const filtered = React.useMemo(() => {
@@ -46,6 +50,7 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
   }, [models, query]);
 
   const groups = React.useMemo(() => groupByProvider(filtered), [filtered]);
+  const flatModels = React.useMemo(() => groups.flatMap((group) => group.models), [groups]);
 
   const pick = React.useCallback(
     async (model: ModelInfo) => {
@@ -91,11 +96,20 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
           placeholder="搜索模型…"
           label="搜索模型"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") { event.preventDefault(); setActiveIndex((index) => Math.min(Math.max(flatModels.length - 1, 0), index + 1)); }
+            else if (event.key === "ArrowUp") { event.preventDefault(); setActiveIndex((index) => Math.max(0, index - 1)); }
+            else if (event.key === "Home") { event.preventDefault(); setActiveIndex(0); }
+            else if (event.key === "End") { event.preventDefault(); setActiveIndex(Math.max(flatModels.length - 1, 0)); }
+            else if (event.key === "Enter" && flatModels[activeIndex]) { event.preventDefault(); void pick(flatModels[activeIndex]); }
+          }}
+          aria-controls="omega-model-list"
+          aria-activedescendant={flatModels[activeIndex] ? `omega-model-${flatModels[activeIndex].provider}-${flatModels[activeIndex].id}` : undefined}
         />
         {error ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 0.75 }}>{error}</Typography> : null}
       </Box>
-      <Box sx={{ overflowY: "auto", px: 0.75, pb: 0.75 }}>
+      <Box id="omega-model-list" role="listbox" aria-label="模型列表" sx={{ overflowY: "auto", px: 0.75, pb: 0.75 }}>
         {groups.length === 0 ? (
           <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", px: 1, py: 1.5 }}>无匹配模型</Typography>
         ) : (
@@ -110,6 +124,7 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
                 return (
                   <Box
                     key={key}
+                    id={`omega-model-${model.provider}-${model.id}`}
                     {...clickableRole}
                     role="option"
                     aria-selected={Boolean(model.selected)}
