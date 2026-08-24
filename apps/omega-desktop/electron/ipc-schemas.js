@@ -30,7 +30,7 @@ export function fileRequest(value) {
 export function replayRequest(value) {
   const sessionId = typeof value?.sessionId === "string" && value.sessionId.length <= MAX.sessionId ? value.sessionId : undefined;
   const after = Number.isFinite(value?.after) && value.after >= 0 ? value.after : 0;
-  const limit = Number.isInteger(value?.limit) ? Math.max(1, Math.min(value.limit, 100)) : 100;
+  const limit = Number.isInteger(value?.limit) ? Math.max(1, Math.min(value.limit, 300)) : 100;
   return { sessionId, after, limit };
 }
 
@@ -41,7 +41,7 @@ export function gitCommitRequest(value) {
 
 export function gitStageRequest(value) {
   const snapshotToken = boundedString(value?.snapshotToken, 256);
-  const items = Array.isArray(value?.items) ? value.items.slice(0, 500).filter((item) => boundedString(item?.path, MAX.path)).map((item) => ({ path: item.path, hunks: Array.isArray(item.hunks) ? item.hunks.slice(0, 200).map((hunk) => String(hunk).slice(0, 64_000)) : undefined })) : [];
+  const items = Array.isArray(value?.items) ? value.items.slice(0, 200).filter((item) => boundedString(item?.path, MAX.path)).map((item) => ({ path: item.path, hunks: Array.isArray(item.hunks) ? item.hunks.slice(0, 200).map((hunk) => String(hunk).slice(0, 64_000)) : undefined })) : [];
   return snapshotToken && items.length ? { snapshotToken, items } : null;
 }
 

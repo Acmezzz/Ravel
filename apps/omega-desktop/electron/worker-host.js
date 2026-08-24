@@ -9,6 +9,7 @@ import { isWorkerEvent, isWorkerResponse } from "./worker-protocol.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_RPC_TIMEOUT = 120_000;
+const PROMPT_RPC_TIMEOUT = 30 * 60_000;
 
 export class WorkerHost {
   constructor({ workerPath = join(MAIN_DIR, "worker.mjs"), timeout = DEFAULT_RPC_TIMEOUT } = {}) {
@@ -181,11 +182,12 @@ export class WorkerHost {
     }
     const id = `req-${++this.seq}`;
     const generation = this.generation;
+    const timeout = method === "prompt" ? PROMPT_RPC_TIMEOUT : this.timeout;
     return new Promise((resolvePromise, rejectPromise) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         rejectPromise(Object.assign(new Error(`Worker RPC timeout: ${method}`), { code: "worker_timeout" }));
-      }, this.timeout);
+      }, timeout);
       this.pending.set(id, { resolve: resolvePromise, reject: rejectPromise, timer, generation });
       const wireArgs = { ...(args ?? {}), generation };
       this.child.postMessage({ type: "req", id, method, args: wireArgs, generation });

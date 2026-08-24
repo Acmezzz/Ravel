@@ -146,11 +146,7 @@ function parseStatusPath(rawPath) {
 
 function isInsideWorkTree(cwd) {
   try {
-    execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
+    git(cwd, ["rev-parse", "--is-inside-work-tree"]);
     return true;
   } catch {
     return false;
@@ -167,11 +163,7 @@ function repoRoot(cwd) {
 
 function isTracked(cwd, file) {
   try {
-    execFileSync("git", ["ls-files", "--error-unmatch", "--", file], {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
+    git(cwd, ["ls-files", "--error-unmatch", "--", file]);
     return true;
   } catch {
     return false;

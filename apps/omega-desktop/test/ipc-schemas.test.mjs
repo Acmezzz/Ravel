@@ -7,7 +7,7 @@ test("shared IPC schemas normalize bounded common requests", () => {
   assert.equal(sessionRequest({ sessionId: "" }), null);
   assert.deepEqual(workspaceRequest({ workspace: "/workspace" }), { workspace: "/workspace" });
   assert.deepEqual(fileRequest({ path: "src/a.ts" }), { path: "src/a.ts" });
-  assert.deepEqual(replayRequest({ after: 5, limit: 999 }), { sessionId: undefined, after: 5, limit: 100 });
+  assert.deepEqual(replayRequest({ after: 5, limit: 999 }), { sessionId: undefined, after: 5, limit: 300 });
   assert.deepEqual(sessionRpcRequest({ sessionId: "s1", method: "getState", args: { x: 1 } }), { sessionId: "s1", method: "getState", args: { x: 1 } });
   assert.deepEqual(sessionNameRequest({ name: "  Alpha  " }), { name: "Alpha" });
   assert.deepEqual(sessionNameRequest({ name: "Alpha", sessionId: "s1" }), { name: "Alpha", sessionId: "s1" });

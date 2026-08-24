@@ -34,20 +34,20 @@
 
 ## 阶段 3：正确性修复
 
-- [ ] C1 `main.js:556` 关闭序列进行中第二次 close 不 preventDefault，可中断保存
-- [ ] C2 `diff-service.js` `isInsideWorkTree`/`isTracked` 同步 git 无 timeout，网络盘冻结 UI
-- [ ] C3 `session-reader.js` 三个缓存 Map 永不淘汰，内存无界 → LRU / 上限
-- [ ] C4 `worker-pool.js` `evictToFit` 异步竞态可超 cap
-- [ ] C6 `main.js` fileWatchers 无上限、切 workspace 不清理
-- [ ] C7 `fileSelections` / `tokenCache` 慢性泄漏
-- [ ] C8 多处 `void promise` 无 catch（关闭序列 / 对话框）
-- [ ] C9 `worker.mjs` uncaughtException 后不退出，pending RPC 空等 120s → exit(1) 触发重启
-- [ ] C10 prompt RPC 复用 120s 超时，长生成误报 worker_timeout
-- [ ] C11 `setPermissionProfile` 先落盘后应用，失败不回滚
-- [ ] C12 删除会话不清理 recentEventsBySession 与磁盘事件缓存
-- [ ] I1 `newPiSession/newSession`、`switchPiSession/loadSession` 两对 handler 复制粘贴且行为漂移 → 抽公共实现
-- [ ] I2 `electron/ipc-contracts.js` 与 `src/shared/ipc-contracts.ts` ERROR_CODES 漂移 → 单一事实源
-- [ ] I3 preload/ipc-schemas 校验上限互相矛盾（200/500、300/100）→ 共享常量
+- [x] C1 关闭序列进行中第二次 close 不 preventDefault → handling/busy 时一律拦截
+- [x] C2 `isInsideWorkTree`/`isTracked` 同步 git 无 timeout → 走带 15s timeout 的 `git()`
+- [x] C3 session-reader 三个缓存 Map 永不淘汰 → LRU 上限 200
+- [x] C4 `evictToFit` 异步竞态可超 cap → acquire 串行化
+- [x] C6 fileWatchers 无上限、切 workspace 不清理 → 上限 16，切工作区/关机清理
+- [x] C7 `fileSelections` / `tokenCache` 慢性泄漏 → TTL + 容量上限
+- [x] C8 多处 `void promise` 无 catch → 关闭/对话框/shell 补 catch
+- [x] C9 worker uncaughtException 后不退出 → `process.exit(1)`
+- [x] C10 prompt RPC 复用 120s 超时 → prompt 单独 30 分钟
+- [x] C11 `setPermissionProfile` 失败不回滚 → 磁盘与 worker 一并回滚
+- [x] C12 删除会话不清理事件缓存 → 清 Map / JSONL / `forgetSessionPath`
+- [x] I1 `newPiSession/newSession` 与 `switchPiSession/loadSession` 抽 `createNamedSession`/`loadNamedSession`
+- [x] I2 JS/TS ERROR_CODES 漂移 → 对齐 `invalid_prompt` / `not_found`
+- [x] I3 preload/ipc-schemas 上限矛盾 → replay 300、git items 200
 
 ## 阶段 4：死代码与冗余文件清理
 

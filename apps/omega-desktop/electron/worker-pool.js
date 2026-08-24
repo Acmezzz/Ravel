@@ -6,8 +6,8 @@
  * Hosts are injected (Electron WorkerHost in production, fakes in tests).
  * A host must support: start, kill, call, and the fields sessionId/cwd/state.
  */
-export const DEFAULT_WORKER_CAP = 3;
-export const DEFAULT_IDLE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_WORKER_CAP = 3;
+const DEFAULT_IDLE_TTL_MS = 5 * 60 * 1000;
 
 export function createWorkerSlotPool({
   cap = DEFAULT_WORKER_CAP,
@@ -19,6 +19,7 @@ export function createWorkerSlotPool({
   const slots = new Map();
   let foregroundSessionId = null;
   let healthTimer = null;
+  let acquireQueue = Promise.resolve();
 
   function snapshotOf(slot) {
     return {
@@ -195,6 +196,12 @@ export function createWorkerSlotPool({
   }
 
   async function acquire({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, permissionProfile, createHost }) {
+    const run = acquireQueue.then(() => acquireUnlocked({ sessionId, cwd, extensionsRoot, projectTrusted, permissionProfile, createHost }));
+    acquireQueue = run.catch(() => {});
+    return run;
+  }
+
+  async function acquireUnlocked({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, permissionProfile, createHost }) {
     startHealthChecks();
     if (sessionId && slots.has(sessionId)) return activate(sessionId);
     await evictToFit();

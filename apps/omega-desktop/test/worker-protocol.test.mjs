@@ -17,4 +17,7 @@ test("worker host preserves permission profile across restart and runtime schema
   assert.match(source, /isWorkerResponse/);
   assert.match(main, /reusableWorkspaceSlot/);
   assert.match(main, /reuseIdleWorkspaceSlot/);
+  assert.match(source, /PROMPT_RPC_TIMEOUT/);
+  const worker = await (await import("node:fs/promises")).readFile(new URL("../electron/worker.mjs", import.meta.url), "utf8");
+  assert.match(worker, /process\.exit\(1\)/);
 });

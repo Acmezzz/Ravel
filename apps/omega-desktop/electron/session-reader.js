@@ -5,8 +5,19 @@ import { createInterface } from "node:readline";
 const MAX_FILES = 2000;
 const MAX_LINE_CHARS = 512 * 1024;
 const MAX_FIRST_MESSAGE_CHARS = 240;
+const MAX_CACHE_ENTRIES = 200;
 const summaryCache = new Map();
 const messageCache = new Map();
+
+function rememberCache(cache, key, value) {
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    cache.delete(oldest);
+  }
+  return value;
+}
 
 function textOf(content) {
   if (typeof content === "string") return content;
@@ -98,7 +109,7 @@ async function readSummary(file) {
     messageCount,
     ...(parent ? { parentSessionId: parent } : {}),
   };
-  summaryCache.set(cacheKey, { stamp: cacheStamp, summary });
+  rememberCache(summaryCache, cacheKey, { stamp: cacheStamp, summary });
   return summary;
 }
 
@@ -153,7 +164,7 @@ export async function readSessionMessages(file, { offset = 0, limit = 100 } = {}
         messages.push({ role: message.role === "toolResult" ? "tool" : message.role, id: message.id ?? entry.id, text, ts: entry.timestamp ?? new Date(stats.mtimeMs).toISOString(), entryId: entry.id });
       } catch { /* skip malformed lines */ }
     }
-    messageCache.set(resolved, { stamp, messages });
+    rememberCache(messageCache, resolved, { stamp, messages });
   }
   const safeOffset = Number.isInteger(offset) && offset > 0 ? offset : 0;
   const safeLimit = Number.isInteger(limit) ? Math.max(1, Math.min(limit, 500)) : 100;
@@ -178,7 +189,7 @@ export async function readSessionSummaries(root, { allowedWorkspaces = [], offse
   const stamp = `${files.length}:${summaries.map((item) => `${item.id}:${item.updatedAt}`).join("|")}`;
   const cachedTree = treeIndexCache.get(root);
   const treeIndex = cachedTree?.stamp === stamp ? cachedTree.index : treeIndexOf(summaries);
-  if (cachedTree?.stamp !== stamp) treeIndexCache.set(root, { stamp, index: treeIndex });
+  if (cachedTree?.stamp !== stamp) rememberCache(treeIndexCache, root, { stamp, index: treeIndex });
   return {
     items: summaries.slice(safeOffset, safeOffset + safeLimit),
     total: summaries.length,

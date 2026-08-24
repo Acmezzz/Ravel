@@ -22,7 +22,7 @@ import {
 import { existsSync, mkdirSync, unlinkSync, writeFileSync, appendFileSync, readFileSync, watch } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
+import { forgetSessionPath, piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
 import * as persistence from "./persistence.js";
 import * as stateReader from "./state-reader.js";
@@ -64,7 +64,6 @@ let shuttingDown = false;
 let quitRequested = false;
 let activeCwd = null;
 let agentReady = false;
-let agentRunning = false;
 let workspaceRegistry;
 let closeDecision = null;
 let closeHandling = false;
@@ -244,6 +243,10 @@ function stopFileWatch(filePath) {
 
 function startFileWatch(filePath) {
   stopFileWatch(filePath);
+  if (fileWatchers.size >= 16) {
+    const oldest = fileWatchers.keys().next().value;
+    if (oldest) stopFileWatch(oldest);
+  }
   try {
     const watcher = watch(filePath, { persistent: false }, () => {
       if (win && !win.isDestroyed()) win.webContents.send("file:changed", { path: filePath });
@@ -253,6 +256,33 @@ function startFileWatch(filePath) {
   } catch {
     /* watching is best effort */
   }
+}
+
+function stopAllFileWatches() {
+  for (const filePath of [...fileWatchers.keys()]) stopFileWatch(filePath);
+}
+
+function pruneFileSelections() {
+  const now = Date.now();
+  for (const [id, selection] of fileSelections) {
+    if (!selection || now - selection.createdAt > 10 * 60_000) fileSelections.delete(id);
+  }
+  while (fileSelections.size > 32) {
+    const oldest = fileSelections.keys().next().value;
+    fileSelections.delete(oldest);
+  }
+}
+
+function forgetSessionEvents(sessionId) {
+  if (!sessionId) return;
+  recentEventsBySession.delete(sessionId);
+  try {
+    const cacheFile = recentEventsFile(sessionId);
+    if (existsSync(cacheFile)) unlinkSync(cacheFile);
+  } catch {
+    /* best effort */
+  }
+  forgetSessionPath(sessionId);
 }
 
 function persistWindowBounds() {
@@ -322,7 +352,6 @@ function bindHost(host) {
     }
     if (event?.type === "auto_retry_start") persistSessionRecovery(sessionId, { state: "retrying", running: true, retryAttempt: event.attempt, retryMaxAttempts: event.maxAttempts, retryDelayMs: event.delayMs, error: event.errorMessage ?? null });
     if (event?.type === "auto_retry_end") persistSessionRecovery(sessionId, { state: event.status === "done" ? "ready" : "error", running: false, retryAttempt: event.attempt, error: event.finalError ?? null });
-    agentRunning = Boolean(workerPool.foreground()?.running);
     if (meta?.sequence && sessionId) {
       const bucket = recentEventsBySession.get(sessionId) ?? [];
       bucket.push({ event, meta });
@@ -348,7 +377,6 @@ function bindHost(host) {
     const foreground = host === worker;
     if (foreground) {
       agentReady = state === "ready";
-      if (state !== "ready") agentRunning = Boolean(workerPool.foreground()?.running);
     }
     persistSessionRecovery(host.sessionId, { state, running: Boolean(workerPool.get(host.sessionId)?.running), error: typeof extra.error === "string" ? extra.error : null });
     sendTransportState(state, { ...extra, sessionId: host.sessionId, foreground });
@@ -397,8 +425,51 @@ async function adoptSlot(slot) {
   worker = slot.host;
   activeCwd = slot.cwd ?? activeCwd;
   agentReady = slot.host?.state === "ready";
-  agentRunning = Boolean(slot.running);
   return slot;
+}
+
+async function createNamedSession({ workspace, title } = {}) {
+  if (isForegroundBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
+  let root;
+  try {
+    root = workspace ? authorizedWorkspace(workspace) : activeCwd ?? rootOf();
+  } catch (error) {
+    return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
+  }
+  const result = await rpc("newSession", { workspace: root, title }, "write_failed");
+  if (result.ok) rememberActive(result.data);
+  return result;
+}
+
+async function loadNamedSession({ sessionId, workspace } = {}) {
+  if (!sessionId) return errorResult("invalid_args", "sessionId is required");
+  try {
+    const existing = workerPool.get(sessionId);
+    if (existing) {
+      await adoptSlot(workerPool.activate(sessionId));
+      const record = await worker.call("sessionRecord");
+      rememberActive(record);
+      return okResult(record);
+    }
+    if (isForegroundBusy() && worker?.state === "ready") {
+      const nextWorkspace = workspace ? authorizedWorkspace(workspace) : (await sessionWorkspaceOf(sessionId)) ?? activeCwd ?? rootOf();
+      const reused = await reuseIdleWorkspaceSlot(sessionId, nextWorkspace);
+      if (reused) {
+        const record = await worker.call("sessionRecord");
+        rememberActive(record);
+        return okResult(record);
+      }
+      await acquireSlot({ sessionId, cwd: nextWorkspace, projectTrusted: projectTrust.isTrusted(nextWorkspace) });
+      const record = await worker.call("sessionRecord");
+      rememberActive(record);
+      return okResult(record);
+    }
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+  const result = await rpc("switchSession", { sessionId }, "read_failed");
+  if (result.ok) rememberActive(result.data);
+  return result;
 }
 
 async function acquireSlot({ sessionId = null, cwd, projectTrusted, permissionProfile } = {}) {
@@ -598,6 +669,8 @@ async function createWindow() {
       if (!win || win.isDestroyed()) return;
       if (response === 0) win.webContents.reloadIgnoringCache();
       else void win.close();
+    }).catch((error) => {
+      process.stderr.write(`[main] crash dialog failed: ${String(error)}\n`);
     });
   });
   win.webContents.on("unresponsive", () => {
@@ -609,12 +682,17 @@ async function createWindow() {
     win.webContents.send("worker:transport", { state: "reconcile", sessionId: worker?.sessionId ?? null, foreground: true });
   });
   win.on("close", (event) => {
-    if (closeApproved || closeHandling || !isAgentBusy()) return;
-    event.preventDefault();
-    closeHandling = true;
-    void runCloseSequence(() => win?.close()).finally(() => {
-      closeHandling = false;
-    });
+    if (closeApproved) return;
+    if (closeHandling || isAgentBusy()) {
+      event.preventDefault();
+      if (closeHandling) return;
+      closeHandling = true;
+      void runCloseSequence(() => win?.close()).catch((error) => {
+        process.stderr.write(`[main] close sequence failed: ${String(error)}\n`);
+      }).finally(() => {
+        closeHandling = false;
+      });
+    }
   });
   win.on("closed", () => {
     persistWindowBounds();
@@ -839,7 +917,10 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
     return errorResult("trust_required", "打开该项目前需要确认是否信任其中的扩展和技能");
   }
   const result = await rpc("newSession", { workspace: root, projectTrusted: trust.decision === "trusted" }, "write_failed");
-  if (result.ok) rememberActive(result.data);
+  if (result.ok) {
+    stopAllFileWatches();
+    rememberActive(result.data);
+  }
   return result;
 });
 
@@ -1063,19 +1144,34 @@ ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (typeof req?.profile !== "string" || !PERMISSION_PROFILES.includes(req.profile)) return errorResult("invalid_args", "Unsupported permission profile");
   const profile = sanitizePermissionProfile(req.profile);
+  const previous = desktopSettings.get().permissionProfile;
   const next = desktopSettings.update({ permissionProfile: profile });
   const slots = workerPool.list().filter((slot) => slot.host?.state === "ready");
+  const applied = [];
   const results = await Promise.all(slots.map(async (slot) => {
+    const prior = slot.host.permissionProfile;
     try {
       await slot.host.call("setPermissionProfile", { profile });
       slot.host.permissionProfile = profile;
+      applied.push({ slot, prior });
       return null;
     } catch (error) {
       return error;
     }
   }));
   const failed = results.find(Boolean);
-  if (failed) return errorResult(failed?.code ?? "write_failed", failed instanceof Error ? failed.message : String(failed));
+  if (failed) {
+    desktopSettings.update({ permissionProfile: previous });
+    await Promise.all(applied.map(async ({ slot, prior }) => {
+      try {
+        await slot.host.call("setPermissionProfile", { profile: prior });
+        slot.host.permissionProfile = prior;
+      } catch {
+        /* best effort rollback */
+      }
+    }));
+    return errorResult(failed?.code ?? "write_failed", failed instanceof Error ? failed.message : String(failed));
+  }
   return okResult(next);
 });
 
@@ -1128,48 +1224,12 @@ ipcMain.handle("omega:listPiSessions", async (event) => {
 
 ipcMain.handle("omega:newPiSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (isForegroundBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
-  let workspace;
-  try {
-    workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
-  } catch (error) {
-    return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
-  }
-  const result = await rpc("newSession", { workspace, title: req?.title }, "write_failed");
-  if (result.ok) rememberActive(result.data);
-  return result;
+  return createNamedSession(req);
 });
 
 ipcMain.handle("omega:switchPiSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (!req?.sessionId) return errorResult("invalid_args", "sessionId is required");
-  try {
-    const existing = workerPool.get(req.sessionId);
-    if (existing) {
-      await adoptSlot(workerPool.activate(req.sessionId));
-      const record = await worker.call("sessionRecord");
-      rememberActive(record);
-      return okResult(record);
-    }
-    if (isForegroundBusy() && worker?.state === "ready") {
-      const workspace = req?.workspace ? authorizedWorkspace(req.workspace) : (await sessionWorkspaceOf(req.sessionId)) ?? activeCwd ?? rootOf();
-      const reused = await reuseIdleWorkspaceSlot(req.sessionId, workspace);
-      if (reused) {
-        const record = await worker.call("sessionRecord");
-        rememberActive(record);
-        return okResult(record);
-      }
-      await acquireSlot({ sessionId: req.sessionId, cwd: workspace, projectTrusted: projectTrust.isTrusted(workspace) });
-      const record = await worker.call("sessionRecord");
-      rememberActive(record);
-      return okResult(record);
-    }
-  } catch (error) {
-    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
-  }
-  const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
-  if (result.ok) rememberActive(result.data);
-  return result;
+  return loadNamedSession(req);
 });
 
 ipcMain.handle("omega:setSessionName", async (event, req) => {
@@ -1312,7 +1372,7 @@ ipcMain.handle("omega:exportHtml", async (event) => {
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${record.id}-${Date.now()}.html`);
     writeFileSync(file, buildSessionHtml(record), "utf8");
-    void shell.showItemInFolder(file);
+    void Promise.resolve(shell.showItemInFolder(file)).catch(() => {});
     return okResult({ path: file });
   } catch (error) {
     return errorResult("write_failed", error instanceof Error ? error.message : String(error));
@@ -1383,48 +1443,12 @@ ipcMain.handle("omega:listSessions", async (event, req) => {
 
 ipcMain.handle("omega:newSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (isForegroundBusy() && worker?.state === "ready") return errorResult("session_busy", "生成中无法切换会话，请先停止或等待完成");
-  let workspace;
-  try {
-    workspace = req?.workspace ? authorizedWorkspace(req.workspace) : activeCwd ?? rootOf();
-  } catch (error) {
-    return errorResult(error?.code ?? "invalid_workspace", error instanceof Error ? error.message : String(error));
-  }
-  const result = await rpc("newSession", { workspace, title: req?.title }, "write_failed");
-  if (result.ok) rememberActive(result.data);
-  return result;
+  return createNamedSession(req);
 });
 
 ipcMain.handle("omega:loadSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (!req?.sessionId) return errorResult("invalid_args", "sessionId is required");
-  try {
-    const existing = workerPool.get(req.sessionId);
-    if (existing) {
-      await adoptSlot(workerPool.activate(req.sessionId));
-      const record = await worker.call("sessionRecord");
-      rememberActive(record);
-      return okResult(record);
-    }
-    if (isForegroundBusy() && worker?.state === "ready") {
-      const workspace = activeCwd ?? rootOf();
-      const reused = await reuseIdleWorkspaceSlot(req.sessionId, workspace);
-      if (reused) {
-        const record = await worker.call("sessionRecord");
-        rememberActive(record);
-        return okResult(record);
-      }
-      await acquireSlot({ sessionId: req.sessionId, cwd: workspace, projectTrusted: projectTrust.isTrusted(workspace) });
-      const record = await worker.call("sessionRecord");
-      rememberActive(record);
-      return okResult(record);
-    }
-  } catch (error) {
-    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
-  }
-  const result = await rpc("switchSession", { sessionId: req.sessionId }, "read_failed");
-  if (result.ok) rememberActive(result.data);
-  return result;
+  return loadNamedSession(req);
 });
 
 ipcMain.handle("omega:saveSession", (event, req) => {
@@ -1447,6 +1471,7 @@ ipcMain.handle("omega:deleteSession", async (event, req) => {
       if (result.ok) rememberActive(result.data);
     }
     await workerPool.dispose(target);
+    forgetSessionEvents(target);
     const sessionPath = await resolveSessionPath(target);
     if (sessionPath) {
       // Defense in depth: only ever delete files inside the pi sessions root.
@@ -1525,7 +1550,7 @@ ipcMain.handle("omega:openFileDefault", (event, req) => {
   if (!normalized) return errorResult("invalid_args", "path is required");
   try {
     const revealed = workspaceService.revealPath(activeCwd ?? rootOf(), normalized.path);
-    void shell.openPath(revealed.absolutePath);
+    void Promise.resolve(shell.openPath(revealed.absolutePath)).catch(() => {});
     return okResult({ path: normalized.path });
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
@@ -1536,6 +1561,7 @@ ipcMain.handle("omega:chooseFileForWorkspace", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const picked = await dialog.showOpenDialog(win, { properties: ["openFile"], title: "选择要导入工作区的文件" });
   if (picked.canceled || !picked.filePaths[0]) return errorResult("cancelled", "未选择文件");
+  pruneFileSelections();
   const selectionId = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   fileSelections.set(selectionId, { path: picked.filePaths[0], createdAt: Date.now() });
   return okResult({ selectionId, name: basename(picked.filePaths[0]) });
@@ -1550,8 +1576,9 @@ ipcMain.handle("omega:inspectUploadTarget", (event, req) => {
 
 ipcMain.handle("omega:uploadFile", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  pruneFileSelections();
   const selection = fileSelections.get(req?.selectionId);
-  if (!selection || Date.now() - selection.createdAt > 10 * 60_000) return errorResult("not_found", "文件选择已过期");
+  if (!selection) return errorResult("not_found", "文件选择已过期");
   try {
     const result = fileTransfer.uploadFile(activeCwd ?? rootOf(), selection.path, req.path, { conflict: req.conflict, expectedToken: req.expectedToken });
     fileSelections.delete(req.selectionId);
@@ -1591,7 +1618,7 @@ ipcMain.handle("omega:revealInFolder", (event, req) => {
     const rel = typeof req?.path === "string" ? req.path : "";
     if (rel.length > 4096) return errorResult("invalid_args", "path too long");
     const revealed = workspaceService.revealPath(activeCwd ?? rootOf(), rel);
-    void shell.showItemInFolder(revealed.absolutePath);
+    void Promise.resolve(shell.showItemInFolder(revealed.absolutePath)).catch(() => {});
     return okResult({ path: revealed.path });
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
@@ -1646,18 +1673,6 @@ ipcMain.handle("omega:gitSnapshot", (event) => {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }
 });
-
-function normalizeGitItems(req) {
-  if (!Array.isArray(req?.items)) throw new Error("items[] is required");
-  if (typeof req.snapshotToken !== "string" || !req.snapshotToken) throw new Error("snapshotToken is required");
-  return {
-    snapshotToken: req.snapshotToken.slice(0, 128),
-    items: req.items.slice(0, 200).map((item) => ({
-      path: typeof item?.path === "string" ? item.path.slice(0, 4096) : "",
-      hunks: Array.isArray(item?.hunks) ? item.hunks.filter((hunk) => typeof hunk === "string").slice(0, 100) : undefined,
-    })),
-  };
-}
 
 ipcMain.handle("omega:gitStage", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
@@ -1719,8 +1734,8 @@ async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   agentReady = false;
-  agentRunning = false;
   worker = null;
+  stopAllFileWatches();
   await workerPool.disposeAll();
 }
 
@@ -1775,7 +1790,11 @@ app
       app.exit(1);
     }
     app.on("activate", () => {
-      if (!BrowserWindow.getAllWindows().length) void createWindow();
+      if (!BrowserWindow.getAllWindows().length) {
+        void createWindow().catch((error) => {
+          process.stderr.write(`[main] recreate window failed: ${String(error)}\n`);
+        });
+      }
     });
   })
   .catch((error) => {
@@ -1785,16 +1804,19 @@ app
 
 app.on("before-quit", (event) => {
   if (quitRequested) return;
-  if (closeApproved || !isAgentBusy()) {
-    event.preventDefault();
-    quitRequested = true;
-    void shutdown().finally(() => app.exit(0));
-    return;
-  }
   event.preventDefault();
   if (closeHandling) return;
+  if (closeApproved || !isAgentBusy()) {
+    quitRequested = true;
+    void shutdown().catch((error) => {
+      process.stderr.write(`[main] shutdown failed: ${String(error)}\n`);
+    }).finally(() => app.exit(0));
+    return;
+  }
   closeHandling = true;
-  void runCloseSequence(() => app.quit()).finally(() => {
+  void runCloseSequence(() => app.quit()).catch((error) => {
+    process.stderr.write(`[main] quit sequence failed: ${String(error)}\n`);
+  }).finally(() => {
     closeHandling = false;
   });
 });

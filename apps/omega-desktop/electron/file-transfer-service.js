@@ -4,6 +4,7 @@ import { dirname, extname } from "node:path";
 import { resolveForCreate, resolveExisting, isInside } from "./path-security.js";
 
 const MAX_UPLOAD_BYTES = 64 * 1024 * 1024;
+const MAX_TOKEN_CACHE = 128;
 const tokenCache = new Map();
 
 function fail(code, message) { const error = new Error(message); error.code = code; throw error; }
@@ -16,7 +17,12 @@ function targetInfo(root, relativePath) {
   const info = statSync(existing.path);
   const hash = hashFile(existing.path);
   const token = tokenFor(existing.path, info, hash);
+  if (tokenCache.has(token)) tokenCache.delete(token);
   tokenCache.set(token, { path: existing.path, size: info.size, mtimeMs: info.mtimeMs, hash });
+  while (tokenCache.size > MAX_TOKEN_CACHE) {
+    const oldest = tokenCache.keys().next().value;
+    tokenCache.delete(oldest);
+  }
   return { ...created, exists: true, relativePath: existing.relative, size: info.size, mtimeMs: info.mtimeMs, hash, token };
 }
 

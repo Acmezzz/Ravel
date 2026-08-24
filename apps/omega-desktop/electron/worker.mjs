@@ -655,5 +655,10 @@ process.parentPort.on("message", async (event) => {
 });
 
 process.on("uncaughtException", (error) => {
-  post({ type: "worker-error", error: error instanceof Error ? error.stack ?? error.message : String(error) });
+  try {
+    post({ type: "worker-error", error: error instanceof Error ? error.stack ?? error.message : String(error) });
+  } catch {
+    /* best effort */
+  }
+  process.exit(1);
 });
