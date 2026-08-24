@@ -217,6 +217,32 @@ test("prompt channel supports steering interrupts while streaming", async () => 
   assert.match(worker, /startsWith\("\/"\)/);
 });
 
+test("prompt identity survives the renderer-to-worker boundary", async () => {
+  const app = await read("../src/renderer/App.tsx");
+  const composer = await read("../src/renderer/components/chat/Composer.tsx");
+  const client = await read("../src/renderer/ipc/client.ts");
+  const preload = await read("../electron/preload.js");
+  const main = await read("../electron/main.js");
+  const worker = await read("../electron/worker.mjs");
+  assert.match(composer, /clientMessageId/);
+  assert.match(client, /clientMessageId\?: string/);
+  assert.match(preload, /clientMessageId must be a bounded string/);
+  assert.match(main, /clientMessageId: clientMessageId\?\.slice\(0, 128\)/);
+  assert.match(worker, /activeClientMessageIds/);
+  assert.match(worker, /runtimeEpoch/);
+  assert.match(app, /meta\?\.clientMessageId/);
+  assert.match(app, /currentRuntimeEpoch/);
+});
+
+test("optimistic state is cleared on transcript replacement and worker recovery", async () => {
+  const store = await read("../src/renderer/store/useAppStore.ts");
+  const app = await read("../src/renderer/App.tsx");
+  assert.match(store, /pendingOptimistic: \[\]/);
+  assert.match(store, /dropAllOptimistic/);
+  assert.match(app, /store\.pendingOptimistic\.length > 0/);
+  assert.match(app, /store\.dropAllOptimistic\(\)/);
+});
+
 test("session_busy is reported when fork/navigate hit a running turn", async () => {
   const worker = await read("../electron/worker.mjs");
   assert.match(worker, /withBusyCode/);

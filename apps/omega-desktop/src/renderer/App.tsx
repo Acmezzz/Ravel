@@ -146,6 +146,7 @@ export function App(): React.ReactElement {
   React.useEffect(() => {
     let lastSequence = 0;
     let currentGeneration = 0;
+    let currentRuntimeEpoch = 0;
     const handleEvent = (data: unknown) => {
       const envelope = data && typeof data === "object" && "event" in data ? data as { event: SafeEvent; meta?: EventMeta } : { event: data as SafeEvent };
       const event = envelope.event;
@@ -168,9 +169,15 @@ export function App(): React.ReactElement {
           }
           return;
         }
-        if (meta.generation < currentGeneration || meta.sequence <= lastSequence) return;
-        if (currentGeneration && meta.generation > currentGeneration) lastSequence = 0;
+        const runtimeEpoch = meta.runtimeEpoch ?? 0;
+        if (
+          meta.generation < currentGeneration ||
+          (meta.generation === currentGeneration && runtimeEpoch < currentRuntimeEpoch) ||
+          (meta.generation === currentGeneration && runtimeEpoch === currentRuntimeEpoch && meta.sequence <= lastSequence)
+        ) return;
+        if (currentGeneration !== meta.generation || currentRuntimeEpoch !== runtimeEpoch) lastSequence = 0;
         currentGeneration = meta.generation;
+        currentRuntimeEpoch = runtimeEpoch;
         lastSequence = meta.sequence;
       }
       if (!event || typeof event !== "object" || typeof event.type !== "string") return;
@@ -178,12 +185,16 @@ export function App(): React.ReactElement {
       switch (event.type) {
         case "message_start": {
           if (event.message.role === "user") {
-            store.consumeOptimisticWith({
-              role: "user",
-              id: event.message.id ?? `user-${Date.now()}`,
-              text: event.message.text ?? "",
-              ts: new Date().toISOString(),
-            });
+            store.consumeOptimisticWith(
+              {
+                role: "user",
+                id: event.message.id ?? `user-${Date.now()}`,
+                text: event.message.text ?? "",
+                ts: new Date().toISOString(),
+              },
+              undefined,
+              meta?.clientMessageId,
+            );
           } else if (event.message.role === "assistant") {
             const id = event.message.id ?? `assistant-${Date.now()}`;
             store.appendMessage({
@@ -198,16 +209,18 @@ export function App(): React.ReactElement {
         }
         case "message_end": {
           if (event.message.role === "user") {
-            // message_start already consumed the optimistic bubble. Only merge
-            // if that bubble is still pending (missed start, or late replay).
-            if (useAppStore.getState().optimisticKey) {
-              store.consumeOptimisticWith({
+            // message_start normally consumes the optimistic bubble. The end
+            // event remains a safe fallback for a missed start or late replay.
+            store.consumeOptimisticWith(
+              {
                 role: "user",
                 id: event.message.id ?? `user-${Date.now()}`,
                 text: event.message.text ?? "",
                 ts: new Date().toISOString(),
-              });
-            }
+              },
+              undefined,
+              meta?.clientMessageId,
+            );
           } else if (event.message.role === "assistant") {
             // Authoritative final text: replace the streaming bubble, covering
             // deltas missed across a mid-run reload.
@@ -336,8 +349,8 @@ export function App(): React.ReactElement {
           const store = useAppStore.getState();
           const state = store.agent;
           const sessionId = state?.sessionId ?? store.activeSessionId ?? undefined;
-          if (store.optimisticKey) {
-            store.dropLastIfOptimistic(store.optimisticKey);
+          if (store.pendingOptimistic.length > 0) {
+            store.dropAllOptimistic();
             store.setComposerError("Worker 已恢复。未确认发送的消息没有自动重发，请检查后手动发送。");
           }
           const result = await ipc.recentEvents({ sessionId, after: 0 });

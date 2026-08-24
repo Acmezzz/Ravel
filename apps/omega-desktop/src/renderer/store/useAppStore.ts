@@ -59,6 +59,14 @@ export interface QueuedMessages {
   followUp: string[];
 }
 
+export interface PendingOptimisticMessage {
+  key: string;
+  clientMessageId: string;
+  messageId: string;
+  text: string;
+  createdAt: number;
+}
+
 export interface SessionActivity {
   running: boolean;
   unread: boolean;
@@ -103,7 +111,9 @@ export interface AppState {
   messages: SessionMessage[];
   toolCards: ToolCardState[];
   queuedMessages: QueuedMessages;
-  /** Content signature of the pending optimistic user bubble (id `optimistic-*`). */
+  /** Pending optimistic bubbles keyed by their client prompt identity. */
+  pendingOptimistic: PendingOptimisticMessage[];
+  /** Legacy latest key retained for recovery compatibility; new code uses pendingOptimistic. */
   optimisticKey: string | null;
   /** Assistant message id of the in-flight streaming run (deltas target it). */
   streamingAssistantId: string | null;
@@ -162,9 +172,14 @@ export interface AppState {
   appendMessage: (message: SessionMessage) => void;
   prependMessages: (messages: SessionMessage[]) => void;
   appendDelta: (messageId: string, delta: string) => void;
-  /** Replace-or-consume the trailing optimistic bubble with the delivered user message. */
-  consumeOptimisticWith: (delivered: SessionMessage) => void;
+  /** Add one locally rendered user message before the authoritative event arrives. */
+  addOptimisticMessage: (pending: PendingOptimisticMessage, message: SessionMessage) => void;
+  /** Replace the matching optimistic bubble with the authoritative user message. */
+  consumeOptimisticWith: (delivered: SessionMessage, key?: string, clientMessageId?: string | null) => void;
+  /** Remove only the optimistic bubble belonging to this prompt key. */
   dropLastIfOptimistic: (key: string) => void;
+  /** Remove all unconfirmed optimistic bubbles after a worker recovery boundary. */
+  dropAllOptimistic: () => void;
   setStreamingAssistantId: (id: string | null) => void;
   /** Ensure a streaming assistant bubble exists for this run; returns its id. */
   ensureStreamingAssistant: () => string;
@@ -245,6 +260,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   messages: [],
   toolCards: [],
   queuedMessages: { steering: [], followUp: [] },
+  pendingOptimistic: [],
   optimisticKey: null,
   streamingAssistantId: null,
   lastAgentStartAt: 0,
@@ -346,6 +362,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         afterMessageId: card.afterMessageId,
       })),
       queuedMessages: { steering: [], followUp: [] },
+      pendingOptimistic: [],
       optimisticKey: null,
       streamingAssistantId: null,
       thinkingActive: false,
@@ -359,6 +376,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       messages: [],
       toolCards: [],
       queuedMessages: { steering: [], followUp: [] },
+      pendingOptimistic: [],
       optimisticKey: null,
       streamingAssistantId: null,
       thinkingActive: false,
@@ -384,42 +402,64 @@ export const useAppStore = create<AppState>((set, get) => ({
           : message,
       ),
     })),
-  consumeOptimisticWith: (delivered) =>
+  addOptimisticMessage: (pending, message) =>
+    set((state) => ({
+      messages: [...state.messages, message],
+      pendingOptimistic: [...state.pendingOptimistic, pending],
+      optimisticKey: pending.key,
+    })),
+  consumeOptimisticWith: (delivered, key, clientMessageId) =>
     set((state) => {
-      const last = state.messages[state.messages.length - 1];
-      const mergeUser = (current: SessionMessage): SessionMessage => ({
-        ...current,
-        ...delivered,
-        id: delivered.id || current.id,
-        text: delivered.text || current.text,
-        entryId: delivered.entryId ?? current.entryId,
-      });
-
-      if (last?.role === "user" && last.id.startsWith("optimistic-")) {
-        const messages = [...state.messages];
-        messages[messages.length - 1] = mergeUser(last);
-        return { messages, optimisticKey: null };
-      }
-      if (last?.role === "user" && (last.id === delivered.id || last.text === delivered.text)) {
-        const messages = [...state.messages];
-        messages[messages.length - 1] = { ...last, id: last.id, entryId: delivered.entryId ?? last.entryId, text: delivered.text || last.text };
-        return { messages, optimisticKey: null };
+      const pendingIndex = clientMessageId
+        ? state.pendingOptimistic.findIndex((item) => item.clientMessageId === clientMessageId)
+        : key
+          ? state.pendingOptimistic.findIndex((item) => item.key === key)
+        : state.pendingOptimistic.findIndex((item) => item.text === delivered.text) >= 0
+          ? state.pendingOptimistic.findIndex((item) => item.text === delivered.text)
+          : state.pendingOptimistic.length === 1
+            ? 0
+            : -1;
+      const pending = pendingIndex >= 0 ? state.pendingOptimistic[pendingIndex] : undefined;
+      const nextPending = pending
+        ? state.pendingOptimistic.filter((_, index) => index !== pendingIndex)
+        : state.pendingOptimistic;
+      const nextKey = nextPending.at(-1)?.key ?? null;
+      if (pending) {
+        const messageIndex = state.messages.findIndex((message) => message.id === pending.messageId);
+        if (messageIndex >= 0) {
+          const messages = [...state.messages];
+          messages[messageIndex] = {
+            ...messages[messageIndex],
+            ...delivered,
+            id: delivered.id || messages[messageIndex].id,
+            text: delivered.text || messages[messageIndex].text,
+            entryId: delivered.entryId ?? messages[messageIndex].entryId,
+          };
+          return { messages, pendingOptimistic: nextPending, optimisticKey: nextKey };
+        }
       }
       if (delivered.id && state.messages.some((message) => message.id === delivered.id)) {
-        return { optimisticKey: null };
+        return { pendingOptimistic: nextPending, optimisticKey: nextKey };
       }
-      return { messages: [...state.messages, delivered], optimisticKey: null };
+      return { messages: [...state.messages, delivered], pendingOptimistic: nextPending, optimisticKey: nextKey };
     }),
   dropLastIfOptimistic: (key) =>
     set((state) => {
-      if (state.optimisticKey !== key) return {};
-      const last = state.messages[state.messages.length - 1];
-      if (!last || last.role !== "user" || !last.id.startsWith("optimistic-")) return { optimisticKey: null };
+      const pending = state.pendingOptimistic.find((item) => item.key === key);
+      if (!pending) return {};
+      const nextPending = state.pendingOptimistic.filter((item) => item.key !== key);
       return {
-        messages: state.messages.slice(0, -1),
-        optimisticKey: null,
+        messages: state.messages.filter((message) => message.id !== pending.messageId),
+        pendingOptimistic: nextPending,
+        optimisticKey: nextPending.at(-1)?.key ?? null,
       };
     }),
+  dropAllOptimistic: () =>
+    set((state) => ({
+      messages: state.messages.filter((message) => !state.pendingOptimistic.some((item) => item.messageId === message.id)),
+      pendingOptimistic: [],
+      optimisticKey: null,
+    })),
   setStreamingAssistantId: (streamingAssistantId) => set({ streamingAssistantId }),
   ensureStreamingAssistant: () => {
     const state = get();

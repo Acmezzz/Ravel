@@ -37,7 +37,9 @@ let unsubscribe = null;
 let generation = 0;
 let disposed = false;
 let eventSequence = 0;
+let runtimeEpoch = 0;
 let activeRunId = null;
+const activeClientMessageIds = new Set();
 const pendingExtensionUI = new Map();
 /** Serializes non-streaming prompts; streaming prompts bypass it (steer). */
 let promptQueue = Promise.resolve();
@@ -51,6 +53,8 @@ function extensionMeta() {
     sessionId: runtime?.session?.sessionId ?? null,
     runId: activeRunId,
     generation,
+    runtimeEpoch,
+    clientMessageId: activeClientMessageIds.size === 1 ? activeClientMessageIds.values().next().value : null,
   };
 }
 
@@ -159,6 +163,8 @@ function attach(session) {
       sessionId: runtime?.session?.sessionId ?? session?.sessionId,
       runId: activeRunId,
       generation,
+      runtimeEpoch,
+      clientMessageId: activeClientMessageIds.size === 1 ? activeClientMessageIds.values().next().value : null,
     };
     if (event?.type === "agent_settled") post({ type: "settled", meta });
     for (const projected of bridge.toRendererEvent(event)) {
@@ -175,7 +181,9 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
   activeRunId = null;
+  activeClientMessageIds.clear();
   disposed = false;
+  runtimeEpoch = 0;
   extensionsRoot = root;
   projectTrusted = trusted !== false;
   runtime = await bridge.createRuntime({ cwd, extensionsRoot: root, projectTrusted });
@@ -220,29 +228,43 @@ function autoTitleFor(text) {
   }
 }
 
-async function prompt({ text, behavior, images, generation: requestGeneration }) {
+async function prompt({ text, behavior, images, clientMessageId, generation: requestGeneration }) {
   if (disposed || requestGeneration !== generation) {
     const error = new Error("stale worker generation");
     error.code = "stale_generation";
     throw error;
   }
   const session = runtime.session;
+  const promptEpoch = runtimeEpoch;
   const options = { streamingBehavior: behavior ?? "followUp" };
   if (images) options.images = images;
+  const runPrompt = async () => {
+    if (disposed || requestGeneration !== generation || promptEpoch !== runtimeEpoch) {
+      const error = new Error("stale worker runtime");
+      error.code = "stale_runtime";
+      throw error;
+    }
+    const trackedClientMessageId = typeof clientMessageId === "string" ? clientMessageId : null;
+    if (trackedClientMessageId) activeClientMessageIds.add(trackedClientMessageId);
+    try {
+      await session.prompt(text, options);
+      autoTitleFor(text);
+    } finally {
+      if (trackedClientMessageId) activeClientMessageIds.delete(trackedClientMessageId);
+    }
+  };
   if (session.isStreaming) {
-    await session.prompt(text, options);
-    autoTitleFor(text);
+    await runPrompt();
     return undefined;
   }
   const queuedGeneration = generation;
   const run = promptQueue.then(async () => {
-    if (disposed || queuedGeneration !== generation) {
-      const error = new Error("stale worker generation");
-      error.code = "stale_generation";
+    if (disposed || queuedGeneration !== generation || promptEpoch !== runtimeEpoch) {
+      const error = new Error("stale worker runtime");
+      error.code = "stale_runtime";
       throw error;
     }
-    await runtime.session.prompt(text, options);
-    autoTitleFor(text);
+    await runPrompt();
   });
   promptQueue = run.catch(() => {});
   return run;
@@ -295,6 +317,9 @@ async function listResourceBundle() {
 }
 
 async function recreateForWorkspace(workspace) {
+  const replacementEpoch = ++runtimeEpoch;
+  promptQueue = Promise.resolve();
+  activeClientMessageIds.clear();
   cancelAllExtensionUI();
   try {
     unsubscribe?.();
@@ -303,7 +328,20 @@ async function recreateForWorkspace(workspace) {
   }
   unsubscribe = undefined;
   await runtime.dispose();
-  runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot, projectTrusted });
+  try {
+    runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot, projectTrusted });
+  } catch (error) {
+    runtime = null;
+    disposed = true;
+    const wrapped = error instanceof Error ? error : new Error(String(error));
+    wrapped.code = wrapped.code ?? "runtime_replacement_failed";
+    throw wrapped;
+  }
+  if (replacementEpoch !== runtimeEpoch) {
+    const error = new Error("stale runtime replacement");
+    error.code = "stale_runtime";
+    throw error;
+  }
   runtime.setRebindSession(async (session) => {
     attach(session);
     await bindSession(session);
@@ -580,6 +618,7 @@ const methods = {
   },
   dispose: async () => {
     disposed = true;
+    activeClientMessageIds.clear();
     cancelAllExtensionUI();
     promptQueue = Promise.resolve();
     try {
@@ -625,8 +664,9 @@ process.parentPort.on("message", async (event) => {
     return;
   }
   if (message.type === "req") {
-    if (message.generation !== generation || !METHOD_NAMES.has(message.method) || (disposed && message.method !== "dispose")) {
-      post({ type: "resp", id: message.id, error: "stale or unsupported worker request", code: "stale_generation" });
+    const requestEpoch = message.args?.runtimeEpoch;
+    if (message.generation !== generation || (requestEpoch !== undefined && requestEpoch !== runtimeEpoch) || !METHOD_NAMES.has(message.method) || (disposed && message.method !== "dispose")) {
+      post({ type: "resp", id: message.id, error: "stale or unsupported worker request", code: requestEpoch !== undefined && requestEpoch !== runtimeEpoch ? "stale_runtime" : "stale_generation" });
       return;
     }
     try {

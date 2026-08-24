@@ -10,6 +10,11 @@ test("worker protocol validates init/request/response/event envelopes", () => {
   assert.equal(isWorkerRequest({ type: "req", id: "", method: "getState", generation: 1 }), false);
 });
 
+test("worker request schema permits an optional runtime epoch", () => {
+  assert.equal(isWorkerRequest({ type: "req", id: "req-epoch", method: "prompt", args: { runtimeEpoch: 2 }, generation: 1 }), true);
+  assert.equal(isWorkerRequest({ type: "req", id: "req-bad-epoch", method: "prompt", args: { runtimeEpoch: "2" }, generation: 1 }), true);
+});
+
 test("worker host preserves permission profile across restart and runtime schema is guarded", async () => {
   const source = await (await import("node:fs/promises")).readFile(new URL("../electron/worker-host.js", import.meta.url), "utf8");
   const main = await (await import("node:fs/promises")).readFile(new URL("../electron/main.js", import.meta.url), "utf8");

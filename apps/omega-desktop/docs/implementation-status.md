@@ -2,8 +2,8 @@
 
 > 更新日期：2026-08-24
 > 当前分支：`feat/omega-runtime-foundation`
-> 最近提交：Phase 6 performance and UX
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`（阶段 1–6 已完成）；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
+> 最近提交：Phase 1 prompt and worker identity
+> 当前验证：Electron syntax、Renderer TypeScript、桌面测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -41,6 +41,9 @@
 - WorkerHost 状态：`starting / ready / stopping / dead / restarting`。
 - Worker RPC 绑定 generation；迟到 response/event 被丢弃，pending RPC 在 Worker 失效时统一 reject。
 - Prompt queue 绑定 generation，切换 session/workspace 时不会串 prompt。
+- Prompt identity 通过 `clientMessageId` 从 Composer 贯通到 Worker event meta；多个并发流不会伪造单一归属，optimistic bubble 按 pending identity 对账。
+- Runtime replacement 使用 `runtimeEpoch`，旧 queued prompt 和旧 renderer event 在新代际被拒绝；replacement 创建失败进入 dead 状态，不保留假 ready。
+- WorkerHost 对 postMessage 断链立即清理 pending RPC；Main event persistence 失败只进入诊断边界。
 - Worker 关闭顺序固定为 `abort → bounded flush → dispose → kill`。
 - 运行中关闭提供等待、停止并退出、取消；flush 超时提供继续等待/强制退出风险提示。
 - Worker ready 后先拉 authoritative snapshot，再按 session/run/generation/sequence 过滤事件。
@@ -94,7 +97,7 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 128/128 通过
+Desktop/security tests: 131/131 通过
 Release gate: 通过（离线配置门禁）
 Packaged launch smoke: 手工验证过，尚未纳入自动 CI 门禁
 git diff --check: 通过
