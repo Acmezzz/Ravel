@@ -36,7 +36,7 @@ import type {
 } from "../types/dto";
 
 export interface OmegaBridge {
-  prompt(text: string, behavior?: "steer" | "followUp", images?: PromptImage[]): Promise<IpcResult<void>>;
+  prompt(text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string): Promise<IpcResult<void>>;
   abort(): Promise<IpcResult<void>>;
   updateSettings(req: {
     steeringMode?: "all" | "one-at-a-time";
@@ -152,8 +152,8 @@ function ok<T>(value: IpcResult<T> | undefined): IpcResult<T> {
 }
 
 export const ipc = {
-  prompt: async (text: string, behavior?: "steer" | "followUp", images?: PromptImage[]): Promise<IpcResult<void>> =>
-    ok(await window.omega?.prompt?.(text, behavior, images)),
+  prompt: async (text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string): Promise<IpcResult<void>> =>
+    ok(await window.omega?.prompt?.(text, behavior, images, clientMessageId)),
   abort: async (): Promise<IpcResult<void>> => ok(await window.omega?.abort?.()),
   updateSettings: async (req: {
     steeringMode?: "all" | "one-at-a-time";

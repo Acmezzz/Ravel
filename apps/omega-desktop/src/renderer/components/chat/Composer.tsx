@@ -249,24 +249,25 @@ export function Composer(): React.ReactElement {
 
       // Optimistic bubble: consumed/replaced when the SDK replays the user
       // message via message_start/message_end.
+      const clientMessageId = `prompt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const optimistic = {
         role: "user" as const,
-        id: `optimistic-${Date.now()}`,
+        id: `optimistic-${clientMessageId}`,
         text: value || "（图片）",
         ts: new Date().toISOString(),
       };
       const key = userMessageKey({ text: payload, images });
-      useAppStore.setState((state) => ({
-        messages: [...state.messages, optimistic],
-        optimisticKey: key,
-      }));
+      useAppStore.getState().addOptimisticMessage(
+        { key, clientMessageId, messageId: optimistic.id, text: optimistic.text, createdAt: sentAt },
+        optimistic,
+      );
 
       // Fire-and-forget: the IPC promise resolves when the whole turn settles
       // (non-streaming path) — blocking on it would disable Steer/Stop/Enter
       // for the entire run. Errors are handled below.
       void (async () => {
         try {
-          const res = await ipc.prompt(payload, behavior ?? (running ? "followUp" : undefined), images.length > 0 ? images : undefined);
+          const res = await ipc.prompt(payload, behavior ?? (running ? "followUp" : undefined), images.length > 0 ? images : undefined, clientMessageId);
           if (!res.ok) {
             const agentStarted = useAppStore.getState().lastAgentStartAt >= sentAt;
             useAppStore.getState().dropLastIfOptimistic(key);

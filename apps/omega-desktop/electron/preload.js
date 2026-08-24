@@ -62,8 +62,11 @@ function isPlainObject(value) {
 contextBridge.exposeInMainWorld("omega", {
   ...windowApi,
   // ----- legacy contract (unchanged) -----
-  prompt: (text, behavior, images) => {
+  prompt: (text, behavior, images, clientMessageId) => {
     if (typeof text !== "string" || !text.trim()) return Promise.resolve({ ok: false, code: "invalid_prompt", message: "Prompt must be a non-empty string" });
+    if (clientMessageId !== undefined && (typeof clientMessageId !== "string" || clientMessageId.length < 1 || clientMessageId.length > 128)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "clientMessageId must be a bounded string" });
+    }
     if (text.length > MAX_PROMPT_CHARS) return Promise.resolve({ ok: false, code: "prompt_too_large", message: `Prompt exceeds ${MAX_PROMPT_CHARS} characters` });
     if (behavior !== undefined && behavior !== "steer" && behavior !== "followUp") {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "behavior must be steer|followUp" });
@@ -73,7 +76,7 @@ contextBridge.exposeInMainWorld("omega", {
         return Promise.resolve({ ok: false, code: "invalid_args", message: `images must be 1-${MAX_PROMPT_IMAGES} {mimeType,data} entries` });
       }
     }
-    return ipcRenderer.invoke("agent:prompt", text, behavior, images);
+    return ipcRenderer.invoke("agent:prompt", text, behavior, images, clientMessageId?.slice(0, 128));
   },
   abort: () => ipcRenderer.invoke("agent:abort"),
   onTransport: (callback) => {

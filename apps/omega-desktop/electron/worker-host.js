@@ -190,7 +190,16 @@ export class WorkerHost {
       }, timeout);
       this.pending.set(id, { resolve: resolvePromise, reject: rejectPromise, timer, generation });
       const wireArgs = { ...(args ?? {}), generation };
-      this.child.postMessage({ type: "req", id, method, args: wireArgs, generation });
+      try {
+        this.child.postMessage({ type: "req", id, method, args: wireArgs, generation });
+      } catch (error) {
+        this.pending.delete(id);
+        clearTimeout(timer);
+        const failure = error instanceof Error ? error : new Error(String(error));
+        failure.code = "worker_unavailable";
+        rejectPromise(failure);
+        this._handleDeath(generation, failure);
+      }
     });
   }
 

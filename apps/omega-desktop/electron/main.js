@@ -332,11 +332,12 @@ function persistSessionRecovery(sessionId, patch) {
 
 function bindHost(host) {
   host.onEvent = (event, meta) => {
-    const sessionId = meta?.sessionId ?? host.sessionId;
-    if (event?.type === "agent_start" || event?.type === "turn_start") {
-      workerPool.markRunning(sessionId, true);
-      persistSessionRecovery(sessionId, { state: "running", running: true, error: null });
-    }
+    try {
+      const sessionId = meta?.sessionId ?? host.sessionId;
+      if (event?.type === "agent_start" || event?.type === "turn_start") {
+        workerPool.markRunning(sessionId, true);
+        persistSessionRecovery(sessionId, { state: "running", running: true, error: null });
+      }
     if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") {
       workerPool.markRunning(sessionId, false);
       persistSessionRecovery(sessionId, { state: "ready", running: false, error: null });
@@ -360,8 +361,12 @@ function bindHost(host) {
         /* event cache is best effort and never blocks the agent */
       }
     }
-    if (!win || win.isDestroyed()) return;
-    win.webContents.send("agent:event", { event, meta });
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send("agent:event", { event, meta });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      sendTransportState("diagnostic", { sessionId: host.sessionId, foreground: host === worker, error: message });
+    }
   };
   host.onExtensionUIRequest = (request) => {
     if (!isExtensionUIRequest(request)) return;
@@ -967,12 +972,15 @@ function normalizePromptImages(images) {
   });
 }
 
-ipcMain.handle("agent:prompt", async (event, text, behavior, images) => {
+ipcMain.handle("agent:prompt", async (event, text, behavior, images, clientMessageId) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (typeof text !== "string" || !text.trim()) return errorResult("invalid_prompt", "Prompt must be a non-empty string");
   if (text.length > MAX_PROMPT_CHARS) return errorResult("prompt_too_large", `Prompt exceeds ${MAX_PROMPT_CHARS} characters`);
   if (behavior !== undefined && !PROMPT_BEHAVIORS.includes(behavior)) {
     return errorResult("invalid_args", "behavior must be 'steer' or 'followUp'");
+  }
+  if (clientMessageId !== undefined && (typeof clientMessageId !== "string" || clientMessageId.length < 1 || clientMessageId.length > 128)) {
+    return errorResult("invalid_args", "clientMessageId must be a bounded string");
   }
   if (bootstrapError) return errorResult("bootstrap_failed", "Agent initialization failed");
   let imageContents;
@@ -981,7 +989,7 @@ ipcMain.handle("agent:prompt", async (event, text, behavior, images) => {
   } catch (error) {
     return errorResult("invalid_args", error instanceof Error ? error.message : String(error));
   }
-  return rpc("prompt", { text: text.trim(), behavior, images: imageContents }, "prompt_failed");
+  return rpc("prompt", { text: text.trim(), behavior, images: imageContents, clientMessageId: clientMessageId?.slice(0, 128) }, "prompt_failed");
 });
 
 ipcMain.handle("agent:abort", async (event) => {

@@ -8,6 +8,8 @@ export interface EventMeta {
   sequence: number;
   sessionId?: string;
   runId?: string | null;
+  clientMessageId?: string | null;
+  runtimeEpoch?: number;
   generation: number;
 }
 
