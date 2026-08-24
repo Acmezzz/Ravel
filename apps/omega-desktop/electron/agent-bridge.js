@@ -208,7 +208,7 @@ export function toRendererEvent(event) {
     const role = event.message?.role;
     if (role !== "user" && role !== "assistant" && role !== "toolResult") return [];
     const id = textValue(event.message?.id);
-    const text = textFromContent(event.message?.content);
+    const text = cap(textFromContent(event.message?.content));
     return [{ type, message: { role, ...(id ? { id } : {}), ...(text ? { text } : {}) } }];
   }
   if (type === "message_end") {
@@ -217,7 +217,7 @@ export function toRendererEvent(event) {
     const role = event.message?.role;
     if (role !== "user" && role !== "assistant" && role !== "toolResult") return [];
     const id = textValue(event.message?.id);
-    const text = textFromContent(event.message?.content);
+    const text = cap(textFromContent(event.message?.content));
     return [{ type, message: { role, ...(id ? { id } : {}), ...(text ? { text } : {}) } }];
   }
   if (type === "message_update") {
@@ -230,7 +230,7 @@ export function toRendererEvent(event) {
           type,
           assistantMessageEvent: {
             type: update.type,
-            ...(typeof update.delta === "string" ? { delta: update.delta } : {}),
+            ...(typeof update.delta === "string" ? { delta: cap(update.delta, 4_000) } : {}),
           },
         },
       ];
@@ -288,8 +288,8 @@ export function toRendererEvent(event) {
     return [{ type, active: event.active === true }];
   }
   if (type === "queue_update") {
-    const steering = Array.isArray(event.steering) ? event.steering.map(String) : [];
-    const followUp = Array.isArray(event.followUp) ? event.followUp.map(String) : [];
+    const steering = Array.isArray(event.steering) ? event.steering.slice(0, 100).map((item) => cap(String(item), 2_000)) : [];
+    const followUp = Array.isArray(event.followUp) ? event.followUp.slice(0, 100).map((item) => cap(String(item), 2_000)) : [];
     return [{ type, steering, followUp, pendingCount: steering.length + followUp.length }];
   }
   if (type === "session_info_changed") {
@@ -303,7 +303,7 @@ export function toRendererEvent(event) {
     return [{ type, status: event.success === true ? "done" : "error", attempt: Number(event.attempt) || 0, finalError: cap(textValue(event.finalError)) }];
   }
   if (type === "error" || type.endsWith("_error")) {
-    return [{ type: "error", message: textValue(event.message) ?? "Agent error" }];
+    return [{ type: "error", message: cap(textValue(event.message)) ?? "Agent error" }];
   }
   return [];
 }
@@ -354,7 +354,7 @@ export function sanitizeTranscript(messagesOrSession) {
       outMessages.push({
         role: "user",
         id: textValue(message.id) ?? `user-${outMessages.length}`,
-        text: textFromContent(message.content),
+        text: cap(textFromContent(message.content)),
         ts: messageTimestamp(message),
         entryId: entry.id,
       });
@@ -366,7 +366,7 @@ export function sanitizeTranscript(messagesOrSession) {
       outMessages.push({
         role: "assistant",
         id,
-        text: textFromContent(message.content),
+        text: cap(textFromContent(message.content)),
         ts: messageTimestamp(message),
         entryId: entry.id,
         // Deferred: the thinking text is NOT embedded in the transcript (long

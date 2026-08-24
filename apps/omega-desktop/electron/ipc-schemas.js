@@ -30,8 +30,9 @@ export function fileRequest(value) {
 export function replayRequest(value) {
   const sessionId = typeof value?.sessionId === "string" && value.sessionId.length <= MAX.sessionId ? value.sessionId : undefined;
   const after = Number.isFinite(value?.after) && value.after >= 0 ? value.after : 0;
+  const runtimeEpoch = Number.isInteger(value?.runtimeEpoch) && value.runtimeEpoch >= 0 ? value.runtimeEpoch : 0;
   const limit = Number.isInteger(value?.limit) ? Math.max(1, Math.min(value.limit, 300)) : 100;
-  return { sessionId, after, limit };
+  return { sessionId, after, runtimeEpoch, limit };
 }
 
 export function gitCommitRequest(value) {

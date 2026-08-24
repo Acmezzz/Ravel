@@ -47,7 +47,7 @@
 - Worker 关闭顺序固定为 `abort → bounded flush → dispose → kill`。
 - 运行中关闭提供等待、停止并退出、取消；flush 超时提供继续等待/强制退出风险提示。
 - Worker ready 后先拉 authoritative snapshot，再按 session/run/generation/sequence 过滤事件。
-- event cache 按 session 持久化到 `userData/event-cache`，支持内存为空时恢复和 `limit/nextAfter` replay 分页。
+- event cache 按 session 持久化到 `userData/event-cache`，通过 per-session 异步写队列写入，并按 300 条 / 4 MiB 双重上限保留尾部 ring；支持删除竞态失效、内存为空时异步恢复和带 `runtimeEpoch` 的 `limit/nextAfter` replay 分页。
 - WorkerSlot pool 默认 cap=3、idle TTL=5 分钟，支持后台运行状态、空闲回收、同 workspace 空闲 slot 复用和 unref health check。
 
 ### 2.4 Shared IPC 与安全协议
@@ -97,7 +97,7 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 131/131 通过
+Desktop/security tests: 132/132 通过
 Release gate: 通过（离线配置门禁）
 Packaged launch smoke: 手工验证过，尚未纳入自动 CI 门禁
 git diff --check: 通过

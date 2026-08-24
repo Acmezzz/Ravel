@@ -42,7 +42,8 @@ test("worker and renderer use sequenced event envelopes for stale-event rejectio
   assert.match(app, /meta\.sequence <= lastSequence/);
   assert.match(app, /meta\.generation < currentGeneration/);
   assert.match(main, /recentEventsBySession/);
-  assert.match(main, /gap: after > 0/);
+  assert.match(main, /runtimeEpoch/);
+  assert.match(main, /firstMeta\?\.runtimeEpoch/);
   assert.match(main, /sendTransportState\("flushing"\)/);
   assert.match(main, /sendTransportState\("exiting"\)/);
   const host = await read("../electron/worker-host.js");

@@ -353,7 +353,7 @@ export function App(): React.ReactElement {
             store.dropAllOptimistic();
             store.setComposerError("Worker 已恢复。未确认发送的消息没有自动重发，请检查后手动发送。");
           }
-          const result = await ipc.recentEvents({ sessionId, after: 0 });
+          const result = await ipc.recentEvents({ sessionId, after: 0, runtimeEpoch: 0 });
           if (!result.ok || result.data.gap || state?.isStreaming !== true) {
             if (result.ok && result.data.gap && !store.composerError) store.setComposerError("会话已恢复，事件缓存已重新同步");
             return;

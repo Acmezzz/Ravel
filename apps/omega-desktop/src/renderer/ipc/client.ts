@@ -103,7 +103,7 @@ export interface OmegaBridge {
   inspectProjectTrust(req?: { workspace?: string }): Promise<IpcResult<ProjectTrustInfo>>;
   decideProjectTrust(req: { workspace: string; decision: ProjectTrustChoice }): Promise<IpcResult<{ trust: ProjectTrustInfo; reloaded?: boolean; sessionId?: string; workspaces: WorkspaceInfo[] }>>;
   retryWorker(): Promise<IpcResult<{ state: string; sessionId?: string; cwd?: string }>>;
-  recentEvents(req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number; nextAfter?: number | null }>>;
+  recentEvents(req: { sessionId?: string; after: number; runtimeEpoch?: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number; nextAfter?: number | null; runtimeEpoch?: number }>>;
   sessionReady(): Promise<IpcResult<{ ready: boolean }>>;
   getState(): Promise<IpcResult<AgentStateSnapshot>>;
   listModels(): Promise<IpcResult<ModelInfo[]>>;
@@ -234,7 +234,7 @@ export const ipc = {
   inspectProjectTrust: async (req?: { workspace?: string }): Promise<IpcResult<ProjectTrustInfo>> => ok(await window.omega?.inspectProjectTrust?.(req)),
   decideProjectTrust: async (req: { workspace: string; decision: ProjectTrustChoice }): Promise<IpcResult<{ trust: ProjectTrustInfo; reloaded?: boolean; sessionId?: string; workspaces: WorkspaceInfo[] }>> => ok(await window.omega?.decideProjectTrust?.(req)),
   retryWorker: async (): Promise<IpcResult<{ state: string; sessionId?: string; cwd?: string }>> => ok(await window.omega?.retryWorker?.()),
-  recentEvents: async (req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number }>> => ok(await window.omega?.recentEvents?.(req)),
+  recentEvents: async (req: { sessionId?: string; after: number; runtimeEpoch?: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number; nextAfter?: number | null; runtimeEpoch?: number }>> => ok(await window.omega?.recentEvents?.(req)),
   sessionReady: async (): Promise<IpcResult<{ ready: boolean }>> =>
     ok(await window.omega?.sessionReady?.()),
   getState: async (): Promise<IpcResult<AgentStateSnapshot>> => ok(await window.omega?.getState?.()),

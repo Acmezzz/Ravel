@@ -170,6 +170,7 @@ contextBridge.exposeInMainWorld("omega", {
   recentEvents: (req) => ipcRenderer.invoke("omega:recentEvents", {
     sessionId: safeString(req?.sessionId, 128),
     after: Number.isFinite(req?.after) ? req.after : 0,
+    runtimeEpoch: Number.isInteger(req?.runtimeEpoch) ? req.runtimeEpoch : 0,
     limit: Number.isInteger(req?.limit) ? req.limit : 300,
   }),
   sessionReady: () => ipcRenderer.invoke("omega:sessionReady"),

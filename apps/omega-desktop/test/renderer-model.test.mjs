@@ -25,6 +25,29 @@ test("agent:event text_delta is preserved and additive only", () => {
   assert.equal(delta.assistantMessageEvent.delta, "world");
 });
 
+test("renderer event projection bounds transcript and queue payloads", () => {
+  const longText = "x".repeat(70_000);
+  const message = toRendererEvent({
+    type: "message_end",
+    message: { id: "message-1", role: "assistant", content: [{ type: "text", text: longText }] },
+  })[0];
+  assert.equal(message.message.text.length, 64_001);
+  const delta = toRendererEvent({
+    type: "message_update",
+    assistantMessageEvent: { type: "thinking_delta", delta: longText },
+  }).find((event) => event.type === "message_update");
+  assert.equal(delta.assistantMessageEvent.delta.length, 4_001);
+  const queue = toRendererEvent({
+    type: "queue_update",
+    steering: [longText, longText],
+    followUp: [longText],
+  })[0];
+  assert.equal(queue.steering[0].length, 2_001);
+  assert.equal(queue.pendingCount, 3);
+  const error = toRendererEvent({ type: "error", message: longText })[0];
+  assert.equal(error.message.length, 64_001);
+});
+
 test("tool_execution_summary is additive and does not alter existing event fields", () => {
   // The original tool_execution_start shape must remain identical.
   const base = toRendererEvent({

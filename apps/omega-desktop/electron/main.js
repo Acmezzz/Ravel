@@ -19,7 +19,8 @@ import {
   dialog,
   safeStorage,
 } from "electron";
-import { existsSync, mkdirSync, unlinkSync, writeFileSync, appendFileSync, readFileSync, watch } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync, watch } from "node:fs";
+import { appendFile, mkdir, readFile, rename, stat, writeFile as writeFileAsync } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { forgetSessionPath, piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
@@ -53,6 +54,7 @@ const MAX_IMAGE_CHARS = 8_000_000;
 const WORKER_RPC_TIMEOUT = 120_000;
 const CLOSE_FLUSH_TIMEOUT = 10_000;
 const RECENT_EVENT_LIMIT = 300;
+const RECENT_EVENT_MAX_BYTES = 4 * 1024 * 1024;
 let win;
 let worker = null;
 let workerPool = createWorkerSlotPool();
@@ -73,6 +75,9 @@ let persistBoundsTimer = null;
 const fileSelections = new Map();
 const fileWatchers = new Map();
 const recentEventsBySession = new Map();
+const recentEventBytesBySession = new Map();
+const recentEventWrites = new Map();
+const recentEventEpochs = new Map();
 
 function parseStartupRequest(argv = process.argv) {
   const result = { workspace: process.env.OMEGA_WORKSPACE ?? null, sessionId: null };
@@ -115,6 +120,58 @@ function credentialStoreFile() {
 
 function recentEventsFile(sessionId) {
   return join(app.getPath("userData"), "omega", "event-cache", `${String(sessionId).replace(/[^A-Za-z0-9_-]/g, "_")}.jsonl`);
+}
+
+function parseRecentEventLines(raw) {
+  return raw
+    .split("\n")
+    .filter(Boolean)
+    .slice(-RECENT_EVENT_LIMIT)
+    .map((line) => {
+      try { return JSON.parse(line); } catch { return null; }
+    })
+    .filter((item) => item && item.event && item.meta);
+}
+
+async function trimRecentEventsFile(file) {
+  try {
+    const info = await stat(file);
+    if (info.size <= RECENT_EVENT_MAX_BYTES) return;
+    const lines = parseRecentEventLines(await readFile(file, "utf8"));
+    const bounded = [];
+    let bytes = 0;
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const line = `${JSON.stringify(lines[index])}\n`;
+      const size = Buffer.byteLength(line);
+      if (bounded.length >= RECENT_EVENT_LIMIT || bytes + size > RECENT_EVENT_MAX_BYTES) break;
+      bounded.unshift(line);
+      bytes += size;
+    }
+    const temp = `${file}.tmp-${process.pid}`;
+    await writeFileAsync(temp, bounded.join(""), "utf8");
+    await rename(temp, file);
+  } catch {
+    /* cache trimming is best effort */
+  }
+}
+
+function enqueueRecentEvent(sessionId, payload) {
+  const file = recentEventsFile(sessionId);
+  const epoch = recentEventEpochs.get(sessionId) ?? 0;
+  const previous = recentEventWrites.get(sessionId) ?? Promise.resolve();
+  const next = previous
+    .catch(() => {})
+    .then(async () => {
+      if ((recentEventEpochs.get(sessionId) ?? 0) !== epoch) return;
+      await mkdir(dirname(file), { recursive: true });
+      await appendFile(file, `${JSON.stringify(payload)}\n`, "utf8");
+      await trimRecentEventsFile(file);
+    })
+    .catch(() => {})
+    .finally(() => {
+      if (recentEventWrites.get(sessionId) === next) recentEventWrites.delete(sessionId);
+    });
+  recentEventWrites.set(sessionId, next);
 }
 
 function authorizedWorkspace(value) {
@@ -270,6 +327,9 @@ function pruneFileSelections() {
 
 function forgetSessionEvents(sessionId) {
   if (!sessionId) return;
+  recentEventEpochs.set(sessionId, (recentEventEpochs.get(sessionId) ?? 0) + 1);
+  recentEventWrites.delete(sessionId);
+  recentEventBytesBySession.delete(sessionId);
   recentEventsBySession.delete(sessionId);
   try {
     const cacheFile = recentEventsFile(sessionId);
@@ -350,16 +410,16 @@ function bindHost(host) {
     if (event?.type === "auto_retry_end") persistSessionRecovery(sessionId, { state: event.status === "done" ? "ready" : "error", running: false, retryAttempt: event.attempt, error: event.finalError ?? null });
     if (meta?.sequence && sessionId) {
       const bucket = recentEventsBySession.get(sessionId) ?? [];
-      bucket.push({ event, meta });
-      if (bucket.length > RECENT_EVENT_LIMIT) bucket.splice(0, bucket.length - RECENT_EVENT_LIMIT);
-      recentEventsBySession.set(sessionId, bucket);
-      try {
-        const cacheFile = recentEventsFile(sessionId);
-        mkdirSync(dirname(cacheFile), { recursive: true });
-        appendFileSync(cacheFile, `${JSON.stringify({ event, meta })}\n`);
-      } catch {
-        /* event cache is best effort and never blocks the agent */
+      const payload = { event, meta };
+      bucket.push(payload);
+      let bucketBytes = (recentEventBytesBySession.get(sessionId) ?? 0) + Buffer.byteLength(JSON.stringify(payload));
+      while (bucket.length > RECENT_EVENT_LIMIT || bucketBytes > RECENT_EVENT_MAX_BYTES) {
+        const removed = bucket.shift();
+        bucketBytes -= removed ? Buffer.byteLength(JSON.stringify(removed)) : 0;
       }
+      recentEventsBySession.set(sessionId, bucket);
+      recentEventBytesBySession.set(sessionId, Math.max(0, bucketBytes));
+      enqueueRecentEvent(sessionId, payload);
     }
       if (!win || win.isDestroyed()) return;
       win.webContents.send("agent:event", { event, meta });
@@ -924,23 +984,36 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
   return result;
 });
 
-ipcMain.handle("omega:recentEvents", (event, req) => {
+ipcMain.handle("omega:recentEvents", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = replayRequest(req);
   const sessionId = normalized.sessionId ?? worker?.sessionId;
   const after = normalized.after;
+  const requestedEpoch = normalized.runtimeEpoch;
   const limit = normalized.limit;
   let bucket = sessionId ? recentEventsBySession.get(sessionId) ?? [] : [];
   if (sessionId && bucket.length === 0) {
     try {
-      bucket = readFileSync(recentEventsFile(sessionId), "utf8").split("\n").filter(Boolean).slice(-RECENT_EVENT_LIMIT).map((line) => JSON.parse(line)).filter((item) => item && item.event && item.meta);
+      bucket = parseRecentEventLines(await readFile(recentEventsFile(sessionId), "utf8"));
+      recentEventsBySession.set(sessionId, bucket);
+      recentEventBytesBySession.set(sessionId, bucket.reduce((total, item) => total + Buffer.byteLength(JSON.stringify(item)), 0));
     } catch {
       bucket = [];
     }
   }
   const first = bucket[0]?.meta?.sequence ?? 0;
   const last = bucket.at(-1)?.meta?.sequence ?? 0;
-  return okResult({ events: bucket.filter((item) => item.meta?.sequence > after).slice(0, limit), gap: after > 0 && first > after + 1, first, last, nextAfter: bucket.find((item) => item.meta?.sequence > after + limit)?.meta?.sequence ?? null });
+  const firstMeta = bucket[0]?.meta;
+  const afterEpoch = requestedEpoch;
+  const events = bucket
+    .filter((item) => {
+      const sequence = item.meta?.sequence;
+      const epoch = item.meta?.runtimeEpoch ?? 0;
+      return epoch > afterEpoch || (epoch === afterEpoch && sequence > after);
+    })
+    .slice(0, limit);
+  const gap = after > 0 && first > after + 1 && (firstMeta?.runtimeEpoch ?? 0) === afterEpoch;
+  return okResult({ events, gap, first, last, nextAfter: events.at(-1)?.meta?.sequence ?? null, runtimeEpoch: events.at(-1)?.meta?.runtimeEpoch ?? firstMeta?.runtimeEpoch ?? 0 });
 });
 
 ipcMain.handle("window:isMaximized", (event) => {
