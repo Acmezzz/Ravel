@@ -278,6 +278,38 @@ export function revertFiles(files, cwd, snapshotToken) {
   };
 }
 
+/** Reject selected unstaged files or hunks after validating the approved snapshot. */
+export function rejectItems(cwd, items, snapshotToken) {
+  const snapshot = snapshotFor(cwd, snapshotToken);
+  const allowedFiles = new Map((snapshot?.unstaged ?? []).map((file) => [file.path, file]));
+  const revertedFiles = [];
+  const errors = [];
+  for (const item of items ?? []) {
+    const safePath = safeRepoPath(snapshot?.repoRoot, item?.path);
+    const file = safePath ? allowedFiles.get(safePath) : undefined;
+    if (!file) {
+      errors.push(`${String(item?.path)}: file is not present in the approved snapshot`);
+      continue;
+    }
+    const selected = Array.isArray(item.hunks) ? item.hunks.filter((hunk) => typeof hunk === "string" && hunk.includes("@@")) : [];
+    const approvedRaws = new Set((file.hunks ?? []).map((hunk) => hunk.raw).filter(Boolean));
+    const raws = selected.filter((raw) => approvedRaws.has(raw));
+    if (selected.length !== raws.length) {
+      errors.push(`${safePath}: one or more hunks are not present in the approved snapshot`);
+      continue;
+    }
+    try {
+      if (raws.length > 0) gitInput(cwd, ["apply", "-R", "--recount", "-"], buildPatch(safePath, raws));
+      else if (isTracked(cwd, safePath)) git(cwd, ["checkout", "--", safePath]);
+      else git(cwd, ["clean", "-f", "--", safePath]);
+      revertedFiles.push(safePath);
+    } catch (error) {
+      errors.push(`${safePath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return { applied: errors.length === 0, action: "reject", revertedFiles, errors };
+}
+
 /** Accept = no-op (keep changes). */
 export function acceptChanges() {
   return { applied: true, action: "accept", revertedFiles: [], errors: [] };

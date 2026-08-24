@@ -90,7 +90,7 @@ function TrackerView({ data }: { data: WorkflowTracker }) {
         {data.escaped ? " · 已逃逸" : ""}
         {data.alternativeId ? ` · 备选 ${data.alternativeId}` : ""}
       </Typography>
-      <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>更新：{data.updatedAt || "—"}</Typography>
+      <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>更新：{data.updatedAt || "未更新"}</Typography>
     </Stack>
   );
 }

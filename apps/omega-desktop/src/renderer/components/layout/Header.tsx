@@ -226,7 +226,7 @@ function ContextDonut({ percent }: { percent: number }): React.ReactElement {
 function formatUsage(_percent: number | null, tokens: number | null, contextWindow: number | null): string {
   if (tokens !== null && contextWindow) return `${tokens}/${contextWindow}`;
   if (contextWindow) return `${contextWindow} ctx`;
-  return "—";
+  return "暂无数据";
 }
 
 export function Header(): React.ReactElement {
@@ -381,7 +381,7 @@ export function Header(): React.ReactElement {
             background: "var(--omega-bg-soft)",
             cursor: shuttingDown ? "default" : "pointer",
             opacity: shuttingDown ? 0.55 : 1,
-            transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+            transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
             "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
           }}
         >

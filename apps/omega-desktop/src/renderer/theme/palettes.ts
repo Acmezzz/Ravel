@@ -54,6 +54,8 @@ export interface Palette {
   shadowLg: string;
   /** Subtle top highlight inset on dark elevated surfaces (premium depth cue). */
   insetHighlight: string;
+  /** Foreground color with reliable contrast on the Amber accent surfaces. */
+  accentForeground: string;
   /** Accent gradient for signature moments (send button, user bubble). */
   accentGradient: string;
 }
@@ -89,6 +91,7 @@ export const darkPalette: Palette = {
   shadowMd: "0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30)",
   shadowLg: "0 20px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.38)",
   insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.06)",
+  accentForeground: "#2b1b05",
   accentGradient: "linear-gradient(135deg, #c98914 0%, #e8b44a 100%)",
 };
 
@@ -123,6 +126,7 @@ export const lightPalette: Palette = {
   shadowMd: "0 4px 16px rgba(26, 25, 22, 0.08), 0 1px 3px rgba(26, 25, 22, 0.05)",
   shadowLg: "0 16px 48px rgba(26, 25, 22, 0.14), 0 4px 12px rgba(26, 25, 22, 0.06)",
   insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.70)",
+  accentForeground: "#2b1b05",
   accentGradient: "linear-gradient(135deg, #c67d12 0%, #e09a2a 100%)",
 };
 

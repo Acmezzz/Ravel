@@ -528,7 +528,7 @@ test("stage 5 workbench keeps focus and narrow layouts explicit", async () => {
   assert.match(store, /leftPanelOpen/);
   assert.match(store, /toggleFocusMode/);
   assert.match(css, /message-reading-column/);
-  assert.match(css, /#6657d9/);
+  assert.match(css, /--omega-accent/);
 });
 
 test("stage 4 bounds large diff and extension projections", async () => {

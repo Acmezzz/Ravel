@@ -408,6 +408,7 @@ export function App(): React.ReactElement {
     void (async () => {
       setExtensionLoading(true);
       const res = await ipc.queryExtensionState({ scope: "all" });
+      if (cancelled) return;
       if (res.ok) setExtensionState(res.data);
       setExtensionLoading(false);
     })();

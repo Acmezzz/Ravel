@@ -29,7 +29,9 @@ function trustChip(workspace: WorkspaceInfo): string | null {
   return null;
 }
 
-async function applyWorkspaceRecord(): Promise<void> {
+let workspaceLoadGeneration = 0;
+
+async function applyWorkspaceRecord(generation: number): Promise<void> {
   const store = useAppStore.getState();
   const [state, models, commands, sessions, extensions, git] = await Promise.all([
     ipc.getState(),
@@ -39,6 +41,7 @@ async function applyWorkspaceRecord(): Promise<void> {
     ipc.queryExtensionState({ scope: "all" }),
     ipc.gitSnapshot(),
   ]);
+  if (generation !== workspaceLoadGeneration) return;
   if (state.ok) {
     store.setAgent(state.data);
     if (state.data.queuedMessages) {
@@ -79,8 +82,9 @@ export function ProjectSwitcher(): React.ReactElement {
     setError(null);
     const result = await ipc.switchWorkspace({ workspace: root });
     if (result.ok) {
+      const generation = ++workspaceLoadGeneration;
       useAppStore.getState().loadTranscript(result.data);
-      await applyWorkspaceRecord();
+      await applyWorkspaceRecord(generation);
       setAnchor(null);
       await refresh();
     } else if (result.code === "trust_required") {
@@ -127,7 +131,8 @@ export function ProjectSwitcher(): React.ReactElement {
     setWorkspaces(result.data.workspaces);
     setPendingTrust(null);
     if (result.data.reloaded) {
-      await applyWorkspaceRecord();
+      const generation = ++workspaceLoadGeneration;
+      await applyWorkspaceRecord(generation);
       setAnchor(null);
     } else {
       await switchTo(pendingTrust.workspace);
@@ -175,7 +180,7 @@ export function ProjectSwitcher(): React.ReactElement {
           background: "var(--omega-bg-soft)",
           cursor: disabled ? "default" : "pointer",
           opacity: disabled ? 0.55 : 1,
-          transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+          transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
           "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
         }}
       >

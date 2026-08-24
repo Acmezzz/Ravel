@@ -11,5 +11,5 @@ test("FileViewer watch uses controlled Main IPC and refreshes the current path",
   assert.match(preload, /onFileChanged/);
   assert.match(viewer, /watchFile/);
   assert.match(viewer, /unwatchFile/);
-  assert.match(viewer, /openViewer\(viewer\.path/);
+  assert.match(viewer, /openViewer\((?:viewer\.path|requestPath)/);
 });

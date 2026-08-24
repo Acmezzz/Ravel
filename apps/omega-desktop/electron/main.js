@@ -1735,7 +1735,9 @@ ipcMain.handle("omega:approveChange", (event, req) => {
     const result =
       req.action === "accept"
         ? diffService.acceptChanges()
-        : diffService.revertFiles(Array.isArray(req.files) ? req.files : [], cwd, req.snapshotToken);
+        : Array.isArray(req.items) && req.items.length > 0
+          ? diffService.rejectItems(cwd, req.items, req.snapshotToken)
+          : diffService.revertFiles(Array.isArray(req.files) ? req.files : [], cwd, req.snapshotToken);
     return okResult(result);
   } catch (error) {
     return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));

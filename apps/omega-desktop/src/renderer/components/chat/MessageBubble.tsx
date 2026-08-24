@@ -108,7 +108,7 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
             ...(isUser
               ? {
                   order: 2,
-                  color: "#fff",
+                  color: "var(--omega-accent-foreground)",
                   background: "var(--omega-accent-gradient)",
                   border: "1px solid var(--omega-accent-line)",
                   borderRadius: "16px 4px 16px 16px",

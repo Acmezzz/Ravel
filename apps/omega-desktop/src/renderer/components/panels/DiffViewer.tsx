@@ -216,8 +216,25 @@ export function DiffViewer(): React.ReactElement {
   const refresh = React.useCallback(async () => {
     setBusy(true);
     const res = await ipc.gitSnapshot();
-    if (res.ok) setGitSnapshot(res.data);
-    else setError(res.message);
+    if (res.ok) {
+      setGitSnapshot(res.data);
+      const valid = new Map(res.data.unstaged.concat(res.data.staged).map((file) => [file.path, file]));
+      const prune = (selection: Selection): Selection => {
+        const files = new Map<string, Set<number>>();
+        for (const [path, hunks] of selection.files) {
+          const file = valid.get(path);
+          if (!file) continue;
+          if (hunks.size === 0) files.set(path, new Set());
+          else {
+            const kept = new Set([...hunks].filter((index) => index >= 0 && index < file.hunks.length));
+            if (kept.size > 0) files.set(path, kept);
+          }
+        }
+        return { files };
+      };
+      setUnstagedSel(prune);
+      setStagedSel(prune);
+    } else setError(res.message);
     setBusy(false);
   }, [setGitSnapshot]);
 
@@ -255,6 +272,7 @@ export function DiffViewer(): React.ReactElement {
       } else if (hunks.size === 0) {
         return prev; // whole file selected — hunk toggle disabled
       }
+      hunks = new Set(hunks);
       if (hunks.has(hunkIndex)) hunks.delete(hunkIndex);
       else hunks.add(hunkIndex);
       files.set(path, hunks);
@@ -345,7 +363,7 @@ export function DiffViewer(): React.ReactElement {
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
           <Chip
             size="small"
-            label={snapshot.branch || "—"}
+            label={snapshot.branch || "无分支"}
             title={snapshot.branch || undefined}
             sx={{
               flex: "1 1 auto",
@@ -431,6 +449,7 @@ export function DiffViewer(): React.ReactElement {
           {unstagedCount > 0 ? (
             <ApprovalBar
               snapshotToken={snapshot.snapshotToken}
+              selectedItems={collectItems(unstagedSel, snapshot.unstaged)}
               selectedFiles={[...unstagedSel.files.keys()].filter((p) => snapshot.unstaged.some((f) => f.path === p))}
               hasUntrackedSelected={snapshot.unstaged.some((f) => unstagedSel.files.has(f.path) && f.status === "added")}
               onApplied={() => {

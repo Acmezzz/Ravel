@@ -35,7 +35,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         palette: {
           mode: resolvedMode,
           background: { default: palette.bgApp, paper: palette.bgPanel },
-          primary: { main: palette.accentStrong },
+          primary: { main: palette.accentStrong, contrastText: palette.accentForeground },
           secondary: { main: palette.accent },
           error: { main: palette.danger },
           success: { main: palette.success },
@@ -70,11 +70,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 fontWeight: 550,
                 borderRadius: 9,
                 letterSpacing: "0.005em",
-                transition: `all 140ms ${EASE_OUT}`,
+                transition: `background 140ms ${EASE_OUT}, border-color 140ms ${EASE_OUT}, box-shadow 140ms ${EASE_OUT}, color 140ms ${EASE_OUT}, filter 140ms ${EASE_OUT}, transform 140ms ${EASE_OUT}`,
                 "&:active": { transform: "scale(0.97)" },
               },
               contained: {
                 background: palette.accentGradient,
+                color: palette.accentForeground,
                 boxShadow: "none",
                 "&:hover": {
                   background: palette.accentGradient,
@@ -99,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
             styleOverrides: {
               root: {
                 borderRadius: 8,
-                transition: `all 140ms ${EASE_OUT}`,
+                transition: `background-color 140ms ${EASE_OUT}, color 140ms ${EASE_OUT}, transform 140ms ${EASE_OUT}`,
                 "&:hover": { background: "var(--omega-hover-fill)" },
                 "&:active": { transform: "scale(0.92)" },
               },
@@ -112,7 +113,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 fontWeight: 550,
                 letterSpacing: "0.01em",
                 borderRadius: 8,
-                transition: `all 140ms ${EASE_OUT}`,
+                transition: `background-color 140ms ${EASE_OUT}, border-color 140ms ${EASE_OUT}, box-shadow 140ms ${EASE_OUT}, color 140ms ${EASE_OUT}, transform 140ms ${EASE_OUT}`,
               },
               sizeSmall: { height: 22, fontSize: 11.5 },
               outlined: {
@@ -311,7 +312,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 padding: 2,
                 "&.Mui-checked": {
                   transform: "translateX(14px)",
-                  color: "#fff",
+                  color: palette.accentForeground,
                   "& + .MuiSwitch-track": {
                     background: palette.accentGradient,
                     opacity: 1,

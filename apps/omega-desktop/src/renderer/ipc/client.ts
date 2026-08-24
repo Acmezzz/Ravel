@@ -137,6 +137,7 @@ export interface OmegaBridge {
     action: "accept" | "reject";
     snapshotToken?: string;
     files?: string[];
+    items?: GitStageItem[];
   }): Promise<IpcResult<ChangeApprovalResult>>;
 }
 
@@ -278,6 +279,7 @@ export const ipc = {
     action: "accept" | "reject";
     snapshotToken?: string;
     files?: string[];
+    items?: GitStageItem[];
   }): Promise<IpcResult<ChangeApprovalResult>> => ok(await window.omega?.approveChange?.(req)),
 };
 

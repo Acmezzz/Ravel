@@ -8,6 +8,7 @@ import { useAppStore } from "../../store/useAppStore";
 import type { ScoutStatus, ScoutRounds, ScoutProposals } from "../../types/dto";
 
 const MAX_ROUNDS = 40;
+const MAX_PROPOSALS = 80;
 const MAX_STEPS = 40;
 
 function StatusCard({ data }: { data: ScoutStatus }) {
@@ -42,7 +43,7 @@ function RoundCard({ round }: { round: NonNullable<ScoutRounds["rounds"][number]
         <Chip size="small" label={round.trigger} />
         <Chip size="small" label={`verified: ${round.verifiedOutcome}`} color={round.verifiedOutcome === "succeeded" ? "success" : "default"} />
       </Box>
-      <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)", mt: 0.5 }}>目标：{round.taskBrief.objective || "—"}</Typography>
+      <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)", mt: 0.5 }}>目标：{round.taskBrief.objective || "未提供"}</Typography>
       <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>
         {round.runs.length} 个 Scout · {round.runs.reduce((acc, r) => acc + r.proposalCount, 0)} 个 proposal · 模型 {round.model}
       </Typography>
@@ -103,7 +104,7 @@ export function ScoutPanel(): React.ReactElement {
       <Divider sx={{ my: 1, borderColor: "var(--omega-border)" }} />
       <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text-muted)", mb: 0.5 }}>提案 Proposals</Typography>
       {proposals && proposals.proposals.length > 0 ? (
-        proposals.proposals.map((p) => <ProposalCard key={p.id} proposal={p} />)
+        proposals.proposals.slice(0, MAX_PROPOSALS).map((p) => <ProposalCard key={p.id} proposal={p} />)
       ) : (
         <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>当前轮无提案。</Typography>
       )}

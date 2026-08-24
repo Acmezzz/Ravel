@@ -7,6 +7,7 @@ import AssessmentIcon from "@mui/icons-material/Assessment";
 import ExploreIcon from "@mui/icons-material/Explore";
 import DifferenceIcon from "@mui/icons-material/Difference";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import CloseIcon from "@mui/icons-material/Close";
 import { useAppStore } from "../../store/useAppStore";
 import { TitleBar } from "./TitleBar";
 import { Header } from "./Header";
@@ -49,6 +50,7 @@ export function Workbench(): React.ReactElement {
   const rightTab = useAppStore((s) => s.layout.rightTab);
   const compactViewport = useMediaQuery("(max-width: 980px)");
   const setRightTab = useAppStore((s) => s.setRightTab);
+  const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const [widths, setWidths] = React.useState(loadWidths);
   const [dragging, setDragging] = React.useState<null | "left" | "right">(null);
   const widthsRef = React.useRef(widths);
@@ -128,6 +130,7 @@ export function Workbench(): React.ReactElement {
         gridTemplateRows: "auto auto 1fr",
         gridTemplateColumns: `${leftCol} minmax(0,1fr) ${rightCol}`,
         height: "100vh",
+        "@supports (height: 100dvh)": { height: "100dvh" },
         gap: 0,
         p: 0,
         transition: dragging ? "none" : "grid-template-columns 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
@@ -162,18 +165,6 @@ export function Workbench(): React.ReactElement {
       <Box sx={{ minHeight: 0, overflow: "hidden", display: focusMode ? "none" : "flex", position: "relative" }}>
         {effectiveRightOpen ? (
           <RightPanel />
-        ) : compactRightOpen ? (
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 4,
-              background: "var(--omega-bg-rail)",
-              boxShadow: "var(--omega-shadow-lg)",
-            }}
-          >
-            <RightPanel />
-          </Box>
         ) : (
           <Box
             sx={{
@@ -244,6 +235,34 @@ export function Workbench(): React.ReactElement {
           />
         ) : null}
       </Box>
+      {compactRightOpen ? (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: `min(${MAX_RIGHT_PX}px, 88vw)`,
+            minWidth: `${MIN_RIGHT_PX}px`,
+            zIndex: 20,
+            background: "var(--omega-bg-rail)",
+            boxShadow: "var(--omega-shadow-lg)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "flex-start", p: 0.5, borderBottom: "1px solid var(--omega-border)" }}>
+            <Tooltip title="关闭面板">
+              <IconButton size="small" onClick={toggleRightPanel} aria-label="关闭右侧面板" sx={{ color: "var(--omega-text-muted)" }}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box sx={{ minHeight: 0, flex: 1, display: "flex" }}>
+            <RightPanel />
+          </Box>
+        </Box>
+      ) : null}
     </Box>
   );
 }

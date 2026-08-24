@@ -101,7 +101,7 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
           <Stat label="输出 tokens" value={usage?.output ?? 0} />
           <Stat label="累计 tokens" value={usage?.total ?? 0} />
           <Stat label="成本 $" value={(usage?.cost ?? 0).toFixed(4)} />
-          <Stat label="上下文" value={usage?.percent !== null && usage?.percent !== undefined ? `${Math.round(usage.percent)}%` : "—"} />
+          <Stat label="上下文" value={usage?.percent !== null && usage?.percent !== undefined ? `${Math.round(usage.percent)}%` : "暂无数据"} />
         </Box>
         <Divider sx={{ my: 1.5 }} />
         <Typography

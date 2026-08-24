@@ -433,6 +433,17 @@ contextBridge.exposeInMainWorld("omega", {
     const files = Array.isArray(req.files)
       ? req.files.filter((f) => typeof f === "string").map((f) => f.slice(0, 4096)).slice(0, 2000)
       : undefined;
-    return ipcRenderer.invoke("omega:approveChange", { action: req.action, snapshotToken: safeString(req.snapshotToken, 128), files });
+    const items = Array.isArray(req.items)
+      ? req.items
+          .filter((item) => item && typeof item.path === "string")
+          .map((item) => ({
+            path: item.path.slice(0, 4096),
+            ...(Array.isArray(item.hunks)
+              ? { hunks: item.hunks.filter((hunk) => typeof hunk === "string").map((hunk) => hunk.slice(0, MAX_FIELD_CHARS)).slice(0, 200) }
+              : {}),
+          }))
+          .slice(0, 2000)
+      : undefined;
+    return ipcRenderer.invoke("omega:approveChange", { action: req.action, snapshotToken: safeString(req.snapshotToken, 128), files, items });
   },
 });

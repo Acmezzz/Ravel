@@ -263,7 +263,7 @@ export function SessionList(): React.ReactElement {
                     py: 0.75,
                     pl: nested ? 2.75 : 1.25,
                     border: "1px solid transparent",
-                    transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+                    transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
                     "&.Mui-selected": {
                       background: "var(--omega-selected)",
                       borderColor: "var(--omega-accent-line)",

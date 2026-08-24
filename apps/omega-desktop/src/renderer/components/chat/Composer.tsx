@@ -94,6 +94,7 @@ export function Composer(): React.ReactElement {
   /** Session that the current `text` belongs to (guards the draft persist effect). */
   const textSessionRef = React.useRef<string | null>(null);
   const atTimerRef = React.useRef<number>(0);
+  const atRequestRef = React.useRef(0);
 
   const setConnection = useAppStore((s) => s.setConnection);
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
@@ -341,15 +342,21 @@ export function Composer(): React.ReactElement {
     const match = /(?:^|\s)@([\w./\\-]*)$/.exec(before);
     if (!match) {
       setAtOpen(false);
+      setAtItems([]);
       atTokenRef.current = "";
+      atRequestRef.current += 1;
       return;
     }
-    atTokenRef.current = match[1];
+    const token = match[1];
+    const requestId = ++atRequestRef.current;
+    atTokenRef.current = token;
     setAtOpen(true);
+    setAtItems([]);
     setAtIndex(0);
     window.clearTimeout(atTimerRef.current);
     atTimerRef.current = window.setTimeout(() => {
-      void ipc.fileIndex({ query: match[1] }).then((res) => {
+      void ipc.fileIndex({ query: token }).then((res) => {
+        if (requestId !== atRequestRef.current || atTokenRef.current !== token) return;
         if (res.ok) {
           setAtItems(res.data);
           if (res.data.length === 0) setAtOpen(false);
@@ -726,7 +733,7 @@ export function Composer(): React.ReactElement {
               onClick={() => send()}
               disabled={shuttingDown || canSend}
               sx={{
-                color: "#fff",
+                color: "var(--omega-accent-foreground)",
                 background: "var(--omega-accent-gradient)",
                 borderRadius: "10px",
                 width: 34,

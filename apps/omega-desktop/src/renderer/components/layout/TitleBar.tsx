@@ -23,7 +23,7 @@ const controlSx = {
   height: 30,
   borderRadius: "7px",
   color: "var(--omega-text-muted)",
-  transition: "all 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+  transition: "background-color 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), transform 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
   "&:hover": { color: "var(--omega-text)", background: "var(--omega-hover-fill)" },
   "&:active": { transform: "scale(0.92)" },
 } as const;
@@ -69,14 +69,14 @@ export function TitleBar(): React.ReactElement {
             borderRadius: "6px",
             background: "var(--omega-accent-gradient)",
             boxShadow: "0 1px 4px var(--omega-accent-soft)",
-            color: "#fff",
+            color: "var(--omega-accent-foreground)",
             fontSize: 11,
             fontWeight: 700,
           }}
         >
           Ω
         </Box>
-        <Typography sx={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-muted)" }}>
+        <Typography sx={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-soft)" }}>
           OMEGA DESKTOP
         </Typography>
       </Box>

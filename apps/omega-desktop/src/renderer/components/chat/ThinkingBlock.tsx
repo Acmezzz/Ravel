@@ -95,7 +95,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
           background: "var(--omega-bg-soft)",
           cursor: "pointer",
           userSelect: "none",
-          transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+          transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
           "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
         }}
       >

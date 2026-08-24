@@ -8,11 +8,12 @@ import DialogActions from "@mui/material/DialogActions";
 import Typography from "@mui/material/Typography";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { ipc } from "../../ipc/client";
-import type { ChangeApprovalResult } from "../../types/dto";
+import type { ChangeApprovalResult, GitStageItem } from "../../types/dto";
 
 export interface ApprovalBarProps {
   snapshotToken: string;
   selectedFiles: string[];
+  selectedItems: GitStageItem[];
   hasUntrackedSelected: boolean;
   onApplied: (result: ChangeApprovalResult) => void;
 }
@@ -23,7 +24,7 @@ export interface ApprovalBarProps {
  * untracked files is irreversible — we force a second confirmation with a
  * clear risk warning. See system_design.md §3.4 / 决策 #6.
  */
-export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected, onApplied }: ApprovalBarProps): React.ReactElement {
+export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUntrackedSelected, onApplied }: ApprovalBarProps): React.ReactElement {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
@@ -41,7 +42,7 @@ export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected
 
   const confirmReject = React.useCallback(async () => {
     setBusy(true);
-    const res = await ipc.approveChange({ action: "reject", snapshotToken, files: selectedFiles });
+    const res = await ipc.approveChange({ action: "reject", snapshotToken, files: selectedFiles, items: selectedItems });
     if (res.ok) onApplied(res.data);
     setConfirmOpen(false);
     setBusy(false);

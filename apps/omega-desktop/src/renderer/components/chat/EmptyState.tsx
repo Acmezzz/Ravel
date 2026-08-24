@@ -68,11 +68,8 @@ export function EmptyState(): React.ReactElement {
             mt: 2.5,
             fontWeight: 700,
             fontSize: 22,
-            letterSpacing: "-0.02em",
-            background: "var(--omega-accent-gradient)",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
+            letterSpacing: "-0.018em",
+            color: "var(--omega-text)",
           }}
         >
           开始与 Omega 协作

@@ -60,11 +60,15 @@ export function FileViewer(): React.ReactElement {
   const pageRequestEpochRef = React.useRef(0);
 
   React.useEffect(() => {
-    pageRequestEpochRef.current += 1;
-    if (!viewer.path) return;
-    void ipc.watchFile({ path: viewer.path }).then((result) => { if (result.ok) setWatching(result.data.watching); });
-    const off = ipc.onFileChanged((data) => { if (data.path === viewer.path) void useAppStore.getState().openViewer(viewer.path!); });
-    return () => { off(); void ipc.unwatchFile({ path: viewer.path! }); setWatching(false); };
+    const watchEpoch = ++pageRequestEpochRef.current;
+    const requestPath = viewer.path;
+    if (!requestPath) return;
+    void ipc.watchFile({ path: requestPath }).then((result) => {
+      if (watchEpoch !== pageRequestEpochRef.current || useAppStore.getState().viewer.path !== requestPath) return;
+      if (result.ok) setWatching(result.data.watching);
+    });
+    const off = ipc.onFileChanged((data) => { if (data.path === requestPath) void useAppStore.getState().openViewer(requestPath); });
+    return () => { off(); void ipc.unwatchFile({ path: requestPath }); setWatching(false); };
   }, [viewer.path]);
 
   React.useEffect(() => {
