@@ -125,6 +125,27 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
     [setAgent],
   );
 
+  const applyDesktopPatch = React.useCallback(
+    async (patch: Parameters<typeof ipc.updateDesktopSettings>[0]) => {
+      setSaveState("saving");
+      try {
+        const res = await ipc.updateDesktopSettings(patch);
+        if (res.ok) {
+          setDesktopSettings(res.data);
+          setDesktopError(null);
+          setSaveState("saved");
+        } else {
+          setDesktopError(res.message);
+          setSaveState("idle");
+        }
+      } catch (reason) {
+        setDesktopError(reason instanceof Error ? reason.message : String(reason));
+        setSaveState("idle");
+      }
+    },
+    [setDesktopSettings],
+  );
+
   const applyDesktop = React.useCallback(async () => {
     const cap = Number.parseInt(workerCap, 10);
     const minutes = Number.parseInt(idleTtl, 10);
@@ -136,19 +157,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
       setDesktopError("空闲回收时间必须是 1–60 分钟");
       return;
     }
-    const res = await ipc.updateDesktopSettings({
+    await applyDesktopPatch({
       workerCap: cap,
       workerIdleTtlMs: minutes * 60_000,
     });
-    if (!res.ok) {
-      setDesktopError(res.message);
-      setSaveState("idle");
-      return;
-    }
-    setDesktopSettings(res.data);
-    setDesktopError(null);
-    setSaveState("saved");
-  }, [workerCap, idleTtl, setDesktopSettings]);
+  }, [applyDesktopPatch, workerCap, idleTtl]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -248,9 +261,19 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 value={desktopSettings?.permissionProfile ?? "trusted"}
                 onChange={(event) => {
                   const profile = event.target.value as NonNullable<NonNullable<ReturnType<typeof useAppStore.getState>["desktopSettings"]>["permissionProfile"]>;
+                  setSaveState("saving");
                   void ipc.setPermissionProfile({ profile }).then((res) => {
-                    if (res.ok) setDesktopSettings(res.data);
-                    else setDesktopError(res.message);
+                    if (res.ok) {
+                      setDesktopSettings(res.data);
+                      setDesktopError(null);
+                      setSaveState("saved");
+                    } else {
+                      setDesktopError(res.message);
+                      setSaveState("idle");
+                    }
+                  }).catch((reason) => {
+                    setDesktopError(reason instanceof Error ? reason.message : String(reason));
+                    setSaveState("idle");
                   });
                 }}
                 helperText="Read-only 和 Workspace-only 会在工具执行前阻止越界或写入。"
@@ -271,21 +294,21 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                   label="打开命令面板"
                   value={keybindings.commandPalette}
                   onChange={(e) => setKeybindings((c) => ({ ...c, commandPalette: e.target.value }))}
-                  onBlur={() => void ipc.updateDesktopSettings({ keybindings })}
+                  onBlur={() => void applyDesktopPatch({ keybindings })}
                 />
                 <TextField
                   size="small"
                   label="新建会话"
                   value={keybindings.newSession}
                   onChange={(e) => setKeybindings((c) => ({ ...c, newSession: e.target.value }))}
-                  onBlur={() => void ipc.updateDesktopSettings({ keybindings })}
+                  onBlur={() => void applyDesktopPatch({ keybindings })}
                 />
                 <TextField
                   size="small"
                   label="停止 Agent"
                   value={keybindings.abort}
                   onChange={(e) => setKeybindings((c) => ({ ...c, abort: e.target.value }))}
-                  onBlur={() => void ipc.updateDesktopSettings({ keybindings })}
+                  onBlur={() => void applyDesktopPatch({ keybindings })}
                 />
               </Box>
             </Box>
@@ -298,7 +321,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                   size="small"
                   label="界面语言"
                   value={desktopSettings?.language ?? "zh-CN"}
-                  onChange={(e) => void ipc.updateDesktopSettings({ language: e.target.value as "zh-CN" | "en-US" }).then((res) => { if (res.ok) setDesktopSettings(res.data); })}
+                  onChange={(e) => void applyDesktopPatch({ language: e.target.value as "zh-CN" | "en-US" })}
                 >
                   <MenuItem value="zh-CN">简体中文</MenuItem>
                   <MenuItem value="en-US">English</MenuItem>

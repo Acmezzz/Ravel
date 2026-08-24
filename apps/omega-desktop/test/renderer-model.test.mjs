@@ -251,6 +251,27 @@ test("sanitizeTranscript keeps thinking, entry ids, and tool payloads", () => {
   assert.equal(toolCards[0].afterMessageId, "a1");
 });
 
+test("frontend harness mutations expose recovery feedback and stable decision boundaries", async () => {
+  const settings = await read("../src/renderer/components/layout/SettingsDialog.tsx");
+  const modelPicker = await read("../src/renderer/components/layout/ModelPicker.tsx");
+  const trust = await read("../src/renderer/components/layout/ProjectTrustDialog.tsx");
+  const approval = await read("../src/renderer/components/panels/ApprovalBar.tsx");
+  const app = await read("../src/renderer/App.tsx");
+  assert.match(settings, /applyDesktopPatch/);
+  assert.match(settings, /setPermissionProfile/);
+  assert.match(settings, /setSaveState\("saving"\)/);
+  assert.match(settings, /role="alert"/);
+  assert.match(modelPicker, /role="listbox"/);
+  assert.match(modelPicker, /aria-activedescendant/);
+  assert.match(modelPicker, /role="alert"/);
+  assert.match(trust, /aria-busy=\{busy\}/);
+  assert.match(approval, /snapshotToken/);
+  assert.match(approval, /role="alert"/);
+  assert.match(app, /auto_retry_start/);
+  assert.match(app, /recentEvents/);
+  assert.match(app, /dropAllOptimistic/);
+});
+
 test("command palette discovers commands instead of hardcoding the V1 list", async () => {
   const source = await read("../src/renderer/components/layout/CommandPalette.tsx");
   assert.match(source, /listCommands/);
