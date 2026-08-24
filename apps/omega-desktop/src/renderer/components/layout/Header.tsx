@@ -32,6 +32,7 @@ import { ModelPicker } from "./ModelPicker";
 import { ModelCenter } from "./ModelCenter";
 import { ResourceCenter } from "./ResourceCenter";
 import { ProjectSwitcher } from "./ProjectSwitcher";
+import { clickableRole } from "../../lib/a11y";
 
 const THINKING_LABEL: Record<ThinkingLevel, string> = {
   off: "思考 off",
@@ -160,6 +161,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
         </svg>
         <Box
           className={`status-core ${thinkingActive && !failed ? "is-thinking" : ""}`}
+          {...(canRetryWorker ? clickableRole : {})}
           onClick={() => {
             if (canRetryWorker) void retryWorker();
           }}
@@ -354,6 +356,7 @@ export function Header(): React.ReactElement {
 
         {/* model cluster */}
         <Box
+          {...(shuttingDown ? {} : clickableRole)}
           onClick={(e) => {
             if (!shuttingDown) setModelAnchor(e.currentTarget);
           }}
@@ -384,18 +387,21 @@ export function Header(): React.ReactElement {
           size="small"
           label={THINKING_LABEL[agent?.thinkingLevel ?? "off"]}
           onClick={(e) => {
-            if (!shuttingDown) setThinkingAnchor(e.currentTarget);
+            if (shuttingDown || agent?.supportsThinking === false) return;
+            setThinkingAnchor(e.currentTarget);
           }}
-          disabled={shuttingDown || agent?.supportsThinking === false}
+          aria-disabled={shuttingDown || agent?.supportsThinking === false}
           sx={{
-            cursor: "pointer",
+            cursor: shuttingDown || agent?.supportsThinking === false ? "default" : "pointer",
+            pointerEvents: shuttingDown || agent?.supportsThinking === false ? "none" : "auto",
+            opacity: shuttingDown || agent?.supportsThinking === false ? 0.5 : 1,
             fontSize: 11,
             height: 24,
             flex: "0 0 auto",
             border: "1px solid var(--omega-border)",
             background: "var(--omega-bg-soft)",
             color: "var(--omega-text-muted)",
-            "&:hover": { borderColor: "var(--omega-accent-line)", color: "var(--omega-accent)" },
+            "&:hover": shuttingDown || agent?.supportsThinking === false ? undefined : { borderColor: "var(--omega-accent-line)", color: "var(--omega-accent)" },
           }}
         />
         <ModelPicker anchor={modelAnchor} onClose={() => setModelAnchor(null)} />

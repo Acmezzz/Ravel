@@ -16,6 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { AuthProviderStatus, ModelInfo } from "../../types/dto";
+import { clickableRole } from "../../lib/a11y";
 
 function groupByProvider(models: ModelInfo[]): Array<{ provider: string; models: ModelInfo[] }> {
   const groups: Array<{ provider: string; models: ModelInfo[] }> = [];
@@ -297,6 +298,7 @@ export function ModelCenter(): React.ReactElement {
                     return (
                       <Box
                         key={key}
+                        {...clickableRole}
                         onClick={() => (pendingModel ? undefined : void pick(model))}
                         sx={{
                           display: "flex",

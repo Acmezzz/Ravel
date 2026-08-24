@@ -9,6 +9,7 @@ import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { clickableRole } from "../../lib/a11y";
 import type { SessionTree, TreeNodeRow } from "../../types/dto";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -143,6 +144,7 @@ export function TreeOverlay(): React.ReactElement {
               return (
                 <Box
                   key={node.id}
+                  {...clickableRole}
                   onClick={() => setSelected(node)}
                   onDoubleClick={() => {
                     if (connection === "running") {

@@ -354,6 +354,8 @@ export function Composer(): React.ReactElement {
     }, 150);
   }, []);
 
+  React.useEffect(() => () => window.clearTimeout(atTimerRef.current), []);
+
   const applyAt = React.useCallback((path: string) => {
     const ta = taRef.current;
     setAtOpen(false);

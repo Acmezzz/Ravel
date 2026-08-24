@@ -42,4 +42,6 @@ test("extension UI bridge is bound in the worker and isolated behind IPC", async
   assert.match(app, /Snackbar/);
   assert.match(app, /setWidget/);
   assert.match(app, /set_editor_text/);
+  assert.match(app, /incoming.sessionId !== activeSessionId/);
+  assert.match(app, /extensionUiCancel/);
 });

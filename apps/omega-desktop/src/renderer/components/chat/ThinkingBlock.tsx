@@ -5,6 +5,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EmojiObjectsIcon from "@mui/icons-material/EmojiObjectsOutlined";
 import { ipc } from "../../ipc/client";
+import { clickableRole } from "../../lib/a11y";
 
 /** Module-level LRU for fetched thinking blocks (port of pi-web, MIT). */
 const thinkingCache = new Map<string, string>();
@@ -81,6 +82,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
   return (
     <Box sx={{ mb: 1.25, maxWidth: "100%" }}>
       <Box
+        {...clickableRole}
         onClick={handleToggle}
         sx={{
           display: "inline-flex",

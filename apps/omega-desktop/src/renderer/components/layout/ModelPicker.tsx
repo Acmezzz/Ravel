@@ -7,6 +7,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import CheckIcon from "@mui/icons-material/Check";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { clickableRole } from "../../lib/a11y";
 import type { ModelInfo } from "../../types/dto";
 
 /** Module-level switch token: stale results from a closed picker are ignored (port of pi-app, MIT). */
@@ -101,6 +102,7 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
                 return (
                   <Box
                     key={key}
+                    {...clickableRole}
                     onClick={() => (pending ? undefined : void pick(model))}
                     sx={{
                       display: "flex",

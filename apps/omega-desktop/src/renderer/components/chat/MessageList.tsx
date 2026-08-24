@@ -10,8 +10,19 @@ import type { SessionMessage } from "../../types/dto";
 import type { ToolCardState } from "../../store/useAppStore";
 
 const WINDOW_SIZE = 60;
+const SCROLL_MEMORY_CAP = 40;
 /** Per-session scroll memory: scrollTop + whether it was at the bottom. */
 const scrollMemory = new Map<string, { scrollTop: number; atBottom: boolean }>();
+
+function rememberScroll(sessionId: string, snapshot: { scrollTop: number; atBottom: boolean }): void {
+  if (scrollMemory.has(sessionId)) scrollMemory.delete(sessionId);
+  scrollMemory.set(sessionId, snapshot);
+  while (scrollMemory.size > SCROLL_MEMORY_CAP) {
+    const oldest = scrollMemory.keys().next().value;
+    if (oldest === undefined) break;
+    scrollMemory.delete(oldest);
+  }
+}
 
 function buildAttachmentIndex(messages: SessionMessage[], toolCards: ToolCardState[]) {
   const visibleIds = new Set(messages.map((message) => message.id));
@@ -97,7 +108,7 @@ export function MessageList(): React.ReactElement {
     const el = scrollRef.current;
     const prev = prevSessionRef.current;
     if (prev !== null && prev !== activeSessionId && el) {
-      scrollMemory.set(prev, { scrollTop: el.scrollTop, atBottom: stickRef.current });
+      rememberScroll(prev, { scrollTop: el.scrollTop, atBottom: stickRef.current });
     }
     if (prev !== activeSessionId) {
       prevSessionRef.current = activeSessionId;

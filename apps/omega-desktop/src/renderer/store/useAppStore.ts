@@ -390,8 +390,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const mergeUser = (current: SessionMessage): SessionMessage => ({
         ...current,
         ...delivered,
-        // Keep the on-screen bubble identity so React doesn't remount and jump.
-        id: current.id.startsWith("optimistic-") ? current.id : delivered.id || current.id,
+        id: delivered.id || current.id,
         text: delivered.text || current.text,
         entryId: delivered.entryId ?? current.entryId,
       });

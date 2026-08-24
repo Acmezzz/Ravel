@@ -54,7 +54,17 @@ export function ExtensionUIHost(): React.ReactElement {
         } else if (incoming.method === "set_editor_text") setPrefill(incoming.text);
         return;
       }
-      if (incoming.sessionId !== activeSessionId) return;
+      if (incoming.sessionId !== activeSessionId) {
+        void ipc.extensionUiCancel({
+          type: "extension_ui_response",
+          id: incoming.id,
+          sessionId: incoming.sessionId,
+          runId: incoming.runId,
+          generation: incoming.generation,
+          cancelled: true,
+        });
+        return;
+      }
       const current = useAppStore.getState().extensionUiRequest;
       if (current) setQueue((items) => [...items, incoming]);
       else setRequest(incoming);
@@ -66,6 +76,35 @@ export function ExtensionUIHost(): React.ReactElement {
     if (!request) return;
     setValue(request.method === "editor" ? request.prefill ?? "" : "");
   }, [request]);
+
+  React.useEffect(() => {
+    const current = useAppStore.getState().extensionUiRequest;
+    if (current && current.sessionId !== activeSessionId) {
+      void ipc.extensionUiCancel({
+        type: "extension_ui_response",
+        id: current.id,
+        sessionId: current.sessionId,
+        runId: current.runId,
+        generation: current.generation,
+        cancelled: true,
+      });
+      setRequest(null);
+    }
+    setQueue((items) => {
+      const stale = items.filter((item) => item.sessionId !== activeSessionId);
+      for (const item of stale) {
+        void ipc.extensionUiCancel({
+          type: "extension_ui_response",
+          id: item.id,
+          sessionId: item.sessionId,
+          runId: item.runId,
+          generation: item.generation,
+          cancelled: true,
+        });
+      }
+      return items.filter((item) => item.sessionId === activeSessionId);
+    });
+  }, [activeSessionId, setRequest]);
 
   const finish = React.useCallback(async (result?: ExtensionUIResponse) => {
     const current = useAppStore.getState().extensionUiRequest;

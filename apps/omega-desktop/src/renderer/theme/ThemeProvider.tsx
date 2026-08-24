@@ -90,7 +90,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 },
               },
               text: {
-                "&:hover": { background: palette.bgHover },
+                "&:hover": { background: "var(--omega-hover-fill)" },
               },
             },
           },
@@ -100,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
               root: {
                 borderRadius: 8,
                 transition: `all 140ms ${EASE_OUT}`,
-                "&:hover": { background: palette.bgHover },
+                "&:hover": { background: "var(--omega-hover-fill)" },
                 "&:active": { transform: "scale(0.92)" },
               },
             },

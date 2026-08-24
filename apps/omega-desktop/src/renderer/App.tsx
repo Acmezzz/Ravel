@@ -8,6 +8,7 @@ import { ExtensionUIHost } from "./components/layout/ExtensionUIHost";
 import { TrustCenter } from "./components/layout/TrustCenter";
 import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
+import { matchesKeybinding } from "./lib/keybindings";
 import type { EventMeta, SafeEvent } from "./types/events";
 
 async function applyDesktopSettings(): Promise<void> {
@@ -413,19 +414,18 @@ export function App(): React.ReactElement {
     // starts a fresh session, Esc stops a running agent. (F11 fullscreen and
     // F12 devtools live in main.)
     const onKeyDown = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey;
-      if (keybindings.commandPalette === "Ctrl+K" && mod && !e.shiftKey && e.key.toLowerCase() === "k") {
+      if (matchesKeybinding(keybindings.commandPalette, e)) {
         e.preventDefault();
         const layout = useAppStore.getState().layout;
         useAppStore.getState().setCommandPaletteOpen(!layout.commandPaletteOpen);
         return;
       }
-      if (keybindings.newSession === "Ctrl+Shift+N" && mod && e.shiftKey && e.key.toLowerCase() === "n") {
+      if (matchesKeybinding(keybindings.newSession, e)) {
         e.preventDefault();
         void startNewSession();
         return;
       }
-      if (keybindings.abort === "Escape" && e.key === "Escape" && useAppStore.getState().connection === "running") {
+      if (matchesKeybinding(keybindings.abort, e) && useAppStore.getState().connection === "running") {
         const target = e.target as HTMLElement | null;
         if (
           target &&

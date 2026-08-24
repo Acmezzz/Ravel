@@ -28,7 +28,6 @@ export interface Palette {
   bgOverlay: string;
   bgCode: string;
   bgUserBubble: string;
-  bgHover: string;
   /** Translucent hairline — the default border (never a solid swatch). */
   border: string;
   /** Stronger hairline for emphasis / focus-adjacent states. */
@@ -68,7 +67,6 @@ export const darkPalette: Palette = {
   bgOverlay: "#262a35",
   bgCode: "#0d0e12",
   bgUserBubble: "#d4921a",
-  bgHover: "rgba(232, 180, 74, 0.08)",
   border: "rgba(196, 188, 168, 0.10)",
   borderStrong: "rgba(196, 188, 168, 0.20)",
   text: "#f3f0ea",
@@ -103,7 +101,6 @@ export const lightPalette: Palette = {
   bgOverlay: "#ffffff",
   bgCode: "#f1f2f3",
   bgUserBubble: "#c67d12",
-  bgHover: "rgba(198, 125, 18, 0.06)",
   border: "rgba(28, 26, 22, 0.08)",
   borderStrong: "rgba(28, 26, 22, 0.15)",
   text: "#1a1916",

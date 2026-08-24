@@ -15,6 +15,7 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/useAppStore";
 import type { ProjectTrustChoice, ProjectTrustInfo, WorkspaceInfo } from "../../types/dto";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
+import { clickableRole } from "../../lib/a11y";
 
 function labelFor(root: string): string {
   const parts = root.split(/[\\/]/).filter(Boolean);
@@ -152,6 +153,7 @@ export function ProjectSwitcher(): React.ReactElement {
   return (
     <>
       <Box
+        {...(disabled ? {} : clickableRole)}
         onClick={(event) => {
           if (!disabled) {
             setError(null);

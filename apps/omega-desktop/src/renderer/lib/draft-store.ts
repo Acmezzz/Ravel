@@ -15,6 +15,15 @@ export interface ChatDraft {
 }
 
 const drafts = new Map<string, ChatDraft>();
+const DRAFT_CAP = 40;
+
+function trimDrafts(): void {
+  while (drafts.size > DRAFT_CAP) {
+    const oldest = drafts.keys().next().value;
+    if (oldest === undefined) break;
+    drafts.delete(oldest);
+  }
+}
 
 function isEmptyDraft(draft: ChatDraft): boolean {
   return draft.value.trim().length === 0 && draft.images.length === 0;
@@ -32,6 +41,7 @@ export function setDraft(key: string | null, draft: ChatDraft): void {
     return;
   }
   drafts.set(key, { value: draft.value, images: [...draft.images] });
+  trimDrafts();
 }
 
 export function clearDraft(key: string | null): void {

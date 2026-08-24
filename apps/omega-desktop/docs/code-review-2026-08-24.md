@@ -84,15 +84,15 @@
 
 ## 阶段 6：性能与体验优化
 
-- [ ] P1 Markdown 流式解析按 rAF/50ms 批量 flush；React.memo + 模块级 components
-- [ ] P2 `SessionInfoDialog` 等 getState 轮询收敛；DiffViewer 30s 定时器依赖修复
-- [ ] P3 scrollMemory / draft-store Map 修剪；Composer atTimer 卸载清理
-- [ ] P4 ExtensionUIHost 非活动会话请求回 cancel，避免 worker 挂起
-- [ ] P5 设置自定义快捷键：实现生效或改只读展示
-- [ ] P6 可点击 div 补 role/tabIndex/键盘支持（TreeRow/TreeOverlay/FileViewer tabs/ModelPicker 等）
-- [ ] P7 Header 思考档位 Chip disabled 无效 → 改受控样式
-- [ ] P8 乐观气泡消费后保留 `optimistic-*` id，历史分页去重失效 → 消费时替换为真实 id
-- [ ] P9 双 token 体系收敛：bgHover 与 --omega-hover-fill 二选一，palette 死字段清理
+- [x] P1 Markdown 流式解析按 rAF/50ms 批量 flush；React.memo + 模块级 components
+- [x] P2 `SessionInfoDialog` 等 getState 轮询收敛；DiffViewer 30s 定时器依赖修复
+- [x] P3 scrollMemory / draft-store Map 修剪；Composer atTimer 卸载清理
+- [x] P4 ExtensionUIHost 非活动会话请求回 cancel，避免 worker 挂起
+- [x] P5 设置自定义快捷键：实现生效或改只读展示
+- [x] P6 可点击 div 补 role/tabIndex/键盘支持（TreeRow/TreeOverlay/FileViewer tabs/ModelPicker 等）
+- [x] P7 Header 思考档位 Chip disabled 无效 → 改受控样式
+- [x] P8 乐观气泡消费后保留 `optimistic-*` id，历史分页去重失效 → 消费时替换为真实 id
+- [x] P9 双 token 体系收敛：bgHover 与 --omega-hover-fill 二选一，palette 死字段清理
 
 ## 已核实无问题（无需改动）
 

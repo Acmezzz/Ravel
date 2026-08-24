@@ -271,8 +271,8 @@ test("session list supports search, rename, and delete affordances", async () =>
 test("workbench registers Ctrl+K palette and Ctrl+Shift+N new-session shortcuts", async () => {
   const source = await read("../src/renderer/App.tsx");
   assert.match(source, /keydown/);
-  assert.match(source, /"k"/);
-  assert.match(source, /Shift.*new|shiftKey/);
+  assert.match(source, /matchesKeybinding/);
+  assert.match(source, /keybindings\.newSession/);
 });
 
 test("composer supports image paste, attach, and removable chips", async () => {

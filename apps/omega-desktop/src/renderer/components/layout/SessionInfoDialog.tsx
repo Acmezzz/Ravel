@@ -105,8 +105,10 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
         </Box>
         <Divider sx={{ my: 1.5 }} />
         <Typography
+          component="button"
+          type="button"
           onClick={() => void loadPrompt()}
-          sx={{ fontSize: 12.5, color: "var(--omega-accent)", cursor: "pointer", userSelect: "none", fontWeight: 600 }}
+          sx={{ fontSize: 12.5, color: "var(--omega-accent)", cursor: "pointer", userSelect: "none", fontWeight: 600, border: "none", background: "transparent", p: 0 }}
         >
           {promptOpen ? "▾ 隐藏系统提示词" : "▸ 查看系统提示词"}
         </Typography>

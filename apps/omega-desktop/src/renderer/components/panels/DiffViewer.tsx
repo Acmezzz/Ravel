@@ -121,6 +121,8 @@ function FileCard({
               sx={{ p: 0, ml: "-2px", flex: "0 0 auto" }}
             />
             <Typography
+              component="button"
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenFile(file.path);
@@ -136,6 +138,10 @@ function FileCard({
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 cursor: "pointer",
+                border: "none",
+                background: "transparent",
+                p: 0,
+                textAlign: "left",
                 "&:hover": { color: "var(--omega-accent)" },
               }}
             >
@@ -207,7 +213,7 @@ export function DiffViewer(): React.ReactElement {
   }, [setGitSnapshot]);
 
   React.useEffect(() => {
-    if (!snapshot) void refresh();
+    void refresh();
     const timer = window.setInterval(() => void refresh(), 30_000);
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
@@ -215,7 +221,7 @@ export function DiffViewer(): React.ReactElement {
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, [snapshot, refresh]);
+  }, [refresh]);
 
   const clearSel = () => {
     setUnstagedSel({ files: new Map() });

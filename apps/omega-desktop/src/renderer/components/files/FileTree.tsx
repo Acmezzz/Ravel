@@ -18,6 +18,7 @@ import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { clickableRole } from "../../lib/a11y";
 import type { DirListing } from "../../types/dto";
 
 interface DirState {
@@ -55,6 +56,7 @@ function TreeRow({
 }): React.ReactElement {
   return (
     <Box
+      {...clickableRole}
       onClick={() => (isDir ? onToggleDir(rel) : onOpenFile(rel))}
       sx={{
         display: "flex",

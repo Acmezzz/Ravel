@@ -113,7 +113,7 @@ export function FileViewer(): React.ReactElement {
     <Dialog open={viewer.open} onClose={closeViewer} fullWidth maxWidth="md">
       <DialogTitle sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1, pr: 6 }}>
         <Box sx={{ display: "flex", gap: 0.5, minWidth: 0, overflow: "auto" }}>
-          {tabs.map((tab) => <Typography key={tab} onClick={() => void useAppStore.getState().openViewer(tab)} sx={{ fontSize: 12, px: 0.75, py: 0.25, cursor: "pointer", whiteSpace: "nowrap", color: tab === viewer.path ? "var(--omega-accent)" : "var(--omega-text-muted)", borderBottom: tab === viewer.path ? "2px solid var(--omega-accent)" : "2px solid transparent" }}>{tab.split(/[\\/]/).pop()}</Typography>)}
+          {tabs.map((tab) => <Typography key={tab} component="button" type="button" onClick={() => void useAppStore.getState().openViewer(tab)} sx={{ fontSize: 12, px: 0.75, py: 0.25, cursor: "pointer", whiteSpace: "nowrap", color: tab === viewer.path ? "var(--omega-accent)" : "var(--omega-text-muted)", border: "none", borderBottom: tab === viewer.path ? "2px solid var(--omega-accent)" : "2px solid transparent", background: "transparent" }}>{tab.split(/[\\/]/).pop()}</Typography>)}
         </Box>
         {viewer.file ? (
           <Typography component="span" sx={{ fontSize: 11, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
@@ -125,16 +125,20 @@ export function FileViewer(): React.ReactElement {
         {isMarkdown(viewer.path) || isMermaid(viewer.path) || isMath(viewer.path) ? (
           <Box sx={{ display: "flex", gap: 0.5 }}>
             <Typography
+              component="button"
+              type="button"
               onClick={() => setMode("source")}
-              sx={{ fontSize: 11, cursor: "pointer", color: mode === "source" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
+              sx={{ fontSize: 11, cursor: "pointer", color: mode === "source" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
             >
               源码
             </Typography>
-            <Typography onClick={() => setDiffMode((current) => !current)} sx={{ fontSize: 11, cursor: "pointer", color: diffMode ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>diff</Typography>
+            <Typography component="button" type="button" onClick={() => setDiffMode((current) => !current)} sx={{ fontSize: 11, cursor: "pointer", color: diffMode ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}>diff</Typography>
             <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>/</Typography>
             <Typography
+              component="button"
+              type="button"
               onClick={() => setMode("preview")}
-              sx={{ fontSize: 11, cursor: "pointer", color: mode === "preview" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
+              sx={{ fontSize: 11, cursor: "pointer", color: mode === "preview" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
             >
               预览
             </Typography>

@@ -2,8 +2,8 @@
 
 > 更新日期：2026-08-24
 > 当前分支：`feat/omega-runtime-foundation`
-> 最近提交：Phase 5 quality gates（desktop biome nested config、Windows CI job、product docs）
-> 当前验证：Electron syntax、Renderer TypeScript、桌面安全测试 **128/128**、release gate 均通过。审查修复见 `docs/code-review-2026-08-24.md`（阶段 1–5 已完成）。
+> 最近提交：Phase 6 performance and UX
+> 当前验证：Electron syntax、Renderer TypeScript、桌面安全测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`（阶段 1–6 已完成）。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 

@@ -10,6 +10,7 @@ export interface MarkdownProps {
 }
 
 const LOCAL_PATH = /^(?:[A-Za-z]:[\\/][^:?*"<>|]*|\/[^:?*"<>|]*|\.?\.?\/[^:?*"<>|]+)/;
+const MARKDOWN_FLUSH_MS = 50;
 
 /** Looks like a local file path (not a URL). */
 function isLocalPath(href: string): boolean {
@@ -24,9 +25,43 @@ function isLocalPath(href: string): boolean {
  * so any embedded HTML in assistant text is escaped/ignored (XSS-safe). Code
  * fences are highlighted via `rehype-highlight` (highlight.js). Anchors that
  * look like local file paths open the in-app viewer instead of navigating.
+ *
+ * Streaming text is flushed on rAF, at most every 50ms, so highlight/parse
+ * does not run on every token.
  */
-export function Markdown({ children }: MarkdownProps): React.ReactElement {
-  const openViewer = useAppStore((s) => s.openViewer);
+function MarkdownInner({ children }: MarkdownProps): React.ReactElement {
+  const [rendered, setRendered] = React.useState(children);
+  const pendingRef = React.useRef(children);
+  const scheduledRef = React.useRef(false);
+  const timerRef = React.useRef(0);
+  const frameRef = React.useRef(0);
+
+  React.useEffect(() => {
+    pendingRef.current = children;
+    if (scheduledRef.current) return;
+    scheduledRef.current = true;
+    const started = performance.now();
+    frameRef.current = requestAnimationFrame(() => {
+      const wait = MARKDOWN_FLUSH_MS - (performance.now() - started);
+      const flush = () => {
+        scheduledRef.current = false;
+        timerRef.current = 0;
+        frameRef.current = 0;
+        setRendered(pendingRef.current);
+      };
+      if (wait <= 0) flush();
+      else timerRef.current = window.setTimeout(flush, wait);
+    });
+  }, [children]);
+
+  React.useEffect(
+    () => () => {
+      window.clearTimeout(timerRef.current);
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    },
+    [],
+  );
+
   return (
     <div className="md-body">
       <ReactMarkdown
@@ -47,7 +82,7 @@ export function Markdown({ children }: MarkdownProps): React.ReactElement {
                   href={href}
                   onClick={(e) => {
                     e.preventDefault();
-                    void openViewer(href.replace(/^file:\/\/\/?/, ""));
+                    void useAppStore.getState().openViewer(href.replace(/^file:\/\/\/?/, ""));
                   }}
                   title="在查看器中打开"
                   {...rest}
@@ -88,8 +123,10 @@ export function Markdown({ children }: MarkdownProps): React.ReactElement {
           },
         }}
       >
-        {children}
+        {rendered}
       </ReactMarkdown>
     </div>
   );
 }
+
+export const Markdown = React.memo(MarkdownInner);
