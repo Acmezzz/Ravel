@@ -3,12 +3,18 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
+import { shallow } from "zustand/shallow";
 import { useAppStore } from "../../store/useAppStore";
 
 export function ExtensionSurface(): React.ReactElement | null {
-  const sessionId = useAppStore((s) => s.activeSessionId);
-  const statuses = useAppStore((s) => s.extensionStatuses.filter((item) => item.sessionId === sessionId));
-  const widgets = useAppStore((s) => s.extensionWidgets.filter((item) => item.sessionId === sessionId));
+  const { sessionId, statuses, widgets } = useAppStore(
+    (s) => ({
+      sessionId: s.activeSessionId,
+      statuses: s.extensionStatuses.filter((item) => item.sessionId === s.activeSessionId),
+      widgets: s.extensionWidgets.filter((item) => item.sessionId === s.activeSessionId),
+    }),
+    shallow,
+  );
   if (!sessionId || (statuses.length === 0 && widgets.length === 0)) return null;
   return (
     <Box sx={{ px: 1.5, pt: 1, display: "flex", flexDirection: "column", gap: 0.75 }}>

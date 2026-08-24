@@ -61,6 +61,7 @@ export function SessionList(): React.ReactElement {
   const [deleting, setDeleting] = React.useState<{ id: string; title: string } | null>(null);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [cloning, setCloning] = React.useState(false);
+  const requestEpochRef = React.useRef(0);
   const [contextMenu, setContextMenu] = React.useState<{ mouseX: number; mouseY: number; id: string } | null>(null);
 
   const loadMore = React.useCallback(async () => {
@@ -76,16 +77,20 @@ export function SessionList(): React.ReactElement {
 
   const handleLoad = React.useCallback(
     async (id: string) => {
+      const requestEpoch = ++requestEpochRef.current;
       const res = await ipc.loadSession({ sessionId: id });
+      if (requestEpoch !== requestEpochRef.current) return;
       if (res.ok) {
         setActiveSession(id);
         loadTranscript(res.data);
         const state = await ipc.getState();
+        if (requestEpoch !== requestEpochRef.current) return;
         if (state.ok) {
           setAgent(state.data);
           useAppStore.getState().setConnection(state.data.isStreaming ? "running" : "ready");
         }
         const list = await ipc.listSessions();
+        if (requestEpoch !== requestEpochRef.current) return;
         if (list.ok) applySessionPage(list.data);
       }
     },

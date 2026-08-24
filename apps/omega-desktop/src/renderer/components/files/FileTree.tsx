@@ -123,10 +123,13 @@ export function FileTree(): React.ReactElement {
   const [target, setTarget] = React.useState("");
   const [conflictTarget, setConflictTarget] = React.useState<{ path: string; token: string | null } | null>(null);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
+  const requestEpochRef = React.useRef(0);
 
   const loadDir = React.useCallback(async (rel: string) => {
+    const requestEpoch = requestEpochRef.current;
     setDirs((prev) => new Map(prev).set(rel, { loading: true, error: null, listing: prev.get(rel)?.listing ?? null }));
     const res = await ipc.listDir({ path: rel });
+    if (requestEpoch !== requestEpochRef.current) return;
     setDirs((prev) => {
       const next = new Map(prev);
       next.set(rel, res.ok ? { loading: false, error: null, listing: res.data } : { loading: false, error: res.message, listing: null });
@@ -135,6 +138,7 @@ export function FileTree(): React.ReactElement {
   }, []);
 
   React.useEffect(() => {
+    requestEpochRef.current += 1;
     setDirs(new Map([["", { loading: true, error: null, listing: null }]]));
     setExpanded(new Set([""]));
     void loadDir("");
@@ -156,6 +160,7 @@ export function FileTree(): React.ReactElement {
   );
 
   const refreshAll = React.useCallback(() => {
+    requestEpochRef.current += 1;
     setDirs(new Map([["", { loading: true, error: null, listing: null }]]));
     setExpanded(new Set([""]));
     void loadDir("");

@@ -57,8 +57,10 @@ export function FileViewer(): React.ReactElement {
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [watching, setWatching] = React.useState(false);
   const [diffMode, setDiffMode] = React.useState(false);
+  const pageRequestEpochRef = React.useRef(0);
 
   React.useEffect(() => {
+    pageRequestEpochRef.current += 1;
     if (!viewer.path) return;
     void ipc.watchFile({ path: viewer.path }).then((result) => { if (result.ok) setWatching(result.data.watching); });
     const off = ipc.onFileChanged((data) => { if (data.path === viewer.path) void useAppStore.getState().openViewer(viewer.path!); });
@@ -100,13 +102,20 @@ export function FileViewer(): React.ReactElement {
   const lines = displayedContent && !viewer.file?.binary ? numbered(displayedContent) : [];
   const loadMore = React.useCallback(async () => {
     if (!viewer.path || nextOffset === null || loadingMore) return;
+    const requestEpoch = pageRequestEpochRef.current;
+    const requestPath = viewer.path;
+    const requestOffset = nextOffset;
     setLoadingMore(true);
-    const res = await ipc.readFilePage({ path: viewer.path, offset: nextOffset, limit: 400 });
-    if (res.ok) {
-      setDisplayedContent((current) => `${current}${current ? "\n" : ""}${res.data.content ?? ""}`);
-      setNextOffset(res.data.nextOffset);
+    try {
+      const res = await ipc.readFilePage({ path: requestPath, offset: requestOffset, limit: 400 });
+      if (requestEpoch !== pageRequestEpochRef.current || useAppStore.getState().viewer.path !== requestPath) return;
+      if (res.ok) {
+        setDisplayedContent((current) => `${current}${current ? "\n" : ""}${res.data.content ?? ""}`);
+        setNextOffset(res.data.nextOffset);
+      }
+    } finally {
+      if (requestEpoch === pageRequestEpochRef.current) setLoadingMore(false);
     }
-    setLoadingMore(false);
   }, [loadingMore, nextOffset, viewer.path]);
 
   return (

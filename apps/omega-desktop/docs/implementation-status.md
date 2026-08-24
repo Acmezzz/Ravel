@@ -2,8 +2,8 @@
 
 > 更新日期：2026-08-24
 > 当前分支：`feat/omega-runtime-foundation`
-> 最近提交：Phase 1 prompt and worker identity
-> 当前验证：Electron syntax、Renderer TypeScript、桌面测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
+> 最近提交：Phase 4 renderer subscriptions and streaming work
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -98,7 +98,7 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 134/134 通过
+Desktop/security tests: 136/136 通过
 Release gate: 通过（离线配置门禁）
 Packaged launch smoke: 手工验证过，尚未纳入自动 CI 门禁
 git diff --check: 通过

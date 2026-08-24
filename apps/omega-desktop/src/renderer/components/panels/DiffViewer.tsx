@@ -15,6 +15,10 @@ import { ipc } from "../../ipc/client";
 import type { DiffFile, GitStageItem } from "../../types/dto";
 import { ApprovalBar } from "./ApprovalBar";
 
+const MAX_RENDERED_FILES = 80;
+const MAX_RENDERED_HUNKS_PER_FILE = 40;
+const MAX_RENDERED_LINES_PER_HUNK = 400;
+
 const STATUS_LABEL: Record<DiffFile["status"], string> = {
   added: "新增",
   modified: "修改",
@@ -163,7 +167,7 @@ function FileCard({
         </Box>
       </AccordionSummary>
       <AccordionDetails sx={{ px: 1, pt: 0, minWidth: 0 }}>
-        {file.hunks.map((hunk, i) => (
+        {file.hunks.slice(0, MAX_RENDERED_HUNKS_PER_FILE).map((hunk, i) => (
           <Box key={i} sx={{ mt: 0.75, border: "1px solid var(--omega-border)", borderRadius: "8px", overflow: "hidden", minWidth: 0 }}>
             <Box
               sx={{ display: "flex", alignItems: "center", background: "var(--omega-bg)", cursor: "pointer", minWidth: 0 }}
@@ -173,9 +177,14 @@ function FileCard({
               <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hunk.header}</Typography>
             </Box>
             <Box sx={{ px: 1, py: 0.5, overflowX: "auto" }}>
-              {hunk.lines.map((line, j) => (
+              {hunk.lines.slice(0, MAX_RENDERED_LINES_PER_HUNK).map((line, j) => (
                 <HunkLine key={j} line={line} />
               ))}
+              {hunk.lines.length > MAX_RENDERED_LINES_PER_HUNK ? (
+                <Typography sx={{ fontSize: 11, color: "var(--omega-warning)", py: 0.5 }}>
+                  已折叠 {hunk.lines.length - MAX_RENDERED_LINES_PER_HUNK} 行，避免大 diff 阻塞界面。
+                </Typography>
+              ) : null}
             </Box>
           </Box>
         ))}
@@ -377,9 +386,10 @@ export function DiffViewer(): React.ReactElement {
         <>
           <Box sx={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", pr: 0.25 }}>
             <SectionTitle label="未暂存" count={unstagedCount} />
-            {snapshot.unstaged.map((file) => (
+            {snapshot.unstaged.slice(0, MAX_RENDERED_FILES).map((file) => (
               <FileCard key={file.path} file={file} selection={unstagedSel} onToggleFile={toggleFile(setUnstagedSel)} onToggleHunk={toggleHunk(setUnstagedSel)} onOpenFile={(p) => void openViewer(p)} />
             ))}
+            {unstagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: 11, color: "var(--omega-warning)", mb: 1 }}>已折叠 {unstagedCount - MAX_RENDERED_FILES} 个未暂存文件。</Typography> : null}
             {unstagedCount > 0 ? (
               <Button size="small" variant="outlined" onClick={() => void stage()} disabled={busy || unstagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
                 暂存所选（{unstagedSel.files.size}）
@@ -387,9 +397,10 @@ export function DiffViewer(): React.ReactElement {
             ) : null}
 
             <SectionTitle label="已暂存" count={stagedCount} />
-            {snapshot.staged.map((file) => (
+            {snapshot.staged.slice(0, MAX_RENDERED_FILES).map((file) => (
               <FileCard key={file.path} file={file} selection={stagedSel} onToggleFile={toggleFile(setStagedSel)} onToggleHunk={toggleHunk(setStagedSel)} onOpenFile={(p) => void openViewer(p)} />
             ))}
+            {stagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: 11, color: "var(--omega-warning)", mb: 1 }}>已折叠 {stagedCount - MAX_RENDERED_FILES} 个已暂存文件。</Typography> : null}
             {stagedCount > 0 ? (
               <Button size="small" variant="outlined" onClick={() => void unstage()} disabled={busy || stagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
                 取消暂存所选（{stagedSel.files.size}）

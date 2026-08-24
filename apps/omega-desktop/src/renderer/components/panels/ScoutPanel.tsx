@@ -7,6 +7,10 @@ import Divider from "@mui/material/Divider";
 import { useAppStore } from "../../store/useAppStore";
 import type { ScoutStatus, ScoutRounds, ScoutProposals } from "../../types/dto";
 
+const MAX_ROUNDS = 40;
+const MAX_PROPOSALS = 80;
+const MAX_STEPS = 40;
+
 function StatusCard({ data }: { data: ScoutStatus }) {
   return (
     <Paper sx={{ p: 1.5, mb: 1.5, background: "var(--omega-bg-panel)", border: "1px solid var(--omega-border)" }}>
@@ -58,9 +62,10 @@ function ProposalCard({ proposal }: { proposal: NonNullable<ScoutProposals["prop
       <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>{proposal.idea}</Typography>
       {proposal.steps.length > 0 ? (
         <Box component="ul" sx={{ m: 0, pl: 2, color: "var(--omega-text-muted)", fontSize: 12 }}>
-          {proposal.steps.map((s, i) => (
+          {proposal.steps.slice(0, MAX_STEPS).map((s, i) => (
             <li key={i}>{s}</li>
           ))}
+          {proposal.steps.length > MAX_STEPS ? <li>已折叠 {proposal.steps.length - MAX_STEPS} 个步骤</li> : null}
         </Box>
       ) : null}
       {proposal.assumptions.length > 0 ? (
@@ -92,7 +97,7 @@ export function ScoutPanel(): React.ReactElement {
       <Divider sx={{ my: 1, borderColor: "var(--omega-border)" }} />
       <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text-muted)", mb: 0.5 }}>探索轮 Rounds</Typography>
       {rounds && rounds.rounds.length > 0 ? (
-        rounds.rounds.map((r) => <RoundCard key={r.roundId} round={r} />)
+        rounds.rounds.slice(0, MAX_ROUNDS).map((r) => <RoundCard key={r.roundId} round={r} />)
       ) : (
         <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无探索轮记录。</Typography>
       )}

@@ -105,7 +105,9 @@ export function Composer(): React.ReactElement {
   const setComposerPrefill = useAppStore((s) => s.setComposerPrefill);
   const queuedMessages = useAppStore((s) => s.queuedMessages);
   const setQueuedMessages = useAppStore((s) => s.setQueuedMessages);
-  const messages = useAppStore((s) => s.messages);
+  // Message deltas do not affect input history. Subscribe to length only so
+  // streaming assistant updates do not re-render the composer.
+  const messageCount = useAppStore((s) => s.messages.length);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const running = connection === "running";
   const shuttingDown = shutdownPhase !== "idle";
@@ -148,6 +150,7 @@ export function Composer(): React.ReactElement {
   const inputHistory = React.useMemo(() => {
     const seen = new Set<string>();
     const history: string[] = [];
+    const messages = useAppStore.getState().messages;
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const message = messages[i];
       if (message.role !== "user" || !message.text.trim()) continue;
@@ -158,7 +161,7 @@ export function Composer(): React.ReactElement {
       if (history.length >= 50) break;
     }
     return history.reverse();
-  }, [messages]);
+  }, [messageCount]);
 
   const addFiles = React.useCallback(async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;

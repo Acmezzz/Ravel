@@ -17,6 +17,10 @@ import type {
 } from "../../types/dto";
 
 const SUBTABS = ["catalog", "registry", "tracker", "coverage", "stats", "health"] as const;
+const MAX_FEATURES = 80;
+const MAX_REGISTRY_ENTRIES = 120;
+const MAX_ISSUES = 40;
+const MAX_ESCAPES = 40;
 type SubTab = (typeof SUBTABS)[number];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -34,7 +38,7 @@ function CatalogView({ data }: { data: WorkflowCatalog }) {
   if (data.features.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无目录数据。</Typography>;
   return (
     <Stack spacing={1}>
-      {data.features.map((f) => (
+      {data.features.slice(0, MAX_FEATURES).map((f) => (
         <Box key={f.id}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>{f.label}</Typography>
           <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{f.description}</Typography>
@@ -57,7 +61,7 @@ function RegistryView({ data }: { data: WorkflowRegistry }) {
   if (data.entries.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无注册表数据。</Typography>;
   return (
     <Stack spacing={1}>
-      {data.entries.map((e) => (
+      {data.entries.slice(0, MAX_REGISTRY_ENTRIES).map((e) => (
         <Box key={e.id} sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <Chip size="small" label={`L${e.level}`} sx={{ height: 20, fontSize: 11 }} />
           <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{e.intent || e.id}</Typography>
@@ -113,7 +117,7 @@ function StatsView({ data }: { data: WorkflowStats }) {
       {data.escapes.length > 0 ? (
         <Box sx={{ mt: 0.5 }}>
           <Typography sx={{ fontSize: 11, color: "var(--omega-warning)" }}>逃逸记录：</Typography>
-          {data.escapes.slice(0, 10).map((e, i) => (
+          {data.escapes.slice(0, MAX_ESCAPES).map((e, i) => (
             <Typography key={i} sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>
               · {e.workflowId} @ step {e.stepIndex}：{e.reason}
             </Typography>
@@ -139,7 +143,7 @@ function HealthView({ data }: { data: WorkflowHealth }) {
       </Typography>
       {data.issues.length > 0 ? (
         <Box sx={{ mt: 0.5 }}>
-          {data.issues.slice(0, 12).map((issue, i) => (
+          {data.issues.slice(0, MAX_ISSUES).map((issue, i) => (
             <Typography key={i} sx={{ fontSize: 11, color: issue.severity === "error" ? "var(--omega-danger)" : "var(--omega-warning)" }}>
               · [{issue.code}] {issue.detail}
             </Typography>

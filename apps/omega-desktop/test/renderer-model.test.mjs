@@ -498,6 +498,35 @@ test("R3: deferred thinking and stats/export IPC surfaces", async () => {
   assert.match(exporter, /buildSessionHtml/);
 });
 
+test("stage 4 isolates renderer subscriptions, scroll work, and stale reads", async () => {
+  const composer = await read("../src/renderer/components/chat/Composer.tsx");
+  const list = await read("../src/renderer/components/chat/MessageList.tsx");
+  const surface = await read("../src/renderer/components/layout/ExtensionSurface.tsx");
+  const tree = await read("../src/renderer/components/files/FileTree.tsx");
+  const viewer = await read("../src/renderer/components/files/FileViewer.tsx");
+  const sessions = await read("../src/renderer/components/sessions/SessionList.tsx");
+  assert.match(composer, /messages\.length/);
+  assert.match(composer, /useAppStore\.getState\(\)\.messages/);
+  assert.match(list, /requestAnimationFrame/);
+  assert.match(list, /historyEpochRef/);
+  assert.match(surface, /shallow/);
+  assert.match(tree, /requestEpochRef/);
+  assert.match(viewer, /pageRequestEpochRef/);
+  assert.match(sessions, /requestEpochRef/);
+});
+
+test("stage 4 bounds large diff and extension projections", async () => {
+  const diff = await read("../src/renderer/components/panels/DiffViewer.tsx");
+  const scout = await read("../src/renderer/components/panels/ScoutPanel.tsx");
+  const workflow = await read("../src/renderer/components/panels/WorkflowPanel.tsx");
+  assert.match(diff, /MAX_RENDERED_FILES/);
+  assert.match(diff, /MAX_RENDERED_LINES_PER_HUNK/);
+  assert.match(scout, /MAX_ROUNDS/);
+  assert.match(scout, /MAX_PROPOSALS/);
+  assert.match(workflow, /MAX_FEATURES/);
+  assert.match(workflow, /MAX_ISSUES/);
+});
+
 test("R3: thinking blocks defer loading and message list windows", async () => {
   const thinking = await read("../src/renderer/components/chat/ThinkingBlock.tsx");
   assert.match(thinking, /getThinking/);

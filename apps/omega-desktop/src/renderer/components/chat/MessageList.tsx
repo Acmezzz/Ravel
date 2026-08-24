@@ -57,9 +57,13 @@ export function MessageList(): React.ReactElement {
   const [historyNextOffset, setHistoryNextOffset] = React.useState<number | null>(null);
   const [historyLoading, setHistoryLoading] = React.useState(false);
   const historyRequestRef = React.useRef<Promise<void> | null>(null);
+  const historyEpochRef = React.useRef(0);
+  const scrollFrameRef = React.useRef<number | null>(null);
 
   // Reset the render window when the session changes.
   React.useEffect(() => {
+    historyEpochRef.current += 1;
+    historyRequestRef.current = null;
     setWindowSize(WINDOW_SIZE);
     setHistoryOffset(0);
     setHistoryNextOffset(null);
@@ -68,10 +72,14 @@ export function MessageList(): React.ReactElement {
   const loadHistoricalMessages = React.useCallback(async () => {
     if (!activeSessionId || historyLoading) return;
     if (historyRequestRef.current) return historyRequestRef.current;
+    const requestEpoch = historyEpochRef.current;
+    const requestSessionId = activeSessionId;
+    const requestOffset = historyOffset;
     const request = (async () => {
       setHistoryLoading(true);
       try {
-        const result = await ipc.readSessionMessages({ sessionId: activeSessionId, offset: historyOffset, limit: WINDOW_SIZE });
+        const result = await ipc.readSessionMessages({ sessionId: requestSessionId, offset: requestOffset, limit: WINDOW_SIZE });
+        if (requestEpoch !== historyEpochRef.current || requestSessionId !== useAppStore.getState().activeSessionId) return;
         if (result.ok) {
           useAppStore.getState().prependMessages(result.data.items);
           setHistoryNextOffset(result.data.nextOffset);
@@ -127,7 +135,17 @@ export function MessageList(): React.ReactElement {
   const lastTextLength = visible.length > 0 ? visible[visible.length - 1].text.length : 0;
   React.useEffect(() => {
     if (!stickRef.current) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      if (stickRef.current) bottomRef.current?.scrollIntoView({ behavior: "auto" });
+    });
+    return () => {
+      if (scrollFrameRef.current !== null) {
+        cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
+      }
+    };
   }, [visible.length, lastTextLength, toolCards.length, thinkingActive, compacting, bashTail]);
 
   React.useEffect(() => {
