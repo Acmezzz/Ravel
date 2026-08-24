@@ -1,7 +1,7 @@
 /**
  * Workspace file access — main-process only, path-safe.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { resolveExisting } from "./path-security.js";
 import { isDocxPath, readDocxText } from "./docx-service.js";
@@ -61,8 +61,9 @@ export function revealPath(root, relPath) {
 
 export function readFile(root, relPath) {
   const abs = resolveUnder(root, relPath);
+  const linkInfo = lstatSync(abs);
+  if (!linkInfo.isFile()) throw new Error("Path is not a regular file");
   const info = statSync(abs);
-  if (info.isDirectory()) throw new Error("Path is a directory");
   const size = info.size;
   if (isDocxPath(relPath)) {
     const docx = readDocxText(abs);
@@ -83,8 +84,9 @@ export function readFile(root, relPath) {
 
 export function readFilePage(root, relPath, offset = 0, limit = 200) {
   const abs = resolveUnder(root, relPath);
+  const linkInfo = lstatSync(abs);
+  if (!linkInfo.isFile()) throw new Error("Path is not a regular file");
   const info = statSync(abs);
-  if (info.isDirectory()) throw new Error("Path is a directory");
   const safeOffset = Math.max(0, Math.min(Number.isInteger(offset) ? offset : 0, 10_000_000));
   const safeLimit = Math.max(1, Math.min(Number.isInteger(limit) ? limit : 200, 2_000));
   const content = readFileSync(abs, "utf8");

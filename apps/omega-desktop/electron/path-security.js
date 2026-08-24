@@ -64,6 +64,16 @@ export function resolveExisting(root, relPath) {
   return { root: safeRoot, path: actual, relative: relative(safeRoot, actual).replace(/\\/g, "/") };
 }
 
+export function canonicalInside(root, candidate) {
+  try {
+    const safeRoot = realRoot(root);
+    const actual = realpathSync.native(resolve(candidate));
+    return isInside(safeRoot, actual) ? actual : null;
+  } catch {
+    return null;
+  }
+}
+
 export function resolveForCreate(root, relPath) {
   const safeRoot = realRoot(root);
   const safeRel = relativePath(relPath);

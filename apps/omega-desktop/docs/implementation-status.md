@@ -12,6 +12,7 @@
 - Pi JSONL / `SessionManager` 是 session、消息、tree、时间戳和分支的权威源。
 - Omega 只持久化桌面设置、窗口状态、草稿、workspace allowlist、event cache 和必要 UI 缓存。
 - Renderer 不拥有 raw filesystem、Git、凭据或 Pi SDK 访问权限。
+- Session path lookup 只接受 Pi sessions root 下的 canonical regular JSONL；workspace reader 对 read/readPage 拒绝目录、symlink 和其它非 regular file。
 - 所有特权操作经过 Main sender 校验、路径安全层和受控 DTO。
 - 桌面能力优先使用侧栏、面板、Dialog、原生文件选择器、上下文菜单和系统通知。
 - Git Review 是事后审查，不冒充执行前权限系统。
@@ -21,7 +22,7 @@
 
 ### 2.1 Workspace、路径和 Project Trust
 
-- `electron/path-security.js` 统一 realpath containment、symlink/junction 防护、`..`/绝对路径拒绝和父目录校验。
+- `electron/path-security.js` 统一 realpath containment、symlink/junction 防护、`..`/绝对路径拒绝和父目录校验；permission profile 的 workspace-only 对已存在路径也使用 canonical containment。
 - workspace registry 使用 `workspaceId / realRoot / displayPath`，持久化授权 allowlist，自动 prune 无效路径。
 - Project Switcher 支持原生目录选择器、workspace 添加/切换/移除和切换后状态刷新。
 - Project Trust 支持 trust once / always / never，未信任项目资源 dormant。
@@ -69,7 +70,7 @@
 ### 2.6 配置、生态和 Extension UI
 
 - Model Center 第一轮：provider/model 列表、API key 添加/删除/测试选择；Electron `safeStorage` 优先，Main 在 Worker 创建/重启时恢复 vault 凭据，Renderer 不接触明文凭据。
-- Skills/Plugins Center：列表、搜索、本地安装/移除、启用/禁用、skill model invocation、资源 reload；联网安装拒绝。
+- Skills/Plugins Center：列表、搜索、本地安装/移除、启用/禁用、skill model invocation、资源 reload；联网安装拒绝。安装、移除和 Skill frontmatter 修改共享 authorized-root 校验；Skill 写入要求 regular file 并采用同目录临时文件原子替换。
 - Extension UI bridge：
   - Dialog：`select`、`confirm`、`input`、`editor`
   - Snackbar：`notify`
@@ -97,7 +98,7 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 132/132 通过
+Desktop/security tests: 134/134 通过
 Release gate: 通过（离线配置门禁）
 Packaged launch smoke: 手工验证过，尚未纳入自动 CI 门禁
 git diff --check: 通过

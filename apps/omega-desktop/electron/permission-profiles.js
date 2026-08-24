@@ -1,3 +1,6 @@
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
+
 export const PERMISSION_PROFILES = Object.freeze([
   "trusted",
   "workspace-only",
@@ -15,11 +18,18 @@ function normalizePath(value) {
 function isInsideWorkspace(value, cwd) {
   const target = normalizePath(value);
   const root = normalizePath(cwd).replace(/\/+$/, "");
-  if (!target || !root) return false;
-  if (target.startsWith("/") || /^[A-Za-z]:\//.test(target)) {
-    return target === root || target.startsWith(`${root}/`);
+  if (!target || !root || target.startsWith("~") || target.split("/").includes("..")) return false;
+  try {
+    const canonicalRoot = normalizePath(realpathSync.native(resolve(root))).replace(/\/+$/, "");
+    const targetPath = target.startsWith("/") || /^[A-Za-z]:\//.test(target) ? target : resolve(root, target);
+    const canonicalTarget = normalizePath(realpathSync.native(resolve(targetPath)));
+    return canonicalTarget === canonicalRoot || canonicalTarget.startsWith(`${canonicalRoot}/`);
+  } catch {
+    // New paths are checked lexically until they exist; existing symlinks must pass canonical containment.
+    const lexical = normalizePath(target.startsWith("/") || /^[A-Za-z]:\//.test(target) ? resolve(target) : resolve(root, target));
+    const lexicalRoot = normalizePath(resolve(root));
+    return lexical === lexicalRoot || lexical.startsWith(`${lexicalRoot}/`);
   }
-  return !target.split("/").includes("..") && !target.startsWith("~");
 }
 
 function pathsFromInput(input) {

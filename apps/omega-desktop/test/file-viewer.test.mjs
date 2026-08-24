@@ -5,7 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFile, readFilePage } from "../electron/workspace-service.js";
 
- test("workspace reader returns bounded media data URLs", async () => {
+test("workspace reader rejects non-regular files", async () => {
+  const source = await (await import("node:fs/promises")).readFile(new URL("../electron/workspace-service.js", import.meta.url), "utf8");
+  assert.match(source, /lstatSync/);
+  assert.match(source, /Path is not a regular file/);
+});
+
+test("workspace reader returns bounded media data URLs", async () => {
   const root = await mkdtemp(join(tmpdir(), "omega-viewer-"));
   await writeFile(join(root, "pixel.png"), Buffer.from([137, 80, 78, 71]));
   const result = readFile(root, "pixel.png");

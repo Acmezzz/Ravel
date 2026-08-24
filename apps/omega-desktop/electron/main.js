@@ -30,7 +30,7 @@ import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
 import { projectTrust } from "./project-trust.js";
-import { isInside, realRoot } from "./path-security.js";
+import { canonicalInside, isInside, realRoot } from "./path-security.js";
 import { appendSessionInfo, readSessionMessages, readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";
@@ -600,7 +600,7 @@ function isUnderAuthorizedRoot(candidate) {
   const target = resolve(candidate);
   return authorizedRoots().some((root) => {
     try {
-      return isInside(root, target);
+      return Boolean(canonicalInside(root, target));
     } catch {
       return false;
     }
@@ -1346,6 +1346,7 @@ ipcMain.handle("omega:removeLocalResource", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
     const source = assertLocalSource(req?.source);
+    if (!isUnderAuthorizedRoot(source)) return errorResult("forbidden", "只能移除已授权根目录内的本地资源");
     return rpc("removeLocalResource", { source, project: req?.project === true }, "write_failed");
   } catch (error) {
     return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
@@ -1371,6 +1372,7 @@ ipcMain.handle("omega:setSkillModelInvocation", (event, req) => {
   if (!req || typeof req.filePath !== "string" || !req.filePath.trim()) {
     return errorResult("invalid_args", "filePath is required");
   }
+  if (!isUnderAuthorizedRoot(req.filePath)) return errorResult("forbidden", "只能修改已授权根目录内的 Skill");
   return rpc("setSkillModelInvocation", { filePath: req.filePath, disable: req.disable === true }, "write_failed");
 });
 

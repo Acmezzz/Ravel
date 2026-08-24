@@ -16,8 +16,8 @@ import {
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, lstatSync, realpathSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const AGENT_DIR = join(homedir(), ".pi", "agent");
@@ -429,10 +429,21 @@ export function getToolDetail(runtime, toolCallId) {
 
 export async function resolveSessionPath(sessionId) {
   if (!sessionId) return undefined;
-  if (sessionPaths.has(sessionId)) return sessionPaths.get(sessionId);
-  const all = await SessionManager.listAll();
-  for (const session of all) rememberSessionPath(session.id, session.path);
-  return sessionPaths.get(sessionId);
+  if (!sessionPaths.has(sessionId)) {
+    const all = await SessionManager.listAll();
+    for (const session of all) rememberSessionPath(session.id, session.path);
+  }
+  const candidate = sessionPaths.get(sessionId);
+  if (!candidate) return undefined;
+  try {
+    const root = realpathSync.native(piSessionsRoot());
+    const actual = realpathSync.native(candidate);
+    const rel = relative(root, actual);
+    if (!lstatSync(actual).isFile() || rel.startsWith("..") || isAbsolute(rel)) return undefined;
+    return actual;
+  } catch {
+    return undefined;
+  }
 }
 
 export function forgetSessionPath(sessionId) {

@@ -14,7 +14,7 @@
  * A crash or hang in the agent/extension code no longer takes down the
  * window: the main process owns the UI and proxies every omega:* RPC here.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { DefaultPackageManager } from "@earendil-works/pi-coding-agent";
 import * as bridge from "./agent-bridge.js";
@@ -576,8 +576,15 @@ const methods = {
       error.code = "not_found";
       throw error;
     }
+    if (!lstatSync(filePath).isFile()) {
+      const error = new Error("Skill 必须是普通文件");
+      error.code = "invalid_resource";
+      throw error;
+    }
     const current = readFileSync(filePath, "utf8");
-    writeFileSync(filePath, setDisableModelInvocationFrontmatter(current, disable === true), "utf8");
+    const temp = `${filePath}.tmp-${process.pid}`;
+    writeFileSync(temp, setDisableModelInvocationFrontmatter(current, disable === true), { encoding: "utf8", mode: 0o600 });
+    renameSync(temp, filePath);
     await runtime.session.reload();
     return listResourceBundle();
   },

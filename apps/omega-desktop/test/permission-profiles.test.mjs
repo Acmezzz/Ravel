@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createPermissionGuard, permissionProfileLabel, sanitizePermissionProfile } from "../electron/permission-profiles.js";
 
 test("permission profiles sanitize and expose desktop labels", () => {
@@ -19,6 +22,15 @@ test("workspace-only rejects bash and paths outside the workspace", async () => 
   await assert.rejects(() => guard({ toolCall: { name: "bash" }, args: { command: "pwd" } }), /shell/);
   await assert.rejects(() => guard({ toolCall: { name: "edit" }, args: { path: "/other/a.txt" } }), /超出授权/);
   await assert.doesNotReject(() => guard({ toolCall: { name: "edit" }, args: { path: "src/a.txt" } }));
+});
+
+test("workspace-only rejects an existing symlink that escapes the workspace", async () => {
+  const root = await mkdtemp(join(tmpdir(), "omega-permission-root-"));
+  const outside = await mkdtemp(join(tmpdir(), "omega-permission-outside-"));
+  await writeFile(join(outside, "secret.txt"), "secret");
+  await symlink(outside, join(root, "linked"), "junction");
+  const guard = createPermissionGuard({ profile: "workspace-only", cwd: root });
+  await assert.rejects(() => guard({ toolCall: { name: "edit" }, args: { path: join(root, "linked", "secret.txt") } }), /超出授权/);
 });
 
 test("ask-before-command delegates the decision to the desktop UI", async () => {

@@ -23,6 +23,11 @@ test("installLocalResource IPC refuses renderer-supplied paths outside authorize
   assert.match(main, /omega:installLocalResource/);
   assert.match(main, /pickedByDialog/);
   assert.match(main, /isUnderAuthorizedRoot\(source\)/);
+  assert.match(main, /只能移除已授权根目录内的本地资源/);
+  assert.match(main, /只能修改已授权根目录内的 Skill/);
+  const worker = await readFile(new URL("../electron/worker.mjs", import.meta.url), "utf8");
+  assert.match(worker, /Skill 必须是普通文件/);
+  assert.match(worker, /renameSync\(temp, filePath\)/);
 });
 
 test("resource enable patterns force-include and force-exclude a path", () => {
