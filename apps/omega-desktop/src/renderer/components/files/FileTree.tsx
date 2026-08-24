@@ -73,7 +73,7 @@ function TreeRow({
     >
       {isDir ? (
         <>
-          <IconButton size="small" sx={{ p: 0, color: "var(--omega-text-dim)" }} onClick={(e) => { e.stopPropagation(); onToggleDir(rel); }}>
+          <IconButton size="small" aria-label={expanded ? `折叠 ${name}` : `展开 ${name}`} sx={{ p: 0, color: "var(--omega-text-dim)" }} onClick={(e) => { e.stopPropagation(); onToggleDir(rel); }}>
             {expanded ? <ExpandMoreIcon sx={{ fontSize: 14 }} /> : <ChevronRightIcon sx={{ fontSize: 14 }} />}
           </IconButton>
           {expanded ? (
@@ -97,6 +97,7 @@ function TreeRow({
       <Tooltip title="在资源管理器中显示">
         <IconButton
           size="small"
+          aria-label={`在资源管理器中显示 ${name}`}
           onClick={(e) => {
             e.stopPropagation();
             onReveal(rel);

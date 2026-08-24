@@ -469,7 +469,7 @@ export function Composer(): React.ReactElement {
         position: "relative",
       }}
     >
-      {historyOpen && inputHistory.length > 0 ? (        <Paper
+      {historyOpen && inputHistory.length > 0 ? (        <Paper id="omega-history-list" role="listbox" aria-label="输入历史"
           elevation={0}
           sx={{
             position: "absolute",
@@ -491,6 +491,9 @@ export function Composer(): React.ReactElement {
           </Typography>
           {inputHistory.map((entry, index) => (
             <Box
+              id={`omega-history-option-${index}`}
+              role="option"
+              aria-selected={index === historyIndex}
               key={`${entry}-${index}`}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -514,7 +517,7 @@ export function Composer(): React.ReactElement {
       ) : null}
 
       {atOpen && atItems.length > 0 ? (
-        <Paper
+        <Paper id="omega-at-list" role="listbox" aria-label="文件补全结果"
           elevation={0}
           sx={{
             position: "absolute",
@@ -536,6 +539,9 @@ export function Composer(): React.ReactElement {
           </Typography>
           {atItems.map((path, index) => (
             <Box
+              id={`omega-at-option-${index}`}
+              role="option"
+              aria-selected={index === atIndex}
               key={path}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -559,7 +565,7 @@ export function Composer(): React.ReactElement {
       ) : null}
 
       {composerError ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-danger)", px: 1, pb: 0.75 }}>{composerError}</Typography>
+        <Typography id="omega-composer-error" role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", px: 1, pb: 0.75 }}>{composerError}</Typography>
       ) : null}
 
       {queued.length > 0 ? (
@@ -641,6 +647,13 @@ export function Composer(): React.ReactElement {
         />
         <TextareaAutosize
           ref={taRef as never}
+          id="omega-composer-input"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={atOpen || historyOpen}
+          aria-controls={atOpen ? "omega-at-list" : historyOpen ? "omega-history-list" : undefined}
+          aria-activedescendant={atOpen && atItems[atIndex] ? `omega-at-option-${atIndex}` : undefined}
+          aria-describedby={composerError ? "omega-composer-error" : undefined}
           value={text}
           disabled={shuttingDown}
           onChange={(e) => {

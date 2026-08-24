@@ -3,6 +3,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import { useAppStore } from "../../store/useAppStore";
@@ -17,6 +18,7 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps): Reac
   const [title, setTitle] = React.useState("");
   const [workspace, setWorkspace] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const applySessionPage = useAppStore((s) => s.applySessionPage);
   const setActiveSession = useAppStore((s) => s.setActiveSession);
   const loadTranscript = useAppStore((s) => s.loadTranscript);
@@ -27,6 +29,7 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps): Reac
       setTitle("");
       setWorkspace("");
       setBusy(false);
+      setError(null);
     }
   }, [open]);
 
@@ -41,17 +44,18 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps): Reac
       const list = await ipc.listSessions();
       if (list.ok) applySessionPage(list.data);
       onClose();
-    } catch (error) {
-      console.error("newSession failed", error);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setBusy(false);
     }
   }, [title, workspace, setActiveSession, loadTranscript, applySessionPage, setAgent, onClose]);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+    <Dialog open={open} onClose={busy ? undefined : onClose} fullWidth maxWidth="xs" aria-busy={busy}>
       <DialogTitle sx={{ fontWeight: 700 }}>新建会话</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+        {error ? <Typography role="alert" sx={{ color: "var(--omega-danger)", fontSize: 12 }}>{error}</Typography> : null}
         <TextField
           label="标题"
           value={title}
@@ -70,7 +74,7 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps): Reac
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} sx={{ textTransform: "none" }}>
+        <Button onClick={onClose} disabled={busy} sx={{ textTransform: "none" }}>
           取消
         </Button>
         <Button variant="contained" onClick={() => void handleCreate()} disabled={busy} sx={{ textTransform: "none" }}>

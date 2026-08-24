@@ -139,6 +139,8 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
             className="msg-actions"
             sx={{
               opacity: 0,
+              "@media (hover: none)": { opacity: 1, transform: "none" },
+              "&:focus-within": { opacity: 1, transform: "none" },
               transform: "translateY(-2px)",
               transition: "opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), transform 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
               mt: 0.25,
@@ -148,13 +150,13 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
             }}
           >
             <Tooltip title={copied ? "已复制" : "复制消息"}>
-              <IconButton size="small" onClick={() => void handleCopy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
+              <IconButton size="small" aria-label="复制消息" onClick={() => void handleCopy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
                 {copied ? <CheckIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 15 }} />}
               </IconButton>
             </Tooltip>
             {canFork ? (
               <Tooltip title={forking ? "创建中…" : "从此处 Fork 新会话"}>
-                <IconButton size="small" onClick={() => void handleFork()} disabled={forking} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
+                <IconButton size="small" aria-label="从此处 Fork 新会话" onClick={() => void handleFork()} disabled={forking} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
                   <CallSplitIcon sx={{ fontSize: 15 }} />
                 </IconButton>
               </Tooltip>

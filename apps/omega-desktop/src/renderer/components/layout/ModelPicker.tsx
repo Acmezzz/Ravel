@@ -33,6 +33,7 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
   const setAgent = useAppStore((s) => s.setAgent);
   const [query, setQuery] = React.useState("");
   const [pending, setPending] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (anchor) setQuery("");
@@ -49,14 +50,18 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
   const pick = React.useCallback(
     async (model: ModelInfo) => {
       const token = ++modelSwitchToken;
-      setPending(`${model.provider}/${model.id}`);
+      const key = `${model.provider}/${model.id}`;
+      setPending(key);
+      setError(null);
       try {
         const res = await ipc.setModel({ provider: model.provider, modelId: model.id });
         if (token !== modelSwitchToken) return;
         if (res.ok) {
           setAgent(res.data);
           onClose();
-        }
+        } else setError(res.message);
+      } catch (reason) {
+        if (token === modelSwitchToken) setError(reason instanceof Error ? reason.message : String(reason));
       } finally {
         if (token === modelSwitchToken) setPending(null);
       }
@@ -67,6 +72,7 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
   return (
     <Popover
       open={Boolean(anchor)}
+      aria-label="选择模型"
       anchorEl={anchor}
       onClose={onClose}
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
@@ -83,9 +89,11 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
           fullWidth
           size="small"
           placeholder="搜索模型…"
+          label="搜索模型"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {error ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 0.75 }}>{error}</Typography> : null}
       </Box>
       <Box sx={{ overflowY: "auto", px: 0.75, pb: 0.75 }}>
         {groups.length === 0 ? (
@@ -103,6 +111,9 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
                   <Box
                     key={key}
                     {...clickableRole}
+                    role="option"
+                    aria-selected={Boolean(model.selected)}
+                    aria-busy={isPending}
                     onClick={() => (pending ? undefined : void pick(model))}
                     sx={{
                       display: "flex",

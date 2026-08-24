@@ -28,6 +28,9 @@ export function RightPanel(): React.ReactElement {
 
   return (
     <Box
+      component="aside"
+      id="omega-right-panel"
+      aria-label="工作台辅助面板"
       sx={{
         width: "100%",
         display: "flex",

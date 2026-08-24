@@ -49,6 +49,7 @@ export function FileViewer(): React.ReactElement {
   const closeViewer = useAppStore((s) => s.closeViewer);
   const setComposerPrefill = useAppStore((s) => s.setComposerPrefill);
   const [copied, setCopied] = React.useState(false);
+  const [copyError, setCopyError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<"source" | "preview">("source");
   const [selection, setSelection] = React.useState<{ start: number; end: number } | null>(null);
   const [tabs, setTabs] = React.useState<string[]>([]);
@@ -57,6 +58,7 @@ export function FileViewer(): React.ReactElement {
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [watching, setWatching] = React.useState(false);
   const [diffMode, setDiffMode] = React.useState(false);
+  const [pageError, setPageError] = React.useState<string | null>(null);
   const pageRequestEpochRef = React.useRef(0);
 
   React.useEffect(() => {
@@ -77,6 +79,7 @@ export function FileViewer(): React.ReactElement {
     setSelection(null);
     setDisplayedContent(viewer.file?.content ?? "");
     setNextOffset(viewer.file?.nextOffset ?? null);
+    setPageError(null);
     if (viewer.path && !tabs.includes(viewer.path)) setTabs((current) => [...current, viewer.path!].slice(-8));
   }, [viewer.file?.content, viewer.file?.nextOffset, viewer.path]);
 
@@ -84,10 +87,11 @@ export function FileViewer(): React.ReactElement {
     if (!viewer.file?.content) return;
     try {
       await navigator.clipboard.writeText(viewer.file.content);
+      setCopyError(null);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* sandboxed clipboard may be blocked */
+      setCopyError("复制失败，请检查剪贴板权限");
     }
   }, [viewer.file?.content]);
 
@@ -114,9 +118,12 @@ export function FileViewer(): React.ReactElement {
       const res = await ipc.readFilePage({ path: requestPath, offset: requestOffset, limit: 400 });
       if (requestEpoch !== pageRequestEpochRef.current || useAppStore.getState().viewer.path !== requestPath) return;
       if (res.ok) {
+        setPageError(null);
         setDisplayedContent((current) => `${current}${current ? "\n" : ""}${res.data.content ?? ""}`);
         setNextOffset(res.data.nextOffset);
-      }
+      } else setPageError(res.message);
+    } catch (reason) {
+      setPageError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       if (requestEpoch === pageRequestEpochRef.current) setLoadingMore(false);
     }
@@ -159,21 +166,22 @@ export function FileViewer(): React.ReactElement {
         ) : null}
         <Typography sx={{ fontSize: 10, color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
         <Tooltip title="使用系统默认应用打开">
-          <IconButton size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: 10 }}>外部</Typography></IconButton>
+          <IconButton aria-label="使用系统默认应用打开" size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: 10 }}>外部</Typography></IconButton>
         </Tooltip>
         <Tooltip title="在资源管理器中显示">
-          <IconButton size="small" onClick={() => void reveal()} sx={{ color: "var(--omega-text-dim)" }}>
+          <IconButton aria-label="在资源管理器中显示" size="small" onClick={() => void reveal()} sx={{ color: "var(--omega-text-dim)" }}>
             <FolderOpenIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Tooltip>
       </DialogTitle>
       <DialogContent sx={{ position: "relative", minHeight: 200 }}>
         {viewer.loading ? (
-          <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
+          <Box role="status" aria-live="polite" aria-busy="true" sx={{ display: "grid", placeItems: "center", py: 6 }}>
             <CircularProgress size={22} sx={{ color: "var(--omega-accent)" }} />
+            <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>正在加载文件…</Typography>
           </Box>
         ) : viewer.error ? (
-          <Typography sx={{ fontSize: 13, color: "var(--omega-danger)" }}>{viewer.error}</Typography>
+          <Box role="alert" sx={{ display: "grid", gap: 1 }}><Typography sx={{ fontSize: 13, color: "var(--omega-danger)" }}>{viewer.error}</Typography><Button size="small" onClick={() => { if (viewer.path) void useAppStore.getState().openViewer(viewer.path); }} sx={{ justifySelf: "start", textTransform: "none" }}>重试</Button></Box>
         ) : isImage(viewer.file) ? (
           <Box component="img" src={viewer.file?.dataUrl} alt={viewer.path ?? "image"} sx={{ display: "block", maxWidth: "100%", maxHeight: "64vh", mx: "auto", objectFit: "contain" }} />
         ) : isAudio(viewer.file) ? (
@@ -213,6 +221,11 @@ export function FileViewer(): React.ReactElement {
               return (
                 <Box
                   key={line.n}
+                  role="button"
+                  tabIndex={0}
+                  aria-selected={Boolean(active)}
+                  aria-label={`选择第 ${line.n} 行`}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelection({ start: line.n, end: line.n }); } }}
                   onClick={(e) => {
                     if (e.shiftKey && selection) setSelection({ start: selection.start, end: line.n });
                     else setSelection({ start: line.n, end: line.n });
@@ -234,20 +247,23 @@ export function FileViewer(): React.ReactElement {
                 </Box>
               );
             })}
+            {pageError ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 1 }}>{pageError}</Typography> : null}
             {nextOffset !== null ? <Button size="small" onClick={() => void loadMore()} disabled={loadingMore} sx={{ mt: 1, textTransform: "none" }}>{loadingMore ? "加载中…" : "加载更多行"}</Button> : null}
           </Box>
         )}
+        {copyError ? <Typography role="alert" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: 12, color: "var(--omega-danger)" }}>{copyError}</Typography> : null}
+        {copied ? <Typography role="status" aria-live="polite" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: 12, color: "var(--omega-accent)" }}>已复制文件内容</Typography> : null}
         {viewer.file?.content ? (
           <Box sx={{ position: "absolute", top: 8, right: 12, display: "flex", gap: 0.5 }}>
             {selection ? (
               <Tooltip title={`引用 @${viewer.path}:${Math.min(selection.start, selection.end)}-${Math.max(selection.start, selection.end)}`}>
-                <IconButton size="small" onClick={quoteSelection} sx={{ color: "var(--omega-accent)" }}>
+                <IconButton aria-label="引用选中的行" size="small" onClick={quoteSelection} sx={{ color: "var(--omega-accent)" }}>
                   <Typography sx={{ fontSize: 11, fontWeight: 700 }}>@</Typography>
                 </IconButton>
               </Tooltip>
             ) : null}
             <Tooltip title={copied ? "已复制" : "复制内容"}>
-              <IconButton size="small" onClick={() => void copy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
+              <IconButton aria-label="复制文件内容" size="small" onClick={() => void copy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
                 <ContentCopyIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>

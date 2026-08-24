@@ -191,6 +191,7 @@ export function SessionList(): React.ReactElement {
         <TextField
           fullWidth
           size="small"
+          label="搜索会话"
           placeholder="搜索会话…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -203,6 +204,11 @@ export function SessionList(): React.ReactElement {
             sx: { fontSize: 12.5, borderRadius: "10px", background: "var(--omega-bg-soft)" },
           }}
         />
+        {query.trim() ? (
+          <Typography role="status" aria-live="polite" sx={{ display: "block", fontSize: 10.5, color: "var(--omega-text-dim)", px: 0.75, pt: 0.5 }}>
+            {filtered.length > 0 ? `匹配 ${filtered.length} 个会话` : "没有匹配的会话"}
+          </Typography>
+        ) : null}
       </Box>
       {[...groups.entries()].map(([workspace, items]) => {
         const isCurrentWorkspace = Boolean(items[0] && activeWorkspace && items[0].workspace === activeWorkspace);
@@ -271,7 +277,8 @@ export function SessionList(): React.ReactElement {
                     "&.Mui-selected:hover": { background: "var(--omega-selected)" },
                     "&:hover": { background: "var(--omega-hover-fill)" },
                     "& .row-actions": { opacity: 0 },
-                    "&:hover .row-actions": { opacity: 1 },
+                    "&:hover .row-actions, &:focus-within .row-actions": { opacity: 1 },
+                    "@media (hover: none)": { "& .row-actions": { opacity: 1 } },
                   }}
                 >
                   <ListItemText

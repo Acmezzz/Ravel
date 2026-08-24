@@ -8,6 +8,7 @@ import ExploreIcon from "@mui/icons-material/Explore";
 import DifferenceIcon from "@mui/icons-material/Difference";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import Backdrop from "@mui/material/Backdrop";
 import { useAppStore } from "../../store/useAppStore";
 import { TitleBar } from "./TitleBar";
 import { Header } from "./Header";
@@ -54,6 +55,8 @@ export function Workbench(): React.ReactElement {
   const [widths, setWidths] = React.useState(loadWidths);
   const [dragging, setDragging] = React.useState<null | "left" | "right">(null);
   const widthsRef = React.useRef(widths);
+  const leftTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const rightTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   const persist = React.useCallback((next: { left: number; right: number }) => {
     try {
@@ -117,10 +120,23 @@ export function Workbench(): React.ReactElement {
   );
 
   const effectiveLeftOpen = leftOpen && !focusMode && !compactViewport;
-  const compactRightOpen = rightOpen && !focusMode && compactViewport;
+  const compactLeftOpen = leftOpen && !focusMode && compactViewport;
+  const compactRightOpen = rightOpen && !focusMode && compactViewport && !compactLeftOpen;
   const effectiveRightOpen = rightOpen && !focusMode && !compactViewport;
   const leftCol = effectiveLeftOpen ? `${widths.left}px` : "0px";
   const rightCol = focusMode ? "0px" : effectiveRightOpen ? `${widths.right}px` : `${RIGHT_COLLAPSED_RAIL_PX}px`;
+
+  React.useEffect(() => {
+    if (!compactLeftOpen && !compactRightOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      if (compactLeftOpen) useAppStore.getState().toggleLeftPanel();
+      else useAppStore.getState().toggleRightPanel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [compactLeftOpen, compactRightOpen]);
 
   return (
     <Box
@@ -162,6 +178,26 @@ export function Workbench(): React.ReactElement {
       <Box sx={{ minHeight: 0, overflow: "hidden", display: "flex" }}>
         <ChatPanel />
       </Box>
+      {compactLeftOpen ? (
+        <>
+          <Backdrop open sx={{ zIndex: 19 }} onClick={() => useAppStore.getState().toggleLeftPanel()} />
+          <Box
+            component="nav"
+            id="omega-left-drawer"
+            aria-label="会话与文件导航"
+            role="dialog"
+            aria-modal="true"
+            sx={{ position: "fixed", inset: "0 auto 0 0", width: "min(420px, 88vw)", zIndex: 20, background: "var(--omega-bg-rail)", boxShadow: "var(--omega-shadow-lg)", display: "flex", flexDirection: "column" }}
+          >
+            <Box sx={{ display: "flex", justifyContent: "flex-end", p: 0.5, borderBottom: "1px solid var(--omega-border)" }}>
+              <IconButton size="small" aria-label="关闭左侧导航" onClick={() => useAppStore.getState().toggleLeftPanel()} sx={{ color: "var(--omega-text-muted)" }}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Box sx={{ minHeight: 0, flex: 1, display: "flex" }}><LeftNav /></Box>
+          </Box>
+        </>
+      ) : null}
       <Box sx={{ minHeight: 0, overflow: "hidden", display: focusMode ? "none" : "flex", position: "relative" }}>
         {effectiveRightOpen ? (
           <RightPanel />
@@ -181,8 +217,10 @@ export function Workbench(): React.ReactElement {
             <Tooltip title="工作流">
               <IconButton
                 size="small"
+                aria-label="打开工作流面板"
+                aria-pressed={rightTab === "workflow"}
                 onClick={() => setRightTab("workflow")}
-                sx={{ color: rightTab === "workflow" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
+                sx={{ color: rightTab === "workflow" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "workflow" ? "var(--omega-selected)" : "transparent" }}
               >
                 <AssessmentIcon fontSize="small" />
               </IconButton>
@@ -190,8 +228,10 @@ export function Workbench(): React.ReactElement {
             <Tooltip title="探索 Scout">
               <IconButton
                 size="small"
+                aria-label="打开 Scout 探索面板"
+                aria-pressed={rightTab === "scout"}
                 onClick={() => setRightTab("scout")}
-                sx={{ color: rightTab === "scout" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
+                sx={{ color: rightTab === "scout" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "scout" ? "var(--omega-selected)" : "transparent" }}
               >
                 <ExploreIcon fontSize="small" />
               </IconButton>
@@ -199,8 +239,10 @@ export function Workbench(): React.ReactElement {
             <Tooltip title="变更 Diff">
               <IconButton
                 size="small"
+                aria-label="打开 Diff 变更面板"
+                aria-pressed={rightTab === "diff"}
                 onClick={() => setRightTab("diff")}
-                sx={{ color: rightTab === "diff" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
+                sx={{ color: rightTab === "diff" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "diff" ? "var(--omega-selected)" : "transparent" }}
               >
                 <DifferenceIcon fontSize="small" />
               </IconButton>
@@ -208,8 +250,10 @@ export function Workbench(): React.ReactElement {
             <Tooltip title="Worktree">
               <IconButton
                 size="small"
+                aria-label="打开 Worktree 面板"
+                aria-pressed={rightTab === "worktree"}
                 onClick={() => setRightTab("worktree")}
-                sx={{ color: rightTab === "worktree" ? "var(--omega-accent)" : "var(--omega-text-dim)" }}
+                sx={{ color: rightTab === "worktree" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "worktree" ? "var(--omega-selected)" : "transparent" }}
               >
                 <AccountTreeOutlinedIcon fontSize="small" />
               </IconButton>
@@ -236,14 +280,20 @@ export function Workbench(): React.ReactElement {
         ) : null}
       </Box>
       {compactRightOpen ? (
+        <>
+          <Backdrop open sx={{ zIndex: 19 }} onClick={toggleRightPanel} />
         <Box
+          role="dialog"
+          aria-modal="true"
+          aria-label="工作台辅助面板"
           sx={{
             position: "fixed",
             top: 0,
             right: 0,
             bottom: 0,
             width: `min(${MAX_RIGHT_PX}px, 88vw)`,
-            minWidth: `${MIN_RIGHT_PX}px`,
+            minWidth: 0,
+            maxWidth: "100vw",
             zIndex: 20,
             background: "var(--omega-bg-rail)",
             boxShadow: "var(--omega-shadow-lg)",
@@ -262,6 +312,7 @@ export function Workbench(): React.ReactElement {
             <RightPanel />
           </Box>
         </Box>
+        </>
       ) : null}
     </Box>
   );

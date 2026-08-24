@@ -36,9 +36,10 @@ export function ProjectTrustDialog({
   onCancel,
 }: ProjectTrustDialogProps): React.ReactElement {
   return (
-    <Dialog open={open} onClose={busy ? undefined : onCancel} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={busy ? undefined : onCancel} fullWidth maxWidth="sm" aria-busy={busy}>
       <DialogTitle sx={{ fontWeight: 700 }}>信任此项目？</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.5, pt: 1 }}>
+        {busy ? <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>正在保存信任设置…</Typography> : null}
         <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }}>
           「{labelFor(workspace)}」包含可执行的项目扩展、技能或 prompt。
         </Typography>

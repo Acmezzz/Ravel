@@ -16,6 +16,9 @@ export function LeftNav(): React.ReactElement {
 
   return (
     <Box
+      component="nav"
+      id="omega-left-nav"
+      aria-label="会话与文件导航"
       sx={{
         width: "100%",
         display: "flex",

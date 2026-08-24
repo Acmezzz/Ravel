@@ -100,7 +100,7 @@ export const lightPalette: Palette = {
   bgRail: "#eceeef",
   bgPanel: "#ffffff",
   bgSoft: "#f7f8f8",
-  bgElevated: "#ffffff",
+  bgElevated: "#fbfbfa",
   bgOverlay: "#ffffff",
   bgCode: "#f1f2f3",
   bgUserBubble: "#c67d12",

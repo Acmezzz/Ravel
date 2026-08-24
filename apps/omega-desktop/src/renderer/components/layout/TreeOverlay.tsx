@@ -33,6 +33,7 @@ export function TreeOverlay(): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<TreeNodeRow | null>(null);
   const [rewindTarget, setRewindTarget] = React.useState<TreeNodeRow | null>(null);
+  const treeRequestEpoch = React.useRef(0);
 
   React.useEffect(() => {
     if (!open) {
@@ -42,14 +43,19 @@ export function TreeOverlay(): React.ReactElement {
       setRewindTarget(null);
       return;
     }
+    const requestEpoch = ++treeRequestEpoch.current;
     const cached = useAppStore.getState().sessionTree;
     if (cached) setTree(cached);
     void ipc.getSessionTree().then((res) => {
+      if (requestEpoch !== treeRequestEpoch.current || !useAppStore.getState().layout.treeOpen) return;
       if (res.ok) {
         setTree(res.data);
         useAppStore.getState().setSessionTree(res.data);
       } else setError(res.message);
+    }).catch((reason) => {
+      if (requestEpoch === treeRequestEpoch.current) setError(reason instanceof Error ? reason.message : String(reason));
     });
+    return () => { treeRequestEpoch.current += 1; };
   }, [open]);
 
   const applyRecord = React.useCallback(
@@ -127,12 +133,12 @@ export function TreeOverlay(): React.ReactElement {
         </DialogTitle>
         {error ? (
           <Box sx={{ px: 3, pb: 1 }}>
-            <Typography sx={{ fontSize: 12.5, color: "var(--omega-warning)" }}>{error}</Typography>
+            <Typography role="alert" sx={{ fontSize: 12.5, color: "var(--omega-warning)" }}>{error}</Typography>
           </Box>
         ) : null}
         <Box sx={{ px: 2.5, pb: 1.5, maxHeight: 380, overflowY: "auto" }}>
           {!tree ? (
-            <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载中…</Typography>
+            <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载中…</Typography>
           ) : tree.nodes.length === 0 ? (
             <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前会话还没有消息。</Typography>
           ) : (
@@ -142,10 +148,23 @@ export function TreeOverlay(): React.ReactElement {
               const isSelected = selected?.id === node.id;
               const branched = node.depth > 0 && tree.nodes[index - 1]?.depth !== undefined && node.depth > (tree.nodes[index - 1]?.depth ?? 0);
               return (
-                <Box
-                  key={node.id}
-                  {...clickableRole}
-                  onClick={() => setSelected(node)}
+                  <Box
+                    key={node.id}
+                    {...clickableRole}
+                    role="treeitem"
+                    aria-selected={isSelected}
+                    aria-level={node.depth + 1}
+                    onClick={() => setSelected(node)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    setSelected(node);
+                    if (connection === "running") {
+                      setError("生成中无法回退分支");
+                      return;
+                    }
+                    setRewindTarget(node);
+                  }}
                   onDoubleClick={() => {
                     if (connection === "running") {
                       setError("生成中无法回退分支");
