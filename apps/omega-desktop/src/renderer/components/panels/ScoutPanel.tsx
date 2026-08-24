@@ -2,6 +2,7 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import { useAppStore } from "../../store/useAppStore";
@@ -36,6 +37,7 @@ function StatusCard({ data }: { data: ScoutStatus }) {
 }
 
 function RoundCard({ round }: { round: NonNullable<ScoutRounds["rounds"][number]> }) {
+  const [expanded, setExpanded] = React.useState(false);
   return (
     <Paper sx={{ p: 1.5, mb: 1, background: "var(--omega-bg-panel)", border: "1px solid var(--omega-border)" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
@@ -52,20 +54,23 @@ function RoundCard({ round }: { round: NonNullable<ScoutRounds["rounds"][number]
           已采纳 {round.selection.selectedProposalIds.length} 个提案
         </Typography>
       ) : null}
+      <Button size="small" onClick={() => setExpanded((value) => !value)} sx={{ mt: 0.5, textTransform: "none" }}>{expanded ? "收起运行详情" : "查看运行详情"}</Button>
+      {expanded ? <Box sx={{ mt: 0.75 }}>{round.runs.map((run) => <Typography key={run.scoutId} sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>· {run.scoutId}：{run.proposalCount} 个提案</Typography>)}</Box> : null}
     </Paper>
   );
 }
 
 function ProposalCard({ proposal }: { proposal: NonNullable<ScoutProposals["proposals"][number]> }) {
+  const [expanded, setExpanded] = React.useState(false);
   return (
     <Paper sx={{ p: 1.25, mb: 1, background: "var(--omega-bg-elevated)", border: "1px solid var(--omega-border)" }}>
       <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>{proposal.idea}</Typography>
       {proposal.steps.length > 0 ? (
         <Box component="ul" sx={{ m: 0, pl: 2, color: "var(--omega-text-muted)", fontSize: 12 }}>
-          {proposal.steps.slice(0, MAX_STEPS).map((s, i) => (
+          {proposal.steps.slice(0, expanded ? proposal.steps.length : MAX_STEPS).map((s, i) => (
             <li key={i}>{s}</li>
           ))}
-          {proposal.steps.length > MAX_STEPS ? <li>已折叠 {proposal.steps.length - MAX_STEPS} 个步骤</li> : null}
+          {proposal.steps.length > MAX_STEPS ? <li><Button size="small" onClick={() => setExpanded((value) => !value)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>{expanded ? "收起步骤" : `展开其余 ${proposal.steps.length - MAX_STEPS} 个步骤`}</Button></li> : null}
         </Box>
       ) : null}
       {proposal.assumptions.length > 0 ? (
@@ -97,14 +102,20 @@ export function ScoutPanel(): React.ReactElement {
       <Divider sx={{ my: 1, borderColor: "var(--omega-border)" }} />
       <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text-muted)", mb: 0.5 }}>探索轮 Rounds</Typography>
       {rounds && rounds.rounds.length > 0 ? (
-        rounds.rounds.slice(0, MAX_ROUNDS).map((r) => <RoundCard key={r.roundId} round={r} />)
+        <>
+          {rounds.rounds.slice(0, MAX_ROUNDS).map((r) => <RoundCard key={r.roundId} round={r} />)}
+          {rounds.rounds.length > MAX_ROUNDS ? <Typography sx={{ fontSize: 11, color: "var(--omega-warning)" }}>已折叠 {rounds.rounds.length - MAX_ROUNDS} 个探索轮。</Typography> : null}
+        </>
       ) : (
         <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无探索轮记录。</Typography>
       )}
       <Divider sx={{ my: 1, borderColor: "var(--omega-border)" }} />
       <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text-muted)", mb: 0.5 }}>提案 Proposals</Typography>
       {proposals && proposals.proposals.length > 0 ? (
-        proposals.proposals.slice(0, MAX_PROPOSALS).map((p) => <ProposalCard key={p.id} proposal={p} />)
+        <>
+          {proposals.proposals.slice(0, MAX_PROPOSALS).map((p) => <ProposalCard key={p.id} proposal={p} />)}
+          {proposals.proposals.length > MAX_PROPOSALS ? <Typography sx={{ fontSize: 11, color: "var(--omega-warning)" }}>已折叠 {proposals.proposals.length - MAX_PROPOSALS} 个提案。</Typography> : null}
+        </>
       ) : (
         <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>当前轮无提案。</Typography>
       )}

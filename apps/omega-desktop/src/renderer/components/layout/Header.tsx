@@ -495,12 +495,12 @@ export function Header(): React.ReactElement {
           </IconButton>
         </Tooltip>
         <Tooltip title={leftOpen ? "收起左栏" : "展开左栏"}>
-          <IconButton size="small" aria-label={leftOpen ? "收起左侧导航" : "展开左侧导航"} aria-expanded={leftOpen} aria-controls="omega-left-nav" onClick={toggleLeftPanel} sx={iconBtnSx}>
+          <IconButton size="small" aria-label={leftOpen ? "收起左侧导航" : "展开左侧导航"} aria-expanded={leftOpen} aria-controls="omega-left-drawer" onClick={toggleLeftPanel} sx={iconBtnSx}>
             <MenuOpenIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Tooltip title={rightOpen ? "收起右栏" : "展开右栏"}>
-          <IconButton size="small" aria-label={rightOpen ? "收起右侧面板" : "展开右侧面板"} aria-expanded={rightOpen} aria-controls="omega-right-panel" onClick={toggleRightPanel} sx={iconBtnSx}>
+          <IconButton size="small" aria-label={rightOpen ? "收起右侧面板" : "展开右侧面板"} aria-expanded={rightOpen} aria-controls="omega-right-drawer" onClick={toggleRightPanel} sx={iconBtnSx}>
             {rightOpen ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
           </IconButton>
         </Tooltip>

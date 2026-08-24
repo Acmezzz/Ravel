@@ -5,6 +5,7 @@ import Tab from "@mui/material/Tab";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
+import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import { useAppStore } from "../../store/useAppStore";
 import type {
@@ -35,10 +36,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function CatalogView({ data }: { data: WorkflowCatalog }) {
+  const [expanded, setExpanded] = React.useState(false);
   if (data.features.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无目录数据。</Typography>;
+  const visible = expanded ? data.features : data.features.slice(0, MAX_FEATURES);
   return (
     <Stack spacing={1}>
-      {data.features.slice(0, MAX_FEATURES).map((f) => (
+      {visible.map((f) => (
         <Box key={f.id}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>{f.label}</Typography>
           <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{f.description}</Typography>
@@ -53,15 +56,18 @@ function CatalogView({ data }: { data: WorkflowCatalog }) {
           </Box>
         </Box>
       ))}
+      {data.features.length > MAX_FEATURES ? <Button size="small" onClick={() => setExpanded((value) => !value)} sx={{ alignSelf: "flex-start", textTransform: "none" }}>{expanded ? "收起目录" : `展开其余 ${data.features.length - MAX_FEATURES} 项`}</Button> : null}
     </Stack>
   );
 }
 
 function RegistryView({ data }: { data: WorkflowRegistry }) {
+  const [expanded, setExpanded] = React.useState(false);
   if (data.entries.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无注册表数据。</Typography>;
+  const visible = expanded ? data.entries : data.entries.slice(0, MAX_REGISTRY_ENTRIES);
   return (
     <Stack spacing={1}>
-      {data.entries.slice(0, MAX_REGISTRY_ENTRIES).map((e) => (
+      {visible.map((e) => (
         <Box key={e.id} sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <Chip size="small" label={`L${e.level}`} sx={{ height: 20, fontSize: 11 }} />
           <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{e.intent || e.id}</Typography>
@@ -76,6 +82,7 @@ function RegistryView({ data }: { data: WorkflowRegistry }) {
           </Typography>
         </Box>
       ))}
+      {data.entries.length > MAX_REGISTRY_ENTRIES ? <Button size="small" onClick={() => setExpanded((value) => !value)} sx={{ alignSelf: "flex-start", textTransform: "none" }}>{expanded ? "收起注册表" : `展开其余 ${data.entries.length - MAX_REGISTRY_ENTRIES} 项`}</Button> : null}
     </Stack>
   );
 }

@@ -356,6 +356,10 @@ export function DiffViewer(): React.ReactElement {
 
   const unstagedCount = snapshot.unstaged.length;
   const stagedCount = snapshot.staged.length;
+  const selectedUnstagedHunks = [...unstagedSel.files.values()].reduce((total, hunks) => total + (hunks.size === 0 ? 0 : hunks.size), 0);
+  const selectedStagedHunks = [...stagedSel.files.values()].reduce((total, hunks) => total + (hunks.size === 0 ? 0 : hunks.size), 0);
+  const selectedUnstagedFiles = unstagedSel.files.size;
+  const selectedStagedFiles = stagedSel.files.size;
 
   return (
     <Box sx={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -395,7 +399,15 @@ export function DiffViewer(): React.ReactElement {
       ) : null}
 
       {error ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-danger)", whiteSpace: "pre-wrap", mb: 1 }}>{error}</Typography>
+        <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", whiteSpace: "pre-wrap", mb: 1 }}>{error}</Typography>
+      ) : null}
+      {selectedUnstagedFiles + selectedStagedFiles > 0 ? (
+        <Paper role="status" aria-live="polite" sx={{ p: 1, mb: 1, background: "var(--omega-selected)", border: "1px solid var(--omega-accent-line)", display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text)" }}>已选择</Typography>
+          {selectedUnstagedFiles > 0 ? <Chip size="small" label={`未暂存 ${selectedUnstagedFiles} 文件${selectedUnstagedHunks ? ` · ${selectedUnstagedHunks} hunk` : ""}`} /> : null}
+          {selectedStagedFiles > 0 ? <Chip size="small" label={`已暂存 ${selectedStagedFiles} 文件${selectedStagedHunks ? ` · ${selectedStagedHunks} hunk` : ""}`} /> : null}
+          <Button size="small" onClick={clearSel} sx={{ textTransform: "none", ml: "auto" }}>清除选择</Button>
+        </Paper>
       ) : null}
 
       {unstagedCount + stagedCount === 0 ? (

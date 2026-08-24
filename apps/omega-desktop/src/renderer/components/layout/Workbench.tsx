@@ -9,6 +9,7 @@ import DifferenceIcon from "@mui/icons-material/Difference";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import Backdrop from "@mui/material/Backdrop";
+import FocusTrap from "@mui/material/Unstable_TrapFocus";
 import { useAppStore } from "../../store/useAppStore";
 import { TitleBar } from "./TitleBar";
 import { Header } from "./Header";
@@ -55,8 +56,8 @@ export function Workbench(): React.ReactElement {
   const [widths, setWidths] = React.useState(loadWidths);
   const [dragging, setDragging] = React.useState<null | "left" | "right">(null);
   const widthsRef = React.useRef(widths);
-  const leftTriggerRef = React.useRef<HTMLButtonElement | null>(null);
-  const rightTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const drawerFocusRef = React.useRef<HTMLElement | null>(null);
+  const drawerRef = React.useRef<HTMLDivElement | null>(null);
 
   const persist = React.useCallback((next: { left: number; right: number }) => {
     try {
@@ -127,12 +128,32 @@ export function Workbench(): React.ReactElement {
   const rightCol = focusMode ? "0px" : effectiveRightOpen ? `${widths.right}px` : `${RIGHT_COLLAPSED_RAIL_PX}px`;
 
   React.useEffect(() => {
-    if (!compactLeftOpen && !compactRightOpen) return;
+    const isOpen = compactLeftOpen || compactRightOpen;
+    if (!isOpen) {
+      const previous = drawerFocusRef.current;
+      drawerFocusRef.current = null;
+      if (previous && document.contains(previous)) window.requestAnimationFrame(() => previous.focus());
+      return;
+    }
+    drawerFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    window.requestAnimationFrame(() => {
+      const first = drawerRef.current?.querySelector<HTMLElement>("button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])");
+      first?.focus();
+    });
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      if (compactLeftOpen) useAppStore.getState().toggleLeftPanel();
-      else useAppStore.getState().toggleRightPanel();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (compactLeftOpen) useAppStore.getState().toggleLeftPanel();
+        else useAppStore.getState().toggleRightPanel();
+        return;
+      }
+      if (event.key !== "Tab" || !drawerRef.current) return;
+      const focusable = [...drawerRef.current.querySelectorAll<HTMLElement>("button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])")].filter((node) => !node.hasAttribute("disabled"));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -156,7 +177,7 @@ export function Workbench(): React.ReactElement {
       <Box sx={{ gridColumn: "1 / -1" }}>
         <Header />
       </Box>
-      <Box sx={{ minHeight: 0, overflow: "hidden", display: "flex", position: "relative" }}>
+      <Box id={effectiveLeftOpen ? "omega-left-drawer" : undefined} sx={{ minHeight: 0, overflow: "hidden", display: "flex", position: "relative" }}>
         {effectiveLeftOpen ? <LeftNav /> : null}
         {effectiveLeftOpen ? <Box
           onPointerDown={startDrag("left")}
@@ -181,7 +202,9 @@ export function Workbench(): React.ReactElement {
       {compactLeftOpen ? (
         <>
           <Backdrop open sx={{ zIndex: 19 }} onClick={() => useAppStore.getState().toggleLeftPanel()} />
+          <FocusTrap open={compactLeftOpen} disableAutoFocus disableEnforceFocus={false} disableRestoreFocus>
           <Box
+            ref={drawerRef}
             component="nav"
             id="omega-left-drawer"
             aria-label="会话与文件导航"
@@ -196,9 +219,10 @@ export function Workbench(): React.ReactElement {
             </Box>
             <Box sx={{ minHeight: 0, flex: 1, display: "flex" }}><LeftNav /></Box>
           </Box>
+          </FocusTrap>
         </>
       ) : null}
-      <Box sx={{ minHeight: 0, overflow: "hidden", display: focusMode ? "none" : "flex", position: "relative" }}>
+      <Box id={!compactViewport && effectiveRightOpen ? "omega-right-drawer" : undefined} sx={{ minHeight: 0, overflow: "hidden", display: focusMode ? "none" : "flex", position: "relative" }}>
         {effectiveRightOpen ? (
           <RightPanel />
         ) : (
@@ -282,7 +306,10 @@ export function Workbench(): React.ReactElement {
       {compactRightOpen ? (
         <>
           <Backdrop open sx={{ zIndex: 19 }} onClick={toggleRightPanel} />
+          <FocusTrap open={compactRightOpen} disableAutoFocus disableEnforceFocus={false} disableRestoreFocus>
         <Box
+          ref={drawerRef}
+          id="omega-right-drawer"
           role="dialog"
           aria-modal="true"
           aria-label="工作台辅助面板"
@@ -312,6 +339,7 @@ export function Workbench(): React.ReactElement {
             <RightPanel />
           </Box>
         </Box>
+          </FocusTrap>
         </>
       ) : null}
     </Box>

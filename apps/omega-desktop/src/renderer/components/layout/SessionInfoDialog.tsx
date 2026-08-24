@@ -33,34 +33,65 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
   const [systemPrompt, setSystemPrompt] = React.useState<string | null>(null);
   const [promptOpen, setPromptOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [promptError, setPromptError] = React.useState<string | null>(null);
+  const requestEpoch = React.useRef(0);
 
-  React.useEffect(() => {
-    if (!open) {
-      setPromptOpen(false);
-      return;
-    }
-    setSnapshot(useAppStore.getState().agent);
-    void ipc.getState().then((res) => {
+  const loadState = React.useCallback(async () => {
+    const epoch = ++requestEpoch.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await ipc.getState();
+      if (epoch !== requestEpoch.current) return;
       if (res.ok) {
         setSnapshot(res.data);
         useAppStore.getState().setAgent(res.data);
-      }
-    });
-  }, [open]);
+      } else setError(res.message);
+    } catch (reason) {
+      if (epoch === requestEpoch.current) setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      if (epoch === requestEpoch.current) setLoading(false);
+    }
+  }, []);
 
-  const loadPrompt = React.useCallback(async () => {
-    const next = !promptOpen;
+  React.useEffect(() => {
+    if (!open) {
+      requestEpoch.current += 1;
+      setPromptOpen(false);
+      setSystemPrompt(null);
+      setError(null);
+      setPromptError(null);
+      return;
+    }
+    setSnapshot(useAppStore.getState().agent);
+    void loadState();
+  }, [loadState, open]);
+
+  const loadPrompt = React.useCallback(async (force = false) => {
+    const next = force ? true : !promptOpen;
     setPromptOpen(next);
     if (next && systemPrompt === null) {
-      const res = await ipc.getSystemPrompt();
-      setSystemPrompt(res.ok ? res.data.systemPrompt : "（加载失败）");
+      setPromptError(null);
+      try {
+        const res = await ipc.getSystemPrompt();
+        if (res.ok) setSystemPrompt(res.data.systemPrompt);
+        else setPromptError(res.message);
+      } catch (reason) {
+        setPromptError(reason instanceof Error ? reason.message : String(reason));
+      }
     }
   }, [promptOpen, systemPrompt]);
 
   const exportHtml = React.useCallback(async () => {
     setBusy(true);
+    setError(null);
     try {
-      await ipc.exportHtml();
+      const res = await ipc.exportHtml();
+      if (!res.ok) setError(res.message);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setBusy(false);
     }
@@ -83,6 +114,8 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
         </Button>
       </DialogTitle>
       <DialogContent sx={{ pb: 3 }}>
+        {loading ? <Box role="status" aria-live="polite" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}><CircularProgress size={15} /><Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>正在刷新会话信息…</Typography></Box> : null}
+        {error ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}><Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{error}</Typography><Button size="small" onClick={() => void loadState()} disabled={loading || busy} sx={{ textTransform: "none" }}>重试</Button></Box> : null}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 1.5 }}>
           <Chip size="small" label={snapshot?.sessionName || "未命名会话"} />
           {snapshot?.model ? (
@@ -132,9 +165,10 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
               overflowY: "auto",
             }}
           >
-            {systemPrompt ?? "加载中…"}
+            {systemPrompt ?? (promptError ? "加载失败" : "加载中…")}
           </Box>
         ) : null}
+        {promptError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.75 }}><Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{promptError}</Typography><Button size="small" onClick={() => { setSystemPrompt(null); void loadPrompt(true); }} sx={{ textTransform: "none" }}>重试提示词</Button></Box> : null}
       </DialogContent>
     </Dialog>
   );

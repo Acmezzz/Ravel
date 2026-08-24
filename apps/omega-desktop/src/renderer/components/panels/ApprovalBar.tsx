@@ -27,12 +27,20 @@ export interface ApprovalBarProps {
 export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUntrackedSelected, onApplied }: ApprovalBarProps): React.ReactElement {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const accept = React.useCallback(async () => {
     setBusy(true);
-    const res = await ipc.approveChange({ action: "accept" });
-    if (res.ok) onApplied(res.data);
-    setBusy(false);
+    setError(null);
+    try {
+      const res = await ipc.approveChange({ action: "accept" });
+      if (res.ok) onApplied(res.data);
+      else setError(res.message);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
   }, [onApplied]);
 
   const openReject = React.useCallback(() => {
@@ -42,11 +50,19 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
 
   const confirmReject = React.useCallback(async () => {
     setBusy(true);
-    const res = await ipc.approveChange({ action: "reject", snapshotToken, files: selectedFiles, items: selectedItems });
-    if (res.ok) onApplied(res.data);
-    setConfirmOpen(false);
-    setBusy(false);
-  }, [selectedFiles, snapshotToken, onApplied]);
+    setError(null);
+    try {
+      const res = await ipc.approveChange({ action: "reject", snapshotToken, files: selectedFiles, items: selectedItems });
+      if (res.ok) {
+        onApplied(res.data);
+        setConfirmOpen(false);
+      } else setError(res.message);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
+  }, [selectedFiles, selectedItems, snapshotToken, onApplied]);
 
   return (
     <Box
@@ -67,6 +83,7 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
         minWidth: 0,
       }}
     >
+      {error ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", whiteSpace: "pre-wrap" }}>{error}</Typography> : null}
       <Button
         variant="outlined"
         fullWidth

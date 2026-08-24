@@ -5,6 +5,35 @@ import { sanitizeTranscript, toRendererEvent } from "../electron/agent-bridge.js
 
 const read = (rel) => readFile(new URL(rel, import.meta.url), "utf8");
 
+ test("remaining UI audit contracts cover recovery, focus, grouping, and disclosure", async () => {
+  const info = await read("../src/renderer/components/layout/SessionInfoDialog.tsx");
+  const workbench = await read("../src/renderer/components/layout/Workbench.tsx");
+  const header = await read("../src/renderer/components/layout/Header.tsx");
+  const approval = await read("../src/renderer/components/panels/ApprovalBar.tsx");
+  const diff = await read("../src/renderer/components/panels/DiffViewer.tsx");
+  const right = await read("../src/renderer/components/layout/RightPanel.tsx");
+  const workflow = await read("../src/renderer/components/panels/WorkflowPanel.tsx");
+  const scout = await read("../src/renderer/components/panels/ScoutPanel.tsx");
+  assert.match(info, /role="alert"/);
+  assert.match(info, /重试/);
+  assert.match(info, /requestEpoch/);
+  assert.match(workbench, /FocusTrap/);
+  assert.match(workbench, /querySelector<HTMLElement>/);
+  assert.match(workbench, /previous\.focus\(\)/);
+  assert.match(workbench, /omega-right-drawer/);
+  assert.match(header, /aria-controls="omega-left-drawer"/);
+  assert.match(header, /aria-controls="omega-right-drawer"/);
+  assert.match(approval, /selectedItems, snapshotToken/);
+  assert.match(approval, /role="alert"/);
+  assert.match(diff, /已选择/);
+  assert.match(diff, /清除选择/);
+  assert.match(right, /extensionError/);
+  assert.match(right, /role="status"/);
+  assert.match(workflow, /展开其余/);
+  assert.match(scout, /查看运行详情/);
+  assert.match(scout, /展开其余/);
+});
+
 test("agent:event message_start contract is preserved (role/id/text)", () => {
   const events = toRendererEvent({
     type: "message_start",

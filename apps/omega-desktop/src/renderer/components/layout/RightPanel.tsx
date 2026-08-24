@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import IconButton from "@mui/material/IconButton";
+import Button from "@mui/material/Button";
 import Tooltip from "@mui/material/Tooltip";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useAppStore } from "../../store/useAppStore";
@@ -18,12 +19,20 @@ export function RightPanel(): React.ReactElement {
   const setExtensionState = useAppStore((s) => s.setExtensionState);
   const setExtensionLoading = useAppStore((s) => s.setExtensionLoading);
   const extensionLoading = useAppStore((s) => s.extensionLoading);
+  const [extensionError, setExtensionError] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
     setExtensionLoading(true);
-    const res = await ipc.queryExtensionState({ scope: "all" });
-    if (res.ok) setExtensionState(res.data);
-    setExtensionLoading(false);
+    setExtensionError(null);
+    try {
+      const res = await ipc.queryExtensionState({ scope: "all" });
+      if (res.ok) setExtensionState(res.data);
+      else setExtensionError(res.message);
+    } catch (reason) {
+      setExtensionError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setExtensionLoading(false);
+    }
   }, [setExtensionState, setExtensionLoading]);
 
   return (
@@ -59,6 +68,8 @@ export function RightPanel(): React.ReactElement {
           </IconButton>
         </Tooltip>
       </Box>
+      {extensionLoading ? <Box role="status" aria-live="polite" sx={{ px: 1.25, py: 0.5, fontSize: 11, color: "var(--omega-text-muted)" }}>正在刷新扩展状态…</Box> : null}
+      {extensionError ? <Box role="alert" sx={{ px: 1.25, py: 0.5, display: "flex", alignItems: "center", gap: 1, fontSize: 11, color: "var(--omega-danger)" }}>{extensionError}<Button size="small" onClick={() => void refresh()} sx={{ textTransform: "none" }}>重试</Button></Box> : null}
       <Box
         sx={{
           flexGrow: 1,
