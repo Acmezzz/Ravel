@@ -371,7 +371,6 @@ const methods = {
   listCommands: () => bridge.listCommands(runtime),
   compact: () => runtime.session.compact().then(() => bridge.snapshotOf(runtime)),
   authStatus: () => bridge.authStatusOf(runtime),
-  listPiSessions: ({ cwd }) => bridge.listPiSessions(cwd),
   newSession: async ({ workspace, title, projectTrusted: trusted }) => {
     const nextTrusted = typeof trusted === "boolean" ? trusted : projectTrusted;
     const trustChanged = nextTrusted !== projectTrusted;
@@ -444,7 +443,6 @@ const methods = {
       }),
   clearQueue: () => runtime.session.clearQueue(),
   getSessionTree: () => bridge.sessionTreeOf(runtime),
-  getForkCandidates: () => bridge.forkCandidatesOf(runtime),
   setSessionName: ({ name }) => {
     runtime.session.setSessionName(String(name).slice(0, 256));
     return bridge.snapshotOf(runtime);
@@ -465,7 +463,6 @@ const methods = {
       excludeFromContext: excludeFromContext === true,
       id: `user-bash-${Date.now()}`,
     }),
-  resolveSessionPath: ({ sessionId }) => bridge.resolveSessionPath(sessionId),
   sessionRecord: () => bridge.sessionRecordOf(runtime),
   /** Extensions / skills / prompt templates discovered for the active cwd. */
   listResources: async () => listResourceBundle(),

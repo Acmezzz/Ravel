@@ -7,7 +7,6 @@ test("file transfer IPC remains guarded across Main, preload, and contracts", as
   const preload = await readFile(new URL("../electron/preload.js", import.meta.url), "utf8");
   const registry = await readFile(new URL("../electron/ipc-registry.js", import.meta.url), "utf8");
   assert.match(main, /omega:chooseFileForWorkspace/);
-  assert.match(main, /omega:inspectUploadTarget/);
   assert.match(main, /omega:uploadFile/);
   assert.match(main, /senderAllowed/);
   assert.match(preload, /chooseFileForWorkspace/);

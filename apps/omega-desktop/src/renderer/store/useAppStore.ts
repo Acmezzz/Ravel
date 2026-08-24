@@ -15,8 +15,6 @@ import type {
   SessionMessage,
   SessionTree,
   ExtensionStateBundle,
-  WorkspaceDiff,
-  ChangeApprovalResult,
   AgentPermissionState,
   AgentPlan,
   AgentStateSnapshot,
@@ -32,14 +30,10 @@ import type {
   ExtensionUIStatus,
   ExtensionUIWidget,
 } from "../types/dto";
-import type { Palette, ThemeMode } from "../theme/palettes";
-import { applyModeWithTransition, paletteForMode } from "../theme/palettes";
+import type { ThemeMode } from "../theme/palettes";
+import { applyModeWithTransition } from "../theme/palettes";
 import type {
   ToolExecutionSummaryEvent,
-  MessageStartEvent,
-  MessageUpdateEvent,
-  ToolExecutionStartEvent,
-  ToolExecutionEndEvent,
 } from "../types/events";
 
 export type ConnectionState = "connecting" | "ready" | "running" | "closing" | "error";
@@ -104,7 +98,6 @@ export interface AppState {
   sessions: SessionSummary[];
   sessionTotal: number;
   sessionNextOffset: number | null;
-  sessionTreeIndex: Record<string, string[]>;
   sessionActivity: Record<string, SessionActivity>;
   activeSessionId: string | null;
   messages: SessionMessage[];
@@ -137,8 +130,6 @@ export interface AppState {
 
   extensionState: ExtensionStateBundle;
   extensionLoading: boolean;
-  diff: WorkspaceDiff | null;
-  approval: ChangeApprovalResult | null;
   gitSnapshot: GitSnapshot | null;
   sessionTree: SessionTree | null;
   workspaceEpoch: number;
@@ -162,10 +153,8 @@ export interface AppState {
   setExtensionTitle: (title: string | null) => void;
   setWorkerError: (message: string | null, canRetry?: boolean) => void;
 
-  setSessions: (sessions: SessionSummary[]) => void;
   applySessionPage: (page: SessionListPage, mode?: "replace" | "append") => void;
   markSessionActivity: (sessionId: string, patch: Partial<SessionActivity>) => void;
-  clearSessionUnread: (sessionId: string) => void;
   setActiveSession: (id: string | null) => void;
   loadTranscript: (record: SessionRecord) => void;
   clearConversation: () => void;
@@ -173,7 +162,6 @@ export interface AppState {
   appendMessage: (message: SessionMessage) => void;
   prependMessages: (messages: SessionMessage[]) => void;
   appendDelta: (messageId: string, delta: string) => void;
-  appendThinkingDelta: (delta: string) => void;
   /** Replace-or-consume the trailing optimistic bubble with the delivered user message. */
   consumeOptimisticWith: (delivered: SessionMessage) => void;
   dropLastIfOptimistic: (key: string) => void;
@@ -197,8 +185,6 @@ export interface AppState {
 
   setExtensionState: (bundle: ExtensionStateBundle) => void;
   setExtensionLoading: (loading: boolean) => void;
-  setDiff: (diff: WorkspaceDiff | null) => void;
-  setApproval: (result: ChangeApprovalResult | null) => void;
   setGitSnapshot: (snapshot: GitSnapshot | null) => void;
   setSessionTree: (tree: SessionTree | null) => void;
   bumpWorkspaceEpoch: () => void;
@@ -254,7 +240,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessions: [],
   sessionTotal: 0,
   sessionNextOffset: null,
-  sessionTreeIndex: {},
   sessionActivity: {},
   activeSessionId: null,
   messages: [],
@@ -284,8 +269,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   extensionState: {},
   extensionLoading: false,
-  diff: null,
-  approval: null,
   gitSnapshot: null,
   sessionTree: null,
   workspaceEpoch: 0,
@@ -319,7 +302,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setExtensionTitle: (extensionTitle) => set({ extensionTitle }),
   setWorkerError: (workerError, canRetry = false) => set({ workerError, canRetryWorker: Boolean(workerError) && canRetry }),
 
-  setSessions: (sessions) => set({ sessions }),
   applySessionPage: (page, mode = "replace") =>
     set((state) => {
       const incoming = Array.isArray(page?.items) ? page.items : [];
@@ -331,19 +313,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         sessions: merged,
         sessionTotal: typeof page?.total === "number" ? page.total : merged.length,
         sessionNextOffset: page?.nextOffset ?? null,
-        sessionTreeIndex: page?.treeIndex ?? (mode === "append" ? state.sessionTreeIndex : {}),
       };
     }),
   markSessionActivity: (sessionId, patch) =>
     set((state) => {
       const current = state.sessionActivity[sessionId] ?? { running: false, unread: false, compacting: false, failed: false };
       return { sessionActivity: { ...state.sessionActivity, [sessionId]: { ...current, ...patch } } };
-    }),
-  clearSessionUnread: (sessionId) =>
-    set((state) => {
-      const current = state.sessionActivity[sessionId];
-      if (!current?.unread) return {};
-      return { sessionActivity: { ...state.sessionActivity, [sessionId]: { ...current, unread: false } } };
     }),
   setActiveSession: (activeSessionId) =>
     set((state) => {
@@ -409,19 +384,6 @@ export const useAppStore = create<AppState>((set, get) => ({
           : message,
       ),
     })),
-  appendThinkingDelta: (delta) =>
-    set((state) => {
-      for (let i = state.messages.length - 1; i >= 0; i -= 1) {
-        if (state.messages[i].role === "assistant") {
-          const message = state.messages[i];
-          const next = { ...message, thinking: (message.thinking ?? "") + delta };
-          const messages = [...state.messages];
-          messages[i] = next;
-          return { messages };
-        }
-      }
-      return {};
-    }),
   consumeOptimisticWith: (delivered) =>
     set((state) => {
       const last = state.messages[state.messages.length - 1];
@@ -550,8 +512,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setExtensionState: (extensionState) => set({ extensionState }),
   setExtensionLoading: (extensionLoading) => set({ extensionLoading }),
-  setDiff: (diff) => set({ diff }),
-  setApproval: (approval) => set({ approval }),
   setGitSnapshot: (gitSnapshot) => set({ gitSnapshot }),
   setSessionTree: (sessionTree) => set({ sessionTree }),
   bumpWorkspaceEpoch: () => set((state) => ({ workspaceEpoch: state.workspaceEpoch + 1 })),
@@ -608,82 +568,5 @@ export const useAppStore = create<AppState>((set, get) => ({
       layout: { ...state.layout, trustCenterOpen },
     })),
 }));
-
-/** Active palette derived from the resolved mode (re-renders on theme change). */
-export function usePalette(): Palette {
-  const resolvedMode = useAppStore((s) => s.resolvedMode);
-  return paletteForMode(resolvedMode);
-}
-
-/** Helper used by the event subscriber to fold a `message_start` into state. */
-export function applyMessageStart(
-  store: typeof useAppStore,
-  event: MessageStartEvent,
-): void {
-  if (event.message.role === "user") {
-    store.getState().appendMessage({
-      role: "user",
-      id: event.message.id ?? `user-${Date.now()}`,
-      text: event.message.text ?? "",
-      ts: new Date().toISOString(),
-    });
-  } else if (event.message.role === "assistant") {
-    store.getState().appendMessage({
-      role: "assistant",
-      id: event.message.id ?? `assistant-${Date.now()}`,
-      text: event.message.text ?? "",
-      ts: new Date().toISOString(),
-    });
-  }
-}
-
-/** Helper for `text_delta` updates — append to the last assistant message. */
-export function applyMessageDelta(
-  store: typeof useAppStore,
-  event: MessageUpdateEvent,
-): void {
-  if (event.assistantMessageEvent.type !== "text_delta") return;
-  let id: string | undefined;
-  const state = store.getState();
-  for (let i = state.messages.length - 1; i >= 0; i -= 1) {
-    if (state.messages[i].role === "assistant") {
-      id = state.messages[i].id;
-      break;
-    }
-  }
-  if (id) store.getState().appendDelta(id, event.assistantMessageEvent.delta);
-}
-
-export function applyToolStart(
-  store: typeof useAppStore,
-  event: ToolExecutionStartEvent,
-): void {
-  if (!event.toolCallId) return;
-  store.getState().upsertToolCard({
-    type: "tool_execution_summary",
-    toolCallId: event.toolCallId,
-    toolName: event.toolName ?? "tool",
-    kind: "other",
-    status: "running",
-    startedAt: new Date().toISOString(),
-  });
-}
-
-export function applyToolEnd(
-  store: typeof useAppStore,
-  event: ToolExecutionEndEvent,
-): void {
-  if (!event.toolCallId) return;
-  store.getState().upsertToolCard({
-    type: "tool_execution_summary",
-    toolCallId: event.toolCallId,
-    toolName: event.toolName ?? "tool",
-    kind: "other",
-    status: event.isError ? "error" : "done",
-    isError: event.isError,
-    resultText: event.resultText,
-    endedAt: new Date().toISOString(),
-  });
-}
 
 export type { ThinkingLevel };

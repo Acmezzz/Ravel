@@ -50,8 +50,6 @@ async function applyWorkspaceRecord(): Promise<void> {
   if (sessions.ok) store.applySessionPage(sessions.data);
   if (extensions.ok) store.setExtensionState(extensions.data);
   store.setGitSnapshot(git.ok ? git.data : null);
-  store.setDiff(null);
-  store.setApproval(null);
   store.closeViewer();
   store.bumpWorkspaceEpoch();
 }

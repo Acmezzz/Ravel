@@ -80,11 +80,3 @@ export function resolveForCreate(root, relPath) {
   if (!isInside(safeRoot, actual)) throw new PathSecurityError("path_escape", "Resolved parent escapes the workspace root");
   return { root: safeRoot, path: lexical, parent: actual, relative: safeRel === "." ? "" : safeRel };
 }
-
-export function isSymlink(path) {
-  try {
-    return lstatSync(path).isSymbolicLink();
-  } catch {
-    return false;
-  }
-}

@@ -1,4 +1,4 @@
-const MAX = Object.freeze({ sessionId: 128, workspace: 4096, path: 4096, method: 128, command: 8192 });
+const MAX = Object.freeze({ sessionId: 128, workspace: 4096, path: 4096 });
 
 export function boundedString(value, max) {
   return typeof value === "string" && value.length > 0 && value.length <= max ? value : null;
@@ -47,11 +47,4 @@ export function gitStageRequest(value) {
 
 export function customProviderRequest(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
-}
-
-export function sessionRpcRequest(value) {
-  const sessionId = boundedString(value?.sessionId, MAX.sessionId);
-  const method = boundedString(value?.method, MAX.method);
-  if (!sessionId || !method) return null;
-  return { sessionId, method, args: value?.args && typeof value.args === "object" && !Array.isArray(value.args) ? value.args : {} };
 }

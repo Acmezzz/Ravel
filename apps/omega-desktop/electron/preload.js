@@ -169,10 +169,6 @@ contextBridge.exposeInMainWorld("omega", {
     after: Number.isFinite(req?.after) ? req.after : 0,
     limit: Number.isInteger(req?.limit) ? req.limit : 300,
   }),
-  sessionRpc: (req) => {
-    if (!req || typeof req.sessionId !== "string" || !req.sessionId.trim() || typeof req.method !== "string" || !req.method.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId and method are required" });
-    return ipcRenderer.invoke("omega:sessionRpc", { sessionId: req.sessionId.slice(0, 128), method: req.method.slice(0, 128), args: isPlainObject(req.args) ? req.args : {} });
-  },
   sessionReady: () => ipcRenderer.invoke("omega:sessionReady"),
   getState: () => ipcRenderer.invoke("omega:getState"),
   listModels: () => ipcRenderer.invoke("omega:listModels"),
@@ -226,25 +222,6 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:removeProviderApiKey", { providerId: req.providerId.trim().slice(0, 128) });
   },
-  listPiSessions: () => ipcRenderer.invoke("omega:listPiSessions"),
-  newPiSession: (req) => {
-    if (req && req.title !== undefined && (typeof req.title !== "string" || req.title.length > 256)) {
-      return Promise.resolve({ ok: false, code: "invalid_args", message: "title must be a short string" });
-    }
-    if (req && req.workspace !== undefined && typeof req.workspace !== "string") {
-      return Promise.resolve({ ok: false, code: "invalid_args", message: "workspace must be a string" });
-    }
-    return ipcRenderer.invoke("omega:newPiSession", {
-      title: safeString(req?.title, 256),
-      workspace: safeString(req?.workspace, 4096),
-    });
-  },
-  switchPiSession: (req) => {
-    if (!req || typeof req.sessionId !== "string" || !req.sessionId.trim()) {
-      return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId is required" });
-    }
-    return ipcRenderer.invoke("omega:switchPiSession", { sessionId: req.sessionId });
-  },
   setSessionName: (req) => {
     if (!req || typeof req.name !== "string" || !req.name.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "name must be a non-empty string" });
@@ -263,7 +240,6 @@ contextBridge.exposeInMainWorld("omega", {
   },
   clearQueue: () => ipcRenderer.invoke("omega:clearQueue"),
   getSessionTree: () => ipcRenderer.invoke("omega:getSessionTree"),
-  getForkCandidates: () => ipcRenderer.invoke("omega:getForkCandidates"),
   fork: (req) => {
     if (!req || typeof req.entryId !== "string" || !req.entryId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "entryId is required" });
@@ -297,7 +273,6 @@ contextBridge.exposeInMainWorld("omega", {
     return ipcRenderer.invoke("omega:openFileDefault", { path: req.path.slice(0, 4096) });
   },
   chooseFileForWorkspace: () => ipcRenderer.invoke("omega:chooseFileForWorkspace"),
-  inspectUploadTarget: (req) => ipcRenderer.invoke("omega:inspectUploadTarget", { path: safeString(req?.path, 4096) ?? "" }),
   uploadFile: (req) => ipcRenderer.invoke("omega:uploadFile", { selectionId: safeString(req?.selectionId, 128) ?? "", path: safeString(req?.path, 4096) ?? "", conflict: req?.conflict, expectedToken: safeString(req?.expectedToken, 512) }),
   watchFile: (req) => {
     if (!req || typeof req.path !== "string" || !req.path.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "path is required" });
@@ -439,12 +414,6 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:loadSession", { sessionId: req.sessionId });
   },
-  saveSession: (req) => {
-    if (!req || typeof req.sessionId !== "string" || !isPlainObject(req.transcript)) {
-      return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId and transcript are required" });
-    }
-    return ipcRenderer.invoke("omega:saveSession", { sessionId: req.sessionId, transcript: req.transcript });
-  },
   deleteSession: (req) => {
     if (!req || typeof req.sessionId !== "string" || !req.sessionId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId is required" });
@@ -453,7 +422,6 @@ contextBridge.exposeInMainWorld("omega", {
   },
 
   // ----- diff + approval -----
-  diffWorkspace: (_req) => ipcRenderer.invoke("omega:diffWorkspace", {}),
   approveChange: (req) => {
     if (!req || (req.action !== "accept" && req.action !== "reject")) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "action must be accept|reject" });

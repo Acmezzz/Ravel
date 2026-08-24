@@ -1,11 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { resolveExisting, resolveForCreate, PathSecurityError } from "../electron/path-security.js";
-import * as persistence from "../electron/persistence.js";
 import { listDir } from "../electron/workspace-service.js";
 import { computeSnapshot, revertFiles, parseWorktreeList } from "../electron/diff-service.js";
 import { createWorkspaceRegistry } from "../electron/workspace-registry.js";
@@ -28,18 +27,6 @@ test("path security rejects traversal and symlink escapes in a real workspace", 
   } catch (error) {
     if (error?.code !== "EPERM" && error?.code !== "EACCES") throw error;
   }
-});
-
-test("persistence never deletes an unlisted record and enforces the requested id", () => {
-  const root = mkdtempSync(join(tmpdir(), "omega-session-"));
-  const created = persistence.create(root, { title: "test", workspace: root });
-  assert.throws(() => persistence.save(root, { ...created, id: "other" }, created.id), /session_id_mismatch/);
-  const unknownPath = join(root, "unknown.json");
-  writeFileSync(unknownPath, "keep");
-  assert.equal(persistence.remove(root, "unknown"), false);
-  assert.equal(readFileSync(unknownPath, "utf8"), "keep");
-  assert.equal(persistence.remove(root, created.id), true);
-  assert.equal(persistence.load(root, created.id), null);
 });
 
 test("workspace registry canonicalizes roots and rejects unauthorized directories", () => {

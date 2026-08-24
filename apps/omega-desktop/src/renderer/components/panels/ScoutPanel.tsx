@@ -3,7 +3,6 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
-import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 import { useAppStore } from "../../store/useAppStore";
 import type { ScoutStatus, ScoutRounds, ScoutProposals } from "../../types/dto";

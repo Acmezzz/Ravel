@@ -24,7 +24,6 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { forgetSessionPath, piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
-import * as persistence from "./persistence.js";
 import * as stateReader from "./state-reader.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
@@ -41,7 +40,7 @@ import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { PERMISSION_PROFILES, sanitizePermissionProfile, createPermissionGuard } from "./permission-profiles.js";
-import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionNameRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
+import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionNameRequest, sessionRequest, workspaceRequest } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
 import * as fileTransfer from "./file-transfer-service.js";
 
@@ -924,21 +923,6 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
   return result;
 });
 
-ipcMain.handle("omega:sessionRpc", async (event, req) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  const normalized = sessionRpcRequest(req);
-  if (!normalized) return errorResult("invalid_args", "sessionId and method are required");
-  const slot = workerPool.get(normalized.sessionId);
-  if (!slot?.host || slot.host.state !== "ready") return errorResult("not_found", "后台 session 没有 live Worker");
-  const allowed = new Set(["getState", "sessionRecord", "getSessionTree", "listResources", "getThinking"]);
-  if (!allowed.has(normalized.method)) return errorResult("unsupported", "后台 RPC 只允许只读方法");
-  try {
-    return okResult(await slot.host.call(normalized.method, normalized.args));
-  } catch (error) {
-    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
-  }
-});
-
 ipcMain.handle("omega:recentEvents", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = replayRequest(req);
@@ -1065,11 +1049,6 @@ ipcMain.handle("omega:clearQueue", (event) => {
 ipcMain.handle("omega:getSessionTree", (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   return rpc("getSessionTree", {}, "read_failed");
-});
-
-ipcMain.handle("omega:getForkCandidates", (event) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  return rpc("getForkCandidates", {}, "read_failed");
 });
 
 ipcMain.handle("omega:fork", async (event, req) => {
@@ -1207,29 +1186,6 @@ ipcMain.handle("omega:removeProviderApiKey", async (event, req) => {
     /* best effort */
   }
   return rpc("removeProviderApiKey", { providerId }, "write_failed");
-});
-
-ipcMain.handle("omega:listPiSessions", async (event) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  const result = await rpc("listPiSessions", { cwd: activeCwd ?? rootOf() }, "read_failed");
-  if (!result.ok) return result;
-  return okResult(result.data.filter((session) => {
-    try {
-      return workspaceRegistry.has(session.workspace);
-    } catch {
-      return false;
-    }
-  }));
-});
-
-ipcMain.handle("omega:newPiSession", async (event, req) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  return createNamedSession(req);
-});
-
-ipcMain.handle("omega:switchPiSession", async (event, req) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  return loadNamedSession(req);
 });
 
 ipcMain.handle("omega:setSessionName", async (event, req) => {
@@ -1451,12 +1407,6 @@ ipcMain.handle("omega:loadSession", async (event, req) => {
   return loadNamedSession(req);
 });
 
-ipcMain.handle("omega:saveSession", (event, req) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (!req?.sessionId || !req?.transcript) return errorResult("invalid_args", "sessionId and transcript are required");
-  return errorResult("unsupported", "Pi JSONL is the session authority; transcript cache writes are disabled");
-});
-
 ipcMain.handle("omega:deleteSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = sessionRequest(req);
@@ -1487,14 +1437,6 @@ ipcMain.handle("omega:deleteSession", async (event, req) => {
   }
 });
 
-ipcMain.handle("omega:diffWorkspace", (event) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  try {
-    return okResult(diffService.computeDiff(activeCwd ?? rootOf()));
-  } catch (error) {
-    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
-  }
-});
 
 function requireString(req, field, max = 4096) {
   if (typeof req?.[field] !== "string" || !req[field] || req[field].length > max) {
@@ -1565,13 +1507,6 @@ ipcMain.handle("omega:chooseFileForWorkspace", async (event) => {
   const selectionId = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   fileSelections.set(selectionId, { path: picked.filePaths[0], createdAt: Date.now() });
   return okResult({ selectionId, name: basename(picked.filePaths[0]) });
-});
-
-ipcMain.handle("omega:inspectUploadTarget", (event, req) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (typeof req?.path !== "string" || !req.path.trim()) return errorResult("invalid_args", "path is required");
-  try { return okResult(fileTransfer.inspectTarget(activeCwd ?? rootOf(), req.path)); }
-  catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
 });
 
 ipcMain.handle("omega:uploadFile", (event, req) => {

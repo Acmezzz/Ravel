@@ -308,25 +308,6 @@ export function toRendererEvent(event) {
   return [];
 }
 
-export function streamToRenderer(session, webContents, options) {
-  const onSettled = typeof options?.onSettled === "function" ? options.onSettled : undefined;
-  const unsubscribe = session.subscribe((event) => {
-    if (webContents.isDestroyed()) return;
-    if (onSettled && event?.type === "agent_settled") {
-      try {
-        onSettled();
-      } catch {
-        /* notification is best-effort */
-      }
-    }
-    const safeEvents = toRendererEvent(event);
-    for (const safeEvent of safeEvents) {
-      if (safeEvent) webContents.send("agent:event", safeEvent);
-    }
-  });
-  return unsubscribe;
-}
-
 function messageTimestamp(message) {
   if (typeof message?.timestamp === "string") return message.timestamp;
   if (message?.timestamp instanceof Date) return message.timestamp.toISOString();
@@ -461,50 +442,6 @@ export function forgetSessionPath(sessionId) {
 /** Canonical CLI JSONL sessions root; deletions must stay inside it. */
 export function piSessionsRoot() {
   return join(AGENT_DIR, "sessions");
-}
-
-function toSessionSummary(session) {
-  const title =
-    (typeof session.name === "string" && session.name.trim()) ||
-    (session.firstMessage ? String(session.firstMessage).slice(0, 80) : "") ||
-    "未命名会话";
-  rememberSessionPath(session.id, session.path);
-  // JSONL file names are the session id (…/<id>.jsonl); derive the parent id
-  // from the recorded parent path instead of self-referencing our own id.
-  let parentSessionId;
-  if (session.parentSessionPath) {
-    const base = String(session.parentSessionPath).split(/[\\/]/).pop() ?? "";
-    const stem = base.replace(/\.jsonl$/i, "");
-    if (stem) parentSessionId = stem;
-  }
-  return {
-    id: session.id,
-    title,
-    workspace: session.cwd || "",
-    createdAt: session.created instanceof Date ? session.created.toISOString() : String(session.created ?? ""),
-    updatedAt: session.modified instanceof Date ? session.modified.toISOString() : String(session.modified ?? ""),
-    status: "active",
-    messageCount: typeof session.messageCount === "number" ? session.messageCount : 0,
-    ...(parentSessionId ? { parentSessionId } : {}),
-  };
-}
-
-export async function listPiSessions(cwd) {
-  const local = cwd ? await SessionManager.list(cwd) : [];
-  const all = await SessionManager.listAll();
-  const seen = new Set();
-  const merged = [];
-  for (const session of [...local, ...all]) {
-    if (!session?.id || seen.has(session.id)) continue;
-    seen.add(session.id);
-    merged.push(session);
-  }
-  merged.sort((a, b) => {
-    const am = a.modified instanceof Date ? a.modified.getTime() : 0;
-    const bm = b.modified instanceof Date ? b.modified.getTime() : 0;
-    return bm - am;
-  });
-  return merged.map(toSessionSummary);
 }
 
 export function snapshotOf(runtime) {
@@ -676,13 +613,6 @@ export function sessionTreeOf(runtime) {
   walk(runtime.session.sessionManager.getTree(), 0, undefined);
   if (leafId) markPath(leafId);
   return { nodes: rows, activePath: [...activePath], leafId: leafId ?? null };
-}
-
-export function forkCandidatesOf(runtime) {
-  return runtime.session.getUserMessagesForForking().map((candidate) => ({
-    entryId: candidate.entryId,
-    text: candidate.text.length > 80 ? `${candidate.text.slice(0, 80)}…` : candidate.text,
-  }));
 }
 
 export function authStatusOf(runtime) {

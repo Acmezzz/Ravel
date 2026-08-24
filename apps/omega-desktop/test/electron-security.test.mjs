@@ -57,7 +57,6 @@ test("worker and renderer use sequenced event envelopes for stale-event rejectio
 test("bridge filters raw agent events and does not forward sensitive payloads", async () => {
   const source = await read("../electron/agent-bridge.js");
   assert.match(source, /toRendererEvent/);
-  assert.match(source, /webContents\.isDestroyed/);
   assert.match(source, /event\.message\?\.id/);
   // V3: full-fidelity content, but events are still projected (never the raw SDK event object).
   assert.doesNotMatch(source, /webContents\.send\("agent:event",\s*event\)/);
@@ -128,18 +127,13 @@ test("new IPC handlers stay behind senderAllowed and return an IpcResult envelop
     "omega:listSessions",
     "omega:newSession",
     "omega:loadSession",
-    "omega:saveSession",
     "omega:deleteSession",
-    "omega:diffWorkspace",
     "omega:approveChange",
     "omega:getState",
     "omega:listModels",
     "omega:setModel",
     "omega:setThinkingLevel",
     "omega:listCommands",
-    "omega:listPiSessions",
-    "omega:newPiSession",
-    "omega:switchPiSession",
     "omega:compact",
     "omega:authStatus",
     "omega:getDesktopSettings",
@@ -185,18 +179,13 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "listSessions",
     "newSession",
     "loadSession",
-    "saveSession",
     "deleteSession",
-    "diffWorkspace",
     "approveChange",
     "getState",
     "listModels",
     "setModel",
     "setThinkingLevel",
     "listCommands",
-    "listPiSessions",
-    "newPiSession",
-    "switchPiSession",
     "compact",
     "authStatus",
     "getDesktopSettings",
@@ -207,7 +196,6 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "updateSettings",
     "clearQueue",
     "getSessionTree",
-    "getForkCandidates",
     "fork",
     "clone",
     "navigateTree",

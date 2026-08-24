@@ -65,7 +65,8 @@ test("index.html keeps a CSP boundary and references the built bundle", async ()
 
 test("bridge source still wires the agent event channel", async () => {
   const source = await read("../electron/agent-bridge.js");
-  assert.match(source, /webContents\.send\("agent:event"/);
+  const main = await read("../electron/main.js");
+  assert.match(main, /webContents\.send\("agent:event"/);
   assert.match(source, /tool_execution_summary/);
   assert.match(source, /createAgentSessionRuntime/);
 });

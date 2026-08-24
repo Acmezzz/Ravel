@@ -1,6 +1,6 @@
 /**
- * Dual-mode design tokens (light + dark), keyed identically so every
- * component can consume them through `usePalette()` without knowing the mode.
+ * Dual-mode design tokens (light + dark), keyed identically so CSS custom
+ * properties and MUI palettes stay in lockstep.
  *
  * Visual language: "Amber Workshop" — cool-neutral layered surfaces
  * separated by translucent hairlines, with a restrained amber accent

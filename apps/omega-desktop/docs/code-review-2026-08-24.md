@@ -52,25 +52,25 @@
 ## 阶段 4：死代码与冗余文件清理
 
 死模块（生产零引用）：
-- [ ] D1 `electron/persistence.js` 整模块 + main.js 死 import
-- [ ] D2 `electron/updater-service.js` + 其测试
-- [ ] D3 `electron/provider-latency.js` + 其测试
-- [ ] D4 `main.js` `normalizeGitItems`、`agentRunning` 死变量
-- [ ] D5 `agent-bridge.js` `streamToRenderer`；`forgetSessionPath` 接入删除会话流程或删除
-- [ ] D6 `ipc-contracts.js`（JS 副本）IPC_CHANNELS/ERROR_CODES
-- [ ] D7 `path-security.js` `isSymlink`；`worker-protocol.js` `isWorkerInit/isWorkerRequest`；`worker-pool.js` DEFAULT_* 导出；`worker.mjs` `resolveSessionPath` 方法注册
+- [x] D1 `electron/persistence.js` 整模块 + main.js 死 import + 对应测试
+- [x] D2 `electron/updater-service.js` **保留**（`scripts/release-gate.mjs` 使用 `validateManifest`）
+- [x] D3 `electron/provider-latency.js` + 其测试
+- [x] D4 `main.js` `normalizeGitItems`、`agentRunning` 死变量（阶段 3 已删）
+- [x] D5 `agent-bridge.js` `streamToRenderer` 删除；`forgetSessionPath` 已接入删除会话（阶段 3）
+- [x] D6 `ipc-contracts.js` 通道表随 D8 同步（`isIpcEnvelope` / ERROR_CODES 仍为活导出，保留）
+- [x] D7 `path-security.js` `isSymlink` 删除；`worker.mjs` `resolveSessionPath` 方法注册删除。`isWorkerInit/isWorkerRequest` 仍被协议测试使用，保留；`DEFAULT_*` 阶段 3 已 un-export
 
 渲染层死代码：
-- [ ] D8 8 条 IPC 死链路（getForkCandidates/inspectUploadTarget/sessionRpc/listPiSessions/newPiSession/switchPiSession/saveSession/diffWorkspace）：client + preload + main + registry 整链删除
-- [ ] D9 store 死导出（usePalette/applyMessageStart/applyMessageDelta/applyToolStart/applyToolEnd）与死 action（setSessions/clearSessionUnread/appendThinkingDelta）、僵尸字段（diff/approval/sessionTreeIndex）
-- [ ] D10 `tokens.ts` 收敛为 STYLE_NONCE/fontFamily/monoFamily；tailwind.config 死 extend 与 shadow 数值对齐
-- [ ] D11 global.css 死变量（--omega-shadow/--omega-ease-spring/--omega-dur-slow）；未用 MUI 导入（ThinkingBlock IconButton、ScoutPanel Stack）
+- [x] D8 8 条 IPC 死链路（getForkCandidates/inspectUploadTarget/sessionRpc/listPiSessions/newPiSession/switchPiSession/saveSession/diffWorkspace）整链删除；顺带删除 `listPiSessions`/`forkCandidatesOf`/`computeDiff` 孤儿实现
+- [x] D9 store 死导出（usePalette/applyMessageStart/applyMessageDelta/applyToolStart/applyToolEnd）与死 action（setSessions/clearSessionUnread/appendThinkingDelta）、僵尸字段（diff/approval/sessionTreeIndex）
+- [x] D10 `tokens.ts` 收敛为 STYLE_NONCE/fontFamily/monoFamily
+- [x] D11 global.css 死变量（--omega-shadow/--omega-ease-spring/--omega-dur-slow）；未用 MUI 导入（ThinkingBlock IconButton、ScoutPanel Stack）
 
 遗留文件：
-- [ ] D12 `apps/omega-desktop/renderer.js` + `styles.css`（React 前原型，打包已排除）
-- [ ] D13 根 `tui-plan.md`；scripts/ 9 个零引用脚本（repro-5893/cost/stats/tool-stats/edit-tool-stats/read-tool-stats/session-context-stats/session-transcripts/update-source-imports-to-ts.sh）
-- [ ] D14 `pi-test.bat`/`pi-test.ps1`（零引用）；`pi-test.sh` 与文档联动决定去留
-- [ ] D15 裁决 `packages/server`、`packages/evals`（产品不依赖、CI 不跑）——删除或移出构建链；核实 sqlite-node 动态加载
+- [x] D12 `apps/omega-desktop/renderer.js` + `styles.css`（React 前原型）
+- [x] D13 根 `tui-plan.md`；scripts/ 9 个零引用脚本
+- [x] D14 `pi-test.bat`/`pi-test.ps1` 删除；`pi-test.sh` 与 AGENTS.md / README 联动，保留
+- [x] D15 **保留** `packages/server`、`packages/evals`（根 `npm run build` / `eval` 仍依赖）
 
 ## 阶段 5：质量门禁与文档
 

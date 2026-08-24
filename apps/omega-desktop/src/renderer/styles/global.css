@@ -65,7 +65,6 @@ body,
   --omega-selection: rgba(198, 125, 18, 0.22);
 
   /* Shadows — three-level scale */
-  --omega-shadow: rgba(26, 25, 22, 0.12);
   --omega-shadow-sm: 0 1px 2px rgba(26, 25, 22, 0.05);
   --omega-shadow-md: 0 4px 16px rgba(26, 25, 22, 0.08), 0 1px 3px rgba(26, 25, 22, 0.05);
   --omega-shadow-lg: 0 16px 48px rgba(26, 25, 22, 0.14), 0 4px 12px rgba(26, 25, 22, 0.06);
@@ -77,10 +76,8 @@ body,
 
   /* Motion — one shared easing family */
   --omega-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --omega-ease-spring: cubic-bezier(0.34, 1.4, 0.44, 1);
   --omega-dur-fast: 120ms;
   --omega-dur-normal: 200ms;
-  --omega-dur-slow: 320ms;
 }
 
 html.dark {
@@ -127,7 +124,6 @@ html.dark {
   --omega-scrollbar-hover: rgba(196, 188, 168, 0.36);
   --omega-selection: rgba(201, 137, 20, 0.34);
 
-  --omega-shadow: rgba(0, 0, 0, 0.50);
   --omega-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
   --omega-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30);
   --omega-shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.38);

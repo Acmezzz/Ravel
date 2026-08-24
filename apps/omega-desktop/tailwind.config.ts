@@ -1,7 +1,7 @@
 /**
- * Tailwind configuration. Colors are mirrored from `theme/tokens.ts` (which is
- * the single source of truth for design tokens) so Tailwind utility classes and
- * MUI's palette never drift apart. See docs/system_design.md §5.
+ * Tailwind configuration. Colors are mirrored from `theme/palettes.ts` (dark
+ * mode values) so utility classes stay close to CSS custom properties.
+ * See docs/system_design.md §5.
  */
 import type { Config } from "tailwindcss";
 

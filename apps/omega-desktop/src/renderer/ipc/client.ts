@@ -9,11 +9,9 @@ import type {
   ProjectTrustChoice,
   ProjectTrustInfo,
   ExtensionStateBundle,
-  SessionSummary,
   SessionListPage,
   SessionRecord,
   SessionMessage,
-  WorkspaceDiff,
   ChangeApprovalResult,
   AgentStateSnapshot,
   ModelInfo,
@@ -23,7 +21,6 @@ import type {
   DesktopSettings,
   PromptImage,
   SessionTree,
-  ForkCandidate,
   DirListing,
   FileReadResult,
   UploadConflictMode,
@@ -49,7 +46,6 @@ export interface OmegaBridge {
   }): Promise<IpcResult<AgentStateSnapshot>>;
   clearQueue(): Promise<IpcResult<{ steering: string[]; followUp: string[] }>>;
   getSessionTree(): Promise<IpcResult<SessionTree>>;
-  getForkCandidates(): Promise<IpcResult<ForkCandidate[]>>;
   fork(req: { entryId: string }): Promise<IpcResult<{ record: SessionRecord; selectedText: string }>>;
   clone(): Promise<IpcResult<{ record: SessionRecord }>>;
   navigateTree(req: { targetId: string }): Promise<IpcResult<SessionRecord>>;
@@ -60,7 +56,6 @@ export interface OmegaBridge {
   revealInFolder(req: { path: string }): Promise<IpcResult<{ path: string }>>;
   openFileDefault(req: { path: string }): Promise<IpcResult<{ path: string }>>;
   chooseFileForWorkspace(): Promise<IpcResult<{ selectionId: string; name: string }>>;
-  inspectUploadTarget(req: { path: string }): Promise<IpcResult<UploadTargetInfo>>;
   uploadFile(req: { selectionId: string; path: string; conflict?: UploadConflictMode; expectedToken?: string }): Promise<IpcResult<{ conflict: boolean; path?: string; target?: UploadTargetInfo; size?: number; hash?: string }>>;
   watchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
   unwatchFile(req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>>;
@@ -109,7 +104,6 @@ export interface OmegaBridge {
   decideProjectTrust(req: { workspace: string; decision: ProjectTrustChoice }): Promise<IpcResult<{ trust: ProjectTrustInfo; reloaded?: boolean; sessionId?: string; workspaces: WorkspaceInfo[] }>>;
   retryWorker(): Promise<IpcResult<{ state: string; sessionId?: string; cwd?: string }>>;
   recentEvents(req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number; nextAfter?: number | null }>>;
-  sessionRpc(req: { sessionId: string; method: string; args?: Record<string, unknown> }): Promise<IpcResult<unknown>>;
   sessionReady(): Promise<IpcResult<{ ready: boolean }>>;
   getState(): Promise<IpcResult<AgentStateSnapshot>>;
   listModels(): Promise<IpcResult<ModelInfo[]>>;
@@ -125,9 +119,6 @@ export interface OmegaBridge {
   setPermissionProfile(req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>>;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
-  listPiSessions(): Promise<IpcResult<SessionSummary[]>>;
-  newPiSession(req: { title?: string; workspace?: string }): Promise<IpcResult<SessionRecord>>;
-  switchPiSession(req: { sessionId: string }): Promise<IpcResult<SessionRecord>>;
   queryExtensionState(req: {
     scope?: "all" | "workflow" | "scout";
     projectKey?: string;
@@ -141,12 +132,7 @@ export interface OmegaBridge {
     workspace?: string;
   }): Promise<IpcResult<SessionRecord>>;
   loadSession(req: { sessionId: string }): Promise<IpcResult<SessionRecord>>;
-  saveSession(req: {
-    sessionId: string;
-    transcript: SessionRecord;
-  }): Promise<IpcResult<void>>;
   deleteSession(req: { sessionId: string }): Promise<IpcResult<void>>;
-  diffWorkspace(req: { taskId?: string }): Promise<IpcResult<WorkspaceDiff>>;
   approveChange(req: {
     action: "accept" | "reject";
     snapshotToken?: string;
@@ -178,7 +164,6 @@ export const ipc = {
   clearQueue: async (): Promise<IpcResult<{ steering: string[]; followUp: string[] }>> =>
     ok(await window.omega?.clearQueue?.()),
   getSessionTree: async (): Promise<IpcResult<SessionTree>> => ok(await window.omega?.getSessionTree?.()),
-  getForkCandidates: async (): Promise<IpcResult<ForkCandidate[]>> => ok(await window.omega?.getForkCandidates?.()),
   fork: async (req: { entryId: string }): Promise<IpcResult<{ record: SessionRecord; selectedText: string }>> =>
     ok(await window.omega?.fork?.(req)),
   clone: async (): Promise<IpcResult<{ record: SessionRecord }>> => ok(await window.omega?.clone?.()),
@@ -192,7 +177,6 @@ export const ipc = {
     ok(await window.omega?.revealInFolder?.(req)),
   openFileDefault: async (req: { path: string }): Promise<IpcResult<{ path: string }>> => ok(await window.omega?.openFileDefault?.(req)),
   chooseFileForWorkspace: async (): Promise<IpcResult<{ selectionId: string; name: string }>> => ok(await window.omega?.chooseFileForWorkspace?.()),
-  inspectUploadTarget: async (req: { path: string }): Promise<IpcResult<UploadTargetInfo>> => ok(await window.omega?.inspectUploadTarget?.(req)),
   uploadFile: async (req: { selectionId: string; path: string; conflict?: UploadConflictMode; expectedToken?: string }): Promise<IpcResult<{ conflict: boolean; path?: string; target?: UploadTargetInfo; size?: number; hash?: string }>> => ok(await window.omega?.uploadFile?.(req)),
   watchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.watchFile?.(req)),
   unwatchFile: async (req: { path: string }): Promise<IpcResult<{ path: string; watching: boolean }>> => ok(await window.omega?.unwatchFile?.(req)),
@@ -251,7 +235,6 @@ export const ipc = {
   decideProjectTrust: async (req: { workspace: string; decision: ProjectTrustChoice }): Promise<IpcResult<{ trust: ProjectTrustInfo; reloaded?: boolean; sessionId?: string; workspaces: WorkspaceInfo[] }>> => ok(await window.omega?.decideProjectTrust?.(req)),
   retryWorker: async (): Promise<IpcResult<{ state: string; sessionId?: string; cwd?: string }>> => ok(await window.omega?.retryWorker?.()),
   recentEvents: async (req: { sessionId?: string; after: number }): Promise<IpcResult<{ events: Array<{ event: unknown; meta: unknown }>; gap: boolean; first: number; last: number }>> => ok(await window.omega?.recentEvents?.(req)),
-  sessionRpc: async (req: { sessionId: string; method: string; args?: Record<string, unknown> }): Promise<IpcResult<unknown>> => ok(await window.omega?.sessionRpc?.(req)),
   sessionReady: async (): Promise<IpcResult<{ ready: boolean }>> =>
     ok(await window.omega?.sessionReady?.()),
   getState: async (): Promise<IpcResult<AgentStateSnapshot>> => ok(await window.omega?.getState?.()),
@@ -275,11 +258,6 @@ export const ipc = {
     ok(await window.omega?.setProviderApiKey?.(req)),
   removeProviderApiKey: async (req: { providerId: string }): Promise<IpcResult<AuthStatus>> =>
     ok(await window.omega?.removeProviderApiKey?.(req)),
-  listPiSessions: async (): Promise<IpcResult<SessionSummary[]>> => ok(await window.omega?.listPiSessions?.()),
-  newPiSession: async (req: { title?: string; workspace?: string }): Promise<IpcResult<SessionRecord>> =>
-    ok(await window.omega?.newPiSession?.(req)),
-  switchPiSession: async (req: { sessionId: string }): Promise<IpcResult<SessionRecord>> =>
-    ok(await window.omega?.switchPiSession?.(req)),
   queryExtensionState: async (req: {
     scope?: "all" | "workflow" | "scout";
     projectKey?: string;
@@ -295,12 +273,7 @@ export const ipc = {
     workspace?: string;
   }): Promise<IpcResult<SessionRecord>> => ok(await window.omega?.newSession?.(req)),
   loadSession: async (req: { sessionId: string }): Promise<IpcResult<SessionRecord>> => ok(await window.omega?.loadSession?.(req)),
-  saveSession: async (req: {
-    sessionId: string;
-    transcript: SessionRecord;
-  }): Promise<IpcResult<void>> => ok(await window.omega?.saveSession?.(req)),
   deleteSession: async (req: { sessionId: string }): Promise<IpcResult<void>> => ok(await window.omega?.deleteSession?.(req)),
-  diffWorkspace: async (req: { taskId?: string }): Promise<IpcResult<WorkspaceDiff>> => ok(await window.omega?.diffWorkspace?.(req)),
   approveChange: async (req: {
     action: "accept" | "reject";
     snapshotToken?: string;
