@@ -2,18 +2,46 @@
  * Local credential vault. Renderer never receives plaintext. Electron
  * safeStorage is preferred; if unavailable the store refuses to persist.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-export function createCredentialStore(filePath, { encryptString, decryptString, isEncryptionAvailable } = {}) {
+export function createCredentialStore(filePath, { encryptString, decryptString, isEncryptionAvailable, getSelectedStorageBackend } = {}) {
+  let vaultCorrupt = false;
+
+  function encryptionReady() {
+    if (typeof isEncryptionAvailable === "function" && !isEncryptionAvailable()) return false;
+    if (typeof getSelectedStorageBackend === "function" && getSelectedStorageBackend() === "basic_text") return false;
+    return true;
+  }
+
+  function corruptError() {
+    const error = new Error("凭据库已损坏，已备份原文件后拒绝覆盖");
+    error.code = "vault_corrupt";
+    return error;
+  }
+
+  function markCorrupt() {
+    if (!vaultCorrupt && existsSync(filePath)) {
+      try {
+        copyFileSync(filePath, `${filePath}.corrupt-${Date.now()}`);
+      } catch {
+        /* best effort */
+      }
+    }
+    vaultCorrupt = true;
+  }
+
   function readVault() {
+    if (vaultCorrupt) throw corruptError();
     if (!existsSync(filePath)) return {};
     try {
       const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
     } catch {
-      return {};
+      /* fall through to backup */
     }
+    markCorrupt();
+    throw corruptError();
   }
 
   function writeVault(vault) {
@@ -25,11 +53,21 @@ export function createCredentialStore(filePath, { encryptString, decryptString, 
 
   function has(id) {
     if (typeof id !== "string" || !id.trim()) return false;
-    return Boolean(readVault()[id]);
+    try {
+      return Boolean(readVault()[id]);
+    } catch (error) {
+      if (error?.code === "vault_corrupt") return false;
+      throw error;
+    }
   }
 
   function listIds() {
-    return Object.keys(readVault());
+    try {
+      return Object.keys(readVault());
+    } catch (error) {
+      if (error?.code === "vault_corrupt") return [];
+      throw error;
+    }
   }
 
   function set(id, secret) {
@@ -43,7 +81,7 @@ export function createCredentialStore(filePath, { encryptString, decryptString, 
       error.code = "invalid_args";
       throw error;
     }
-    if (typeof isEncryptionAvailable === "function" && !isEncryptionAvailable()) {
+    if (!encryptionReady()) {
       const error = new Error("系统密钥存储不可用，无法保存凭据");
       error.code = "encryption_unavailable";
       throw error;
@@ -71,7 +109,13 @@ export function createCredentialStore(filePath, { encryptString, decryptString, 
 
   function read(id) {
     if (typeof decryptString !== "function") return null;
-    const encoded = readVault()[id];
+    let encoded;
+    try {
+      encoded = readVault()[id];
+    } catch (error) {
+      if (error?.code === "vault_corrupt") return null;
+      throw error;
+    }
     if (typeof encoded !== "string") return null;
     try {
       return decryptString(Buffer.from(encoded, "base64"));

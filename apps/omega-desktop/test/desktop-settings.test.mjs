@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
@@ -64,6 +64,29 @@ test("credential store encrypts secrets and refuses when encryption is unavailab
     decryptString: (buffer) => buffer.toString("utf8"),
   });
   assert.throws(() => locked.set("openai", "sk-secret"), (error) => error.code === "encryption_unavailable");
+
+  const plaintext = createCredentialStore(join(dir, "plaintext.json"), {
+    isEncryptionAvailable: () => true,
+    getSelectedStorageBackend: () => "basic_text",
+    encryptString: (value) => Buffer.from(value),
+    decryptString: (buffer) => buffer.toString("utf8"),
+  });
+  assert.throws(() => plaintext.set("openai", "sk-secret"), (error) => error.code === "encryption_unavailable");
+});
+
+test("credential store backs up a corrupt vault instead of overwriting it", () => {
+  const dir = mkdtempSync(join(tmpdir(), "omega-creds-corrupt-"));
+  const file = join(dir, "credentials.bin.json");
+  writeFileSync(file, "{not-json");
+  const store = createCredentialStore(file, {
+    isEncryptionAvailable: () => true,
+    encryptString: (value) => Buffer.from(`enc:${value}`),
+    decryptString: (buffer) => buffer.toString("utf8").slice(4),
+  });
+  assert.throws(() => store.set("openai", "sk-secret"), (error) => error.code === "vault_corrupt");
+  assert.equal(readFileSync(file, "utf8"), "{not-json");
+  const backups = readdirSync(dir).filter((name) => name.includes(".corrupt-"));
+  assert.equal(backups.length, 1);
 });
 
 test("Model Center and credential IPC never return plaintext keys to the renderer", async () => {

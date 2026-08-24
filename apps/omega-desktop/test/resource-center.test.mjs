@@ -17,6 +17,14 @@ test("resource center refuses npm/git/http sources", () => {
   assert.equal(assertLocalSource("/tmp/local-skill"), "/tmp/local-skill");
 });
 
+test("installLocalResource IPC refuses renderer-supplied paths outside authorized roots", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const main = await readFile(new URL("../electron/main.js", import.meta.url), "utf8");
+  assert.match(main, /omega:installLocalResource/);
+  assert.match(main, /pickedByDialog/);
+  assert.match(main, /isUnderAuthorizedRoot\(source\)/);
+});
+
 test("resource enable patterns force-include and force-exclude a path", () => {
   const enabled = nextScopedPaths(["skills/*.md"], "D:/agent/.pi/skills/demo/SKILL.md", "D:/agent/.pi", true);
   assert.ok(enabled.some((entry) => entry.startsWith("+") && entry.endsWith("skills/demo/SKILL.md")));

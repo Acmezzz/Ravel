@@ -30,7 +30,7 @@ import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
 import { projectTrust } from "./project-trust.js";
-import { realRoot } from "./path-security.js";
+import { isInside, realRoot } from "./path-security.js";
 import { appendSessionInfo, readSessionMessages, readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";
@@ -40,7 +40,7 @@ import { WorkerHost } from "./worker-host.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
-import { PERMISSION_PROFILES, sanitizePermissionProfile } from "./permission-profiles.js";
+import { PERMISSION_PROFILES, sanitizePermissionProfile, createPermissionGuard } from "./permission-profiles.js";
 import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionNameRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
 import * as fileTransfer from "./file-transfer-service.js";
@@ -446,6 +446,60 @@ async function rpc(method, args, fallbackCode = "call_failed") {
   }
 }
 
+function authorizedRoots() {
+  const roots = [];
+  try {
+    for (const item of workspaceRegistry?.list() ?? []) {
+      if (item?.realRoot) roots.push(item.realRoot);
+    }
+  } catch {
+    /* best effort */
+  }
+  if (activeCwd) roots.push(activeCwd);
+  try {
+    roots.push(rootOf());
+  } catch {
+    /* best effort */
+  }
+  return roots;
+}
+
+function isUnderAuthorizedRoot(candidate) {
+  if (typeof candidate !== "string" || !candidate.trim()) return false;
+  const target = resolve(candidate);
+  return authorizedRoots().some((root) => {
+    try {
+      return isInside(root, target);
+    } catch {
+      return false;
+    }
+  });
+}
+
+async function confirmPermission(title, message) {
+  if (!win || win.isDestroyed()) return false;
+  const choice = await dialog.showMessageBox(win, {
+    type: "warning",
+    title,
+    message,
+    buttons: ["拒绝", "允许"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  return choice.response === 1;
+}
+
+async function assertBashAllowed(command) {
+  const profile = desktopSettings?.get()?.permissionProfile ?? "trusted";
+  const guard = createPermissionGuard({
+    profile,
+    cwd: activeCwd ?? rootOf(),
+    confirm: confirmPermission,
+  });
+  await guard({ toolCall: { name: "bash" }, args: { command } });
+}
+
 async function bootstrap() {
   desktopSettings = createDesktopSettingsStore(desktopSettingsFile());
   startupRequest = parseStartupRequest();
@@ -453,6 +507,7 @@ async function bootstrap() {
     encryptString: (value) => safeStorage.encryptString(value),
     decryptString: (buffer) => safeStorage.decryptString(buffer),
     isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+    getSelectedStorageBackend: () => (typeof safeStorage.getSelectedStorageBackend === "function" ? safeStorage.getSelectedStorageBackend() : undefined),
   });
   const prefs = desktopSettings.get();
   workerPool = createWorkerSlotPool({ cap: prefs.workerCap, idleTtlMs: prefs.workerIdleTtlMs });
@@ -510,7 +565,7 @@ async function createWindow() {
   win.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
     if (input.key === "F12") {
-      win?.webContents.toggleDevTools();
+      if (!app.isPackaged) win?.webContents.toggleDevTools();
       event.preventDefault();
     } else if (input.key === "F11") {
       if (win) win.setFullScreen(!win.isFullScreen());
@@ -1174,6 +1229,7 @@ ipcMain.handle("omega:installLocalResource", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
     let source = typeof req?.source === "string" ? req.source.trim() : "";
+    let pickedByDialog = false;
     if (!source && win) {
       const picked = await dialog.showOpenDialog(win, {
         properties: ["openDirectory", "openFile"],
@@ -1181,8 +1237,12 @@ ipcMain.handle("omega:installLocalResource", async (event, req) => {
       });
       if (picked.canceled || !picked.filePaths[0]) return errorResult("cancelled", "未选择本地资源");
       source = picked.filePaths[0];
+      pickedByDialog = true;
     }
     source = assertLocalSource(source);
+    if (!pickedByDialog && !isUnderAuthorizedRoot(source)) {
+      return errorResult("forbidden", "只能安装用户选择的目录或已授权工作区内的本地资源");
+    }
     return rpc("installLocalResource", { source, project: req?.project === true }, "write_failed");
   } catch (error) {
     return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
@@ -1264,6 +1324,11 @@ ipcMain.handle("omega:bash", async (event, req) => {
   const command = typeof req?.command === "string" ? req.command.trim() : "";
   if (!command) return errorResult("invalid_args", "command is required");
   if (command.length > 8192) return errorResult("invalid_args", "command too long");
+  try {
+    await assertBashAllowed(command);
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   const result = await rpc("bash", { command, excludeFromContext: req?.excludeFromContext === true }, "bash_failed");
   if (result.ok && result.data) {
     return okResult({ output: result.data.output, exitCode: result.data.exitCode, cancelled: result.data.cancelled });
@@ -1556,6 +1621,7 @@ ipcMain.handle("omega:addWorktree", async (event, req) => {
       path,
       branch: typeof req?.branch === "string" ? req.branch : "",
       createBranch: req?.createBranch !== false,
+      allowedRoots: authorizedRoots(),
     }));
   } catch (error) {
     return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));

@@ -108,6 +108,8 @@ export const ERROR_CODES = Object.freeze({
   cancelled: "cancelled",
   unsupported: "unsupported",
   networkForbidden: "network_forbidden",
+  permissionDenied: "permission_denied",
+  vaultCorrupt: "vault_corrupt",
 });
 
 export function isIpcEnvelope(value) {

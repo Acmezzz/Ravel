@@ -7,7 +7,7 @@
  * receives the structured DTO and an approval result. See system_design.md §3.4.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { join, isAbsolute, relative, resolve } from "node:path";
+import { dirname, join, isAbsolute, relative, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { isInside } from "./path-security.js";
@@ -529,7 +529,7 @@ export function listWorktrees(cwd) {
   return { repoRoot: root, isGitRepo: true, worktrees };
 }
 
-function assertSafeWorktreePath(path) {
+function assertSafeWorktreePath(path, { repoRoot, allowedRoots = [] } = {}) {
   if (typeof path !== "string" || !path.trim()) {
     const error = new Error("worktree path is required");
     error.code = "invalid_args";
@@ -541,17 +541,27 @@ function assertSafeWorktreePath(path) {
     error.code = "invalid_args";
     throw error;
   }
+  const root = repoRoot ? resolve(repoRoot) : "";
+  const roots = (Array.isArray(allowedRoots) ? allowedRoots : []).concat(root ? [root] : []).filter((value) => typeof value === "string" && value.trim());
+  const insideRoot = roots.some((candidate) => isInside(candidate, abs));
+  const parent = root ? dirname(root) : "";
+  const sibling = Boolean(parent && parent !== root && resolve(dirname(abs)) === parent);
+  if (!insideRoot && !sibling) {
+    const error = new Error("worktree path must stay inside an authorized workspace, the repository, or a sibling of the repository");
+    error.code = "workspace_not_authorized";
+    throw error;
+  }
   return abs;
 }
 
-export function addWorktree(cwd, { path, branch, createBranch = true } = {}) {
+export function addWorktree(cwd, { path, branch, createBranch = true, allowedRoots } = {}) {
   if (!isInsideWorkTree(cwd)) {
     const error = new Error("当前目录不是 Git 仓库");
     error.code = "not_a_git_repo";
     throw error;
   }
   const root = repoRoot(cwd);
-  const abs = assertSafeWorktreePath(path);
+  const abs = assertSafeWorktreePath(path, { repoRoot: root, allowedRoots });
   const branchName = typeof branch === "string" ? branch.trim().slice(0, 128) : "";
   if (branchName && !/^[A-Za-z0-9._/\-]+$/.test(branchName)) {
     const error = new Error("branch name is invalid");
@@ -573,7 +583,7 @@ export function removeWorktree(cwd, { path, force = false } = {}) {
     throw error;
   }
   const root = repoRoot(cwd);
-  const abs = assertSafeWorktreePath(path);
+  const abs = assertSafeWorktreePath(path, { repoRoot: root });
   if (resolve(abs) === resolve(root) || resolve(abs) === resolve(cwd)) {
     const error = new Error("不能删除当前正在使用的 worktree");
     error.code = "workspace_in_use";

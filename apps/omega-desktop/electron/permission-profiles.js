@@ -43,9 +43,23 @@ export function permissionProfileLabel(profile) {
   }[sanitizePermissionProfile(profile)];
 }
 
+export function permissionEventOf(event) {
+  if (event && typeof event === "object" && event.toolCall && typeof event.toolCall === "object") {
+    return {
+      toolCall: event.toolCall,
+      args: event.args && typeof event.args === "object" ? event.args : {},
+    };
+  }
+  return {
+    toolCall: { name: event?.toolName ?? "" },
+    args: event?.input && typeof event.input === "object" ? event.input : {},
+  };
+}
+
 export function createPermissionGuard({ profile, cwd, confirm }) {
   const mode = sanitizePermissionProfile(profile);
-  return async ({ toolCall, args }) => {
+  return async (event) => {
+    const { toolCall, args } = permissionEventOf(event);
     const toolName = String(toolCall?.name ?? "");
     const input = args && typeof args === "object" ? args : {};
 

@@ -24,13 +24,13 @@
 
 ## 阶段 2：安全修复
 
-- [ ] S1【高】`main.js:1241` `omega:bash` 绕过 permission-profile，渲染层可任意执行 shell → 按当前档位走 `createPermissionGuard`
-- [ ] S2【中】`omega:addWorktree` 接受工作区外任意绝对路径 → 限制在已授权根目录 / repoRoot 之下
-- [ ] S3【中】资源中心可安装任意本地目录为扩展（代码注入旁路）→ 限制来源为用户 dialog 选择或已授权目录
-- [ ] S4【低】`credential-store.js` Linux 未校验 safeStorage backend，basic_text 等于明文 → 校验 kwallet/libsecret
-- [ ] S5【低】vault JSON 损坏时静默重建会覆盖全部凭据 → 先备份再报错
-- [ ] S6【低】打包版保留 F12 开 DevTools → `!app.isPackaged` 包裹
-- [ ] S7【低】`file-transfer-service.js` realpath 检查与写入间 TOCTOU → 写后复检
+- [x] S1【高】`omega:bash` 绕过 permission-profile，渲染层可任意执行 shell → Main 在 RPC 前走 `createPermissionGuard`；守卫同时兼容 AgentSession 的 `toolName/input`
+- [x] S2【中】`omega:addWorktree` 接受工作区外任意绝对路径 → 限制在已授权根 / repoRoot / 仓库兄弟目录
+- [x] S3【中】资源中心可安装任意本地目录为扩展 → 仅允许用户 dialog 选择或已授权工作区内路径
+- [x] S4【低】`credential-store.js` Linux 未校验 safeStorage backend → 拒绝 `basic_text`
+- [x] S5【低】vault JSON 损坏时静默重建会覆盖全部凭据 → 先备份再报 `vault_corrupt`
+- [x] S6【低】打包版保留 F12 开 DevTools → `!app.isPackaged` 包裹
+- [x] S7【低】`file-transfer-service.js` realpath 检查与写入间 TOCTOU → 写后 `resolveExisting` 复检
 
 ## 阶段 3：正确性修复
 

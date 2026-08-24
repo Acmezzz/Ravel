@@ -109,6 +109,8 @@ export const ERROR_CODES = {
   cancelled: "cancelled",
   unsupported: "unsupported",
   networkForbidden: "network_forbidden",
+  permissionDenied: "permission_denied",
+  vaultCorrupt: "vault_corrupt",
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

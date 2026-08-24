@@ -27,3 +27,8 @@ test("ask-before-command delegates the decision to the desktop UI", async () => 
   await assert.rejects(() => guard({ toolCall: { name: "bash" }, args: { command: "rm -rf tmp" } }), /拒绝/);
   await assert.doesNotReject(() => guard({ toolCall: { name: "bash" }, args: { command: "npm test" } }));
 });
+
+test("permission guard accepts AgentSession toolName/input events", async () => {
+  const guard = createPermissionGuard({ profile: "read-only", cwd: "/workspace" });
+  await assert.rejects(() => guard({ type: "tool_call", toolName: "bash", input: { command: "pwd" } }), /Read-only/);
+});

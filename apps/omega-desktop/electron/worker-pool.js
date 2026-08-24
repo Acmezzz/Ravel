@@ -194,7 +194,7 @@ export function createWorkerSlotPool({
     return slot;
   }
 
-  async function acquire({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, createHost }) {
+  async function acquire({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, permissionProfile, createHost }) {
     startHealthChecks();
     if (sessionId && slots.has(sessionId)) return activate(sessionId);
     await evictToFit();
@@ -225,7 +225,7 @@ export function createWorkerSlotPool({
     slots.set(pendingId, slot);
     setForeground(pendingId);
     try {
-      const info = await host.start(cwd, extensionsRoot, sessionId, projectTrusted);
+      const info = await host.start(cwd, extensionsRoot, sessionId, projectTrusted, permissionProfile);
       const id = info?.sessionId ?? sessionId ?? pendingId;
       slot.cwd = info?.cwd ?? cwd;
       if (id !== pendingId) rekey(pendingId, id);

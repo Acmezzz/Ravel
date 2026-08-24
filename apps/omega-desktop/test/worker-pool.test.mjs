@@ -8,11 +8,12 @@ function fakeHost(id) {
     state: "dead",
     killed: 0,
     startCalls: 0,
-    async start(cwd, _extensionsRoot, sessionId) {
+    async start(cwd, _extensionsRoot, sessionId, _projectTrusted, permissionProfile) {
       host.startCalls += 1;
       host.state = "ready";
       host.sessionId = sessionId ?? id ?? `created-${host.startCalls}`;
       host.cwd = cwd;
+      host.permissionProfile = permissionProfile ?? "trusted";
       return { sessionId: host.sessionId, cwd };
     },
     async kill() {
@@ -27,9 +28,11 @@ test("worker slot pool reuses a live session and parks the previous foreground",
   const pool = createWorkerSlotPool({ cap: 3, idleTtlMs: 0 });
   const first = await pool.acquire({
     cwd: "/one",
+    permissionProfile: "read-only",
     createHost: () => fakeHost("a"),
   });
   assert.equal(first.sessionId, "a");
+  assert.equal(first.host.permissionProfile, "read-only");
   pool.markRunning("a", true);
   const second = await pool.acquire({
     sessionId: "b",

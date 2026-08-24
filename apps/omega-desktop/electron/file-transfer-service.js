@@ -55,6 +55,8 @@ export function uploadFile(root, sourcePath, relativePath, { conflict = "cancel"
   try {
     copyFile(sourcePath, temp);
     renameSync(temp, created.path);
+    const written = resolveExisting(root, created.relative);
+    if (!isInside(created.root, written.path)) fail("path_escape", "写入后路径越界");
   } catch (error) {
     try { unlinkSync(temp); } catch { /* best effort */ }
     throw error;
