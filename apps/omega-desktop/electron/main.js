@@ -30,7 +30,7 @@ import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
 import { projectTrust } from "./project-trust.js";
-import { canonicalInside, isInside, realRoot } from "./path-security.js";
+import { canonicalInside, realRoot } from "./path-security.js";
 import { appendSessionInfo, readSessionMessages, readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";

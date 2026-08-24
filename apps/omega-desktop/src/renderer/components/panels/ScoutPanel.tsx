@@ -8,7 +8,6 @@ import { useAppStore } from "../../store/useAppStore";
 import type { ScoutStatus, ScoutRounds, ScoutProposals } from "../../types/dto";
 
 const MAX_ROUNDS = 40;
-const MAX_PROPOSALS = 80;
 const MAX_STEPS = 40;
 
 function StatusCard({ data }: { data: ScoutStatus }) {

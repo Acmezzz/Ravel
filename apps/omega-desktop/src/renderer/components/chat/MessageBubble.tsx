@@ -130,6 +130,9 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
           ) : (
             <Markdown>{message.text}</Markdown>
           )}
+          {isStreamingTarget ? (
+            <Box component="span" className="stream-caret" sx={{ color: "var(--omega-accent)" }} aria-hidden="true" />
+          ) : null}
         </Box>
         {!isError && message.text ? (
           <Box
