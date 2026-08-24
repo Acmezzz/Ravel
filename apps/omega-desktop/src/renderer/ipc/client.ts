@@ -115,7 +115,7 @@ export interface OmegaBridge {
   listModels(): Promise<IpcResult<ModelInfo[]>>;
   setModel(req: { provider: string; modelId: string }): Promise<IpcResult<AgentStateSnapshot>>;
   setThinkingLevel(req: { level: ThinkingLevel }): Promise<IpcResult<AgentStateSnapshot>>;
-  setSessionName(req: { name: string }): Promise<IpcResult<AgentStateSnapshot>>;
+  setSessionName(req: { name: string; sessionId?: string }): Promise<IpcResult<AgentStateSnapshot>>;
   listCommands(): Promise<IpcResult<SlashCommandInfo[]>>;
   compact(): Promise<IpcResult<AgentStateSnapshot>>;
   authStatus(): Promise<IpcResult<AuthStatus>>;
@@ -260,7 +260,7 @@ export const ipc = {
     ok(await window.omega?.setModel?.(req)),
   setThinkingLevel: async (req: { level: ThinkingLevel }): Promise<IpcResult<AgentStateSnapshot>> =>
     ok(await window.omega?.setThinkingLevel?.(req)),
-  setSessionName: async (req: { name: string }): Promise<IpcResult<AgentStateSnapshot>> =>
+  setSessionName: async (req: { name: string; sessionId?: string }): Promise<IpcResult<AgentStateSnapshot>> =>
     ok(await window.omega?.setSessionName?.(req)),
   listCommands: async (): Promise<IpcResult<SlashCommandInfo[]>> => ok(await window.omega?.listCommands?.()),
   compact: async (): Promise<IpcResult<AgentStateSnapshot>> => ok(await window.omega?.compact?.()),

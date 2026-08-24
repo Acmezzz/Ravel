@@ -106,7 +106,7 @@ export function SessionList(): React.ReactElement {
     const name = renaming.name.trim();
     setRenaming(null);
     if (!name) return;
-    const res = await ipc.setSessionName({ name });
+    const res = await ipc.setSessionName({ name, sessionId: renaming.id });
     if (res.ok) {
       setAgent(res.data);
       const list = await ipc.listSessions();

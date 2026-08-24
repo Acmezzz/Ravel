@@ -116,10 +116,7 @@ function FileCard({
               size="small"
               checked={wholeFile}
               indeterminate={!wholeFile && (selectedHunks?.size ?? 0) > 0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFile(file.path);
-              }}
+              onClick={(e) => e.stopPropagation()}
               onChange={() => onToggleFile(file.path)}
               sx={{ p: 0, ml: "-2px", flex: "0 0 auto" }}
             />

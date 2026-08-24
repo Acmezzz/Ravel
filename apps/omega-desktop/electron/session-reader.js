@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
+import { appendFileSync, createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 
@@ -113,6 +113,23 @@ function treeIndexOf(summaries) {
     byParent.set(summary.parentSessionId, children);
   }
   return Object.fromEntries([...byParent.entries()]);
+}
+
+export function appendSessionInfo(file, name) {
+  const resolved = resolve(file);
+  const sanitized = String(name ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 256);
+  if (!sanitized) throw new Error("name is required");
+  statSync(resolved);
+  const entry = {
+    type: "session_info",
+    id: `info-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: new Date().toISOString(),
+    name: sanitized,
+  };
+  appendFileSync(resolved, `${JSON.stringify(entry)}\n`, "utf8");
+  summaryCache.delete(resolved);
+  messageCache.delete(resolved);
+  return entry;
 }
 
 export async function readSessionMessages(file, { offset = 0, limit = 100 } = {}) {

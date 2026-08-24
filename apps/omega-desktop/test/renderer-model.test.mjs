@@ -472,7 +472,7 @@ test("R5: resource inventory is exposed through the worker and surfaced in setti
   assert.match(settings, /listResources/);
   assert.match(settings, /扩展（/);
   assert.match(settings, /Skills（/);
-  assert.match(settings, /打开资源中心/);
+  assert.match(settings, /资源中心/);
 });
 
 test("resource center manages local install, enable, and reload without network", async () => {

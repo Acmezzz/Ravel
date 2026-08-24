@@ -249,7 +249,9 @@ contextBridge.exposeInMainWorld("omega", {
     if (!req || typeof req.name !== "string" || !req.name.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "name must be a non-empty string" });
     }
-    return ipcRenderer.invoke("omega:setSessionName", { name: req.name.slice(0, 256) });
+    const payload = { name: req.name.trim().slice(0, 256) };
+    if (typeof req.sessionId === "string" && req.sessionId.trim()) payload.sessionId = req.sessionId.trim().slice(0, 128);
+    return ipcRenderer.invoke("omega:setSessionName", payload);
   },
   updateSettings: (req) => {
     const payload = {};

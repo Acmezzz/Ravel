@@ -9,6 +9,14 @@ export function sessionRequest(value) {
   return sessionId ? { sessionId } : null;
 }
 
+export function sessionNameRequest(value) {
+  const name = boundedString(typeof value?.name === "string" ? value.name.trim() : "", 256);
+  if (!name) return null;
+  if (value?.sessionId == null || value.sessionId === "") return { name };
+  const sessionId = boundedString(value.sessionId, MAX.sessionId);
+  return sessionId ? { name, sessionId } : null;
+}
+
 export function workspaceRequest(value) {
   const workspace = boundedString(value?.workspace, MAX.workspace);
   return workspace ? { workspace } : null;

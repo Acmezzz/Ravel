@@ -47,7 +47,7 @@ function gitState(cwd, snapshot = {}) {
   const root = repoRoot(cwd);
   const run = (args) => {
     try {
-      return git(cwd, args).replace(/\\r\\n/g, "\\n");
+      return git(cwd, args).replace(/\r\n/g, "\n");
     } catch {
       return "";
     }

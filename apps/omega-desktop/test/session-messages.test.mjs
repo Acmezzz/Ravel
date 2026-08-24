@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readSessionMessages } from "../electron/session-reader.js";
+import { appendSessionInfo, readSessionMessages, readSessionSummaries } from "../electron/session-reader.js";
 
 test("disk-first session reader paginates historical messages", async () => {
   const root = await mkdtemp(join(tmpdir(), "omega-session-page-"));
@@ -19,4 +19,16 @@ test("disk-first session reader paginates historical messages", async () => {
   assert.equal(first.nextOffset, 2);
   const second = await readSessionMessages(file, { offset: first.nextOffset, limit: 2 });
   assert.equal(second.items[0].text, "message 2");
+});
+
+test("appendSessionInfo writes a session_info entry and updates the summary title", async () => {
+  const root = await mkdtemp(join(tmpdir(), "omega-session-rename-"));
+  const file = join(root, "session.jsonl");
+  await writeFile(file, `${JSON.stringify({ type: "session", id: "session-rename", cwd: root, timestamp: "2026-01-01T00:00:00.000Z" })}\n`);
+  appendSessionInfo(file, "Renamed session");
+  const raw = await readFile(file, "utf8");
+  assert.match(raw, /"type":"session_info"/);
+  assert.match(raw, /"name":"Renamed session"/);
+  const page = await readSessionSummaries(root);
+  assert.equal(page.items[0].title, "Renamed session");
 });

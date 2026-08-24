@@ -31,7 +31,7 @@ import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
 import { projectTrust } from "./project-trust.js";
 import { realRoot } from "./path-security.js";
-import { readSessionMessages, readSessionSummaries } from "./session-reader.js";
+import { appendSessionInfo, readSessionMessages, readSessionSummaries } from "./session-reader.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";
 import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-protocol.js";
@@ -41,7 +41,7 @@ import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { PERMISSION_PROFILES, sanitizePermissionProfile } from "./permission-profiles.js";
-import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
+import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionNameRequest, sessionRequest, sessionRpcRequest, workspaceRequest } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
 import * as fileTransfer from "./file-transfer-service.js";
 
@@ -1117,12 +1117,33 @@ ipcMain.handle("omega:switchPiSession", async (event, req) => {
   return result;
 });
 
-ipcMain.handle("omega:setSessionName", (event, req) => {
+ipcMain.handle("omega:setSessionName", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  if (!req || typeof req.name !== "string" || !req.name.trim()) {
-    return errorResult("invalid_args", "name must be a non-empty string");
+  const normalized = sessionNameRequest(req);
+  if (!normalized) return errorResult("invalid_args", "name must be a non-empty string");
+  const currentId = worker?.sessionId ?? null;
+  const targetId = normalized.sessionId ?? currentId;
+  if (!targetId) return errorResult("invalid_args", "sessionId is required");
+  try {
+    if (targetId === currentId) {
+      return rpc("setSessionName", { name: normalized.name }, "write_failed");
+    }
+    const slot = workerPool.get(targetId);
+    if (slot?.host?.state === "ready") {
+      await slot.host.call("setSessionName", { name: normalized.name });
+      return rpc("getState", undefined, "read_failed");
+    }
+    const sessionPath = await resolveSessionPath(targetId);
+    if (!sessionPath) return errorResult("not_found", "Session not found");
+    const root = resolve(piSessionsRoot()).toLowerCase();
+    const resolved = resolve(String(sessionPath)).toLowerCase();
+    const inRoot = resolved === root || resolved.startsWith(`${root}\\`) || resolved.startsWith(`${root}/`);
+    if (!inRoot) return errorResult("forbidden", "Refusing to write a file outside the pi sessions directory");
+    appendSessionInfo(sessionPath, normalized.name);
+    return rpc("getState", undefined, "read_failed");
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
   }
-  return rpc("setSessionName", { name: req.name.trim() }, "write_failed");
 });
 
 ipcMain.handle("omega:getToolDetail", (event, req) => {

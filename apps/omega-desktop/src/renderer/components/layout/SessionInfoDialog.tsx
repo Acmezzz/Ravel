@@ -29,8 +29,6 @@ export interface SessionInfoDialogProps {
 
 /** Session stats + system prompt viewer + HTML export. */
 export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): React.ReactElement {
-  const agent = useAppStore((s) => s.agent);
-  const setAgent = useAppStore((s) => s.setAgent);
   const [snapshot, setSnapshot] = React.useState<AgentStateSnapshot | null>(null);
   const [systemPrompt, setSystemPrompt] = React.useState<string | null>(null);
   const [promptOpen, setPromptOpen] = React.useState(false);
@@ -41,14 +39,14 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
       setPromptOpen(false);
       return;
     }
-    setSnapshot(agent);
+    setSnapshot(useAppStore.getState().agent);
     void ipc.getState().then((res) => {
       if (res.ok) {
         setSnapshot(res.data);
-        setAgent(res.data);
+        useAppStore.getState().setAgent(res.data);
       }
     });
-  }, [open, agent, setAgent]);
+  }, [open]);
 
   const loadPrompt = React.useCallback(async () => {
     const next = !promptOpen;

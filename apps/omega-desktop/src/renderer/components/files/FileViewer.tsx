@@ -103,7 +103,7 @@ export function FileViewer(): React.ReactElement {
     setLoadingMore(true);
     const res = await ipc.readFilePage({ path: viewer.path, offset: nextOffset, limit: 400 });
     if (res.ok) {
-      setDisplayedContent((current) => `${current}${current ? "\\n" : ""}${res.data.content ?? ""}`);
+      setDisplayedContent((current) => `${current}${current ? "\n" : ""}${res.data.content ?? ""}`);
       setNextOffset(res.data.nextOffset);
     }
     setLoadingMore(false);

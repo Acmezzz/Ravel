@@ -6,7 +6,7 @@
 ## 总体结论
 
 - 安全架构基本兑现文档红线（CSP / contextIsolation / sandbox / 路径包含检查 / git 参数化调用），但存在 **1 个权限旁路**。
-- 测试共 125 个用例，当前 **123 通过 / 2 失败**（UI 重构后源码字符串断言过期）。
+- 测试共 126 个用例（阶段 1 新增 `appendSessionInfo`），当前 **126 通过 / 0 失败**。
 - 存在 **5 个已证实的功能性 bug**、**约 30 个死代码符号 / 3 个死模块 / 10+ 冗余文件**。
 - 质量门禁盲区：biome / 根 tsgo 均不覆盖 `apps/omega-desktop`；CI 仅 ubuntu，无 Windows 桌面构建。
 
@@ -14,13 +14,13 @@
 
 ## 阶段 1：测试修复 + 功能 bug（最高优先级）
 
-- [ ] T1 `test/renderer-model.test.mjs:475` R5 断言 `/打开资源中心/` 过期（设置页按钮现为「资源中心」）
-- [ ] T2 `test/custom-provider-ui.test.mjs` 断言 `不会联网 discovery` 过期（现为「本地 Provider 可离线使用」）
-- [ ] B1 `DiffViewer.tsx:119-124` 文件 Checkbox 同时绑 onClick+onChange 双触发 `onToggleFile`，勾选永远失效 → 删除 onClick
-- [ ] B2 `SessionInfoDialog.tsx:46` effect 依赖含 `agent` 且内部 `setAgent(新对象)` → getState 无限循环 → 依赖只留 `[open]`
-- [ ] B3 `FileViewer.tsx:106` 模板串写 `"\\n"`（字面反斜杠+n），翻页内容不换行 → 改真换行
-- [ ] B4 `SessionList.tsx:104` 右键任意会话重命名实际只改活动会话（`renaming.id` 未使用）→ IPC 链路补 sessionId
-- [ ] B5 `diff-service.js:50` `/\\r\\n/` 匹配字面量而非 CRLF → 改 `/\r\n/g`
+- [x] T1 `test/renderer-model.test.mjs:475` R5 断言 `/打开资源中心/` 过期（设置页按钮现为「资源中心」）
+- [x] T2 `test/custom-provider-ui.test.mjs` 断言 `不会联网 discovery` 过期（现为「本地 Provider 可离线使用」）
+- [x] B1 `DiffViewer.tsx:119-124` 文件 Checkbox 同时绑 onClick+onChange 双触发 `onToggleFile`，勾选永远失效 → onClick 仅 stopPropagation
+- [x] B2 `SessionInfoDialog.tsx:46` effect 依赖含 `agent` 且内部 `setAgent(新对象)` → getState 无限循环 → 依赖只留 `[open]`
+- [x] B3 `FileViewer.tsx:106` 模板串写 `"\\n"`（字面反斜杠+n），翻页内容不换行 → 改真换行
+- [x] B4 `SessionList.tsx:104` 右键任意会话重命名实际只改活动会话（`renaming.id` 未使用）→ IPC 链路补 sessionId
+- [x] B5 `diff-service.js:50` `/\\r\\n/` 匹配字面量而非 CRLF → 改 `/\r\n/g`
 
 ## 阶段 2：安全修复
 

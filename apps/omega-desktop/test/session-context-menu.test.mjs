@@ -9,6 +9,7 @@ test("Session Sidebar has a desktop context menu and safe parent-child deletion 
   assert.match(source, /重命名/);
   assert.match(source, /删除会话/);
   assert.match(source, /parentSessionId/);
+  assert.match(source, /setSessionName\(\{ name, sessionId: renaming\.id \}\)/);
 });
 
 test("sidebar treats children of a deleted parent as visible roots", async () => {
