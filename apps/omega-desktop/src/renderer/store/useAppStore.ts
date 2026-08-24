@@ -425,14 +425,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   consumeOptimisticWith: (delivered) =>
     set((state) => {
       const last = state.messages[state.messages.length - 1];
-      if (state.optimisticKey && last?.role === "user" && last.id.startsWith("optimistic-")) {
+      const mergeUser = (current: SessionMessage): SessionMessage => ({
+        ...current,
+        ...delivered,
+        // Keep the on-screen bubble identity so React doesn't remount and jump.
+        id: current.id.startsWith("optimistic-") ? current.id : delivered.id || current.id,
+        text: delivered.text || current.text,
+        entryId: delivered.entryId ?? current.entryId,
+      });
+
+      if (last?.role === "user" && last.id.startsWith("optimistic-")) {
         const messages = [...state.messages];
-        // Same content: keep the optimistic bubble as-is. Different content
-        // (slash expansion, image placeholder): replace with the authoritative
-        // version instead of duplicating.
-        messages[messages.length - 1] =
-          last.text === delivered.text ? { ...last, id: delivered.id || last.id, entryId: delivered.entryId } : delivered;
+        messages[messages.length - 1] = mergeUser(last);
         return { messages, optimisticKey: null };
+      }
+      if (last?.role === "user" && (last.id === delivered.id || last.text === delivered.text)) {
+        const messages = [...state.messages];
+        messages[messages.length - 1] = { ...last, id: last.id, entryId: delivered.entryId ?? last.entryId, text: delivered.text || last.text };
+        return { messages, optimisticKey: null };
+      }
+      if (delivered.id && state.messages.some((message) => message.id === delivered.id)) {
+        return { optimisticKey: null };
       }
       return { messages: [...state.messages, delivered], optimisticKey: null };
     }),

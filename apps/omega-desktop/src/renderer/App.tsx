@@ -197,12 +197,16 @@ export function App(): React.ReactElement {
         }
         case "message_end": {
           if (event.message.role === "user") {
-            store.consumeOptimisticWith({
-              role: "user",
-              id: event.message.id ?? `user-${Date.now()}`,
-              text: event.message.text ?? "",
-              ts: new Date().toISOString(),
-            });
+            // message_start already consumed the optimistic bubble. Only merge
+            // if that bubble is still pending (missed start, or late replay).
+            if (useAppStore.getState().optimisticKey) {
+              store.consumeOptimisticWith({
+                role: "user",
+                id: event.message.id ?? `user-${Date.now()}`,
+                text: event.message.text ?? "",
+                ts: new Date().toISOString(),
+              });
+            }
           } else if (event.message.role === "assistant") {
             // Authoritative final text: replace the streaming bubble, covering
             // deltas missed across a mid-run reload.

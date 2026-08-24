@@ -79,7 +79,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
         border: `1px solid ${card.isError ? "var(--omega-danger)" : "var(--omega-border)"}`,
         borderRadius: "12px !important",
         mb: 1,
-        maxWidth: "min(78%, 720px)",
+        width: "100%",
         overflow: "hidden",
         transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
         "&:hover": {

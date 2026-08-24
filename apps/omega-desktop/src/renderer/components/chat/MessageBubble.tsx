@@ -92,13 +92,14 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
       sx={{
         display: "flex",
         gap: 1.5,
-        mb: 2.75,
+        mb: isUser ? 1.5 : 2.25,
+        width: "100%",
         justifyContent: isUser ? "flex-end" : "flex-start",
-        animation: "omega-rise .2s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
+        animation: isUser ? "none" : "omega-rise .2s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
         "&:hover .msg-actions": { opacity: 1, transform: "translateY(0)" },
       }}
     >
-      <Box sx={{ minWidth: 0, maxWidth: isUser ? "min(78%, 720px)" : "100%" }}>
+      <Box sx={{ minWidth: 0, width: isUser ? "auto" : "100%", maxWidth: isUser ? "min(85%, 720px)" : "100%" }}>
         {showThinking ? (
           <ThinkingBlock
             text={message.thinking ?? ""}

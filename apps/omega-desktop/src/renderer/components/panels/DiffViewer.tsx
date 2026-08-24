@@ -22,11 +22,11 @@ const STATUS_LABEL: Record<DiffFile["status"], string> = {
   renamed: "重命名",
 };
 
-const STATUS_COLOR: Record<DiffFile["status"], "success" | "warning" | "error" | "info"> = {
-  added: "success",
-  modified: "warning",
-  deleted: "error",
-  renamed: "info",
+const STATUS_TONE: Record<DiffFile["status"], { bg: string; fg: string }> = {
+  added: { bg: "var(--omega-success-soft)", fg: "var(--omega-success)" },
+  modified: { bg: "var(--omega-warning-soft)", fg: "var(--omega-warning)" },
+  deleted: { bg: "var(--omega-danger-soft)", fg: "var(--omega-danger)" },
+  renamed: { bg: "var(--omega-accent-soft)", fg: "var(--omega-accent)" },
 };
 
 function HunkLine({ line }: { line: DiffFile["hunks"][number]["lines"][number] }) {
@@ -80,44 +80,96 @@ function FileCard({
 }) {
   const selectedHunks = selection.files.get(file.path);
   const wholeFile = selectedHunks !== undefined && selectedHunks.size === 0;
+  const fileName = file.path.split(/[\\/]/).pop() ?? file.path;
   return (
-    <Accordion disableGutters elevation={0} sx={{ background: "var(--omega-bg-soft)", border: "1px solid var(--omega-border)", borderRadius: "10px !important", mb: 0.75, "&:before": { display: "none" } }}>
-      <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "var(--omega-text-muted)" }} />} sx={{ px: 1 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, width: "100%" }}>
-          <Checkbox
-            size="small"
-            checked={wholeFile}
-            indeterminate={!wholeFile && (selectedHunks?.size ?? 0) > 0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFile(file.path);
-            }}
-            onChange={() => onToggleFile(file.path)}
-            sx={{ p: 0.25 }}
-          />
-          <Typography
-            onClick={() => onOpenFile(file.path)}
-            title="在查看器中打开"
-            sx={{ fontSize: 12.5, color: "var(--omega-text)", fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", "&:hover": { color: "var(--omega-accent)" } }}
-          >
-            {file.path}
-          </Typography>
-          <Chip size="small" label={STATUS_LABEL[file.status]} color={STATUS_COLOR[file.status]} />
-          <Typography sx={{ fontSize: 11, color: "var(--omega-success)" }}>+{file.additions}</Typography>
-          <Typography sx={{ fontSize: 11, color: "var(--omega-danger)" }}>-{file.deletions}</Typography>
+    <Accordion
+      disableGutters
+      elevation={0}
+      sx={{
+        background: "var(--omega-bg-soft)",
+        border: "1px solid var(--omega-border)",
+        borderRadius: "10px !important",
+        mb: 0.75,
+        minWidth: 0,
+        overflow: "hidden",
+        "&:before": { display: "none" },
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon sx={{ color: "var(--omega-text-muted)", fontSize: 18 }} />}
+        sx={{
+          px: 0.75,
+          minHeight: 44,
+          "& .MuiAccordionSummary-content": {
+            my: 0.75,
+            mr: 0.5,
+            minWidth: 0,
+            overflow: "hidden",
+            flex: "1 1 auto",
+          },
+          "& .MuiAccordionSummary-expandIconWrapper": { flex: "0 0 auto", ml: 0 },
+        }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4, minWidth: 0, width: "100%" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+            <Checkbox
+              size="small"
+              checked={wholeFile}
+              indeterminate={!wholeFile && (selectedHunks?.size ?? 0) > 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFile(file.path);
+              }}
+              onChange={() => onToggleFile(file.path)}
+              sx={{ p: 0, ml: "-2px", flex: "0 0 auto" }}
+            />
+            <Typography
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenFile(file.path);
+              }}
+              title={file.path}
+              sx={{
+                fontSize: 12.5,
+                color: "var(--omega-text)",
+                fontWeight: 600,
+                minWidth: 0,
+                flex: "1 1 auto",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+                "&:hover": { color: "var(--omega-accent)" },
+              }}
+            >
+              {fileName}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, pl: "26px" }}>
+            {fileName !== file.path ? (
+              <Typography title={file.path} sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, flex: "1 1 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {file.path}
+              </Typography>
+            ) : (
+              <Box sx={{ flex: "1 1 0", minWidth: 0 }} />
+            )}
+            <Chip size="small" label={STATUS_LABEL[file.status]} sx={{ flex: "0 0 auto", height: 18, fontSize: 10, background: STATUS_TONE[file.status].bg, color: STATUS_TONE[file.status].fg }} />
+            <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-success)", flex: "0 0 auto" }}>+{file.additions}</Typography>
+            <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-danger)", flex: "0 0 auto" }}>-{file.deletions}</Typography>
+          </Box>
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ px: 1, pt: 0 }}>
+      <AccordionDetails sx={{ px: 1, pt: 0, minWidth: 0 }}>
         {file.hunks.map((hunk, i) => (
-          <Box key={i} sx={{ mt: 0.75, border: "1px solid var(--omega-border)", borderRadius: "8px", overflow: "hidden" }}>
+          <Box key={i} sx={{ mt: 0.75, border: "1px solid var(--omega-border)", borderRadius: "8px", overflow: "hidden", minWidth: 0 }}>
             <Box
-              sx={{ display: "flex", alignItems: "center", background: "var(--omega-bg)", cursor: "pointer" }}
+              sx={{ display: "flex", alignItems: "center", background: "var(--omega-bg)", cursor: "pointer", minWidth: 0 }}
               onClick={() => onToggleHunk(file.path, i)}
             >
-              <Checkbox size="small" checked={wholeFile || (selectedHunks?.has(i) ?? false)} sx={{ p: 0.25 }} />
-              <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>{hunk.header}</Typography>
+              <Checkbox size="small" checked={wholeFile || (selectedHunks?.has(i) ?? false)} sx={{ p: 0.25, flex: "0 0 auto" }} />
+              <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hunk.header}</Typography>
             </Box>
-            <Box sx={{ px: 1, py: 0.5 }}>
+            <Box sx={{ px: 1, py: 0.5, overflowX: "auto" }}>
               {hunk.lines.map((line, j) => (
                 <HunkLine key={j} line={line} />
               ))}
@@ -131,7 +183,7 @@ function FileCard({
 
 function SectionTitle({ label, count }: { label: string; count: number }): React.ReactElement {
   return (
-    <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em", mt: 1.25, mb: 0.75 }}>
+    <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em", mt: 0.25, mb: 0.75, "&:not(:first-of-type)": { mt: 1.25 } }}>
       {label}（{count}）
     </Typography>
   );
@@ -276,23 +328,37 @@ export function DiffViewer(): React.ReactElement {
   const stagedCount = snapshot.staged.length;
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-        <Chip size="small" label={snapshot.branch || "—"} color="primary" />
-        <Typography sx={{ fontSize: 11.5, color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+    <Box sx={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.35, mb: 0.75, minWidth: 0, flex: "0 0 auto" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+          <Chip
+            size="small"
+            label={snapshot.branch || "—"}
+            title={snapshot.branch || undefined}
+            sx={{
+              flex: "1 1 auto",
+              minWidth: 0,
+              maxWidth: "100%",
+              height: 22,
+              background: "var(--omega-accent-soft)",
+              color: "var(--omega-accent-strong)",
+              "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis", display: "block" },
+            }}
+          />
+          <Button size="small" onClick={() => void refresh()} disabled={busy} sx={{ textTransform: "none", flex: "0 0 auto", minWidth: 0, px: 1 }}>
+            {busy ? "…" : "刷新"}
+          </Button>
+        </Box>
+        <Typography title={snapshot.repoRoot} sx={{ fontSize: 11, color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {snapshot.repoRoot}
         </Typography>
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" onClick={() => void refresh()} disabled={busy} sx={{ textTransform: "none", flex: "0 0 auto" }}>
-          {busy ? "…" : "刷新"}
-        </Button>
       </Box>
 
       {snapshot.log.length > 0 ? (
-        <Box sx={{ maxHeight: 84, overflowY: "auto", mb: 0.75 }}>
-          {snapshot.log.slice(0, 5).map((entry) => (
-            <Typography key={entry.hash} sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace" }} noWrap>
-              {entry.hash} {entry.message}
+        <Box sx={{ maxHeight: 52, overflowY: "auto", mb: 0.75, minWidth: 0, flex: "0 0 auto" }}>
+          {snapshot.log.slice(0, 3).map((entry) => (
+            <Typography key={entry.hash} title={`${entry.hash} ${entry.message}`} sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {entry.hash.slice(0, 7)} {entry.message}
             </Typography>
           ))}
         </Box>
@@ -306,45 +372,47 @@ export function DiffViewer(): React.ReactElement {
         <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 13 }}>工作区干净，没有未提交的改动。</Typography>
       ) : (
         <>
-          <SectionTitle label="未暂存" count={unstagedCount} />
-          {snapshot.unstaged.map((file) => (
-            <FileCard key={file.path} file={file} selection={unstagedSel} onToggleFile={toggleFile(setUnstagedSel)} onToggleHunk={toggleHunk(setUnstagedSel)} onOpenFile={(p) => void openViewer(p)} />
-          ))}
-          {unstagedCount > 0 ? (
-            <Button size="small" variant="outlined" onClick={() => void stage()} disabled={busy || unstagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
-              暂存所选（{unstagedSel.files.size}）
-            </Button>
-          ) : null}
+          <Box sx={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", pr: 0.25 }}>
+            <SectionTitle label="未暂存" count={unstagedCount} />
+            {snapshot.unstaged.map((file) => (
+              <FileCard key={file.path} file={file} selection={unstagedSel} onToggleFile={toggleFile(setUnstagedSel)} onToggleHunk={toggleHunk(setUnstagedSel)} onOpenFile={(p) => void openViewer(p)} />
+            ))}
+            {unstagedCount > 0 ? (
+              <Button size="small" variant="outlined" onClick={() => void stage()} disabled={busy || unstagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
+                暂存所选（{unstagedSel.files.size}）
+              </Button>
+            ) : null}
 
-          <SectionTitle label="已暂存" count={stagedCount} />
-          {snapshot.staged.map((file) => (
-            <FileCard key={file.path} file={file} selection={stagedSel} onToggleFile={toggleFile(setStagedSel)} onToggleHunk={toggleHunk(setStagedSel)} onOpenFile={(p) => void openViewer(p)} />
-          ))}
-          {stagedCount > 0 ? (
-            <Button size="small" variant="outlined" onClick={() => void unstage()} disabled={busy || stagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
-              取消暂存所选（{stagedSel.files.size}）
-            </Button>
-          ) : null}
+            <SectionTitle label="已暂存" count={stagedCount} />
+            {snapshot.staged.map((file) => (
+              <FileCard key={file.path} file={file} selection={stagedSel} onToggleFile={toggleFile(setStagedSel)} onToggleHunk={toggleHunk(setStagedSel)} onOpenFile={(p) => void openViewer(p)} />
+            ))}
+            {stagedCount > 0 ? (
+              <Button size="small" variant="outlined" onClick={() => void unstage()} disabled={busy || stagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
+                取消暂存所选（{stagedSel.files.size}）
+              </Button>
+            ) : null}
 
-          {stagedCount > 0 ? (
-            <Paper sx={{ p: 1.25, mt: 1, background: "var(--omega-bg-elevated)", border: "1px solid var(--omega-border)" }}>
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                minRows={2}
-                maxRows={5}
-                placeholder="提交信息…"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                <Button size="small" variant="contained" onClick={() => void commit()} disabled={busy || !message.trim()} sx={{ textTransform: "none" }}>
-                  提交（{stagedCount} 个文件）
-                </Button>
-              </Box>
-            </Paper>
-          ) : null}
+            {stagedCount > 0 ? (
+              <Paper sx={{ p: 1.25, mt: 1, mb: 1, background: "var(--omega-bg-elevated)", border: "1px solid var(--omega-border)", minWidth: 0 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  multiline
+                  minRows={2}
+                  maxRows={5}
+                  placeholder="提交信息…"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
+                  <Button size="small" variant="contained" onClick={() => void commit()} disabled={busy || !message.trim()} sx={{ textTransform: "none" }}>
+                    提交（{stagedCount} 个文件）
+                  </Button>
+                </Box>
+              </Paper>
+            ) : null}
+          </Box>
 
           {unstagedCount > 0 ? (
             <ApprovalBar

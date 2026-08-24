@@ -11,19 +11,18 @@ import MenuItem from "@mui/material/MenuItem";
 import Button from "@mui/material/Button";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import ExploreIcon from "@mui/icons-material/Explore";
 import StopIcon from "@mui/icons-material/Stop";
 import CompressIcon from "@mui/icons-material/Compress";
 import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import HubOutlinedIcon from "@mui/icons-material/HubOutlined";
+import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import SettingsBrightnessIcon from "@mui/icons-material/SettingsBrightness";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useAppStore } from "../../store/useAppStore";
+import { useAppStore, type ConnectionState, type ShutdownPhase } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { ThinkingLevel } from "../../types/dto";
 import type { ThemeMode } from "../../theme/palettes";
@@ -50,12 +49,37 @@ const THEME_LABEL: Record<ThemeMode, string> = {
   system: "跟随系统",
 };
 
+interface StatusInputs {
+  bootstrapError: string | null;
+  workerError: string | null;
+  canRetryWorker: boolean;
+  shutdownPhase: ShutdownPhase;
+  compacting: boolean;
+  thinkingActive: boolean;
+  connection: ConnectionState;
+}
+
+function statusLabelOf(s: StatusInputs): string {
+  if (s.bootstrapError) return "初始化失败";
+  if (s.workerError && s.canRetryWorker) return "可重试";
+  if (s.workerError) return "Worker 失败";
+  if (s.shutdownPhase === "closing") return "正在停止";
+  if (s.shutdownPhase === "flushing") return "保存会话";
+  if (s.shutdownPhase === "exiting") return "正在退出";
+  if (s.compacting) return "压缩中";
+  if (s.thinkingActive) return "思考中";
+  if (s.connection === "running") return "运行中";
+  if (s.connection === "error") return "错误";
+  if (s.connection === "connecting") return "连接中";
+  return "就绪";
+}
+
 /** Vertical hairline separating header clusters — grouping is information. */
 function Divider(): React.ReactElement {
   return (
     <Box
       sx={{
-        width: 1,
+        width: "1px",
         height: 20,
         alignSelf: "center",
         background: "var(--omega-border-strong)",
@@ -76,9 +100,9 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
   const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const thinkingActive = useAppStore((s) => s.thinkingActive);
   const compacting = useAppStore((s) => s.compacting);
-
   const workerError = useAppStore((s) => s.workerError);
   const canRetryWorker = useAppStore((s) => s.canRetryWorker);
+
   const failed = Boolean(bootstrapError) || Boolean(workerError) || connection === "error";
   const ringColor =
     failed
@@ -90,29 +114,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
           : connection === "running"
             ? "var(--omega-accent)"
             : "transparent";
-  const label = bootstrapError
-    ? "初始化失败"
-    : workerError && canRetryWorker
-      ? "可重试"
-      : workerError
-        ? "Worker 失败"
-        : shutdownPhase === "closing"
-      ? "正在停止"
-      : shutdownPhase === "flushing"
-        ? "保存会话"
-        : shutdownPhase === "exiting"
-          ? "正在退出"
-          : compacting
-            ? "压缩中"
-            : thinkingActive
-              ? "思考中"
-              : connection === "running"
-                ? "运行中"
-                : connection === "error"
-                  ? "错误"
-                  : connection === "connecting"
-                    ? "连接中"
-                    : "就绪";
+  const label = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection });
 
   const retryWorker = React.useCallback(async () => {
     if (!canRetryWorker) return;
@@ -228,13 +230,12 @@ export function Header(): React.ReactElement {
   const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const bootstrapError = useAppStore((s) => s.bootstrapError);
   const rightOpen = useAppStore((s) => s.layout.rightPanelOpen);
-  const rightTab = useAppStore((s) => s.layout.rightTab);
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
-  const setRightTab = useAppStore((s) => s.setRightTab);
   const setTreeOpen = useAppStore((s) => s.setTreeOpen);
   const agent = useAppStore((s) => s.agent);
   const running = useAppStore((s) => s.connection === "running");
   const compacting = useAppStore((s) => s.compacting);
+  const thinkingActive = useAppStore((s) => s.thinkingActive);
   const shuttingDown = shutdownPhase !== "idle";
   const canRetryWorker = useAppStore((s) => s.canRetryWorker);
   const workerError = useAppStore((s) => s.workerError);
@@ -260,6 +261,9 @@ export function Header(): React.ReactElement {
     : (["off", "minimal", "low", "medium", "high"] as ThinkingLevel[]);
   const nextTheme: ThemeMode = themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light";
   const ThemeIcon = themeMode === "light" ? LightModeIcon : themeMode === "dark" ? DarkModeIcon : SettingsBrightnessIcon;
+
+  const statusLabel = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection });
+  const sessionTitle = workerError ? "Worker 未就绪" : extensionTitle || agent?.sessionName || "新会话";
 
   const handleAbort = React.useCallback(async () => {
     if (shuttingDown) return;
@@ -293,6 +297,8 @@ export function Header(): React.ReactElement {
     [setAgent, shuttingDown],
   );
 
+  const iconBtnSx = { color: "var(--omega-text-muted)" } as const;
+
   return (
     <AppBar
       position="static"
@@ -305,20 +311,38 @@ export function Header(): React.ReactElement {
     >
       <Toolbar
         sx={{
-          gap: 1.25,
-          px: { xs: 1.5, md: 2 },
-          rowGap: 0.75,
-          minHeight: { xs: 54, md: 58 },
-          flexWrap: "wrap",
-          "& > *": { flexShrink: 0 },
+          gap: 1,
+          px: 1.5,
+          minHeight: 54,
+          flexWrap: "nowrap",
+          overflow: "hidden",
         }}
       >
         {/* identity cluster */}
         <StatusGlyph bootstrapError={bootstrapError} />
-        <Box sx={{ minWidth: 0, maxWidth: 200 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 14.5, letterSpacing: "-0.01em", lineHeight: 1.15 }}>Omega</Typography>
-          <Typography className="mono-num" sx={{ color: "var(--omega-text-muted)", fontSize: 11 }} noWrap title={workerError ?? undefined}>
-            {workerError ? "Worker 未就绪" : extensionTitle || agent?.sessionName || "新会话"}
+        <Box sx={{ minWidth: 0, flex: "0 1 auto", maxWidth: 180 }}>
+          <Typography sx={{ fontWeight: 650, fontSize: 13.5, lineHeight: 1.2, color: "var(--omega-text)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sessionTitle}>
+            {sessionTitle}
+          </Typography>
+          <Typography
+            className="mono-num"
+            sx={{
+              fontSize: 10.5,
+              lineHeight: 1.3,
+              color:
+                bootstrapError || workerError
+                  ? "var(--omega-danger)"
+                  : shuttingDown || compacting
+                    ? "var(--omega-warning)"
+                    : running
+                      ? "var(--omega-accent)"
+                      : "var(--omega-text-muted)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {statusLabel}
           </Typography>
         </Box>
 
@@ -329,54 +353,34 @@ export function Header(): React.ReactElement {
         <Divider />
 
         {/* model cluster */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-          <Box
-              onClick={(e) => {
-                if (!shuttingDown) setModelAnchor(e.currentTarget);
-              }}
-              sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1.25,
-              height: 30,
-              borderRadius: "9px",
-              border: "1px solid var(--omega-border)",
-              background: "var(--omega-bg-soft)",
-              cursor: shuttingDown ? "default" : "pointer",
-              opacity: shuttingDown ? 0.55 : 1,
-              maxWidth: 230,
-              transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-              "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
-            }}
-          >
-            <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {modelLabel}
-            </Typography>
-            <ExpandMoreIcon sx={{ fontSize: 15, color: "var(--omega-text-muted)", flex: "0 0 auto" }} />
-          </Box>
-          <Button
-            size="small"
-            disabled={shuttingDown}
-            onClick={() => setModelCenterOpen(true)}
-            sx={{ textTransform: "none", fontSize: 11.5, color: "var(--omega-text-muted)", minWidth: 0, px: 1 }}
-          >
-            模型中心
-          </Button>
-          <Button
-            size="small"
-            disabled={shuttingDown}
-            onClick={() => useAppStore.getState().setResourceCenterOpen(true)}
-            sx={{ textTransform: "none", fontSize: 11.5, color: "var(--omega-text-muted)", minWidth: 0, px: 1 }}
-          >
-            资源中心
-          </Button>
+        <Box
+          onClick={(e) => {
+            if (!shuttingDown) setModelAnchor(e.currentTarget);
+          }}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.25,
+            height: 30,
+            flex: "0 1 auto",
+            minWidth: 0,
+            maxWidth: 220,
+            borderRadius: "9px",
+            border: "1px solid var(--omega-border)",
+            background: "var(--omega-bg-soft)",
+            cursor: shuttingDown ? "default" : "pointer",
+            opacity: shuttingDown ? 0.55 : 1,
+            transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+            "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
+          }}
+        >
+          <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {modelLabel}
+          </Typography>
+          <ExpandMoreIcon sx={{ fontSize: 15, color: "var(--omega-text-muted)", flex: "0 0 auto" }} />
         </Box>
-        <ModelPicker anchor={modelAnchor} onClose={() => setModelAnchor(null)} />
-        <ModelCenter />
-        <ResourceCenter />
-
-          <Chip
+        <Chip
           size="small"
           label={THINKING_LABEL[agent?.thinkingLevel ?? "off"]}
           onClick={(e) => {
@@ -387,12 +391,16 @@ export function Header(): React.ReactElement {
             cursor: "pointer",
             fontSize: 11,
             height: 24,
+            flex: "0 0 auto",
             border: "1px solid var(--omega-border)",
             background: "var(--omega-bg-soft)",
             color: "var(--omega-text-muted)",
             "&:hover": { borderColor: "var(--omega-accent-line)", color: "var(--omega-accent)" },
           }}
         />
+        <ModelPicker anchor={modelAnchor} onClose={() => setModelAnchor(null)} />
+        <ModelCenter />
+        <ResourceCenter />
         <Menu anchorEl={thinkingAnchor} open={Boolean(thinkingAnchor)} onClose={() => setThinkingAnchor(null)}>
           {thinkingLevels.map((level) => (
             <MenuItem key={level} selected={agent?.thinkingLevel === level} onClick={() => void handleSetThinking(level)}>
@@ -401,19 +409,15 @@ export function Header(): React.ReactElement {
           ))}
         </Menu>
 
-        <Divider />
-
         {/* data cluster */}
         <Tooltip title={`上下文 ${usageLabel}`}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 0.25, flex: "0 0 auto" }}>
             <ContextDonut percent={usagePercent ?? 0} />
             <Typography className="mono-num" sx={{ fontSize: 11, color: "var(--omega-text-muted)", display: { xs: "none", md: "block" } }}>
               {usageLabel}
             </Typography>
           </Box>
         </Tooltip>
-
-        <Divider />
 
         {/* action cluster */}
         {canRetryWorker ? (
@@ -435,7 +439,7 @@ export function Header(): React.ReactElement {
               })();
             }}
             disabled={busy}
-            sx={{ textTransform: "none", borderRadius: "999px", px: 1.75 }}
+            sx={{ textTransform: "none", borderRadius: "999px", px: 1.75, flex: "0 0 auto" }}
           >
             重试 Worker
           </Button>
@@ -450,6 +454,7 @@ export function Header(): React.ReactElement {
               borderRadius: "999px",
               px: 1.75,
               fontWeight: 600,
+              flex: "0 0 auto",
               color: "var(--omega-danger)",
               background: "var(--omega-danger-soft)",
               border: "1px solid transparent",
@@ -460,22 +465,33 @@ export function Header(): React.ReactElement {
           </Button>
         ) : (
           <Tooltip title="压缩上下文">
-            <span>
-              <IconButton size="small" onClick={() => void handleCompact()} disabled={busy || compacting} sx={{ color: "var(--omega-text-muted)" }}>
+            <span style={{ flex: "0 0 auto" }}>
+              <IconButton size="small" onClick={() => void handleCompact()} disabled={busy || compacting} sx={iconBtnSx}>
                 <CompressIcon fontSize="small" />
               </IconButton>
             </span>
           </Tooltip>
         )}
 
-        <Box sx={{ flexGrow: 1 }} />
+        <Box sx={{ flexGrow: 1, minWidth: 0 }} />
 
         {/* utility cluster */}
+        <Tooltip title="模型中心">
+          <IconButton size="small" onClick={() => setModelCenterOpen(true)} disabled={shuttingDown} sx={iconBtnSx}>
+            <HubOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="资源中心">
+          <IconButton size="small" onClick={() => useAppStore.getState().setResourceCenterOpen(true)} disabled={shuttingDown} sx={iconBtnSx}>
+            <ExtensionOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
         <Tooltip title={`主题：${THEME_LABEL[themeMode]}（点击切换）`}>
           <IconButton
             size="small"
             onClick={(e) => setThemeMode(nextTheme, { x: e.clientX, y: e.clientY })}
-            sx={{ color: "var(--omega-text-muted)" }}
+            sx={iconBtnSx}
           >
             <ThemeIcon fontSize="small" />
           </IconButton>
@@ -483,21 +499,21 @@ export function Header(): React.ReactElement {
 
         <Tooltip title={running ? "生成中无法切换分支" : "会话分支树"}>
           <span>
-            <IconButton size="small" onClick={() => setTreeOpen(true)} disabled={running} sx={{ color: "var(--omega-text-muted)" }}>
+            <IconButton size="small" onClick={() => setTreeOpen(true)} disabled={running} sx={iconBtnSx}>
               <AccountTreeIcon fontSize="small" />
             </IconButton>
           </span>
         </Tooltip>
 
         <Tooltip title="会话信息 / 导出">
-          <IconButton size="small" onClick={() => setInfoOpen(true)} sx={{ color: "var(--omega-text-muted)" }}>
+          <IconButton size="small" onClick={() => setInfoOpen(true)} sx={iconBtnSx}>
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <SessionInfoDialog open={infoOpen} onClose={() => setInfoOpen(false)} />
 
         <Tooltip title="设置">
-          <IconButton size="small" onClick={() => setSettingsOpen(true)} sx={{ color: "var(--omega-text-muted)" }}>
+          <IconButton size="small" onClick={() => setSettingsOpen(true)} sx={iconBtnSx}>
             <SettingsIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -505,72 +521,8 @@ export function Header(): React.ReactElement {
 
         <Divider />
 
-        <Box
-          sx={{
-            display: { xs: "none", sm: "flex" },
-            alignItems: "center",
-            gap: "2px",
-            p: "2px",
-            borderRadius: "10px",
-            border: "1px solid var(--omega-border)",
-            background: "var(--omega-bg-soft)",
-          }}
-        >
-          <Tooltip title="工作流">
-            <Chip
-              icon={<AssessmentIcon sx={{ fontSize: 14 }} />}
-              label="Workflow"
-              size="small"
-              onClick={() => setRightTab("workflow")}
-              sx={{
-                cursor: "pointer",
-                fontSize: 11.5,
-                border: "none",
-                background: rightTab === "workflow" && rightOpen ? "var(--omega-bg-elevated)" : "transparent",
-                color: rightTab === "workflow" && rightOpen ? "var(--omega-accent)" : "var(--omega-text-muted)",
-                boxShadow: rightTab === "workflow" && rightOpen ? "var(--omega-shadow-sm)" : "none",
-                "&:hover": { background: "var(--omega-hover-fill)" },
-              }}
-            />
-          </Tooltip>
-          <Tooltip title="Worktree">
-            <Chip
-              icon={<AccountTreeOutlinedIcon sx={{ fontSize: 14 }} />}
-              label="Worktree"
-              size="small"
-              onClick={() => setRightTab("worktree")}
-              sx={{
-                cursor: "pointer",
-                fontSize: 11.5,
-                border: "none",
-                background: rightTab === "worktree" && rightOpen ? "var(--omega-bg-elevated)" : "transparent",
-                color: rightTab === "worktree" && rightOpen ? "var(--omega-accent)" : "var(--omega-text-muted)",
-                boxShadow: rightTab === "worktree" && rightOpen ? "var(--omega-shadow-sm)" : "none",
-                "&:hover": { background: "var(--omega-hover-fill)" },
-              }}
-            />
-          </Tooltip>
-          <Tooltip title="探索 Scout">
-            <Chip
-              icon={<ExploreIcon sx={{ fontSize: 14 }} />}
-              label="Scout"
-              size="small"
-              onClick={() => setRightTab("scout")}
-              sx={{
-                cursor: "pointer",
-                fontSize: 11.5,
-                border: "none",
-                background: rightTab === "scout" && rightOpen ? "var(--omega-bg-elevated)" : "transparent",
-                color: rightTab === "scout" && rightOpen ? "var(--omega-accent)" : "var(--omega-text-muted)",
-                boxShadow: rightTab === "scout" && rightOpen ? "var(--omega-shadow-sm)" : "none",
-                "&:hover": { background: "var(--omega-hover-fill)" },
-              }}
-            />
-          </Tooltip>
-        </Box>
-
         <Tooltip title={rightOpen ? "收起右栏" : "展开右栏"}>
-          <IconButton size="small" onClick={toggleRightPanel} sx={{ color: "var(--omega-text-muted)" }}>
+          <IconButton size="small" onClick={toggleRightPanel} sx={iconBtnSx}>
             {rightOpen ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
           </IconButton>
         </Tooltip>

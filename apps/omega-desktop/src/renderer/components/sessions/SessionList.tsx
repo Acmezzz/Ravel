@@ -199,12 +199,39 @@ export function SessionList(): React.ReactElement {
           }}
         />
       </Box>
-      {[...groups.entries()].map(([workspace, items]) => (
+      {[...groups.entries()].map(([workspace, items]) => {
+        const isCurrentWorkspace = Boolean(items[0] && activeWorkspace && items[0].workspace === activeWorkspace);
+        return (
         <Box key={workspace} sx={{ mb: 1.25 }}>
-          <Typography className="overline-label" sx={{ px: 1, py: 0.5, display: "block" }} noWrap>
-            {workspace}
-            {items[0] && activeWorkspace && items[0].workspace === activeWorkspace ? " · 当前工作区" : ""}
-          </Typography>
+          <Box
+            sx={{
+              px: 1,
+              py: 0.5,
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              minWidth: 0,
+              fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
+              fontSize: 10.5,
+              letterSpacing: 0,
+            }}
+            title={workspace}
+          >
+            <Typography
+              component="span"
+              sx={{ fontSize: 10.5, fontFamily: "inherit", color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            >
+              {workspace}
+            </Typography>
+            {isCurrentWorkspace ? (
+              <Typography
+                component="span"
+                sx={{ fontSize: 10, fontWeight: 700, color: "var(--omega-accent)", background: "var(--omega-accent-soft)", borderRadius: "5px", px: 0.6, py: 0.1, flex: "0 0 auto" }}
+              >
+                当前
+              </Typography>
+            ) : null}
+          </Box>
           <List dense sx={{ p: 0 }}>
             {items.flatMap((session) => [session, ...childrenOf(session.id)]).map((session) => {
               const active = session.id === activeSessionId;
@@ -320,7 +347,8 @@ export function SessionList(): React.ReactElement {
             })}
           </List>
         </Box>
-      ))}
+        );
+      })}
       <Menu open={contextMenu !== null} onClose={() => setContextMenu(null)} anchorReference="anchorPosition" anchorPosition={contextMenu ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined}>
         <MenuItem onClick={() => { const item = sessions.find((session) => session.id === contextMenu?.id); if (item) setRenaming({ id: item.id, name: item.title }); setContextMenu(null); }}>重命名</MenuItem>
         <MenuItem onClick={() => { if (contextMenu?.id) void navigator.clipboard?.writeText(contextMenu.id); setContextMenu(null); }}>复制 session ID</MenuItem>

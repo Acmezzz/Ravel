@@ -9,7 +9,10 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import CheckIcon from "@mui/icons-material/Check";
+import AddIcon from "@mui/icons-material/Add";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { AuthProviderStatus, ModelInfo } from "../../types/dto";
@@ -62,22 +65,26 @@ function ProviderCard({
         display: "flex",
         flexDirection: "column",
         gap: 1,
+        minWidth: 0,
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--omega-text)" }}>{provider.name}</Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap>
+          {provider.name}
+        </Typography>
         <Chip
           size="small"
-          label={provider.configured ? "已配置" : "未配置"}
+          label={provider.configured ? "已配置" : "配置中"}
           sx={{
             height: 18,
             fontSize: 10,
+            flex: "0 0 auto",
             background: provider.configured ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)",
             color: provider.configured ? "var(--omega-accent)" : "var(--omega-text-muted)",
           }}
         />
         {provider.source ? (
-          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", ml: "auto" }} noWrap>
+          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", ml: "auto", minWidth: 0 }} noWrap>
             {provider.source}
           </Typography>
         ) : null}
@@ -126,13 +133,16 @@ export function ModelCenter(): React.ReactElement {
   const [pendingModel, setPendingModel] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
   const [customProviderOpen, setCustomProviderOpen] = React.useState(false);
-  const [latencyStatus, setLatencyStatus] = React.useState("离线模式：未执行真实 latency test");
+  const [addAnchor, setAddAnchor] = React.useState<HTMLElement | null>(null);
+  const [draftProvider, setDraftProvider] = React.useState<AuthProviderStatus | null>(null);
   const [customProvider, setCustomProvider] = React.useState({ id: "local-ai", name: "Local AI", baseUrl: "http://127.0.0.1:8080/v1", api: "openai-completions", modelId: "demo", modelName: "Demo", contextWindow: "128000" });
 
   React.useEffect(() => {
     if (!open) {
       setQuery("");
       setStatus(null);
+      setDraftProvider(null);
+      setAddAnchor(null);
       return;
     }
     void Promise.all([ipc.authStatus(), ipc.listModels()]).then(([authRes, modelsRes]) => {
@@ -140,6 +150,15 @@ export function ModelCenter(): React.ReactElement {
       if (modelsRes.ok) setModels(modelsRes.data);
     });
   }, [open, setAuth, setModels]);
+
+  const providers = auth?.providers ?? [];
+  const configured = providers.filter((provider) => provider.configured);
+  const available = providers.filter((provider) => !provider.configured && provider.id !== draftProvider?.id);
+  const visibleProviders = React.useMemo(() => {
+    const list = [...configured];
+    if (draftProvider && !list.some((provider) => provider.id === draftProvider.id)) list.push(draftProvider);
+    return list;
+  }, [configured, draftProvider]);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -156,6 +175,7 @@ export function ModelCenter(): React.ReactElement {
         const res = await ipc.setProviderApiKey({ providerId, apiKey });
         if (!res.ok) throw new Error(res.message);
         setAuth(res.data);
+        setDraftProvider(null);
         const modelsRes = await ipc.listModels();
         if (modelsRes.ok) setModels(modelsRes.data);
         setStatus(`${providerId} 已保存`);
@@ -177,12 +197,13 @@ export function ModelCenter(): React.ReactElement {
           return;
         }
         setAuth(res.data);
+        if (draftProvider?.id === providerId) setDraftProvider(null);
         setStatus(`${providerId} 已移除`);
       } finally {
         setBusy(false);
       }
     },
-    [setAuth],
+    [draftProvider, setAuth],
   );
 
   const pick = React.useCallback(
@@ -202,32 +223,71 @@ export function ModelCenter(): React.ReactElement {
   return (
     <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md">
       <DialogTitle sx={{ fontWeight: 700 }}>模型中心</DialogTitle>
-      <DialogContent sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(280px, 0.9fr) 1.1fr" }, gap: 2.5, pt: 1 }}>
+      <DialogContent sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(260px, 0.9fr) 1.1fr" }, gap: 2.5, pt: 1, minWidth: 0 }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, minWidth: 0 }}>
-          <Typography className="overline-label">
-            提供商
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+            <Typography className="overline-label">已配置提供商</Typography>
+            <Button
+              size="small"
+              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+              onClick={(event) => setAddAnchor(event.currentTarget)}
+              sx={{ textTransform: "none", minWidth: 0 }}
+            >
+              添加
+            </Button>
+            <Menu
+              anchorEl={addAnchor}
+              open={Boolean(addAnchor)}
+              onClose={() => setAddAnchor(null)}
+              PaperProps={{ sx: { minWidth: 220, maxHeight: 360 } }}
+            >
+              {available.map((provider) => (
+                <MenuItem
+                  key={provider.id}
+                  onClick={() => {
+                    setDraftProvider(provider);
+                    setAddAnchor(null);
+                  }}
+                >
+                  {provider.name}
+                </MenuItem>
+              ))}
+              <MenuItem
+                onClick={() => {
+                  setAddAnchor(null);
+                  setCustomProviderOpen(true);
+                }}
+              >
+                添加本地 Provider…
+              </MenuItem>
+            </Menu>
+          </Box>
           <Typography sx={{ fontSize: 12, color: auth?.ready ? "var(--omega-text-muted)" : "var(--omega-warning)" }}>
             {auth?.label ?? "正在读取认证状态"}
           </Typography>
-          {(auth?.providers ?? []).length === 0 ? (
-            <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前没有可用提供商。</Typography>
+          {visibleProviders.length === 0 ? (
+            <Box sx={{ border: "1px dashed var(--omega-border-strong)", borderRadius: "12px", p: 1.5 }}>
+              <Typography sx={{ fontSize: 12.5, color: "var(--omega-text-muted)" }}>还没有配置提供商。</Typography>
+              <Typography sx={{ fontSize: 11.5, color: "var(--omega-text-dim)", mt: 0.5 }}>用右上角「添加」从目录里选择供应商，再粘贴 API key。</Typography>
+            </Box>
           ) : (
-            (auth?.providers ?? []).map((provider) => (
+            visibleProviders.map((provider) => (
               <ProviderCard key={provider.id} provider={provider} busy={busy} onSave={saveKey} onRemove={removeKey} />
             ))
           )}
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><Typography className="overline-label">模型</Typography><Button size="small" onClick={() => setCustomProviderOpen(true)} sx={{ textTransform: "none" }}>添加本地 Provider</Button></Box>
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>本地配置不会联网 discovery；真实 OAuth 和在线目录需外部环境。{latencyStatus}（静态 builtin catalog 可离线使用）</Typography>
+          <Typography className="overline-label">模型</Typography>
+          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>
+            只列出当前可用模型。配置提供商后会刷新目录；本地 Provider 可离线使用。
+          </Typography>
           <TextField size="small" placeholder="搜索模型…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <Box sx={{ overflowY: "auto", maxHeight: 420, pr: 0.5 }}>
+          <Box sx={{ overflowY: "auto", maxHeight: 420, pr: 0.5, minWidth: 0 }}>
             {groups.length === 0 ? (
-              <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", py: 1.5 }}>无匹配模型。先配置提供商 API key。</Typography>
+              <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", py: 1.5 }}>无匹配模型。先添加并配置提供商。</Typography>
             ) : (
               groups.map((group) => (
-                <Box key={group.provider} sx={{ mb: 1.25 }}>
+                <Box key={group.provider} sx={{ mb: 1.25, minWidth: 0 }}>
                   <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", letterSpacing: "0.06em", px: 0.5, py: 0.5 }}>
                     {group.provider.toUpperCase()}
                   </Typography>
@@ -245,6 +305,7 @@ export function ModelCenter(): React.ReactElement {
                           px: 1,
                           py: 0.75,
                           borderRadius: "9px",
+                          minWidth: 0,
                           cursor: pendingModel ? "wait" : "pointer",
                           opacity: pendingModel && !isPending ? 0.5 : 1,
                           "&:hover": { background: "var(--omega-hover-fill)" },
@@ -270,10 +331,45 @@ export function ModelCenter(): React.ReactElement {
           </Box>
         </Box>
       </DialogContent>
-      <Dialog open={customProviderOpen} onClose={() => setCustomProviderOpen(false)} fullWidth maxWidth="sm"><DialogTitle>添加本地 Provider</DialogTitle><DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>{(["id", "name", "baseUrl", "api", "modelId", "modelName", "contextWindow"] as const).map((key) => <TextField key={key} size="small" label={key} value={customProvider[key]} onChange={(event) => setCustomProvider((current) => ({ ...current, [key]: event.target.value }))} />)}</DialogContent><DialogActions><Button onClick={() => setCustomProviderOpen(false)}>取消</Button><Button variant="contained" onClick={() => void ipc.configureCustomProvider({ id: customProvider.id, name: customProvider.name, baseUrl: customProvider.baseUrl, api: customProvider.api, models: [{ id: customProvider.modelId, name: customProvider.modelName, contextWindow: Number(customProvider.contextWindow), reasoning: false }] }).then((result) => { if (result.ok) { setModels(result.data.models); setStatus("本地 Provider 已配置"); setCustomProviderOpen(false); } else setStatus(result.message); })}>保存</Button></DialogActions></Dialog>
+      <Dialog open={customProviderOpen} onClose={() => setCustomProviderOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>添加本地 Provider</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+          {(["id", "name", "baseUrl", "api", "modelId", "modelName", "contextWindow"] as const).map((key) => (
+            <TextField key={key} size="small" label={key} value={customProvider[key]} onChange={(event) => setCustomProvider((current) => ({ ...current, [key]: event.target.value }))} />
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCustomProviderOpen(false)}>取消</Button>
+          <Button
+            variant="contained"
+            onClick={() =>
+              void ipc
+                .configureCustomProvider({
+                  id: customProvider.id,
+                  name: customProvider.name,
+                  baseUrl: customProvider.baseUrl,
+                  api: customProvider.api,
+                  models: [{ id: customProvider.modelId, name: customProvider.modelName, contextWindow: Number(customProvider.contextWindow), reasoning: false }],
+                })
+                .then((result) => {
+                  if (result.ok) {
+                    setModels(result.data.models);
+                    setStatus("本地 Provider 已配置");
+                    setCustomProviderOpen(false);
+                    void ipc.authStatus().then((authRes) => {
+                      if (authRes.ok) setAuth(authRes.data);
+                    });
+                  } else setStatus(result.message);
+                })
+            }
+          >
+            保存
+          </Button>
+        </DialogActions>
+      </Dialog>
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
         <Typography sx={{ fontSize: 11.5, color: status ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>
-          {status ?? "OAuth、自定义提供商和延迟测试仍走后续阶段。"}
+          {status ?? "未配置的供应商都收在「添加」菜单里。"}
         </Typography>
         <Button variant="contained" onClick={() => setOpen(false)} sx={{ textTransform: "none" }}>
           完成

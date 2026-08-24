@@ -598,9 +598,10 @@ export function Composer(): React.ReactElement {
       <Box
         sx={{
           display: "flex",
-          alignItems: "flex-end",
-          gap: 1,
-          p: 1.25,
+          flexDirection: "column",
+          gap: 0.5,
+          p: 1,
+          minWidth: 0,
           border: "1px solid var(--omega-border)",
           borderRadius: "16px",
           background: "var(--omega-composer-bg)",
@@ -614,21 +615,6 @@ export function Composer(): React.ReactElement {
           },
         }}
       >
-        <Tooltip title="命令面板（Ctrl+K）">
-          <IconButton size="small" onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", mb: 0.5 }}>
-            <KeyboardCommandKeyIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="附加图片（最多 4 张）">
-          <IconButton
-            size="small"
-            onClick={() => fileRef.current?.click()}
-            disabled={shuttingDown || attachments.length >= MAX_IMAGES}
-            sx={{ color: "var(--omega-text-muted)", mb: 0.5 }}
-          >
-            <AttachFileIcon />
-          </IconButton>
-        </Tooltip>
         <input
           ref={fileRef}
           type="file"
@@ -658,11 +644,12 @@ export function Composer(): React.ReactElement {
             isComposingRef.current = false;
             lastCompositionEndAtRef.current = Date.now();
           }}
-          placeholder={running ? "生成中… Enter 排队发送，⚡ 打断转向，Stop 停止" : "输入消息…（Enter 发送，Shift+Enter 换行，↑ 历史，可粘贴图片）"}
+          placeholder={running ? "生成中，输入后排队发送…" : "输入消息…"}
           minRows={1}
           maxRows={8}
           style={{
-            flex: 1,
+            width: "100%",
+            minWidth: 0,
             resize: "none",
             border: "none",
             outline: "none",
@@ -671,87 +658,84 @@ export function Composer(): React.ReactElement {
             font: "inherit",
             fontSize: 14,
             lineHeight: 1.6,
-            padding: "8px 4px",
+            padding: "6px 8px 2px",
+            boxSizing: "border-box",
           }}
         />
-        {running ? (
-          <>
-            <Tooltip title="打断当前生成并注入这条消息（steer）">
-              <IconButton
-                onClick={() => send("steer")}
-                disabled={shuttingDown || canSend}
-                sx={{
-                  color: "var(--omega-warning)",
-                  background: "var(--omega-warning-soft)",
-                  border: "1px solid transparent",
-                  borderRadius: "12px",
-                  width: 40,
-                  height: 40,
-                  mb: 0.25,
-                  transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-                  "&:hover": { borderColor: "var(--omega-warning)", transform: "translateY(-1px)" },
-                  "&:active": { transform: "scale(0.94)" },
-                  "&:disabled": { opacity: 0.45 },
-                }}
-              >
-                <BoltIcon sx={{ fontSize: 20 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="彻底停止生成">
-              <IconButton
-                onClick={() => void abort()}
-                disabled={shuttingDown}
-                sx={{
-                  color: "var(--omega-danger)",
-                  background: "var(--omega-danger-soft)",
-                  border: "1px solid transparent",
-                  borderRadius: "12px",
-                  width: 40,
-                  height: 40,
-                  mb: 0.25,
-                  transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-                  "&:hover": { borderColor: "var(--omega-danger)", transform: "translateY(-1px)" },
-                  "&:active": { transform: "scale(0.94)" },
-                }}
-              >
-                <StopIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-          </>
-        ) : (
-          <IconButton
-            onClick={() => send()}
-            disabled={shuttingDown || canSend}
-            sx={{
-              color: "#fff",
-              background: "var(--omega-accent-gradient)",
-              borderRadius: "12px",
-              width: 40,
-              height: 40,
-              mb: 0.25,
-              boxShadow: "0 2px 8px var(--omega-accent-soft)",
-              transition: "all 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-              "&:hover": { filter: "brightness(1.08)", transform: "translateY(-1px)", boxShadow: "0 4px 14px var(--omega-accent-soft)" },
-              "&:active": { transform: "scale(0.94)" },
-              "&:disabled": { opacity: 0.4, background: "var(--omega-border-strong)", boxShadow: "none" },
-            }}
-          >
-            <SendIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        )}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, minWidth: 0, px: 0.25 }}>
+          <Tooltip title="命令面板（Ctrl+K）">
+            <IconButton size="small" onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto" }}>
+              <KeyboardCommandKeyIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="附加图片（最多 4 张）">
+            <IconButton
+              size="small"
+              onClick={() => fileRef.current?.click()}
+              disabled={shuttingDown || attachments.length >= MAX_IMAGES}
+              sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto" }}
+            >
+              <AttachFileIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Box sx={{ flex: 1, minWidth: 0 }} />
+          {running ? (
+            <>
+              <Tooltip title="打断当前生成并注入这条消息（steer）">
+                <IconButton
+                  onClick={() => send("steer")}
+                  disabled={shuttingDown || canSend}
+                  sx={{
+                    color: "var(--omega-warning)",
+                    background: "var(--omega-warning-soft)",
+                    borderRadius: "10px",
+                    width: 34,
+                    height: 34,
+                    flex: "0 0 auto",
+                    "&:disabled": { opacity: 0.45 },
+                  }}
+                >
+                  <BoltIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="彻底停止生成">
+                <IconButton
+                  onClick={() => void abort()}
+                  disabled={shuttingDown}
+                  sx={{
+                    color: "var(--omega-danger)",
+                    background: "var(--omega-danger-soft)",
+                    borderRadius: "10px",
+                    width: 34,
+                    height: 34,
+                    flex: "0 0 auto",
+                  }}
+                >
+                  <StopIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </>
+          ) : (
+            <IconButton
+              onClick={() => send()}
+              disabled={shuttingDown || canSend}
+              sx={{
+                color: "#fff",
+                background: "var(--omega-accent-gradient)",
+                borderRadius: "10px",
+                width: 34,
+                height: 34,
+                flex: "0 0 auto",
+                boxShadow: "0 2px 8px var(--omega-accent-soft)",
+                "&:hover": { filter: "brightness(1.08)" },
+                "&:disabled": { opacity: 0.4, background: "var(--omega-border-strong)", boxShadow: "none", color: "var(--omega-text-dim)" },
+              }}
+            >
+              <SendIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+        </Box>
       </Box>
-      <Typography
-        className="mono-num"
-        sx={{
-          fontSize: 10,
-          color: "var(--omega-text-dim)",
-          textAlign: "center",
-          pt: 0.5,
-          userSelect: "none",
-        }}
-      >
-        Enter 发送 · Shift+Enter 换行 · ↑ 历史 · ! shell · Ctrl+K 命令 · F11 全屏
-      </Typography>
     </Box>
   );
 }

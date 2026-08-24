@@ -50,10 +50,9 @@ export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected
   return (
     <Box
       sx={{
-        position: "sticky",
-        bottom: 0,
+        flex: "0 0 auto",
         mt: 1,
-        p: 1.25,
+        p: 1,
         background: "var(--omega-panel-glass)",
         backdropFilter: "blur(16px) saturate(1.3)",
         WebkitBackdropFilter: "blur(16px) saturate(1.3)",
@@ -61,11 +60,15 @@ export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected
         borderRadius: "12px",
         boxShadow: "var(--omega-shadow-md), var(--omega-inset-highlight)",
         display: "flex",
-        gap: 1,
+        flexDirection: "column",
+        gap: 0.75,
+        zIndex: 2,
+        minWidth: 0,
       }}
     >
       <Button
         variant="outlined"
+        fullWidth
         onClick={() => void accept()}
         disabled={busy}
         sx={{
@@ -76,16 +79,17 @@ export function ApprovalBar({ snapshotToken, selectedFiles, hasUntrackedSelected
           "&:hover": { borderColor: "var(--omega-success)", background: "var(--omega-success-soft)" },
         }}
       >
-        全部接受（保留改动）
+        保留全部改动
       </Button>
       <Button
         variant="contained"
         color="error"
+        fullWidth
         onClick={openReject}
         disabled={busy || selectedFiles.length === 0}
         sx={{ textTransform: "none", fontWeight: 600, background: "var(--omega-danger)", "&:hover": { background: "var(--omega-danger)", filter: "brightness(1.06)" } }}
       >
-        还原所选（{selectedFiles.length}）
+        还原所选 · {selectedFiles.length}
       </Button>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>

@@ -16,7 +16,7 @@ import { RightPanel } from "./RightPanel";
 const RIGHT_COLLAPSED_RAIL_PX = 44;
 const MIN_SIDEBAR_PX = 200;
 const MAX_SIDEBAR_PX = 420;
-const MIN_RIGHT_PX = 300;
+const MIN_RIGHT_PX = 260;
 const MAX_RIGHT_PX = 620;
 
 function loadWidths(): { left: number; right: number } {

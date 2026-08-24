@@ -7,7 +7,6 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Switch from "@mui/material/Switch";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -61,11 +60,10 @@ function ResourceRow({
         {dormant ? <Chip size="small" label="休眠" sx={{ height: 18, fontSize: 10, color: "var(--omega-warning)" }} /> : null}
         {onToggle ? (
           <Switch
-            size="small"
             checked={enabled}
             disabled={busy || dormant}
             onChange={(e) => onToggle(e.target.checked)}
-            sx={{ ml: "auto" }}
+            sx={{ ml: "auto", flex: "0 0 auto" }}
           />
         ) : null}
       </Box>
@@ -169,17 +167,29 @@ export function ResourceCenter(): React.ReactElement {
           </Button>
           {busy ? <CircularProgress size={18} sx={{ alignSelf: "center" }} /> : null}
         </Box>
-        <FormControlLabel
-          control={
-            <Switch
-              size="small"
-              checked={bundle?.skillCommandsEnabled !== false}
-              disabled={busy || !bundle}
-              onChange={(e) => void apply(() => ipc.setSkillCommandsEnabled({ enabled: e.target.checked }), "已更新 skill 命令")}
-            />
-          }
-          label={<Typography sx={{ fontSize: 13 }}>允许模型通过 /skill 调用 Skills</Typography>}
-        />
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            minHeight: 48,
+            px: 1.5,
+            py: 1,
+            border: "1px solid var(--omega-border)",
+            borderRadius: "12px",
+          }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>允许 /skill 调用</Typography>
+            <Typography sx={{ fontSize: 11.5, color: "var(--omega-text-dim)" }}>模型可通过 slash 命令触发 Skills</Typography>
+          </Box>
+          <Switch
+            checked={bundle?.skillCommandsEnabled !== false}
+            disabled={busy || !bundle}
+            onChange={(e) => void apply(() => ipc.setSkillCommandsEnabled({ enabled: e.target.checked }), "已更新 skill 命令")}
+          />
+        </Box>
         <TextField
           size="small"
           placeholder="搜索扩展、skill、prompt…"

@@ -9,71 +9,71 @@ body,
 }
 
 /* ============================================================
- * Omega Design Tokens — "modern dev-tool premium"
- * Flat layered surfaces + translucent hairlines + one restrained
- * blue-violet accent. Values mirror theme/palettes.ts exactly.
+ * Omega Design Tokens — "Amber Workshop"
+ * Cool-neutral layered surfaces + translucent hairlines + amber accent.
+ * Values mirror theme/palettes.ts exactly.
  * ========================================================== */
 :root {
   color-scheme: light;
 
   /* Surfaces — L0 canvas → L4 overlay, ~4% luminance steps */
-  --omega-bg: #f3f4f7;
-  --omega-bg-rail: #ebecf1;
+  --omega-bg: #f4f5f6;
+  --omega-bg-rail: #eceeef;
   --omega-bg-panel: #ffffff;
-  --omega-bg-soft: #f6f7fa;
+  --omega-bg-soft: #f7f8f8;
   --omega-bg-elevated: #ffffff;
   --omega-bg-overlay: #ffffff;
-  --omega-bg-code: #f0f1f6;
+  --omega-bg-code: #f1f2f3;
 
   /* Hairline borders — translucent, never solid swatches */
-  --omega-border: rgba(28, 38, 66, 0.08);
-  --omega-border-strong: rgba(28, 38, 66, 0.16);
+  --omega-border: rgba(28, 26, 22, 0.08);
+  --omega-border-strong: rgba(28, 26, 22, 0.15);
 
   /* Text — four-step hierarchy */
-  --omega-text: #171b28;
-  --omega-text-soft: #2a3040;
-  --omega-text-muted: #5a6178;
-  --omega-text-dim: #8c93a9;
+  --omega-text: #1a1916;
+  --omega-text-soft: #2c2a26;
+  --omega-text-muted: #5e5b54;
+  --omega-text-dim: #8e8a81;
 
-  /* Accent — one restrained blue-violet */
-  --omega-accent: #4763e8;
-  --omega-accent-strong: #3a55dd;
-  --omega-accent-soft: rgba(71, 99, 232, 0.09);
-  --omega-accent-line: rgba(71, 99, 232, 0.32);
-  --omega-accent-gradient: linear-gradient(135deg, #3a55dd 0%, #6f5ee8 100%);
-  --omega-selected: rgba(71, 99, 232, 0.10);
+  /* Accent — Amber */
+  --omega-accent: #c67d12;
+  --omega-accent-strong: #a8680a;
+  --omega-accent-soft: rgba(198, 125, 18, 0.10);
+  --omega-accent-line: rgba(198, 125, 18, 0.34);
+  --omega-accent-gradient: linear-gradient(135deg, #c67d12 0%, #e09a2a 100%);
+  --omega-selected: rgba(198, 125, 18, 0.11);
 
   /* Semantic colors + their soft fills */
-  --omega-success: #15945c;
-  --omega-warning: #a97c14;
-  --omega-danger: #d34a5c;
-  --omega-success-soft: rgba(21, 148, 92, 0.10);
-  --omega-warning-soft: rgba(169, 124, 20, 0.10);
-  --omega-danger-soft: rgba(211, 74, 92, 0.10);
-  --omega-error-text: #a12639;
+  --omega-success: #13995b;
+  --omega-warning: #b07f10;
+  --omega-danger: #d84558;
+  --omega-success-soft: rgba(19, 153, 91, 0.10);
+  --omega-warning-soft: rgba(176, 127, 16, 0.10);
+  --omega-danger-soft: rgba(216, 69, 88, 0.10);
+  --omega-error-text: #a81c2f;
 
   /* Glass & fills */
-  --omega-panel-glass: rgba(255, 255, 255, 0.86);
-  --omega-composer-bg: rgba(255, 255, 255, 0.92);
-  --omega-hover-fill: rgba(23, 27, 40, 0.045);
-  --omega-inline-code-bg: rgba(71, 99, 232, 0.09);
-  --omega-inline-code-fg: #33509f;
+  --omega-panel-glass: rgba(255, 255, 255, 0.92);
+  --omega-composer-bg: rgba(255, 255, 255, 0.94);
+  --omega-hover-fill: rgba(26, 25, 22, 0.045);
+  --omega-inline-code-bg: rgba(198, 125, 18, 0.10);
+  --omega-inline-code-fg: #8a5a0c;
 
   /* Chrome */
-  --omega-scrollbar: rgba(28, 38, 66, 0.18);
-  --omega-scrollbar-hover: rgba(28, 38, 66, 0.30);
-  --omega-selection: rgba(71, 99, 232, 0.20);
+  --omega-scrollbar: rgba(28, 26, 22, 0.18);
+  --omega-scrollbar-hover: rgba(28, 26, 22, 0.30);
+  --omega-selection: rgba(198, 125, 18, 0.22);
 
   /* Shadows — three-level scale */
-  --omega-shadow: rgba(23, 27, 40, 0.14);
-  --omega-shadow-sm: 0 1px 2px rgba(23, 27, 40, 0.05);
-  --omega-shadow-md: 0 4px 16px rgba(23, 27, 40, 0.08), 0 1px 3px rgba(23, 27, 40, 0.05);
-  --omega-shadow-lg: 0 16px 48px rgba(23, 27, 40, 0.14), 0 4px 12px rgba(23, 27, 40, 0.06);
-  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --omega-shadow: rgba(26, 25, 22, 0.12);
+  --omega-shadow-sm: 0 1px 2px rgba(26, 25, 22, 0.05);
+  --omega-shadow-md: 0 4px 16px rgba(26, 25, 22, 0.08), 0 1px 3px rgba(26, 25, 22, 0.05);
+  --omega-shadow-lg: 0 16px 48px rgba(26, 25, 22, 0.14), 0 4px 12px rgba(26, 25, 22, 0.06);
+  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.70);
 
-  /* Ambient glow — much subtler than before, barely-there tint */
-  --omega-glow-1: rgba(71, 99, 232, 0.05);
-  --omega-glow-2: rgba(111, 94, 232, 0.04);
+  /* Ambient glow — amber tint */
+  --omega-glow-1: rgba(198, 125, 18, 0.05);
+  --omega-glow-2: rgba(224, 154, 42, 0.04);
 
   /* Motion — one shared easing family */
   --omega-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -86,55 +86,55 @@ body,
 html.dark {
   color-scheme: dark;
 
-  --omega-bg: #0a0c12;
-  --omega-bg-rail: #0e1118;
-  --omega-bg-panel: #12151e;
-  --omega-bg-soft: #161a26;
-  --omega-bg-elevated: #1a1f2d;
-  --omega-bg-overlay: #1f2433;
-  --omega-bg-code: #0c0f16;
+  --omega-bg: #0c0d10;
+  --omega-bg-rail: #111318;
+  --omega-bg-panel: #16181e;
+  --omega-bg-soft: #1b1e26;
+  --omega-bg-elevated: #20242d;
+  --omega-bg-overlay: #262a35;
+  --omega-bg-code: #0d0e12;
 
-  --omega-border: rgba(148, 163, 197, 0.10);
-  --omega-border-strong: rgba(148, 163, 197, 0.20);
+  --omega-border: rgba(196, 188, 168, 0.10);
+  --omega-border-strong: rgba(196, 188, 168, 0.20);
 
-  --omega-text: #eceff7;
-  --omega-text-soft: #dfe4ef;
-  --omega-text-muted: #98a1b6;
-  --omega-text-dim: #626c85;
+  --omega-text: #f3f0ea;
+  --omega-text-soft: #e8e4dc;
+  --omega-text-muted: #a8a295;
+  --omega-text-dim: #6f6a60;
 
-  --omega-accent: #8fa8ff;
-  --omega-accent-strong: #6d8dff;
-  --omega-accent-soft: rgba(125, 151, 255, 0.12);
-  --omega-accent-line: rgba(125, 151, 255, 0.38);
-  --omega-accent-gradient: linear-gradient(135deg, #6d8dff 0%, #8a7df2 100%);
-  --omega-selected: rgba(125, 151, 255, 0.14);
+  --omega-accent: #e8b44a;
+  --omega-accent-strong: #f0c56a;
+  --omega-accent-soft: rgba(232, 180, 74, 0.14);
+  --omega-accent-line: rgba(232, 180, 74, 0.40);
+  --omega-accent-gradient: linear-gradient(135deg, #c98914 0%, #e8b44a 100%);
+  --omega-selected: rgba(232, 180, 74, 0.16);
 
-  --omega-success: #63d69c;
-  --omega-warning: #e5b96e;
-  --omega-danger: #ee7d8a;
-  --omega-success-soft: rgba(99, 214, 156, 0.12);
-  --omega-warning-soft: rgba(229, 185, 110, 0.12);
-  --omega-danger-soft: rgba(238, 125, 138, 0.12);
-  --omega-error-text: #ffd4d9;
+  --omega-success: #52d495;
+  --omega-warning: #e8b85e;
+  --omega-danger: #f07584;
+  --omega-success-soft: rgba(82, 212, 149, 0.12);
+  --omega-warning-soft: rgba(232, 184, 94, 0.12);
+  --omega-danger-soft: rgba(240, 117, 132, 0.12);
+  --omega-error-text: #ffd5da;
 
-  --omega-panel-glass: rgba(18, 21, 30, 0.82);
-  --omega-composer-bg: rgba(26, 31, 45, 0.88);
-  --omega-hover-fill: rgba(236, 239, 247, 0.055);
-  --omega-inline-code-bg: rgba(143, 168, 255, 0.12);
-  --omega-inline-code-fg: #a8c2ff;
+  --omega-panel-glass: rgba(22, 24, 30, 0.86);
+  --omega-composer-bg: rgba(32, 36, 45, 0.90);
+  --omega-hover-fill: rgba(243, 240, 234, 0.055);
+  --omega-inline-code-bg: rgba(232, 180, 74, 0.14);
+  --omega-inline-code-fg: #f0c56a;
 
-  --omega-scrollbar: rgba(148, 163, 197, 0.22);
-  --omega-scrollbar-hover: rgba(148, 163, 197, 0.36);
-  --omega-selection: rgba(109, 141, 255, 0.30);
+  --omega-scrollbar: rgba(196, 188, 168, 0.22);
+  --omega-scrollbar-hover: rgba(196, 188, 168, 0.36);
+  --omega-selection: rgba(201, 137, 20, 0.34);
 
-  --omega-shadow: rgba(0, 0, 0, 0.45);
+  --omega-shadow: rgba(0, 0, 0, 0.50);
   --omega-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
-  --omega-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.42), 0 1px 4px rgba(0, 0, 0, 0.30);
-  --omega-shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
-  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --omega-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30);
+  --omega-shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.38);
+  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
-  --omega-glow-1: rgba(109, 141, 255, 0.06);
-  --omega-glow-2: rgba(138, 125, 242, 0.05);
+  --omega-glow-1: rgba(201, 137, 20, 0.07);
+  --omega-glow-2: rgba(232, 180, 74, 0.05);
 }
 
 /* ============================================================

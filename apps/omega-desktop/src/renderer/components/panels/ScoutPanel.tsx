@@ -14,7 +14,11 @@ function StatusCard({ data }: { data: ScoutStatus }) {
       <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mb: 0.5 }}>
         <Chip size="small" label={data.enabled ? "启用" : "禁用"} color={data.enabled ? "success" : "default"} />
         <Chip size="small" label={`策略 ${data.policy}`} />
-        <Chip size="small" label={data.mode === "active" ? "活动中" : "空闲"} color={data.mode === "active" ? "primary" : "default"} />
+        <Chip
+          size="small"
+          label={data.mode === "active" ? "活动中" : "空闲"}
+          sx={data.mode === "active" ? { background: "var(--omega-accent-soft)", color: "var(--omega-accent-strong)" } : undefined}
+        />
         <Chip size="small" label={`每任务上限 ${data.maxRoundsPerTask} 轮`} variant="outlined" />
       </Box>
       <Box sx={{ mt: 0.5 }}>

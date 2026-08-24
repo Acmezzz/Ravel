@@ -11,10 +11,14 @@ import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { SessionTree, TreeNodeRow } from "../../types/dto";
 
+const ROLE_LABEL: Record<string, string> = {
+  user: "用户",
+  assistant: "助手",
+};
+
 /**
- * Session tree overlay: flattened branch tree from `sessionManager.getTree()`.
- * Click a node for a non-destructive preview. Rewind and clone are explicit
- * desktop actions, not slash commands.
+ * Session tree overlay: a compact timeline instead of a deeply indented tree.
+ * Depth is shown as a rail tick + a short ancestor chip, not as left padding.
  */
 export function TreeOverlay(): React.ReactElement {
   const open = useAppStore((s) => s.layout.treeOpen);
@@ -96,10 +100,6 @@ export function TreeOverlay(): React.ReactElement {
   }, [applyRecord, setTreeOpen]);
 
   const activePath = React.useMemo(() => new Set(tree?.activePath ?? []), [tree]);
-  const maxDepth = React.useMemo(
-    () => Math.max(0, ...(tree?.nodes ?? []).map((node) => node.depth)),
-    [tree],
-  );
   const inherited = React.useMemo(() => {
     if (!selected || !tree) return [];
     const byId = new Map(tree.nodes.map((node) => [node.id, node]));
@@ -117,8 +117,8 @@ export function TreeOverlay(): React.ReactElement {
     <>
       <Dialog open={open} onClose={() => setTreeOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 700, pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          会话分支树
-          <Chip size="small" label={`${tree?.nodes.length ?? 0} 节点`} sx={{ fontSize: 11 }} />
+          会话分支
+          <Chip size="small" label={`${tree?.nodes.length ?? 0} 步`} sx={{ fontSize: 11 }} />
           <Box sx={{ flex: 1 }} />
           <Button size="small" disabled={busy} onClick={() => void cloneCurrent()} sx={{ textTransform: "none" }}>
             复制当前分支
@@ -129,16 +129,17 @@ export function TreeOverlay(): React.ReactElement {
             <Typography sx={{ fontSize: 12.5, color: "var(--omega-warning)" }}>{error}</Typography>
           </Box>
         ) : null}
-        <Box sx={{ px: 3, pb: 1.5, maxHeight: 360, overflowY: "auto" }}>
+        <Box sx={{ px: 2.5, pb: 1.5, maxHeight: 380, overflowY: "auto" }}>
           {!tree ? (
             <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载中…</Typography>
           ) : tree.nodes.length === 0 ? (
             <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前会话还没有消息。</Typography>
           ) : (
-            tree.nodes.map((node) => {
+            tree.nodes.map((node, index) => {
               const onPath = activePath.has(node.id);
               const isLeaf = node.id === tree.leafId;
               const isSelected = selected?.id === node.id;
+              const branched = node.depth > 0 && tree.nodes[index - 1]?.depth !== undefined && node.depth > (tree.nodes[index - 1]?.depth ?? 0);
               return (
                 <Box
                   key={node.id}
@@ -151,50 +152,80 @@ export function TreeOverlay(): React.ReactElement {
                     setRewindTarget(node);
                   }}
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    ml: node.depth * Math.min(22, Math.max(12, 160 / (maxDepth || 1))),
-                    pl: 1,
-                    py: 0.6,
-                    px: 1.25,
-                    mb: 0.25,
-                    borderRadius: "9px",
+                    display: "grid",
+                    gridTemplateColumns: "18px 1fr",
+                    columnGap: 1,
+                    py: 0.35,
                     cursor: "pointer",
-                    border: isLeaf || isSelected ? "1px solid var(--omega-accent)" : "1px solid transparent",
-                    background: isLeaf ? "var(--omega-accent-soft)" : isSelected ? "var(--omega-hover-fill)" : "transparent",
-                    "&:hover": { background: isLeaf ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)" },
                   }}
                 >
+                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <Box
+                      sx={{
+                        width: "1px",
+                        flex: 1,
+                        background: index === 0 ? "transparent" : "var(--omega-border-strong)",
+                        minHeight: 4,
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: 999,
+                        flex: "0 0 auto",
+                        border: isLeaf || isSelected ? "2px solid var(--omega-accent)" : "2px solid var(--omega-border-strong)",
+                        background: isLeaf ? "var(--omega-accent)" : onPath ? "var(--omega-text-muted)" : "var(--omega-bg-panel)",
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        width: "1px",
+                        flex: 1,
+                        background: index === tree.nodes.length - 1 ? "transparent" : "var(--omega-border-strong)",
+                        minHeight: 4,
+                      }}
+                    />
+                  </Box>
                   <Box
                     sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 999,
-                      flex: "0 0 auto",
-                      background: isLeaf ? "var(--omega-accent)" : onPath ? "var(--omega-text-muted)" : "var(--omega-border-strong)",
+                      minWidth: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.75,
+                      px: 1,
+                      py: 0.55,
+                      my: 0.15,
+                      borderRadius: "8px",
+                      border: isLeaf || isSelected ? "1px solid var(--omega-accent-line)" : "1px solid transparent",
+                      background: isLeaf ? "var(--omega-accent-soft)" : isSelected ? "var(--omega-hover-fill)" : "transparent",
+                      "&:hover": { background: isLeaf ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)" },
                     }}
-                  />
-                  <Chip
-                    size="small"
-                    label={node.role === "user" ? "U" : node.role === "assistant" ? "A" : "?"}
-                    sx={{
-                      flex: "0 0 auto",
-                      height: 18,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      background: node.role === "user" ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)",
-                      color: node.role === "user" ? "var(--omega-accent)" : "var(--omega-text-muted)",
-                    }}
-                  />
-                  <Typography sx={{ fontSize: 12.5, color: onPath ? "var(--omega-text)" : "var(--omega-text-muted)", minWidth: 0 }} noWrap>
-                    {node.label || node.preview || "（无预览）"}
-                  </Typography>
-                  {node.isLeaf && !isLeaf ? (
-                    <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", ml: "auto" }} noWrap>
-                      其他分支末梢
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.04em",
+                        color: node.role === "user" ? "var(--omega-accent)" : "var(--omega-text-dim)",
+                        flex: "0 0 auto",
+                        width: 28,
+                      }}
+                    >
+                      {ROLE_LABEL[node.role] ?? "?"}
                     </Typography>
-                  ) : null}
+                    {branched ? (
+                      <Chip size="small" label={`L${node.depth}`} sx={{ height: 16, fontSize: 9.5, flex: "0 0 auto" }} />
+                    ) : null}
+                    <Typography sx={{ fontSize: 12.5, color: onPath ? "var(--omega-text)" : "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap>
+                      {node.label || node.preview || "（无预览）"}
+                    </Typography>
+                    {isLeaf ? (
+                      <Typography sx={{ fontSize: 10, color: "var(--omega-accent)", flex: "0 0 auto" }}>当前</Typography>
+                    ) : node.isLeaf ? (
+                      <Typography sx={{ fontSize: 10, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>支线</Typography>
+                    ) : null}
+                  </Box>
                 </Box>
               );
             })

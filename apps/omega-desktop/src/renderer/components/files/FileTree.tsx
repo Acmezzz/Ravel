@@ -63,6 +63,7 @@ function TreeRow({
         pl: 0.5 + depth * 1.25,
         pr: 0.75,
         py: 0.3,
+        minWidth: 0,
         borderRadius: "7px",
         cursor: "pointer",
         "&:hover": { background: "var(--omega-hover-fill)" },
@@ -85,11 +86,11 @@ function TreeRow({
           <InsertDriveFileIcon sx={{ fontSize: 15, color: "var(--omega-text-dim)" }} />
         </>
       )}
-      <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", minWidth: 0 }} noWrap title={rel}>
+      <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap title={rel}>
         {name}
       </Typography>
       {!isDir && size > 0 ? (
-        <Typography sx={{ fontSize: 10, color: "var(--omega-text-dim)", ml: "auto", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
+        <Typography sx={{ fontSize: 10, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
       ) : null}
       <Tooltip title="在资源管理器中显示">
         <IconButton
@@ -98,7 +99,7 @@ function TreeRow({
             e.stopPropagation();
             onReveal(rel);
           }}
-          sx={{ ml: "auto", p: 0.25, color: "var(--omega-text-dim)", opacity: 0, ".MuiBox-root:hover &": { opacity: 1 } }}
+          sx={{ flex: "0 0 auto", p: 0.25, color: "var(--omega-text-dim)", opacity: 0, ".MuiBox-root:hover &": { opacity: 1 } }}
         >
           <FolderOpenIcon sx={{ fontSize: 13 }} />
         </IconButton>
@@ -251,8 +252,8 @@ export function FileTree(): React.ReactElement {
 
   return (
     <Box sx={{ width: "100%" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1, py: 0.5 }}>
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>工作区文件</Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, px: 1, py: 0.5, minWidth: 0 }}>
+        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)", minWidth: 0, flex: 1 }} noWrap>工作区文件</Typography>
         <Tooltip title="导入文件到工作区"><IconButton size="small" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)" }}><UploadFileIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
         <Tooltip title="刷新">
           <IconButton size="small" onClick={refreshAll} sx={{ color: "var(--omega-text-dim)" }}>

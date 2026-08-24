@@ -40,7 +40,10 @@ export function RightPanel(): React.ReactElement {
         <Tabs
           value={rightTab}
           onChange={(_e, v) => setRightTab(v)}
-          sx={{ flexGrow: 1, minHeight: 42, "& .MuiTab-root": { minHeight: 42, fontSize: 13 } }}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{ flexGrow: 1, minWidth: 0, minHeight: 42, "& .MuiTab-root": { minHeight: 42, minWidth: 0, px: 1.25, fontSize: 12.5 } }}
         >
           <Tab label="Workflow" value="workflow" />
           <Tab label="Scout" value="scout" />
@@ -53,7 +56,18 @@ export function RightPanel(): React.ReactElement {
           </IconButton>
         </Tooltip>
       </Box>
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", p: 1.5 }}>
+      <Box
+        sx={{
+          flexGrow: 1,
+          minHeight: 0,
+          minWidth: 0,
+          overflowX: "hidden",
+          overflowY: rightTab === "diff" ? "hidden" : "auto",
+          p: 1.25,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         {rightTab === "workflow" ? <WorkflowPanel /> : null}
         {rightTab === "scout" ? <ScoutPanel /> : null}
         {rightTab === "diff" ? <DiffViewer /> : null}

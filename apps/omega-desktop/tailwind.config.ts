@@ -6,19 +6,19 @@
 import type { Config } from "tailwindcss";
 
 const tokens = {
-  bgApp: "#0a0c12",
-  bgPanel: "#12151e",
-  bgElevated: "#1a1f2d",
-  bgSoft: "#161a26",
-  border: "rgba(148,163,197,0.10)",
-  borderStrong: "rgba(148,163,197,0.20)",
-  text: "#eceff7",
-  muted: "#98a1b6",
-  accent: "#8fa8ff",
-  accentStrong: "#6d8dff",
-  success: "#63d69c",
-  warning: "#e5b96e",
-  danger: "#ee7d8a",
+  bgApp: "#0c0d10",
+  bgPanel: "#16181e",
+  bgElevated: "#20242d",
+  bgSoft: "#1b1e26",
+  border: "rgba(196, 188, 168, 0.10)",
+  borderStrong: "rgba(196, 188, 168, 0.20)",
+  text: "#f3f0ea",
+  muted: "#a8a295",
+  accent: "#e8b44a",
+  accentStrong: "#f0c56a",
+  success: "#52d495",
+  warning: "#e8b85e",
+  danger: "#f07584",
 };
 
 export default {

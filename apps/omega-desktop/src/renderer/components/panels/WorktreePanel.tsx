@@ -70,7 +70,7 @@ export function WorktreePanel(): React.ReactElement {
       <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>
         Worktree 是独立工作副本。创建后请用项目切换器打开该目录，而不是用 slash command。
       </Typography>
-      <Box sx={{ display: "flex", gap: 1 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
         <TextField
           size="small"
           fullWidth
@@ -78,7 +78,7 @@ export function WorktreePanel(): React.ReactElement {
           value={branch}
           onChange={(e) => setBranch(e.target.value)}
         />
-        <Button size="small" variant="contained" disabled={busy} onClick={() => void add()} sx={{ textTransform: "none", whiteSpace: "nowrap" }}>
+        <Button fullWidth variant="contained" disabled={busy} onClick={() => void add()} sx={{ textTransform: "none", whiteSpace: "nowrap" }}>
           选择目录并创建
         </Button>
       </Box>
@@ -102,8 +102,8 @@ export function WorktreePanel(): React.ReactElement {
               gap: 0.5,
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
-              <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "var(--omega-text)", minWidth: 0 }} noWrap title={worktree.path}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, flexWrap: "wrap" }}>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: "1 1 auto" }} noWrap title={worktree.path}>
                 {worktree.branch || (worktree.detached ? "detached" : "worktree")}
               </Typography>
               {worktree.current ? <Chip size="small" label="当前" sx={{ height: 18, fontSize: 10 }} /> : null}

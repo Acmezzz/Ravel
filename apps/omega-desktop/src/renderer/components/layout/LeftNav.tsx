@@ -2,7 +2,6 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppStore } from "../../store/useAppStore";
@@ -25,11 +24,11 @@ export function LeftNav(): React.ReactElement {
         overflow: "hidden",
       }}
     >
-      <Box sx={{ px: 1.5, pt: 1.25, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <Box sx={{ px: 1.25, pt: 1, pb: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.5 }}>
         <Tabs
           value={leftTab}
           onChange={(_e, value) => setLayout({ leftTab: value })}
-          sx={{ minHeight: 34, "& .MuiTab-root": { minHeight: 34, minWidth: 64, fontSize: 12.5, px: 1.25 } }}
+          sx={{ minHeight: 32, "& .MuiTab-root": { minHeight: 32, minWidth: 48, fontSize: 12, px: 1, py: 0.25 } }}
         >
           <Tab label="会话" value="sessions" />
           <Tab label="文件" value="files" />
@@ -37,15 +36,16 @@ export function LeftNav(): React.ReactElement {
         {leftTab === "sessions" ? (
           <Button
             size="small"
-            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+            startIcon={<AddIcon sx={{ fontSize: 15 }} />}
             onClick={() => setNewOpen(true)}
             sx={{
               textTransform: "none",
               borderRadius: "999px",
               flex: "0 0 auto",
               fontWeight: 600,
-              fontSize: 12,
-              px: 1.5,
+              fontSize: 11.5,
+              px: 1.25,
+              height: 28,
               color: "var(--omega-accent)",
               background: "var(--omega-accent-soft)",
               "&:hover": { background: "var(--omega-accent-soft)", transform: "translateY(-1px)", boxShadow: "var(--omega-shadow-sm)" },
@@ -57,9 +57,6 @@ export function LeftNav(): React.ReactElement {
       </Box>
       <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", px: 0.75, pb: 1.5, pt: 0.5 }}>
         {leftTab === "sessions" ? <SessionList /> : <FileTree />}
-      </Box>
-      <Box sx={{ px: 1.5, py: 1, borderTop: "1px solid var(--omega-border)" }}>
-        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", lineHeight: 1.5, letterSpacing: "0.01em" }}>JSONL 与扩展面板在右栏。</Typography>
       </Box>
       <NewSessionDialog open={newOpen} onClose={() => setNewOpen(false)} />
     </Box>
