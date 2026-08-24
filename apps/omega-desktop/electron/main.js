@@ -101,10 +101,6 @@ function extensionsRootOf() {
   return process.env.OMEGA_EXTENSIONS_ROOT ?? (app.isPackaged ? join(rootOf(), ".pi", "extensions") : join(DEV_ROOT, ".pi", "extensions"));
 }
 
-function sessionsRoot() {
-  return join(app.getPath("userData"), "omega", "sessions");
-}
-
 function workspaceRegistryFile() {
   return join(app.getPath("userData"), "omega", "workspaces.json");
 }

@@ -143,7 +143,7 @@ function thinkingFromContent(content) {
 }
 
 /** Full target descriptor for a tool call: file path, or command for bash. */
-function extractTarget(args, toolName) {
+function extractTarget(args) {
   if (!args || typeof args !== "object") return undefined;
   const pathCandidates = [args.path, args.file, args.filePath, args.file_path];
   for (const candidate of pathCandidates) {

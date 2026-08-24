@@ -13,7 +13,7 @@
  * leak upstream types. See system_design.md §3.1 and the security red line.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { join } from "node:path";
 import { homedir as osHomedir } from "node:os";
 
 // ---------------------------------------------------------------------------
@@ -37,15 +37,11 @@ function safeProjectKey(projectKey) {
   return typeof projectKey === "string" && /^--[A-Za-z0-9._/-]{1,512}--$/.test(projectKey) ? projectKey : null;
 }
 
-function boundedString(value, max = 16_000) {
-  return typeof value === "string" ? value.slice(0, max) : "";
-}
-
 function defaultAgentDir() {
   return process.env.PI_CODING_AGENT_DIR ?? join(osHomedir(), ".pi", "agent");
 }
 
-function resolveConfiguredPath(value, agentDir) {
+function resolveConfiguredPath(value) {
   if (typeof value !== "string") return null;
   const expanded = value.startsWith("~/") ? join(osHomedir(), value.slice(2)) : value;
   return expanded;

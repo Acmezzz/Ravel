@@ -12,7 +12,7 @@ import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
-import type { DiffFile, GitSnapshot, GitStageItem } from "../../types/dto";
+import type { DiffFile, GitStageItem } from "../../types/dto";
 import { ApprovalBar } from "./ApprovalBar";
 
 const STATUS_LABEL: Record<DiffFile["status"], string> = {

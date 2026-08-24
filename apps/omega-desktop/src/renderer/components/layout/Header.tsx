@@ -219,7 +219,7 @@ function ContextDonut({ percent }: { percent: number }): React.ReactElement {
   );
 }
 
-function formatUsage(percent: number | null, tokens: number | null, contextWindow: number | null): string {
+function formatUsage(_percent: number | null, tokens: number | null, contextWindow: number | null): string {
   if (tokens !== null && contextWindow) return `${tokens}/${contextWindow}`;
   if (contextWindow) return `${contextWindow} ctx`;
   return "—";

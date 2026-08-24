@@ -1,5 +1,7 @@
 # Development Rules
 
+Omega Desktop (`apps/omega-desktop`) is the product surface of this fork. Keep Electron isolation, IPC allowlists, and path containment intact. Do not reintroduce `nodeIntegration`, renderer filesystem access, or unvalidated IPC channels.
+
 ## Conversational Style
 
 - Keep answers short and concise

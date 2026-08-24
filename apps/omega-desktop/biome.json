@@ -1,0 +1,58 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.3.5/schema.json",
+	"root": false,
+	"files": {
+		"includes": [
+			"src/**",
+			"electron/**",
+			"test/**",
+			"!dist/**",
+			"!release/**",
+			"!node_modules/**"
+		]
+	},
+	"assist": {
+		"enabled": false
+	},
+	"formatter": {
+		"enabled": false
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"style": {
+				"noNonNullAssertion": "off",
+				"useConst": "off",
+				"useNodejsImportProtocol": "off",
+				"useImportType": "off",
+				"useTemplate": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off",
+				"noControlCharactersInRegex": "off",
+				"noEmptyInterface": "off",
+				"noAssignInExpressions": "off",
+				"noArrayIndexKey": "off",
+				"noUnknownAtRules": "off"
+			},
+			"complexity": {
+				"noForEach": "off",
+				"noUselessEscapeInRegex": "off",
+				"useOptionalChain": "off",
+				"noImportantStyles": "off"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "off",
+				"noUnknownTypeSelector": "off"
+			},
+			"a11y": {
+				"noStaticElementInteractions": "off",
+				"useKeyWithClickEvents": "off",
+				"useButtonType": "off",
+				"useSemanticElements": "off",
+				"noSvgWithoutTitle": "off"
+			}
+		}
+	}
+}

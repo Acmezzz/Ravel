@@ -1,7 +1,12 @@
 # Security Policy
 
+This repository contains the Omega Desktop product and the upstream Pi agent
+harness. Omega Desktop adds an Electron isolation boundary (contextIsolation,
+sandbox, IPC allowlist, workspace path containment, permission profiles).
+Pi CLI still runs with the permissions of the launching user.
+
 This document should guide you about understanding the security concept behind
-Pi and also where the boundaries are.
+Pi / Omega and also where the boundaries are.
 
 In general Pi is a coding agent that runs locally within the security boundary
 of the user that is running it.  It's the responsibility of the user to monitor
@@ -23,11 +28,11 @@ coding agent trivially and this cannot be protected against.
 
 ## Reporting a Vulnerability
 
-If you believe you found a security vulnerability in pi or another package in
-this repository, please report it privately by either:
+If you believe you found a security vulnerability in Omega Desktop, Pi, or
+another package in this repository, please report it privately by either:
 
-- Emailing `security@earendil.com`, or
 - Opening a private report through GitHub Security Advisories for this repository
+- For upstream Pi runtime issues, also see `security@earendil.com`
 
 Please include:
 

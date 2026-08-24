@@ -1,4 +1,6 @@
-# Contributing to pi
+# Contributing to Omega
+
+This repository is an Omega product fork of the Pi agent harness. Desktop work lives in `apps/omega-desktop`. Upstream Pi package rules still apply under `packages/`.
 
 This guide exists to save both sides time.
 

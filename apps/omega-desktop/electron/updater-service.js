@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createWriteStream, mkdirSync, readFileSync, renameSync, unlinkSync } from "node:fs";
-import { dirname, join, basename } from "node:path";
+import { join, basename } from "node:path";
 import https from "node:https";
 
 const activeDownloads = new Map();

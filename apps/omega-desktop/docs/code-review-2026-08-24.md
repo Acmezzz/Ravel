@@ -74,13 +74,13 @@
 
 ## 阶段 5：质量门禁与文档
 
-- [ ] Q1 biome.json include 加 `apps/**`，清死条目（packages/mom、`!!` 笔误）
-- [ ] Q2 根 tsconfig 删除 `packages/agent-old` 映射；评估把 desktop 纳入 tsgo
-- [ ] Q3 CI：加 Windows desktop job（typecheck + test + electron-smoke / release-gate）
-- [ ] Q4 重写根 README（Omega 简介 + 上游致谢）；CONTRIBUTING/AGENTS/SECURITY 本地化
-- [ ] Q5 `apps/omega-desktop/README.md` 结构图更新（删 renderer.js/styles.css 描述）
-- [ ] Q6 `implementation-status.md` 更新 HEAD/分支/测试数字
-- [ ] Q7 根 package.json 改名 omega-monorepo（同步 lockfile）；LICENSE 加 Omega 条目
+- [x] Q1 biome.json include 加 desktop `src/electron/test`，清死条目（packages/mom、`!!` 笔误）；desktop 用 nested biome（关 formatter/organizeImports，避免 180+ 风格重排）
+- [x] Q2 根 tsconfig 删除 `packages/agent-old` 映射。desktop 不纳入根 tsgo（JSX + bundler resolution），继续走 `typecheck:renderer`
+- [x] Q3 CI：加 Windows desktop job（typecheck + test + release-gate）。`electron-smoke` 依赖 unpacked 产物，不在无打包的 CI job 里跑
+- [x] Q4 重写根 README（Omega 简介 + 上游致谢）；CONTRIBUTING/AGENTS/SECURITY 补 Omega 边界说明
+- [x] Q5 `apps/omega-desktop/README.md` 结构图更新（删 renderer.js/styles.css）
+- [x] Q6 `implementation-status.md` 更新日期/提交/测试数字
+- [x] Q7 根 package.json 改名 omega-monorepo（同步 lockfile）；LICENSE 加 Omega 条目
 
 ## 阶段 6：性能与体验优化
 

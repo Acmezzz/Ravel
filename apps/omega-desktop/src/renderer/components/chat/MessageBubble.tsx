@@ -12,12 +12,6 @@ import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { SessionMessage } from "../../types/dto";
 
-function formatTime(ts: string): string {
-  const date = new Date(ts);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
 async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
