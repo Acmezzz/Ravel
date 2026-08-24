@@ -164,6 +164,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
         <Box
           className={`status-core ${thinkingActive && !failed ? "is-thinking" : ""}`}
           {...(canRetryWorker ? clickableRole : {})}
+          aria-label={canRetryWorker ? "重试 Agent worker" : `当前状态：${label}`}
           onClick={() => {
             if (canRetryWorker) void retryWorker();
           }}

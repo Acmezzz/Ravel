@@ -572,6 +572,30 @@ test("stage 4 bounds large diff and extension projections", async () => {
   assert.match(workflow, /MAX_ISSUES/);
 });
 
+test("UX audit closes execution gaps and avoids misleading controls", async () => {
+  const diff = await read("../src/renderer/components/panels/DiffViewer.tsx");
+  const tree = await read("../src/renderer/components/files/FileTree.tsx");
+  const sessions = await read("../src/renderer/components/sessions/SessionList.tsx");
+  const composer = await read("../src/renderer/components/chat/Composer.tsx");
+  const app = await read("../src/renderer/App.tsx");
+  const viewer = await read("../src/renderer/components/files/FileViewer.tsx");
+  const header = await read("../src/renderer/components/layout/Header.tsx");
+  assert.match(diff, /stopPropagation/);
+  assert.match(diff, /aria-label.*hunk/);
+  assert.match(tree, /role="alert"/);
+  assert.match(tree, /void loadDir\(rel\)/);
+  assert.match(sessions, /loadingSessionId/);
+  assert.match(sessions, /loadError/);
+  assert.doesNotMatch(app, /⚠️/);
+  assert.doesNotMatch(composer, /⚠️/);
+  assert.match(composer, /aria-label="发送消息"/);
+  assert.match(composer, /aria-label="停止生成"/);
+  assert.match(composer, /插入当前轮/);
+  assert.doesNotMatch(viewer, /setDiffMode/);
+  assert.doesNotMatch(viewer, /diffMode \?/);
+  assert.match(header, /aria-label=\{canRetryWorker \? "重试 Agent worker"/);
+});
+
 test("R3: thinking blocks defer loading and message list windows", async () => {
   const thinking = await read("../src/renderer/components/chat/ThinkingBlock.tsx");
   assert.match(thinking, /getThinking/);

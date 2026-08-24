@@ -57,7 +57,7 @@ function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string })
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1, py: 0.25, minWidth: 0 }}>
       <Chip
         size="small"
-        label={isSteer ? "steer" : "follow-up"}
+        label={isSteer ? "插入当前轮" : "后续消息"}
         sx={{
           flex: "0 0 auto",
           height: 18,
@@ -212,14 +212,16 @@ export function Composer(): React.ReactElement {
       void (async () => {
         try {
           const res = await ipc.bash({ command, excludeFromContext: exclude });
-          useAppStore.getState().appendMessage({
-            role: "assistant",
-            id: `bash-out-${Date.now()}`,
-            text: res.ok
-              ? `\`\`\`\n${res.data.output || "(无输出)"}\n\`\`\`${res.data.exitCode ? `\n\nexit ${res.data.exitCode}` : ""}`
-              : `⚠️ 命令失败：${res.message ?? "未知错误"}`,
-            ts: new Date().toISOString(),
-          });
+          if (res.ok) {
+            useAppStore.getState().appendMessage({
+              role: "assistant",
+              id: `bash-out-${Date.now()}`,
+              text: `\`\`\`\n${res.data.output || "(无输出)"}\n\`\`\`${res.data.exitCode ? `\n\nexit ${res.data.exitCode}` : ""}`,
+              ts: new Date().toISOString(),
+            });
+          } else {
+            useAppStore.getState().setComposerError(`命令失败：${res.message ?? "未知错误"}`);
+          }
         } finally {
           useAppStore.getState().setConnection("ready");
         }
@@ -282,12 +284,7 @@ export function Composer(): React.ReactElement {
               setConnection("ready");
             }
             setComposerError(`${res.code}: ${res.message ?? "未知错误"}`);
-            useAppStore.getState().appendMessage({
-              role: "assistant",
-              id: `error-${Date.now()}`,
-              text: `⚠️ 发送失败（${res.code}）：${res.message ?? "未知错误"}`,
-              ts: new Date().toISOString(),
-            });
+            useAppStore.getState().setComposerError(`发送失败（${res.code}）：${res.message ?? "未知错误"}`);
             return;
           }
           // Extension commands never replay a user message — drop the orphan.
@@ -690,16 +687,17 @@ export function Composer(): React.ReactElement {
         />
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, minWidth: 0, px: 0.25 }}>
           <Tooltip title="命令面板（Ctrl+K）">
-            <IconButton size="small" onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto" }}>
+            <IconButton size="small" aria-label="打开命令面板" onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}>
               <KeyboardCommandKeyIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="附加图片（最多 4 张）">
             <IconButton
               size="small"
+              aria-label="附加图片"
               onClick={() => fileRef.current?.click()}
               disabled={shuttingDown || attachments.length >= MAX_IMAGES}
-              sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto" }}
+              sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}
             >
               <AttachFileIcon sx={{ fontSize: 18 }} />
             </IconButton>
@@ -709,6 +707,7 @@ export function Composer(): React.ReactElement {
             <>
               <Tooltip title="打断当前生成并注入这条消息（steer）">
                 <IconButton
+                  aria-label="插入当前生成"
                   onClick={() => send("steer")}
                   disabled={shuttingDown || canSend}
                   sx={{
@@ -726,6 +725,7 @@ export function Composer(): React.ReactElement {
               </Tooltip>
               <Tooltip title="彻底停止生成">
                 <IconButton
+                  aria-label="停止生成"
                   onClick={() => void abort()}
                   disabled={shuttingDown}
                   sx={{
@@ -743,14 +743,17 @@ export function Composer(): React.ReactElement {
             </>
           ) : (
             <IconButton
+              aria-label="发送消息"
               onClick={() => send()}
               disabled={shuttingDown || canSend}
               sx={{
                 color: "var(--omega-accent-foreground)",
                 background: "var(--omega-accent-gradient)",
                 borderRadius: "10px",
-                width: 34,
-                height: 34,
+                width: 40,
+                height: 40,
+                minWidth: 40,
+                minHeight: 40,
                 flex: "0 0 auto",
                 boxShadow: "0 2px 8px var(--omega-accent-soft)",
                 "&:hover": { filter: "brightness(1.08)" },

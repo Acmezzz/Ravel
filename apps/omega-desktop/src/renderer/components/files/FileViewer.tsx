@@ -57,7 +57,6 @@ export function FileViewer(): React.ReactElement {
   const [nextOffset, setNextOffset] = React.useState<number | null>(null);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [watching, setWatching] = React.useState(false);
-  const [diffMode, setDiffMode] = React.useState(false);
   const [pageError, setPageError] = React.useState<string | null>(null);
   const pageRequestEpochRef = React.useRef(0);
 
@@ -75,7 +74,6 @@ export function FileViewer(): React.ReactElement {
 
   React.useEffect(() => {
     setMode(isMarkdown(viewer.path) || isMermaid(viewer.path) || isMath(viewer.path) ? "preview" : "source");
-    setDiffMode(false);
     setSelection(null);
     setDisplayedContent(viewer.file?.content ?? "");
     setNextOffset(viewer.file?.nextOffset ?? null);
@@ -152,8 +150,6 @@ export function FileViewer(): React.ReactElement {
             >
               源码
             </Typography>
-            <Typography component="button" type="button" onClick={() => setDiffMode((current) => !current)} sx={{ fontSize: 11, cursor: "pointer", color: diffMode ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}>diff</Typography>
-            <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>/</Typography>
             <Typography
               component="button"
               type="button"
@@ -198,8 +194,6 @@ export function FileViewer(): React.ReactElement {
           <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>Mermaid source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
         ) : mode === "preview" && isMath(viewer.path) ? (
           <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>LaTeX source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
-        ) : diffMode ? (
-          <Box component="pre" sx={{ p: 1, whiteSpace: "pre-wrap", color: "var(--omega-text-soft)", background: "var(--omega-bg-code)" }}>{(displayedContent || "").split("\n").map((line) => `${line.startsWith("+") ? "+ " : line.startsWith("-") ? "- " : "  "}${line}`).join("\n")}</Box>
         ) : (
           <Box
             sx={{
@@ -221,11 +215,7 @@ export function FileViewer(): React.ReactElement {
               return (
                 <Box
                   key={line.n}
-                  role="button"
-                  tabIndex={0}
                   aria-selected={Boolean(active)}
-                  aria-label={`选择第 ${line.n} 行`}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelection({ start: line.n, end: line.n }); } }}
                   onClick={(e) => {
                     if (e.shiftKey && selection) setSelection({ start: selection.start, end: line.n });
                     else setSelection({ start: line.n, end: line.n });

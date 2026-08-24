@@ -311,12 +311,7 @@ export function App(): React.ReactElement {
           break;
         case "error":
           if (activeSessionId) store.markSessionActivity(activeSessionId, { failed: true, running: false });
-          store.appendMessage({
-            role: "assistant",
-            id: `error-${Date.now()}`,
-            text: `⚠️ ${event.message ?? "Agent error"}`,
-            ts: new Date().toISOString(),
-          });
+          store.setComposerError(event.message ?? "Agent error");
           break;
         default:
           break;

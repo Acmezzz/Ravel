@@ -173,7 +173,14 @@ function FileCard({
               sx={{ display: "flex", alignItems: "center", background: "var(--omega-bg)", cursor: "pointer", minWidth: 0 }}
               onClick={() => onToggleHunk(file.path, i)}
             >
-              <Checkbox size="small" checked={wholeFile || (selectedHunks?.has(i) ?? false)} sx={{ p: 0.25, flex: "0 0 auto" }} />
+              <Checkbox
+                size="small"
+                checked={wholeFile || (selectedHunks?.has(i) ?? false)}
+                inputProps={{ "aria-label": `选择 ${file.path} 的第 ${i + 1} 个 hunk` }}
+                onClick={(event) => event.stopPropagation()}
+                onChange={() => onToggleHunk(file.path, i)}
+                sx={{ p: 0.25, flex: "0 0 auto" }}
+              />
               <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hunk.header}</Typography>
             </Box>
             <Box sx={{ px: 1, py: 0.5, overflowX: "auto" }}>

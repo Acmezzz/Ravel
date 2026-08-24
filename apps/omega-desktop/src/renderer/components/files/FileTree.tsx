@@ -129,13 +129,18 @@ export function FileTree(): React.ReactElement {
   const loadDir = React.useCallback(async (rel: string) => {
     const requestEpoch = requestEpochRef.current;
     setDirs((prev) => new Map(prev).set(rel, { loading: true, error: null, listing: prev.get(rel)?.listing ?? null }));
-    const res = await ipc.listDir({ path: rel });
-    if (requestEpoch !== requestEpochRef.current) return;
-    setDirs((prev) => {
-      const next = new Map(prev);
-      next.set(rel, res.ok ? { loading: false, error: null, listing: res.data } : { loading: false, error: res.message, listing: null });
-      return next;
-    });
+    try {
+      const res = await ipc.listDir({ path: rel });
+      if (requestEpoch !== requestEpochRef.current) return;
+      setDirs((prev) => {
+        const next = new Map(prev);
+        next.set(rel, res.ok ? { loading: false, error: null, listing: res.data } : { loading: false, error: res.message, listing: null });
+        return next;
+      });
+    } catch (reason) {
+      if (requestEpoch !== requestEpochRef.current) return;
+      setDirs((prev) => new Map(prev).set(rel, { loading: false, error: reason instanceof Error ? reason.message : String(reason), listing: null }));
+    }
   }, []);
 
   React.useEffect(() => {
@@ -197,9 +202,10 @@ export function FileTree(): React.ReactElement {
     }
     if (state?.error) {
       rows.push(
-        <Typography key={`e:${rel}`} sx={{ fontSize: 11.5, color: "var(--omega-danger)", pl: 1 + depth * 1.25, py: 0.25 }}>
-          {state.error}
-        </Typography>,
+        <Box key={`e:${rel}`} role="alert" sx={{ display: "flex", alignItems: "center", gap: 0.75, pl: 1 + depth * 1.25, py: 0.25 }}>
+          <Typography sx={{ fontSize: 11.5, color: "var(--omega-danger)", minWidth: 0 }}>{state.error}</Typography>
+          <Button size="small" onClick={() => void loadDir(rel)} sx={{ minWidth: 0, p: 0, textTransform: "none", flex: "0 0 auto" }}>重试</Button>
+        </Box>,
       );
       return;
     }

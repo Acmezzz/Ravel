@@ -55,7 +55,7 @@ export function RightPanel(): React.ReactElement {
           variant="scrollable"
           scrollButtons="auto"
           allowScrollButtonsMobile
-          sx={{ flexGrow: 1, minWidth: 0, minHeight: 42, "& .MuiTab-root": { minHeight: 42, minWidth: 0, px: 1.25, fontSize: 12.5 } }}
+          sx={{ flexGrow: 1, minWidth: 0, minHeight: 44, "& .MuiTab-root": { minHeight: 44, minWidth: 0, px: 1.25, fontSize: 12.5 } }}
         >
           <Tab label="Workflow" value="workflow" />
           <Tab label="Scout" value="scout" />
@@ -63,7 +63,7 @@ export function RightPanel(): React.ReactElement {
           <Tab label="Worktree" value="worktree" />
         </Tabs>
         <Tooltip title="刷新扩展状态">
-          <IconButton size="small" onClick={() => void refresh()} sx={{ color: "var(--omega-text-muted)", mr: 1 }} disabled={extensionLoading}>
+          <IconButton size="small" aria-label="刷新扩展状态" onClick={() => void refresh()} sx={{ color: "var(--omega-text-muted)", mr: 1, minWidth: 40, minHeight: 40 }} disabled={extensionLoading}>
             <RefreshIcon fontSize="small" />
           </IconButton>
         </Tooltip>

@@ -61,6 +61,9 @@ export function SessionList(): React.ReactElement {
   const [deleting, setDeleting] = React.useState<{ id: string; title: string } | null>(null);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [cloning, setCloning] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [failedSessionId, setFailedSessionId] = React.useState<string | null>(null);
+  const [loadingSessionId, setLoadingSessionId] = React.useState<string | null>(null);
   const requestEpochRef = React.useRef(0);
   const [contextMenu, setContextMenu] = React.useState<{ mouseX: number; mouseY: number; id: string } | null>(null);
 
@@ -78,9 +81,13 @@ export function SessionList(): React.ReactElement {
   const handleLoad = React.useCallback(
     async (id: string) => {
       const requestEpoch = ++requestEpochRef.current;
-      const res = await ipc.loadSession({ sessionId: id });
-      if (requestEpoch !== requestEpochRef.current) return;
-      if (res.ok) {
+      setLoadingSessionId(id);
+      setLoadError(null);
+      setFailedSessionId(null);
+      try {
+        const res = await ipc.loadSession({ sessionId: id });
+        if (requestEpoch !== requestEpochRef.current) return;
+        if (res.ok) {
         setActiveSession(id);
         loadTranscript(res.data);
         const state = await ipc.getState();
@@ -92,6 +99,21 @@ export function SessionList(): React.ReactElement {
         const list = await ipc.listSessions();
         if (requestEpoch !== requestEpochRef.current) return;
         if (list.ok) applySessionPage(list.data);
+        else {
+          setLoadError(list.message);
+          setFailedSessionId(id);
+        }
+      } else {
+        setLoadError(res.message);
+        setFailedSessionId(id);
+      }
+      } catch (reason) {
+        if (requestEpoch === requestEpochRef.current) {
+          setLoadError(reason instanceof Error ? reason.message : String(reason));
+          setFailedSessionId(id);
+        }
+      } finally {
+        if (requestEpoch === requestEpochRef.current) setLoadingSessionId(null);
       }
     },
     [setActiveSession, loadTranscript, setAgent, applySessionPage],
@@ -210,6 +232,7 @@ export function SessionList(): React.ReactElement {
           </Typography>
         ) : null}
       </Box>
+      {loadError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.75, pb: 1 }}><Typography sx={{ fontSize: 11.5, color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</Typography>{failedSessionId ? <Button size="small" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null} sx={{ textTransform: "none", flex: "0 0 auto" }}>重试加载</Button> : null}<Button size="small" onClick={() => { setLoadError(null); setFailedSessionId(null); }} sx={{ textTransform: "none", flex: "0 0 auto" }}>关闭</Button></Box> : null}
       {[...groups.entries()].map(([workspace, items]) => {
         const isCurrentWorkspace = Boolean(items[0] && activeWorkspace && items[0].workspace === activeWorkspace);
         return (
@@ -317,14 +340,15 @@ export function SessionList(): React.ReactElement {
                       <>
                         <Tooltip title={connection === "running" ? "生成中无法复制" : cloning ? "复制中…" : "复制当前分支"}>
                           <span>
-                            <IconButton
+                              <IconButton
                               size="small"
+                              aria-label="复制当前分支"
                               disabled={connection === "running" || cloning}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 void cloneActive();
                               }}
-                              sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}
+                              sx={{ color: "var(--omega-text-dim)", minWidth: 40, minHeight: 40, "&:hover": { color: "var(--omega-accent)" } }}
                             >
                               <ContentCopyIcon sx={{ fontSize: 15 }} />
                             </IconButton>
@@ -333,6 +357,7 @@ export function SessionList(): React.ReactElement {
                         <Tooltip title="重命名当前会话">
                           <IconButton
                             size="small"
+                            aria-label="重命名当前会话"
                             onClick={(e) => openRename(session.id, e)}
                             sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}
                           >
@@ -344,6 +369,7 @@ export function SessionList(): React.ReactElement {
                     <Tooltip title="删除会话">
                       <IconButton
                         size="small"
+                        aria-label={`删除会话 ${session.title}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleting({ id: session.id, title: session.title });
