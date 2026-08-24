@@ -2,8 +2,8 @@
 
 > 更新日期：2026-08-24
 > 当前分支：`feat/omega-runtime-foundation`
-> 最近提交：Phase 5 workbench hierarchy and Iris interaction surfaces
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
+> 最近提交：Phase 6 Electron integration and packaged smoke gates
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate、packaged launch smoke。审查修复见 `docs/code-review-2026-08-24.md`；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -89,8 +89,8 @@
 - renderer crash/unresponsive 处理、原生通知、open/save/reveal 基础能力。
 - Updater core：semver、HTTPS-only manifest、受控文件名、SHA-256/size 校验、临时文件、原子 rename、单飞下载和失败清理。
 - Windows electron-builder 目标为 unpacked `dir`，不使用 NSIS。
-- `scripts/release-gate.mjs` 和 `scripts/electron-smoke.mjs` 已提供离线发布检查；当前 smoke 仍主要验证 unpacked executable 存在，尚未自动启动并完成 Worker/IPC 握手。
-- 本地打包已验证：完整 `electron-builder --dir` 需 `NODE_OPTIONS=--use-system-ca`（证书）且 winCodeSign 下载在当前网络会超时；可用的离线路径是复用既有 `release/win-unpacked` 外壳，用本地 `@electron/asar` 重打最新 `app.asar`（含刷新后的 coding-agent dist），并同步 `resources/omega-runtime/packages/coding-agent/dist`。已验证启动日志 `[main] agent worker ready` 且进程稳定；该验证尚未成为 CI 自动门禁。
+- `scripts/release-gate.mjs` 检查版本、dir target 和 manifest；`scripts/electron-smoke.mjs` 现在会启动真实 unpacked executable，使用隔离 `--user-data-dir`，要求 `[main] agent worker ready`、DOM probe、autotest prompt/record、资源存在和退出码 0，并在超时/失败时收集 stdout/stderr。
+- 当前本地 packaged smoke 已通过：Worker 握手、DOM probe、autotest record 和干净退出码均验证；真实 provider、签名和网络下载仍不属于普通门禁。本轮 `package:dir` 在 electron-builder 下载构建依赖时因网络请求 600 秒超时，未生成新的 unpacked 产物；随后复跑既有产物 smoke 仍通过。
 
 ## 3. 当前验证门禁
 
@@ -99,9 +99,9 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 137/137 通过
+Desktop/security tests: 138/138 通过
 Release gate: 通过（离线配置门禁）
-Packaged launch smoke: 手工验证过，尚未纳入自动 CI 门禁
+Packaged launch smoke: 真实启动、Worker 握手、DOM probe、autotest record 和退出码均通过
 git diff --check: 通过
 ```
 
