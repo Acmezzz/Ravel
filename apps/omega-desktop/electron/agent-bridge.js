@@ -119,6 +119,10 @@ function safeJson(value) {
   }
 }
 
+function isToolCallPart(part) {
+  return Boolean(part && typeof part === "object" && (part.type === "toolCall" || part.type === "tool_call"));
+}
+
 function textFromContent(content) {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
@@ -126,7 +130,7 @@ function textFromContent(content) {
     .map((item) => {
       if (typeof item === "string") return item;
       if (!item || typeof item !== "object") return "";
-      if (item.type === "toolCall" || item.type === "tool_call" || item.type === "thinking" || item.type === "thinking_delta") return "";
+      if (isToolCallPart(item) || item.type === "thinking" || item.type === "thinking_delta") return "";
       if (typeof item.text === "string") return item.text;
       return "";
     })
@@ -236,7 +240,7 @@ export function toRendererEvent(event) {
       ];
     }
     if (update.type === "text_delta") {
-      return [{ type, assistantMessageEvent: { type: update.type, delta: textValue(update.delta) ?? "" } }];
+      return [{ type, assistantMessageEvent: { type: update.type, delta: cap(textValue(update.delta) ?? "") } }];
     }
     if (update.type === "toolcall_start" || update.type === "toolcall_end" || update.type === "tool_call") {
       return [{ type, assistantMessageEvent: { type: update.type, toolName: textValue(update.toolName) ?? textValue(update.tool) } }];
@@ -376,7 +380,7 @@ export function sanitizeTranscript(messagesOrSession) {
       if (Array.isArray(message.content)) {
         for (const part of message.content) {
           if (!part || typeof part !== "object") continue;
-          if (part.type !== "toolCall" && part.type !== "tool_call") continue;
+          if (!isToolCallPart(part)) continue;
           const toolName = textValue(part.name) ?? textValue(part.toolName) ?? "tool";
           const toolCallId = textValue(part.id) ?? textValue(part.toolCallId) ?? `tool-${toolCards.length}`;
           const args = part.arguments ?? part.args ?? part.input;
@@ -419,7 +423,7 @@ export function getToolDetail(runtime, toolCallId) {
     const message = entry?.message;
     if (!message || typeof message !== "object") continue;
     if (message.role === "assistant" && Array.isArray(message.content)) {
-      const part = message.content.find((item) => item?.type === "toolCall" && textValue(item.id) === toolCallId);
+      const part = message.content.find((item) => isToolCallPart(item) && textValue(item.id ?? item.toolCallId) === toolCallId);
       if (part) call = { argsJson: safeJson(part.arguments ?? part.args ?? part.input), toolName: textValue(part.name) ?? "tool" };
     }
     if (message.role === "toolResult" && textValue(message.toolCallId) === toolCallId) result = { resultText: cap(textFromContent(message.content)), isError: message.isError === true };

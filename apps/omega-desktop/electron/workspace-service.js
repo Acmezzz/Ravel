@@ -12,6 +12,7 @@ const IGNORED_DIRS = new Set([
 ]);
 const MAX_READ_BYTES = 512 * 1024;
 const MAX_MEDIA_BYTES = 8 * 1024 * 1024;
+const MAX_PAGE_BYTES = 8 * 1024 * 1024;
 const MAX_INDEX_FILES = 4000;
 
 function mimeFor(path) {
@@ -87,6 +88,11 @@ export function readFilePage(root, relPath, offset = 0, limit = 200) {
   const linkInfo = lstatSync(abs);
   if (!linkInfo.isFile()) throw new Error("Path is not a regular file");
   const info = statSync(abs);
+  if (info.size > MAX_PAGE_BYTES) {
+    const error = new Error("File is too large to paginate");
+    error.code = "file_too_large";
+    throw error;
+  }
   const safeOffset = Math.max(0, Math.min(Number.isInteger(offset) ? offset : 0, 10_000_000));
   const safeLimit = Math.max(1, Math.min(Number.isInteger(limit) ? limit : 200, 2_000));
   const content = readFileSync(abs, "utf8");

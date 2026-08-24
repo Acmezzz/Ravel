@@ -6,7 +6,7 @@
  * `git clean -f <file>`). The renderer NEVER writes to disk or runs git; it only
  * receives the structured DTO and an approval result. See system_design.md §3.4.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, isAbsolute, relative, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -14,6 +14,8 @@ import { isInside } from "./path-security.js";
 
 const snapshotTokens = new Map();
 const SNAPSHOT_TTL_MS = 5 * 60_000;
+const MAX_UNTRACKED_FILE_BYTES = 512 * 1024;
+const MAX_UNTRACKED_PREVIEW_BYTES = 4 * 1024 * 1024;
 
 function safeRepoPath(root, value) {
   if (typeof value !== "string" || !value.trim() || isAbsolute(value) || value.includes("\\") || value.split("/").some((part) => part === "..")) return null;
@@ -333,9 +335,20 @@ function diffFileFromPatch(cwd, filePath, code, args) {
   return { path: filePath, status, additions, deletions, hunks };
 }
 
-function untrackedHunks(cwd, filePath) {
+function untrackedHunks(cwd, filePath, maxBytes = MAX_UNTRACKED_FILE_BYTES) {
   const abs = join(cwd, filePath);
   if (!existsSync(abs)) return [];
+  let size;
+  try {
+    const info = statSync(abs);
+    if (!info.isFile()) return [];
+    size = info.size;
+  } catch {
+    return [];
+  }
+  // Bound both the per-file read and the caller's remaining aggregate budget
+  // before constructing the whole preview in memory.
+  if (size > Math.min(MAX_UNTRACKED_FILE_BYTES, maxBytes)) return [];
   const content = readFileSync(abs, "utf8");
   const fileLines = content.split("\n");
   if (fileLines.at(-1) === "") fileLines.pop();
@@ -382,6 +395,7 @@ export function computeSnapshot(cwd) {
   const unstaged = [];
   /** @type {DiffFile[]} */
   const staged = [];
+  let untrackedPreviewBytes = 0;
   for (const raw of statusText.split("\n")) {
     if (!raw.trim()) continue;
     const code = raw.slice(0, 2);
@@ -396,7 +410,12 @@ export function computeSnapshot(cwd) {
       unstaged.push(
         workCode === "?"
           ? (() => {
-              const hunks = untrackedHunks(cwd, filePath);
+              const abs = join(cwd, filePath);
+              let size = 0;
+              try { size = statSync(abs).size; } catch { /* file may disappear during refresh */ }
+              const remaining = Math.max(0, MAX_UNTRACKED_PREVIEW_BYTES - untrackedPreviewBytes);
+              const hunks = untrackedHunks(cwd, filePath, remaining);
+              if (hunks.length > 0) untrackedPreviewBytes += size;
               const { additions, deletions } = countHunkChanges(hunks);
               return { path: filePath, status: "added", additions, deletions, hunks };
             })()

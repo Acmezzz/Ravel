@@ -54,6 +54,14 @@ test("agent:event text_delta is preserved and additive only", () => {
   assert.equal(delta.assistantMessageEvent.delta, "world");
 });
 
+test("agent:event text_delta payload is capped like other text projections", () => {
+  const delta = toRendererEvent({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_delta", delta: "x".repeat(70_000) },
+  })[0];
+  assert.equal(delta.assistantMessageEvent.delta.length, 64_001);
+});
+
 test("renderer event projection bounds transcript and queue payloads", () => {
   const longText = "x".repeat(70_000);
   const message = toRendererEvent({
@@ -207,6 +215,21 @@ test("tool_execution_end emits the summary before the raw event", () => {
   });
   assert.equal(events[0].type, "tool_execution_summary");
   assert.equal(events[1].type, "tool_execution_end");
+});
+
+test("sanitizeTranscript recognizes snake_case tool calls and pairs their results", () => {
+  const fakeSession = {
+    sessionManager: {
+      getBranch: () => [
+        { type: "message", id: "entry-a", timestamp: "2026-01-01T00:00:00.000Z", message: { id: "a1", role: "assistant", content: [{ type: "text", text: "answer" }, { type: "tool_call", id: "c1", name: "read", input: { path: "/tmp/file.txt" } }] } },
+        { type: "message", id: "entry-r", timestamp: "2026-01-01T00:00:01.000Z", message: { role: "toolResult", toolCallId: "c1", content: [{ type: "text", text: "file body" }] } },
+      ],
+    },
+  };
+  const { toolCards } = sanitizeTranscript(fakeSession);
+  assert.equal(toolCards[0].toolCallId, "c1");
+  assert.equal(toolCards[0].resultText, "file body");
+  assert.match(toolCards[0].argsJson, /file\.txt/);
 });
 
 test("sanitizeTranscript keeps thinking, entry ids, and tool payloads", () => {

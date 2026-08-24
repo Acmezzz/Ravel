@@ -248,6 +248,11 @@ export function createWorkerSlotPool({
       if (foregroundSessionId === pendingId) {
         foregroundSessionId = previousId && slots.has(previousId) ? previousId : null;
       }
+      try {
+        await host.kill?.();
+      } catch {
+        /* best effort: preserve the startup failure */
+      }
       throw error;
     }
   }

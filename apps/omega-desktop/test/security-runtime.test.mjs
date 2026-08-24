@@ -22,11 +22,12 @@ test("path security rejects traversal and symlink escapes in a real workspace", 
   writeFileSync(join(outside, "secret.txt"), "secret");
   try {
     symlinkSync(outside, join(root, "linked"), "junction");
-    assert.throws(() => resolveExisting(root, "linked/secret.txt"), (error) => error instanceof PathSecurityError && error.code === "path_escape");
-    assert.deepEqual(listDir(root, ".").entries.map((entry) => entry.name), ["src"]);
   } catch (error) {
-    if (error?.code !== "EPERM" && error?.code !== "EACCES") throw error;
+    assert.ok(error?.code === "EPERM" || error?.code === "EACCES", `unexpected symlink setup failure: ${error?.code ?? error}`);
+    return;
   }
+  assert.throws(() => resolveExisting(root, "linked/secret.txt"), (error) => error instanceof PathSecurityError && error.code === "path_escape");
+  assert.deepEqual(listDir(root, ".").entries.map((entry) => entry.name), ["src"]);
 });
 
 test("workspace registry canonicalizes roots and rejects unauthorized directories", () => {
@@ -118,6 +119,28 @@ test("disk-first session reader paginates summaries and indexes parent/child ses
   assert.deepEqual(missing, { items: [], total: 0, nextOffset: null, treeIndex: {} });
 });
 
+test("git snapshot bounds untracked previews", () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-git-untracked-limit-"));
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  writeFileSync(join(root, "oversized.txt"), Buffer.alloc(512 * 1024 + 1, 97));
+  const snapshot = computeSnapshot(root);
+  assert.equal(snapshot.unstaged.length, 1);
+  assert.deepEqual(snapshot.unstaged[0].hunks, []);
+});
+
+test("git snapshot enforces an aggregate untracked preview budget", () => {
+  const root = mkdtempSync(join(tmpdir(), "omega-git-untracked-budget-"));
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  const content = Buffer.alloc(512 * 1024, 97);
+  for (let index = 1; index <= 9; index += 1) {
+    writeFileSync(join(root, `${String(index).padStart(2, "0")}.txt`), content);
+  }
+  const snapshot = computeSnapshot(root);
+  assert.equal(snapshot.unstaged.length, 9);
+  assert.equal(snapshot.unstaged.slice(0, 8).every((file) => file.hunks.length > 0), true);
+  assert.deepEqual(snapshot.unstaged[8].hunks, []);
+});
+
 test("git snapshot token rejects changes made after the snapshot", () => {
   const root = mkdtempSync(join(tmpdir(), "omega-git-stale-"));
   execFileSync("git", ["init", "-q"], { cwd: root });
@@ -186,4 +209,18 @@ test("busy close plans abort then flush/dispose/kill", async () => {
   }, { abortFirst: true });
   assert.deepEqual(steps, ["abort", "flush", "dispose", "kill"]);
   assert.deepEqual(seen, ["abort", "flush", "dispose", "kill"]);
+});
+
+test("worker teardown continues after an earlier step fails", async () => {
+  const { runWorkerTeardown } = await import("../electron/close-lifecycle.js");
+  const seen = [];
+  await assert.rejects(
+    () => runWorkerTeardown({
+      flush: async () => { seen.push("flush"); throw new Error("flush failed"); },
+      dispose: async () => { seen.push("dispose"); },
+      kill: async () => { seen.push("kill"); },
+    }),
+    /flush failed/,
+  );
+  assert.deepEqual(seen, ["flush", "dispose", "kill"]);
 });

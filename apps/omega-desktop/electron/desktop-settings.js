@@ -3,7 +3,7 @@
  * preferences; Pi SettingsManager remains the authority for agent behavior
  * (steering, compaction, models). Credentials never live here.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { DEFAULT_KEYBINDINGS, sanitizeKeybindings } from "./keybindings.js";
 
@@ -24,6 +24,44 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
 
 const THEME_MODES = new Set(["system", "light", "dark"]);
 const PERMISSION_PROFILES = new Set(["trusted", "workspace-only", "read-only", "ask-before-command"]);
+
+// Settings updates are synchronous today, so JavaScript calls cannot overlap
+// normally. Keep a process-local queue for re-entrant/concurrent persistence
+// (for example, an update triggered by a filesystem test hook) and isolate
+// temporary names so queued writes never contend for the same file.
+const persistQueues = new Map();
+let temporaryFileSequence = 0;
+
+function getPersistQueue(filePath) {
+  let queue = persistQueues.get(filePath);
+  if (!queue) {
+    queue = { active: false, pending: [] };
+    persistQueues.set(filePath, queue);
+  }
+  return queue;
+}
+
+function releasePersistQueue(filePath, queue) {
+  if (!queue.active && queue.pending.length === 0) persistQueues.delete(filePath);
+}
+
+function enqueuePersist(filePath, write) {
+  const queue = getPersistQueue(filePath);
+  queue.pending.push(write);
+  if (queue.active) return;
+  queue.active = true;
+  try {
+    while (queue.pending.length > 0) queue.pending.shift()();
+  } finally {
+    queue.active = false;
+    releasePersistQueue(filePath, queue);
+  }
+}
+
+function nextTemporaryPath(filePath) {
+  temporaryFileSequence = (temporaryFileSequence + 1) % Number.MAX_SAFE_INTEGER;
+  return `${filePath}.tmp-${process.pid}-${temporaryFileSequence}`;
+}
 
 function clampInt(value, min, max, fallback) {
   const next = Number(value);
@@ -75,10 +113,23 @@ export function createDesktopSettingsStore(filePath) {
   }
 
   function persist() {
-    mkdirSync(dirname(filePath), { recursive: true });
-    const temp = `${filePath}.tmp-${process.pid}`;
-    writeFileSync(temp, `${JSON.stringify(current, null, "\t")}\n`);
-    renameSync(temp, filePath);
+    const serialized = `${JSON.stringify(current, null, "\t")}\n`;
+    enqueuePersist(filePath, () => {
+      mkdirSync(dirname(filePath), { recursive: true });
+      const temp = nextTemporaryPath(filePath);
+      try {
+        writeFileSync(temp, serialized);
+        renameSync(temp, filePath);
+      } catch (error) {
+        try {
+          // Best-effort cleanup; preserve the original persistence error.
+          if (existsSync(temp)) unlinkSync(temp);
+        } catch {
+          // Ignore cleanup failures.
+        }
+        throw error;
+      }
+    });
   }
 
   function get() {

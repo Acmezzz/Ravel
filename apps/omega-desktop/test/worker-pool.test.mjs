@@ -66,24 +66,50 @@ test("worker slot pool evicts idle slots and refuses when all slots are busy", a
   );
 });
 
+test("worker slot pool kills a host when startup fails", async () => {
+  const host = fakeHost("pending");
+  host.start = async () => {
+    host.startCalls += 1;
+    throw new Error("startup failed");
+  };
+  await assert.rejects(
+    () => createWorkerSlotPool({ idleTtlMs: 0 }).acquire({ cwd: "/broken", createHost: () => host }),
+    /startup failed/,
+  );
+  assert.equal(host.killed, 1);
+});
+
 test("worker slot pool disposes idle slots after TTL", async () => {
   const timers = [];
+  const hosts = new Map();
   const pool = createWorkerSlotPool({
     cap: 2,
     idleTtlMs: 10,
     now: () => 1,
     timers: {
-      setTimeout: (fn) => {
-        timers.push(fn);
-        return timers.length;
+      setTimeout: (fn, delay) => {
+        const timer = { fn, delay, cleared: false };
+        timers.push(timer);
+        return timer;
       },
-      clearTimeout: () => {},
+      clearTimeout: (timer) => { if (timer) timer.cleared = true; },
     },
   });
-  await pool.acquire({ sessionId: "a", cwd: "/a", createHost: () => fakeHost("a") });
-  await pool.acquire({ sessionId: "b", cwd: "/b", createHost: () => fakeHost("b") });
+  await pool.acquire({ sessionId: "a", cwd: "/a", createHost: () => {
+    const host = fakeHost("a");
+    hosts.set("a", host);
+    return host;
+  } });
+  await pool.acquire({ sessionId: "b", cwd: "/b", createHost: () => {
+    const host = fakeHost("b");
+    hosts.set("b", host);
+    return host;
+  } });
   assert.ok(pool.get("a"));
-  await timers[0]();
+  const idleTimer = timers.find((timer) => timer.delay === 10);
+  assert.ok(idleTimer, "an idle TTL timer should be scheduled");
+  await idleTimer.fn();
   assert.equal(pool.get("a"), null);
+  assert.equal(hosts.get("a").killed, 1);
   assert.equal(pool.foreground().sessionId, "b");
 });

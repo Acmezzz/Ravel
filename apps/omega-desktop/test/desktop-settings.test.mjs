@@ -43,6 +43,23 @@ test("desktop settings persist atomically and round-trip", () => {
   assert.equal(raw.themeMode, "dark");
 });
 
+test("desktop settings serialize concurrent updates without losing atomic persistence", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "omega-desktop-settings-concurrent-"));
+  const file = join(dir, "desktop-settings.json");
+  const store = createDesktopSettingsStore(file);
+
+  await Promise.all(Array.from({ length: 20 }, (_, index) => Promise.resolve().then(() => store.update({
+    lastSessionId: `session-${index}`,
+    workerCap: (index % 8) + 1,
+  }))));
+
+  const persisted = JSON.parse(readFileSync(file, "utf8"));
+  assert.equal(typeof persisted.lastSessionId, "string");
+  assert.match(persisted.lastSessionId, /^session-\d+$/);
+  assert.ok(persisted.workerCap >= 1 && persisted.workerCap <= 8);
+  assert.deepEqual(createDesktopSettingsStore(file).get(), store.get());
+});
+
 test("credential store encrypts secrets and refuses when encryption is unavailable", () => {
   const dir = mkdtempSync(join(tmpdir(), "omega-creds-"));
   const file = join(dir, "credentials.bin.json");

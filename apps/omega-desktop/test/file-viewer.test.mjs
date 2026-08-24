@@ -32,6 +32,12 @@ test("workspace reader paginates large text by line", async () => {
   assert.match(second.content, /^line-100/);
 });
 
+test("workspace reader rejects oversized paginated files before reading all content", async () => {
+  const root = await mkdtemp(join(tmpdir(), "omega-viewer-"));
+  await writeFile(join(root, "oversized.txt"), Buffer.alloc(8 * 1024 * 1024 + 1, 97));
+  assert.throws(() => readFilePage(root, "oversized.txt"), (error) => error?.code === "file_too_large");
+});
+
 test("FileViewer exposes tabs, media, and pagination surfaces", async () => {
   const source = await (await import("node:fs/promises")).readFile(new URL("../src/renderer/components/files/FileViewer.tsx", import.meta.url), "utf8");
   assert.match(source, /tabs/);

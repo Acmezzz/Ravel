@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createWriteStream, mkdirSync, readFileSync, renameSync, unlinkSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, resolve } from "node:path";
 import https from "node:https";
 
 const activeDownloads = new Map();
@@ -111,48 +111,81 @@ export function verifySha256(filePath, expected) {
 
 export function downloadUpdate(asset, destinationDir, { onProgress } = {}) {
   const validated = validateManifest({ version: "0.0.0", notes: "", assets: [asset] }).assets[0];
-  const existing = activeDownloads.get(validated.sha256);
+  const normalizedDestination = resolve(destinationDir);
+  const downloadKey = `${normalizedDestination}\u0000${validated.sha256}`;
+  const existing = activeDownloads.get(downloadKey);
   if (existing) return existing;
-  const promise = new Promise((resolve, reject) => {
-    mkdirSync(destinationDir, { recursive: true });
-    const finalPath = join(destinationDir, validated.filename);
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    mkdirSync(normalizedDestination, { recursive: true });
+    const finalPath = join(normalizedDestination, validated.filename);
     const tempPath = `${finalPath}.download-${process.pid}`;
     let received = 0;
+    let settled = false;
+    let request;
+    let response;
     const hash = createHash("sha256");
     const output = createWriteStream(tempPath, { flags: "w" });
-    const request = https.get(validated.url, (response) => {
+
+    const removeTempFile = () => {
+      try { unlinkSync(tempPath); } catch { /* best effort */ }
+    };
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      request?.destroy();
+      response?.destroy();
+      output.once("close", removeTempFile);
+      output.destroy();
+      removeTempFile();
+      rejectPromise(error);
+    };
+    const succeed = (result) => {
+      if (settled) return;
+      settled = true;
+      resolvePromise(result);
+    };
+
+    output.on("error", fail);
+    request = https.get(validated.url, (incomingResponse) => {
+      response = incomingResponse;
+      response.on("error", fail);
       if (response.statusCode !== 200) {
         response.resume();
-        output.destroy();
-        try { unlinkSync(tempPath); } catch { /* best effort */ }
-        reject(Object.assign(new Error(`Update download failed: ${response.statusCode}`), { code: "update_http_error" }));
+        fail(Object.assign(new Error(`Update download failed: ${response.statusCode}`), { code: "update_http_error" }));
         return;
       }
       response.on("data", (chunk) => {
+        if (settled) return;
         received += chunk.length;
-        if (received > MAX_DOWNLOAD_BYTES || received > validated.size + 1024) request.destroy(new Error("Update asset exceeds declared size"));
-        else { hash.update(chunk); output.write(chunk); onProgress?.({ received, total: validated.size }); }
+        if (received > MAX_DOWNLOAD_BYTES || received > validated.size + 1024) {
+          fail(new Error("Update asset exceeds declared size"));
+          return;
+        }
+        hash.update(chunk);
+        if (!output.write(chunk)) output.once("drain", () => {});
+        onProgress?.({ received, total: validated.size });
       });
       response.on("end", () => {
-        output.end(() => {
+        if (settled) return;
+        output.end((error) => {
+          if (error) { fail(error); return; }
+          if (settled) return;
           const digest = hash.digest("hex");
           if (received !== validated.size || digest !== validated.sha256) {
-            try { unlinkSync(tempPath); } catch { /* best effort */ }
-            reject(Object.assign(new Error("Update checksum or size mismatch"), { code: "update_integrity_failed" }));
+            fail(Object.assign(new Error("Update checksum or size mismatch"), { code: "update_integrity_failed" }));
             return;
           }
-          renameSync(tempPath, finalPath);
-          resolve({ path: finalPath, sha256: digest, size: received });
+          try {
+            renameSync(tempPath, finalPath);
+            succeed({ path: finalPath, sha256: digest, size: received });
+          } catch (error) {
+            fail(error);
+          }
         });
       });
-      response.on("error", reject);
     });
-    request.on("error", (error) => {
-      output.destroy();
-      try { unlinkSync(tempPath); } catch { /* best effort */ }
-      reject(error);
-    });
-  }).finally(() => activeDownloads.delete(validated.sha256));
-  activeDownloads.set(validated.sha256, promise);
+    request.on("error", fail);
+  }).finally(() => activeDownloads.delete(downloadKey));
+  activeDownloads.set(downloadKey, promise);
   return promise;
 }

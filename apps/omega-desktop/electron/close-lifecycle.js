@@ -22,21 +22,21 @@ export function plannedCloseSteps(decision, { busy = false } = {}) {
 
 export async function runWorkerTeardown(ops, { abortFirst = false } = {}) {
   const steps = [];
-  if (abortFirst && typeof ops.abort === "function") {
-    await ops.abort();
-    steps.push("abort");
-  }
-  if (typeof ops.flush === "function") {
-    await ops.flush();
-    steps.push("flush");
-  }
-  if (typeof ops.dispose === "function") {
-    await ops.dispose();
-    steps.push("dispose");
-  }
-  if (typeof ops.kill === "function") {
-    await ops.kill();
-    steps.push("kill");
-  }
+  let firstError = null;
+  const run = async (name) => {
+    if (typeof ops[name] !== "function") return;
+    try {
+      await ops[name]();
+    } catch (error) {
+      firstError ??= error;
+    } finally {
+      steps.push(name);
+    }
+  };
+  if (abortFirst) await run("abort");
+  await run("flush");
+  await run("dispose");
+  await run("kill");
+  if (firstError) throw firstError;
   return steps;
 }

@@ -89,14 +89,19 @@ export class WorkerHost {
     }
   }
 
+  _rejectInit(error) {
+    clearTimeout(this._initTimer);
+    this._initTimer = null;
+    const reject = this._initReject;
+    this._initResolve = null;
+    this._initReject = null;
+    reject?.(error);
+  }
+
   _handleDeath(generation, error) {
     if (generation !== this.generation || this.state === "dead" || this.state === "stopping") return;
     this.state = "dead";
-    clearTimeout(this._initTimer);
-    this._initTimer = null;
-    this._initReject?.(error);
-    this._initResolve = null;
-    this._initReject = null;
+    this._rejectInit(error);
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
       pending.reject(Object.assign(new Error("worker unavailable"), { code: "worker_unavailable" }));
@@ -138,7 +143,7 @@ export class WorkerHost {
       return;
     }
     if (message.type === "init-error") {
-      this._initReject?.(new Error(message.error));
+      this._rejectInit(new Error(message.error));
       return;
     }
     if (message.type === "app-event") {
@@ -209,6 +214,7 @@ export class WorkerHost {
     const child = this.child;
     const canDispose = Boolean(child && this.state === "ready");
     this.state = "stopping";
+    this._rejectInit(Object.assign(new Error("worker disposed"), { code: "worker_disposed" }));
     this.onTransport?.("stopping");
     if (canDispose) {
       try {
