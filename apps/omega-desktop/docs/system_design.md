@@ -2,8 +2,9 @@
 
 > 架构师：**高见远**（software-architect）
 > 输入：PRD（产品经理 许清楚）、用户 4 项决策、现有 `apps/omega-desktop` 代码与 `.pi/extensions` 状态文件 schema
-> 目标：产出可直接交给工程师的实现输入（方案 + 文件清单 + 受控 DTO/IPC + 任务分解）
-> 红线：**渲染进程只收只读净化 DTO，绝不触碰 thinking / 原始工具参数与结果 / backup fragment**
+> 目标：记录当前实现基线、受控 DTO/IPC 边界与后续演进约束
+> 安全红线：**渲染进程不拥有文件系统、Git、凭据或 Pi SDK 权限；默认事件使用有界 DTO，完整工具详情必须经受控 IPC 按需读取。**
+> 维护说明：本文早期 V1 任务分解中的自定义 JSON persistence、旧 vanilla renderer 与部分扩展 IPC 已完成迁移或删除；当前优化路线见 [`frontend-backend-optimization-2026-08-24.md`](./frontend-backend-optimization-2026-08-24.md)。
 
 ---
 
@@ -18,7 +19,7 @@
 | 状态管理 | **Zustand**（轻量、避免高频 delta 重渲染风暴），单 store |
 | 扩展 Web 化数据源 | 只读读取 `.pi/extensions` 的 **append-only 状态文件**（catalog/registry/tracker/coverage/rounds.jl + 派生 health/stats），由新增主进程模块 `state-reader.js` 派生为受控 DTO |
 | diff + 审批 | **(a) post-hoc 只读 git diff** 为 V1 主方案：预览=`git diff` 结构化 DTO；审批 reject=主进程 `git checkout -- <file>`（仅 git 管理文件），accept=保留。主进程特权执行，渲染进程无写权限 |
-| 会话持久化 | **V1 本地 JSON 文件存储**（零原生依赖，置于 `userData/omega/sessions/`），多会话多项目；与 agent 会话生命周期绑定采用「单活动会话 + 切换」简化模型。**V2 权威源改为 CLI JSONL**（`SessionManager` / `~/.pi/agent/sessions`），JSON 仅作缓存 |
+| 会话持久化 | 当前以 Pi JSONL / `SessionManager` 作为 session、消息、tree 和分支的权威源；Omega 仅维护桌面设置、草稿、workspace registry、event cache 和必要 UI 缓存 |
 
 ---
 
@@ -137,7 +138,7 @@ store 切片：`connection`、`sessions`、`activeSessionId`、`messages`（Map/
 |---|---|
 | `apps/omega-desktop/electron/state-reader.js` | 只读读取扩展 append-only 状态文件 → 受控 DTO（workflow*/scout*）；安全过滤 |
 | `apps/omega-desktop/electron/diff-service.js` | 主进程 git diff → `WorkspaceDiff`；revert → `ChangeApprovalResult`（特权） |
-| `apps/omega-desktop/electron/persistence.js` | 本地会话 JSON 持久化（list/create/load/save/delete） |
+| `apps/omega-desktop/electron/session-reader.js` | 受控读取 Pi JSONL session 摘要、树和分页消息；不构成第二份 transcript authority |
 
 **数据层（T02，渲染侧）**
 
@@ -453,25 +454,14 @@ export interface ToolExecutionSummaryEvent {
 4. **安全边界**：diff 数据是只读 DTO；实际的 `git checkout`/`clean` 只在主进程执行，渲染进程无写权限。reject 还原**仅作用于受 git 管理的文件**，未纳入 git 的文件需谨慎（UI 标注风险）。
 5. accept 在 V1 为 no-op（保留改动）；后续若要做"暂存/提交"可再加 `omega:commitChanges`（不在 V1）。
 
-### 3.5 会话持久化方案
+#### 3.5 会话持久化方案（当前实现）
 
-- **存储**：V1 用**本地 JSON 文件**（零原生依赖）。根目录 `app.getPath('userData')/omega/sessions/`：
-  - `manifest.json`：`SessionSummary[]`（id/title/projectKey/workspace/createdAt/updatedAt/status）。
-  - `<sessionId>.json`：`SessionRecord`（见下）。
-- **元数据字段**：
-  ```ts
-  export interface SessionSummary {
-    id: string; title: string; projectKey?: string;
-    workspace: string; createdAt: string; updatedAt: string; status: "active" | "archived";
-  }
-  export interface SessionMessage { role: "user" | "assistant" | "tool"; id: string; text: string; ts: string; }
-  export interface SessionRecord extends SessionSummary {
-    messages: SessionMessage[];     // 由 agent:event 流导出的纯文本 transcript（不含 thinking）
-    toolCards?: Array<{ toolCallId: string; toolName: string; status: string }>;
-  }
-  ```
-- **与 agent 会话生命周期绑定（简化模型）**：主进程维持「单活动 agent 会话 + 会话注册表」。`omega:newSession` 在选定工作区后**销毁当前 agent 会话并创建新会话**（或惰性创建）；`omega:loadSession` 恢复该会话的 transcript **视图**（若工作区仍匹配则重绑事件流）。V1 **不做 agent 上下文续跑**（不把历史 replay 回 agent），只恢复对话显示。完整的"续跑 agent 上下文"留作后续。
-- **落盘时机**：`omega:saveSession`（用户手动/切换时触发）+ `before-quit` 自动保存当前 transcript。
+- **权威存储**：Pi JSONL / `SessionManager` 负责 session、消息、tree、时间戳、分支和压缩 lineage。
+- **桌面侧缓存**：`userData/omega/` 仅保存桌面设置、窗口状态、草稿、workspace registry、event cache 和必要 UI 缓存；不再维护独立的 `persistence.js` 会话 JSON authority。
+- **读取边界**：`electron/session-reader.js` 以授权 workspace 和受控 session path 读取 JSONL，并提供摘要、树和分页消息；Renderer 不直接访问 JSONL。
+- **实时边界**：Worker runtime 负责当前 Agent turn 和事件流；Renderer 的 optimistic/transient state 必须在 worker ready、replay 或 idle transcript reconcile 时与 JSONL 权威源对账。
+- **生命周期**：new/load/switch/fork 等操作由 Main/Worker runtime 和 SessionManager 协同完成；切换或 replacement 必须绑定 generation/runtime epoch，旧事件和旧 prompt 不得写入新 runtime。
+- **后续演进**：bounded replay、session detail pagination、runtime recovery 和 renderer projection 见 [`frontend-backend-optimization-2026-08-24.md`](./frontend-backend-optimization-2026-08-24.md)。
 
 ---
 
@@ -488,7 +478,7 @@ export interface ToolExecutionSummaryEvent {
 ### T02 · 数据层（受控 DTO + IPC 客户端 + 状态 + 主进程服务）
 - 依赖：`T01`
 - 文件（渲染侧）：`types/dto.ts`、`types/events.ts`、`ipc/client.ts`、`store/useAppStore.ts`、`theme/tokens.ts`、`theme/emotion-cache.ts`、`theme/ThemeProvider.tsx`
-- 文件（主进程）：`electron/state-reader.js`、`electron/diff-service.js`、`electron/persistence.js`
+- 文件（主进程）：`electron/state-reader.js`、`electron/diff-service.js`、`electron/session-reader.js`
 - 子步骤：① 写全部 DTO 类型与 `IpcResult` 信封；② 主进程 `state-reader.js` 读扩展 append-only 文件派生 workflow*/scout* DTO（丢弃 rawOutput）；③ 主进程 `diff-service.js`（git diff → WorkspaceDiff；revert）；④ 主进程 `persistence.js`（会话 JSON）；⑤ 在 `main.js` 实现 `omega:*` 的 `ipcMain.handle`（复用 `senderAllowed` 校验）；⑥ 在 `preload.js` 实现对应桥方法；⑦ 渲染 `ipc/client.ts` 封装；⑧ Zustand store；⑨ 主题 token + emotion nonce + MUI ThemeProvider；⑩ 扩展 `toRendererEvent` 产出 `tool_execution_summary`（仅 basename）。
 - 优先级：P0
 
@@ -531,8 +521,8 @@ graph TD
 - **DTO 命名**：`PascalCase`，按来源前缀（`Workflow*` / `Scout*` / `Agent*` / `Workspace*` / `Change*`）；事件类型 `snake_case`（`tool_execution_summary`）。
 - **错误码**：复用既有 `forbidden` / `invalid_prompt` / `prompt_too_large` / `bootstrap_failed` / `prompt_failed`；新增 `not_found` / `invalid_args` / `not_git_repo` / `git_unavailable` / `read_failed` / `write_failed` / `session_limit`。所有 invoke 返回统一 `IpcResult<T>` 信封。
 - **IPC 通道命名**：`agent:*` / `app:*` 既有保留；新增一律 `omega:*` + 动词开头小驼峰（`queryExtensionState`/`listSessions`/`newSession`/`loadSession`/`saveSession`/`deleteSession`/`diffWorkspace`/`approveChange`）。
-- **事件 vs 查询边界**：见 §3.3 硬规则；渲染进程**无任何写能力**，一切变更经主进程特权执行。
-- **安全边界（最高优先）**：渲染进程只收 §3.1 所列 DTO；`ScoutRounds` 显式丢弃 `rawOutput`；`tool_execution_summary.target` 仅 basename；不得出现 thinking / 原始工具参数与结果 / backup fragment / restricted 字段。
+- **事件 vs 查询边界**：事件是 Agent 驱动的 push；`omega:*` 是 Renderer 主动发起的只读或受控变更请求；渲染进程**无任何文件系统写能力**，一切特权变更经 Main 执行。
+- **安全边界（最高优先）**：默认事件使用有界、受控 DTO；`ScoutRounds` 丢弃不需要的 raw output；工具 target 默认使用 basename 或安全摘要；thinking、原始工具参数与结果、backup fragment、凭据和未净化异常不得默认跨越 Renderer 边界。需要完整工具详情时必须经 session/tool/snapshot 绑定的受控 IPC 按需读取。
 - **设计 token 对齐（Tailwind ↔ MUI ↔ 现有深色主题）**：以 `theme/tokens.ts` 为**单一来源**，导出调色板与间距/圆角：
   - 颜色（Hex 取自现有 `styles.css` CSS 变量）：`bgApp #0d1016`、`bgPanel #151923`、`bgElevated #1d2330`、`bgSoft #171d29`、`border #2b3444`、`borderStrong #3a465b`、`text #f3f6fb`、`muted #8d99ad`、`accent #86a9ff`、`accentStrong #5d86f2`、`success #6bd59a`、`warning #e8bd68`、`danger #f17f8d`。
   - MUI `createTheme({ palette:{ mode:'dark', background:{default:bgApp, paper:bgPanel}, primary:{main:accentStrong}, secondary:{main:accent}, error:{main:danger}, success:{main:success}, warning:{main:warning}, text:{primary:text, secondary:muted} }, shape:{borderRadius:12} })`。
@@ -545,7 +535,7 @@ graph TD
 
 1. **CSP 微调（style nonce）**：为用 MUI/emotion 且不放松 `script-src`，需在 `index.html` 的 `style-src` 加构建期常量 nonce（仍无 `unsafe-inline'`）。请确认接受此**最小化、安全可保留**的 CSP 调整；若坚持零 nonce，则需改用 build-time CSS 提取（更重，建议移出版本外）。
 2. **状态管理库**：推荐 Zustand；若团队更偏好 Context+useReducer（或 Redux Toolkit），请在 T02 前确认，会影响 `useAppStore.ts` 写法。
-3. **会话持久化介质**：V1 推荐 JSON 文件（零原生依赖）；仓库已有 `packages/session-backends/sqlite-node`，若要求 SQLite（更强查询/并发），需评估 electron-builder 对原生模块的处理，请确认。
+3. **会话持久化介质**：当前以 Pi JSONL / `SessionManager` 为权威源；桌面侧不再引入独立 JSON 会话 authority。后续重点是有界 replay、分页读取和 runtime recovery，而不是复制第二份 transcript。
 4. **`agent_permission_state` / `agent_plan` 真实来源**：SDK 0.84.2 会话事件流**未暴露** permission/plan 事件（已核实 dist）。V1 先以占位 DTO 落地（mode 默认、steps 空），并在主进程预留钩子；若后续 SDK 暴露相关事件，再在 `toRendererEvent` 中映射。请确认此「占位 + 后续接入」策略，或指定其他派生方式（如从 agent 首条消息解析 plan）。
 5. **多会话与 agent 上下文续跑**：V1 采用「单活动 agent 会话 + 切换 + 仅恢复 transcript 视图」的简化模型，**不 replay 历史回 agent**。若需求要求「切换会话后 agent 继承历史上下文」，需重大改造 `createSession` 生命周期，请确认 V1 范围。
 6. **diff 审批的 git 依赖**：reject 还原仅对 git 跟踪文件可靠；未跟踪新文件需 `git clean`（不可逆），UI 二次确认 + 风险提示是否足够？是否需要在非 git 工作区直接禁用审批？请确认。
@@ -566,7 +556,7 @@ graph TD
 
 ## 7. V2 控制面（桌面 Agent 工作台）
 
-V1 把桌面做成了 Codex 风格三栏壳，但控制面绕开了 CLI：`createAgentSession()`、自定义 JSON 会话、只有 `prompt`。V2 复用 SDK Runtime，不把 TUI 搬进 Electron，也不放松安全红线。
+当前桌面采用 Codex 风格三栏壳，并已复用 SDK Runtime；Pi JSONL / `SessionManager` 是 session authority，Main/Worker 负责 runtime 生命周期，Renderer 只消费受控 projection。后续不把 TUI 搬进 Electron，也不放松安全红线。
 
 ### 7.1 复用的 CLI API
 

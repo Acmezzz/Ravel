@@ -6,9 +6,9 @@
 ## 总体结论
 
 - 安全架构基本兑现文档红线（CSP / contextIsolation / sandbox / 路径包含检查 / git 参数化调用），但存在 **1 个权限旁路**。
-- 测试共 126 个用例（阶段 1 新增 `appendSessionInfo`），当前 **126 通过 / 0 失败**。
+- 测试共 128 个用例，当前 **128 通过 / 0 失败**。
 - 存在 **5 个已证实的功能性 bug**、**约 30 个死代码符号 / 3 个死模块 / 10+ 冗余文件**。
-- 质量门禁盲区：biome / 根 tsgo 均不覆盖 `apps/omega-desktop`；CI 仅 ubuntu，无 Windows 桌面构建。
+- 质量门禁盲区：CI Windows job 已覆盖桌面 typecheck/test/release gate，但尚未自动执行 renderer build、electron-builder 或真实 packaged launch smoke。
 
 ---
 

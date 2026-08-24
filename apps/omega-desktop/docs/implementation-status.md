@@ -3,7 +3,7 @@
 > 更新日期：2026-08-24
 > 当前分支：`feat/omega-runtime-foundation`
 > 最近提交：Phase 6 performance and UX
-> 当前验证：Electron syntax、Renderer TypeScript、桌面安全测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`（阶段 1–6 已完成）。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`（阶段 1–6 已完成）；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
@@ -84,8 +84,8 @@
 - renderer crash/unresponsive 处理、原生通知、open/save/reveal 基础能力。
 - Updater core：semver、HTTPS-only manifest、受控文件名、SHA-256/size 校验、临时文件、原子 rename、单飞下载和失败清理。
 - Windows electron-builder 目标为 unpacked `dir`，不使用 NSIS。
-- `scripts/release-gate.mjs` 和 `scripts/electron-smoke.mjs` 已提供离线发布门禁。
-- 本地打包已验证：完整 `electron-builder --dir` 需 `NODE_OPTIONS=--use-system-ca`（证书）且 winCodeSign 下载在当前网络会超时；可用的离线路径是复用既有 `release/win-unpacked` 外壳，用本地 `@electron/asar` 重打最新 `app.asar`（含刷新后的 coding-agent dist），并同步 `resources/omega-runtime/packages/coding-agent/dist`。已验证启动日志 `[main] agent worker ready` 且进程稳定。
+- `scripts/release-gate.mjs` 和 `scripts/electron-smoke.mjs` 已提供离线发布检查；当前 smoke 仍主要验证 unpacked executable 存在，尚未自动启动并完成 Worker/IPC 握手。
+- 本地打包已验证：完整 `electron-builder --dir` 需 `NODE_OPTIONS=--use-system-ca`（证书）且 winCodeSign 下载在当前网络会超时；可用的离线路径是复用既有 `release/win-unpacked` 外壳，用本地 `@electron/asar` 重打最新 `app.asar`（含刷新后的 coding-agent dist），并同步 `resources/omega-runtime/packages/coding-agent/dist`。已验证启动日志 `[main] agent worker ready` 且进程稳定；该验证尚未成为 CI 自动门禁。
 
 ## 3. 当前验证门禁
 
@@ -95,7 +95,8 @@ Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
 Desktop/security tests: 128/128 通过
-Release gate: 通过
+Release gate: 通过（离线配置门禁）
+Packaged launch smoke: 手工验证过，尚未纳入自动 CI 门禁
 git diff --check: 通过
 ```
 
@@ -133,7 +134,7 @@ OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
 - 真实 GitHub Release 检查/更新 UI。
 - 更新下载进度、重启安装和回滚恢复。
 - Windows Authenticode、macOS notarization。
-- 完整 Electron 黑盒 E2E 和真实 unpacked launch smoke。
+- 完整 Electron 黑盒 E2E 和自动化 unpacked launch smoke（本地已有一次手工启动验证）。
 - CI dependency audit、release manifest 发布流水线。
 - OAuth provider、真实在线 model discovery 和 live provider smoke。
 - Git remote/fetch。
