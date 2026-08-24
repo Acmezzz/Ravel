@@ -1,5 +1,6 @@
 import * as React from "react";
 import Box from "@mui/material/Box";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import AssessmentIcon from "@mui/icons-material/Assessment";
@@ -43,7 +44,10 @@ function loadWidths(): { left: number; right: number } {
  */
 export function Workbench(): React.ReactElement {
   const rightOpen = useAppStore((s) => s.layout.rightPanelOpen);
+  const leftOpen = useAppStore((s) => s.layout.leftPanelOpen);
+  const focusMode = useAppStore((s) => s.layout.focusMode);
   const rightTab = useAppStore((s) => s.layout.rightTab);
+  const compactViewport = useMediaQuery("(max-width: 980px)");
   const setRightTab = useAppStore((s) => s.setRightTab);
   const [widths, setWidths] = React.useState(loadWidths);
   const [dragging, setDragging] = React.useState<null | "left" | "right">(null);
@@ -110,11 +114,15 @@ export function Workbench(): React.ReactElement {
     [persist],
   );
 
-  const leftCol = `${widths.left}px`;
-  const rightCol = rightOpen ? `${widths.right}px` : `${RIGHT_COLLAPSED_RAIL_PX}px`;
+  const effectiveLeftOpen = leftOpen && !focusMode && !compactViewport;
+  const compactRightOpen = rightOpen && !focusMode && compactViewport;
+  const effectiveRightOpen = rightOpen && !focusMode && !compactViewport;
+  const leftCol = effectiveLeftOpen ? `${widths.left}px` : "0px";
+  const rightCol = focusMode ? "0px" : effectiveRightOpen ? `${widths.right}px` : `${RIGHT_COLLAPSED_RAIL_PX}px`;
 
   return (
     <Box
+      data-focus-mode={focusMode ? "true" : "false"}
       sx={{
         display: "grid",
         gridTemplateRows: "auto auto 1fr",
@@ -130,8 +138,8 @@ export function Workbench(): React.ReactElement {
         <Header />
       </Box>
       <Box sx={{ minHeight: 0, overflow: "hidden", display: "flex", position: "relative" }}>
-        <LeftNav />
-        <Box
+        {effectiveLeftOpen ? <LeftNav /> : null}
+        {effectiveLeftOpen ? <Box
           onPointerDown={startDrag("left")}
           sx={{
             position: "absolute",
@@ -146,14 +154,26 @@ export function Workbench(): React.ReactElement {
             "&:hover": { background: "var(--omega-accent-line)" },
             "&:active": { background: "var(--omega-accent)" },
           }}
-        />
+        /> : null}
       </Box>
       <Box sx={{ minHeight: 0, overflow: "hidden", display: "flex" }}>
         <ChatPanel />
       </Box>
-      <Box sx={{ minHeight: 0, overflow: "hidden", display: "flex", position: "relative" }}>
-        {rightOpen ? (
+      <Box sx={{ minHeight: 0, overflow: "hidden", display: focusMode ? "none" : "flex", position: "relative" }}>
+        {effectiveRightOpen ? (
           <RightPanel />
+        ) : compactRightOpen ? (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 4,
+              background: "var(--omega-bg-rail)",
+              boxShadow: "var(--omega-shadow-lg)",
+            }}
+          >
+            <RightPanel />
+          </Box>
         ) : (
           <Box
             sx={{
@@ -205,7 +225,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
           </Box>
         )}
-        {rightOpen ? (
+        {effectiveRightOpen ? (
           <Box
             onPointerDown={startDrag("right")}
             sx={{

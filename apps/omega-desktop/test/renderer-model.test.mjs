@@ -515,6 +515,22 @@ test("stage 4 isolates renderer subscriptions, scroll work, and stale reads", as
   assert.match(sessions, /requestEpochRef/);
 });
 
+test("stage 5 workbench keeps focus and narrow layouts explicit", async () => {
+  const workbench = await read("../src/renderer/components/layout/Workbench.tsx");
+  const header = await read("../src/renderer/components/layout/Header.tsx");
+  const store = await read("../src/renderer/store/useAppStore.ts");
+  const css = await read("../src/renderer/styles/global.css");
+  assert.match(workbench, /useMediaQuery/);
+  assert.match(workbench, /focusMode/);
+  assert.match(workbench, /compactRightOpen/);
+  assert.match(header, /toggleFocusMode/);
+  assert.match(header, /更多工作台操作/);
+  assert.match(store, /leftPanelOpen/);
+  assert.match(store, /toggleFocusMode/);
+  assert.match(css, /message-reading-column/);
+  assert.match(css, /#6657d9/);
+});
+
 test("stage 4 bounds large diff and extension projections", async () => {
   const diff = await read("../src/renderer/components/panels/DiffViewer.tsx");
   const scout = await read("../src/renderer/components/panels/ScoutPanel.tsx");

@@ -22,6 +22,8 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import SettingsBrightnessIcon from "@mui/icons-material/SettingsBrightness";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import MenuOpenIcon from "@mui/icons-material/MenuOpen";
+import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import { useAppStore, type ConnectionState, type ShutdownPhase } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import type { ThinkingLevel } from "../../types/dto";
@@ -232,7 +234,11 @@ export function Header(): React.ReactElement {
   const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const bootstrapError = useAppStore((s) => s.bootstrapError);
   const rightOpen = useAppStore((s) => s.layout.rightPanelOpen);
+  const leftOpen = useAppStore((s) => s.layout.leftPanelOpen);
+  const focusMode = useAppStore((s) => s.layout.focusMode);
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
+  const toggleLeftPanel = useAppStore((s) => s.toggleLeftPanel);
+  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
   const setTreeOpen = useAppStore((s) => s.setTreeOpen);
   const agent = useAppStore((s) => s.agent);
   const running = useAppStore((s) => s.connection === "running");
@@ -253,6 +259,7 @@ export function Header(): React.ReactElement {
   const setModelCenterOpen = useAppStore((s) => s.setModelCenterOpen);
   const [infoOpen, setInfoOpen] = React.useState(false);
   const [modelAnchor, setModelAnchor] = React.useState<HTMLElement | null>(null);
+  const [utilityAnchor, setUtilityAnchor] = React.useState<HTMLElement | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   const modelLabel = agent?.model ? agent.model.id : "未选模型";
@@ -482,56 +489,36 @@ export function Header(): React.ReactElement {
         <Box sx={{ flexGrow: 1, minWidth: 0 }} />
 
         {/* utility cluster */}
-        <Tooltip title="模型中心">
-          <IconButton size="small" onClick={() => setModelCenterOpen(true)} disabled={shuttingDown} sx={iconBtnSx}>
-            <HubOutlinedIcon fontSize="small" />
+        <Tooltip title={focusMode ? "退出 Focus Mode" : "Focus Mode"}>
+          <IconButton size="small" onClick={toggleFocusMode} sx={{ ...iconBtnSx, color: focusMode ? "var(--omega-accent)" : iconBtnSx.color }}>
+            <CenterFocusStrongIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="资源中心">
-          <IconButton size="small" onClick={() => useAppStore.getState().setResourceCenterOpen(true)} disabled={shuttingDown} sx={iconBtnSx}>
-            <ExtensionOutlinedIcon fontSize="small" />
+        <Tooltip title={leftOpen ? "收起左栏" : "展开左栏"}>
+          <IconButton size="small" onClick={toggleLeftPanel} sx={iconBtnSx}>
+            <MenuOpenIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-
-        <Tooltip title={`主题：${THEME_LABEL[themeMode]}（点击切换）`}>
-          <IconButton
-            size="small"
-            onClick={(e) => setThemeMode(nextTheme, { x: e.clientX, y: e.clientY })}
-            sx={iconBtnSx}
-          >
-            <ThemeIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title={running ? "生成中无法切换分支" : "会话分支树"}>
-          <span>
-            <IconButton size="small" onClick={() => setTreeOpen(true)} disabled={running} sx={iconBtnSx}>
-              <AccountTreeIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-
-        <Tooltip title="会话信息 / 导出">
-          <IconButton size="small" onClick={() => setInfoOpen(true)} sx={iconBtnSx}>
-            <InfoOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <SessionInfoDialog open={infoOpen} onClose={() => setInfoOpen(false)} />
-
-        <Tooltip title="设置">
-          <IconButton size="small" onClick={() => setSettingsOpen(true)} sx={iconBtnSx}>
-            <SettingsIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-
-        <Divider />
-
         <Tooltip title={rightOpen ? "收起右栏" : "展开右栏"}>
           <IconButton size="small" onClick={toggleRightPanel} sx={iconBtnSx}>
             {rightOpen ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
           </IconButton>
         </Tooltip>
+        <Tooltip title="更多工作台操作">
+          <IconButton size="small" onClick={(e) => setUtilityAnchor(e.currentTarget)} sx={iconBtnSx}>
+            <ExpandMoreIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Menu anchorEl={utilityAnchor} open={Boolean(utilityAnchor)} onClose={() => setUtilityAnchor(null)}>
+          <MenuItem onClick={() => { setUtilityAnchor(null); setModelCenterOpen(true); }} disabled={shuttingDown}><HubOutlinedIcon fontSize="small" sx={{ mr: 1 }} />模型中心</MenuItem>
+          <MenuItem onClick={() => { setUtilityAnchor(null); useAppStore.getState().setResourceCenterOpen(true); }} disabled={shuttingDown}><ExtensionOutlinedIcon fontSize="small" sx={{ mr: 1 }} />资源中心</MenuItem>
+          <MenuItem onClick={(e) => { setUtilityAnchor(null); setThemeMode(nextTheme, { x: e.clientX, y: e.clientY }); }}><ThemeIcon fontSize="small" sx={{ mr: 1 }} />主题：{THEME_LABEL[themeMode]}</MenuItem>
+          <MenuItem onClick={() => { setUtilityAnchor(null); if (!running) setTreeOpen(true); }} disabled={running}><AccountTreeIcon fontSize="small" sx={{ mr: 1 }} />会话分支树</MenuItem>
+          <MenuItem onClick={() => { setUtilityAnchor(null); setInfoOpen(true); }}><InfoOutlinedIcon fontSize="small" sx={{ mr: 1 }} />会话信息 / 导出</MenuItem>
+          <MenuItem onClick={() => { setUtilityAnchor(null); setSettingsOpen(true); }}><SettingsIcon fontSize="small" sx={{ mr: 1 }} />设置</MenuItem>
+        </Menu>
+        <SessionInfoDialog open={infoOpen} onClose={() => setInfoOpen(false)} />
+        <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </Toolbar>
     </AppBar>
   );

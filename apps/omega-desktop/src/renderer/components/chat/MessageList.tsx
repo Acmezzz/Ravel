@@ -164,7 +164,7 @@ export function MessageList(): React.ReactElement {
       }}
       sx={{ height: "100%", overflowY: "auto", px: { xs: 2, sm: 4 }, py: 3 }}
     >
-      <Box sx={{ maxWidth: 860, mx: "auto" }}>
+      <Box className="message-reading-column" sx={{ maxWidth: 840, mx: "auto", width: "100%" }}>
         {hiddenCount > 0 || canLoadHistorical ? (
           <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mb: 2 }}>
             {hiddenCount > 0 ? <Button size="small" variant="outlined" onClick={() => setWindowSize((prev) => prev + WINDOW_SIZE)} sx={{ textTransform: "none", borderRadius: "999px" }}>加载更早消息（剩余 {hiddenCount} 条）</Button> : null}

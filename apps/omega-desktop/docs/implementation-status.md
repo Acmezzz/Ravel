@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-24
 > 当前分支：`feat/omega-runtime-foundation`
-> 最近提交：Phase 4 renderer subscriptions and streaming work
+> 最近提交：Phase 5 workbench hierarchy and Iris interaction surfaces
 > 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate。审查修复见 `docs/code-review-2026-08-24.md`；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
 >
 > Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
@@ -64,7 +64,8 @@
 - Session Tree：上下文预览、确认后 rewind、fork/clone、busy 防护。
 - Worktree Manager：列表、原生目录选择器创建、dirty 删除确认。
 - Git Review：snapshot token、stage/unstage、hunk 校验、commit、reject 和 stale snapshot 防护。
-- FileViewer：源码/Markdown、受控 DOCX 纯文本预览、行号、选区引用 `@file:start-end`、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页、diff 视图、Mermaid/LaTeX 安全源码预览、Main `fs.watch` 实时刷新、二进制/DOCX 默认应用打开和 workspace 文件导入。
+- FileViewer：源码/Markdown、受控 DOCX 纯文本预览、行号、选区引用 `@file:start-end`、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页、diff 视图、Mermaid/LaTeX 安全源码预览、Main `fs.watch` 实时刷新、二进制/DOCX 默认应用打开和 workspace 文件导入；阶段 4 增加文件分页 stale request guard。
+- Workbench：阶段 5 增加 Focus Mode、左栏折叠、窄窗口右栏 overlay/rail、Header overflow menu、840px 消息阅读列和 Iris/蓝紫 accent token；普通状态保持中性表面，Iris 只表达焦点、运行和主要动作。
 - Mermaid/LaTeX 当前只做源码安全预览，不执行 HTML、脚本或任意外部内容。
 
 ### 2.6 配置、生态和 Extension UI
@@ -98,7 +99,7 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 136/136 通过
+Desktop/security tests: 137/137 通过
 Release gate: 通过（离线配置门禁）
 Packaged launch smoke: 手工验证过，尚未纳入自动 CI 门禁
 git diff --check: 通过

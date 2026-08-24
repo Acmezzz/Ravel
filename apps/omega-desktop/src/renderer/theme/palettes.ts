@@ -2,10 +2,10 @@
  * Dual-mode design tokens (light + dark), keyed identically so CSS custom
  * properties and MUI palettes stay in lockstep.
  *
- * Visual language: "Amber Workshop" — cool-neutral layered surfaces
- * separated by translucent hairlines, with a restrained amber accent
- * (resin / filament / workshop lamp). Surfaces stay crisp and slightly cool;
- * warmth lives only in the accent, user bubble, and focus ring.
+ * Visual language: "Iris Workshop" — cool-neutral layered surfaces
+ * separated by translucent hairlines, with a restrained blue-violet accent.
+ * Surfaces stay crisp and slightly cool; color is reserved for focus,
+ * running state, user bubbles, and semantic actions.
  *
  * These values MUST stay in sync with the CSS custom properties in
  * `styles/global.css` (the runtime source consumed via var(--omega-*)).
@@ -66,16 +66,16 @@ export const darkPalette: Palette = {
   bgElevated: "#20242d",
   bgOverlay: "#262a35",
   bgCode: "#0d0e12",
-  bgUserBubble: "#d4921a",
+  bgUserBubble: "#6657d9",
   border: "rgba(196, 188, 168, 0.10)",
   borderStrong: "rgba(196, 188, 168, 0.20)",
   text: "#f3f0ea",
   textMuted: "#a8a295",
   textDim: "#6f6a60",
-  accent: "#e8b44a",
-  accentStrong: "#f0c56a",
-  accentSoft: "rgba(232, 180, 74, 0.14)",
-  accentLine: "rgba(232, 180, 74, 0.40)",
+  accent: "#9b91ff",
+  accentStrong: "#b2aaff",
+  accentSoft: "rgba(155, 145, 255, 0.14)",
+  accentLine: "rgba(155, 145, 255, 0.40)",
   success: "#52d495",
   warning: "#e8b85e",
   danger: "#f07584",
@@ -89,7 +89,7 @@ export const darkPalette: Palette = {
   shadowMd: "0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30)",
   shadowLg: "0 20px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.38)",
   insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.06)",
-  accentGradient: "linear-gradient(135deg, #c98914 0%, #e8b44a 100%)",
+  accentGradient: "linear-gradient(135deg, #6657d9 0%, #9b91ff 100%)",
 };
 
 export const lightPalette: Palette = {
@@ -100,16 +100,16 @@ export const lightPalette: Palette = {
   bgElevated: "#ffffff",
   bgOverlay: "#ffffff",
   bgCode: "#f1f2f3",
-  bgUserBubble: "#c67d12",
+  bgUserBubble: "#6657d9",
   border: "rgba(28, 26, 22, 0.08)",
   borderStrong: "rgba(28, 26, 22, 0.15)",
   text: "#1a1916",
   textMuted: "#5e5b54",
   textDim: "#8e8a81",
-  accent: "#c67d12",
-  accentStrong: "#a8680a",
-  accentSoft: "rgba(198, 125, 18, 0.10)",
-  accentLine: "rgba(198, 125, 18, 0.34)",
+  accent: "#6657d9",
+  accentStrong: "#5142bd",
+  accentSoft: "rgba(102, 87, 217, 0.10)",
+  accentLine: "rgba(102, 87, 217, 0.34)",
   success: "#13995b",
   warning: "#b07f10",
   danger: "#d84558",
@@ -123,7 +123,7 @@ export const lightPalette: Palette = {
   shadowMd: "0 4px 16px rgba(26, 25, 22, 0.08), 0 1px 3px rgba(26, 25, 22, 0.05)",
   shadowLg: "0 16px 48px rgba(26, 25, 22, 0.14), 0 4px 12px rgba(26, 25, 22, 0.06)",
   insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.70)",
-  accentGradient: "linear-gradient(135deg, #c67d12 0%, #e09a2a 100%)",
+  accentGradient: "linear-gradient(135deg, #5142bd 0%, #7b6ff0 100%)",
 };
 
 export function paletteForMode(mode: "light" | "dark"): Palette {

@@ -75,7 +75,9 @@ export interface SessionActivity {
 }
 
 export interface LayoutState {
+  leftPanelOpen: boolean;
   rightPanelOpen: boolean;
+  focusMode: boolean;
   rightTab: "workflow" | "scout" | "diff" | "worktree";
   commandPaletteOpen: boolean;
   treeOpen: boolean;
@@ -207,7 +209,9 @@ export interface AppState {
   closeViewer: () => void;
 
   setLayout: (patch: Partial<LayoutState>) => void;
+  toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
+  toggleFocusMode: () => void;
   setRightTab: (tab: LayoutState["rightTab"]) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setTreeOpen: (open: boolean) => void;
@@ -294,7 +298,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   plan: null,
 
   layout: {
+    leftPanelOpen: true,
     rightPanelOpen: true,
+    focusMode: false,
     rightTab: "workflow",
     commandPaletteOpen: false,
     treeOpen: false,
@@ -566,6 +572,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setLayout: (patch) =>
     set((state) => ({ layout: { ...state.layout, ...patch } })),
+  toggleLeftPanel: () =>
+    set((state) => ({ layout: { ...state.layout, leftPanelOpen: !state.layout.leftPanelOpen } })),
+  toggleFocusMode: () =>
+    set((state) => ({ layout: { ...state.layout, focusMode: !state.layout.focusMode } })),
   toggleRightPanel: () => {
     const next = !get().layout.rightPanelOpen;
     set((state) => ({
