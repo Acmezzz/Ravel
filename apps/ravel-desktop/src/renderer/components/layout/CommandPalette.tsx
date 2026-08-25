@@ -6,6 +6,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Box from "@mui/material/Box";
 import { useAppStore } from "../../store/useAppStore";
+import { useT } from "../../lib/i18n";
 import { ipc } from "../../ipc/client";
 import type { SlashCommandInfo } from "../../types/dto";
 
@@ -18,6 +19,7 @@ function commandLabel(command: SlashCommandInfo): string {
 }
 
 export function CommandPalette(): React.ReactElement {
+  const t = useT();
   const open = useAppStore((s) => s.layout.commandPaletteOpen);
   const setOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setConnection = useAppStore((s) => s.setConnection);
@@ -47,36 +49,36 @@ export function CommandPalette(): React.ReactElement {
       {
         kind: "ui",
         id: "model-center",
-        title: "打开模型中心",
-        description: "配置提供商 API key 并选择模型",
+        title: t("palette.modelCenter.title"),
+        description: t("palette.modelCenter.desc"),
         run: () => setModelCenterOpen(true),
       },
       {
         kind: "ui",
         id: "settings",
-        title: "打开设置",
-        description: "Agent 行为、后台会话上限和桌面偏好",
+        title: t("palette.settings.title"),
+        description: t("palette.settings.desc"),
         run: () => setSettingsOpen(true),
       },
       {
         kind: "ui",
         id: "resource-center",
-        title: "打开资源中心",
-        description: "查看、启用/禁用、本地安装并重载扩展与 skills",
+        title: t("palette.resourceCenter.title"),
+        description: t("palette.resourceCenter.desc"),
         run: () => setResourceCenterOpen(true),
       },
       {
         kind: "ui",
         id: "tree",
-        title: "打开会话分支树",
-        description: "查看、预览并回退当前会话分支",
+        title: t("palette.tree.title"),
+        description: t("palette.tree.desc"),
         run: () => setTreeOpen(true),
       },
       {
         kind: "ui",
         id: "clone",
-        title: "复制当前分支",
-        description: "在当前位置创建独立 session",
+        title: t("palette.clone.title"),
+        description: t("palette.clone.desc"),
         run: () => {
           void (async () => {
             const res = await ipc.clone();
@@ -96,12 +98,12 @@ export function CommandPalette(): React.ReactElement {
       {
         kind: "ui",
         id: "worktree",
-        title: "打开工作树",
-        description: "查看、创建和删除 Git worktree 副本",
+        title: t("palette.worktree.title"),
+        description: t("palette.worktree.desc"),
         run: () => useAppStore.getState().setRightTab("worktree"),
       },
     ],
-    [setModelCenterOpen, setSettingsOpen, setResourceCenterOpen, setTreeOpen],
+    [setModelCenterOpen, setSettingsOpen, setResourceCenterOpen, setTreeOpen, t],
   );
 
   const items = React.useMemo(() => {
@@ -138,7 +140,7 @@ export function CommandPalette(): React.ReactElement {
       try {
         const res = await ipc.prompt(commandLabel(command));
         if (!res.ok) {
-          useAppStore.getState().setComposerError(`${res.code}: ${res.message ?? "未知错误"}`);
+          useAppStore.getState().setComposerError(`${res.code}: ${res.message ?? t("common.unknownError")}`);
           useAppStore.getState().setConnection("ready");
         }
       } catch (error) {
@@ -179,8 +181,8 @@ export function CommandPalette(): React.ReactElement {
           autoFocus
           fullWidth
           size="small"
-          label="搜索桌面操作"
-          placeholder="搜索桌面操作或 / 命令…"
+          label={t("palette.search")}
+          placeholder={t("palette.searchPlaceholder")}
           value={query}
           aria-controls="omega-command-list"
           aria-activedescendant={items[activeIndex] ? `omega-command-${activeIndex}` : undefined}
@@ -195,7 +197,7 @@ export function CommandPalette(): React.ReactElement {
         />
         {error ? <Box role="alert" sx={{ color: "var(--omega-danger)", fontSize: "0.75rem", mt: 0.75 }}>{error}</Box> : null}
       </Box>
-      <List id="omega-command-list" role="listbox" aria-label="桌面操作列表" sx={{ px: 1.25, pb: 1.25, pt: 0, maxHeight: 420 }}>
+      <List id="omega-command-list" role="listbox" aria-label={t("palette.listAria")} sx={{ px: 1.25, pb: 1.25, pt: 0, maxHeight: 420 }}>
         {items.map((item, index) =>
           item.kind === "ui" ? (
               <ListItemButton
@@ -244,7 +246,7 @@ export function CommandPalette(): React.ReactElement {
           ),
         )}
         {items.length === 0 ? (
-          <ListItemText primary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", padding: "8px" }}>无匹配命令</span>} />
+          <ListItemText primary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", padding: "8px" }}>{t("palette.noMatch")}</span>} />
         ) : null}
       </List>
     </Dialog>

@@ -12,6 +12,7 @@ import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { useT, type MessageKey } from "../../lib/i18n";
 import type { DiffFile, GitStageItem } from "../../types/dto";
 import { ApprovalBar } from "./ApprovalBar";
 
@@ -19,11 +20,11 @@ const MAX_RENDERED_FILES = 80;
 const MAX_RENDERED_HUNKS_PER_FILE = 40;
 const MAX_RENDERED_LINES_PER_HUNK = 400;
 
-const STATUS_LABEL: Record<DiffFile["status"], string> = {
-  added: "新增",
-  modified: "修改",
-  deleted: "删除",
-  renamed: "重命名",
+const STATUS_KEY: Record<DiffFile["status"], MessageKey> = {
+  added: "diff.status.added",
+  modified: "diff.status.modified",
+  deleted: "diff.status.deleted",
+  renamed: "diff.status.renamed",
 };
 
 const STATUS_TONE: Record<DiffFile["status"], { bg: string; fg: string }> = {
@@ -94,6 +95,7 @@ function FileCard({
   onToggleHunk: (path: string, hunkIndex: number) => void;
   onOpenFile: (path: string) => void;
 }) {
+  const t = useT();
   const selectedHunks = selection.files.get(file.path);
   const wholeFile = selectedHunks !== undefined && selectedHunks.size === 0;
   const fileName = file.path.split(/[\\/]/).pop() ?? file.path;
@@ -175,7 +177,7 @@ function FileCard({
             ) : (
               <Box sx={{ flex: "1 1 0", minWidth: 0 }} />
             )}
-            <Chip size="small" label={STATUS_LABEL[file.status]} sx={{ flex: "0 0 auto", height: 18, fontSize: "0.65625rem", background: STATUS_TONE[file.status].bg, color: STATUS_TONE[file.status].fg }} />
+            <Chip size="small" label={t(STATUS_KEY[file.status])} sx={{ flex: "0 0 auto", height: 18, fontSize: "0.65625rem", background: STATUS_TONE[file.status].bg, color: STATUS_TONE[file.status].fg }} />
             <Typography className="mono-num" sx={{ fontSize: "0.65625rem", color: "var(--omega-success)", flex: "0 0 auto" }}>+{file.additions}</Typography>
             <Typography className="mono-num" sx={{ fontSize: "0.65625rem", color: "var(--omega-danger)", flex: "0 0 auto" }}>-{file.deletions}</Typography>
           </Box>
@@ -191,7 +193,7 @@ function FileCard({
               <Checkbox
                 size="small"
                 checked={wholeFile || (selectedHunks?.has(i) ?? false)}
-                inputProps={{ "aria-label": `选择 ${file.path} 的第 ${i + 1} 个 hunk` }}
+                inputProps={{ "aria-label": t("diff.hunkAria", { path: file.path, index: i + 1 }) }}
                 onClick={(event) => event.stopPropagation()}
                 onChange={() => onToggleHunk(file.path, i)}
                 sx={{ p: 0.25, flex: "0 0 auto" }}
@@ -204,7 +206,7 @@ function FileCard({
               ))}
               {hunk.lines.length > MAX_RENDERED_LINES_PER_HUNK ? (
                 <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", py: 0.5 }}>
-                  已折叠 {hunk.lines.length - MAX_RENDERED_LINES_PER_HUNK} 行，避免大 diff 阻塞界面。
+                  {t("diff.foldedLines", { n: hunk.lines.length - MAX_RENDERED_LINES_PER_HUNK })}
                 </Typography>
               ) : null}
             </Box>
@@ -226,6 +228,7 @@ function SectionTitle({ label, count }: { label: string; count: number }): React
 /** Build stage/unstage items from the selection (whole file when no hunks picked). */
 
 export function DiffViewer(): React.ReactElement {
+  const t = useT();
   const snapshot = useAppStore((s) => s.gitSnapshot);
   const setGitSnapshot = useAppStore((s) => s.setGitSnapshot);
   const openViewer = useAppStore((s) => s.openViewer);
@@ -316,7 +319,7 @@ export function DiffViewer(): React.ReactElement {
     } else if (res.ok) {
       setError(res.data.errors.join("\n"));
     } else {
-      setError(res.code === "stale_diff_snapshot" ? "工作区已变化，已刷新快照；请重新选择要暂存的文件或 hunk。" : res.message);
+      setError(res.code === "stale_diff_snapshot" ? t("diff.error.staleStage") : res.message);
       if (res.code === "stale_diff_snapshot") await refresh();
     }
   }, [unstagedSel, snapshot, refresh]);
@@ -335,7 +338,7 @@ export function DiffViewer(): React.ReactElement {
     } else if (res.ok) {
       setError(res.data.errors.join("\n"));
     } else {
-      setError(res.code === "stale_diff_snapshot" ? "工作区已变化，已刷新快照；请重新选择要取消暂存的文件或 hunk。" : res.message);
+      setError(res.code === "stale_diff_snapshot" ? t("diff.error.staleUnstage") : res.message);
       if (res.code === "stale_diff_snapshot") await refresh();
     }
   }, [stagedSel, snapshot, refresh]);
@@ -359,7 +362,7 @@ export function DiffViewer(): React.ReactElement {
     return (
       <Box sx={{ textAlign: "center", mt: 4 }}>
         <Button variant="outlined" onClick={() => void refresh()} disabled={busy} sx={{ textTransform: "none" }}>
-          {busy ? "生成中…" : "生成 Git 快照"}
+          {busy ? t("diff.generating") : t("diff.generateSnapshot")}
         </Button>
         {error ? (
           <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", mt: 1 }}>{error}</Typography>
@@ -371,7 +374,7 @@ export function DiffViewer(): React.ReactElement {
   if (!snapshot.isGitRepo) {
     return (
       <Typography sx={{ color: "var(--omega-warning)", fontSize: "0.8125rem", mt: 2 }}>
-        当前工作区未纳入 git，无法审查变更。
+        {t("diff.notGitRepo")}
       </Typography>
     );
   }
@@ -389,7 +392,7 @@ export function DiffViewer(): React.ReactElement {
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
           <Chip
             size="small"
-            label={snapshot.branch || "无分支"}
+            label={snapshot.branch || t("diff.noBranch")}
             title={snapshot.branch || undefined}
             sx={{
               flex: "1 1 auto",
@@ -402,7 +405,7 @@ export function DiffViewer(): React.ReactElement {
             }}
           />
           <Button size="small" onClick={() => void refresh()} disabled={busy} sx={{ textTransform: "none", flex: "0 0 auto", minWidth: 0, px: 1 }}>
-            {busy ? "…" : "刷新"}
+            {busy ? "…" : t("diff.refresh")}
           </Button>
         </Box>
         <Typography title={snapshot.repoRoot} sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -425,37 +428,37 @@ export function DiffViewer(): React.ReactElement {
       ) : null}
       {selectedUnstagedFiles + selectedStagedFiles > 0 ? (
         <Paper role="status" aria-live="polite" sx={{ p: 1, mb: 1, background: "var(--omega-selected)", border: "1px solid var(--omega-accent-line)", display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--omega-text)" }}>已选择</Typography>
-          {selectedUnstagedFiles > 0 ? <Chip size="small" label={`未暂存 ${selectedUnstagedFiles} 文件${selectedUnstagedHunks ? ` · ${selectedUnstagedHunks} hunk` : ""}`} /> : null}
-          {selectedStagedFiles > 0 ? <Chip size="small" label={`已暂存 ${selectedStagedFiles} 文件${selectedStagedHunks ? ` · ${selectedStagedHunks} hunk` : ""}`} /> : null}
-          <Button size="small" onClick={clearSel} sx={{ textTransform: "none", ml: "auto" }}>清除选择</Button>
+          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--omega-text)" }}>{t("diff.selected")}</Typography>
+          {selectedUnstagedFiles > 0 ? <Chip size="small" label={t("diff.chip.unstagedFiles", { n: selectedUnstagedFiles }) + (selectedUnstagedHunks ? t("diff.chip.hunks", { n: selectedUnstagedHunks }) : "")} /> : null}
+          {selectedStagedFiles > 0 ? <Chip size="small" label={t("diff.chip.stagedFiles", { n: selectedStagedFiles }) + (selectedStagedHunks ? t("diff.chip.hunks", { n: selectedStagedHunks }) : "")} /> : null}
+          <Button size="small" onClick={clearSel} sx={{ textTransform: "none", ml: "auto" }}>{t("diff.clearSelection")}</Button>
         </Paper>
       ) : null}
 
       {unstagedCount + stagedCount === 0 ? (
-        <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.8125rem" }}>工作区干净，没有未提交的改动。</Typography>
+        <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.8125rem" }}>{t("diff.clean")}</Typography>
       ) : (
         <>
           <Box sx={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", pr: 0.25 }}>
-            <SectionTitle label="未暂存" count={unstagedCount} />
+            <SectionTitle label={t("diff.section.unstaged")} count={unstagedCount} />
             {snapshot.unstaged.slice(0, MAX_RENDERED_FILES).map((file) => (
               <FileCard key={file.path} file={file} selection={unstagedSel} onToggleFile={toggleFile(setUnstagedSel)} onToggleHunk={toggleHunk(setUnstagedSel)} onOpenFile={(p) => void openViewer(p)} />
             ))}
-            {unstagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", mb: 1 }}>已折叠 {unstagedCount - MAX_RENDERED_FILES} 个未暂存文件。</Typography> : null}
+            {unstagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", mb: 1 }}>{t("diff.folded.unstaged", { n: unstagedCount - MAX_RENDERED_FILES })}</Typography> : null}
             {unstagedCount > 0 ? (
               <Button size="small" variant="outlined" onClick={() => void stage()} disabled={busy || unstagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
-                暂存所选（{unstagedSel.files.size}）
+                {t("diff.stageSelected", { n: unstagedSel.files.size })}
               </Button>
             ) : null}
 
-            <SectionTitle label="已暂存" count={stagedCount} />
+            <SectionTitle label={t("diff.section.staged")} count={stagedCount} />
             {snapshot.staged.slice(0, MAX_RENDERED_FILES).map((file) => (
               <FileCard key={file.path} file={file} selection={stagedSel} onToggleFile={toggleFile(setStagedSel)} onToggleHunk={toggleHunk(setStagedSel)} onOpenFile={(p) => void openViewer(p)} />
             ))}
-            {stagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", mb: 1 }}>已折叠 {stagedCount - MAX_RENDERED_FILES} 个已暂存文件。</Typography> : null}
+            {stagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", mb: 1 }}>{t("diff.folded.staged", { n: stagedCount - MAX_RENDERED_FILES })}</Typography> : null}
             {stagedCount > 0 ? (
               <Button size="small" variant="outlined" onClick={() => void unstage()} disabled={busy || stagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
-                取消暂存所选（{stagedSel.files.size}）
+                {t("diff.unstageSelected", { n: stagedSel.files.size })}
               </Button>
             ) : null}
 
@@ -467,13 +470,13 @@ export function DiffViewer(): React.ReactElement {
                   multiline
                   minRows={2}
                   maxRows={5}
-                  placeholder="提交信息…"
+                  placeholder={t("diff.commitPlaceholder")}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                 />
                 <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
                   <Button size="small" variant="contained" onClick={() => void commit()} disabled={busy || !message.trim()} sx={{ textTransform: "none" }}>
-                    提交（{stagedCount} 个文件）
+                    {t("diff.commit", { n: stagedCount })}
                   </Button>
                 </Box>
               </Paper>

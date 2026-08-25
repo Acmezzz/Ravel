@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import Tooltip from "@mui/material/Tooltip";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useAppStore } from "../../store/useAppStore";
+import { useT } from "../../lib/i18n";
 import { ipc } from "../../ipc/client";
 import { WorkflowPanel } from "../panels/WorkflowPanel";
 import { ScoutPanel } from "../panels/ScoutPanel";
@@ -14,6 +15,7 @@ import { DiffViewer } from "../panels/DiffViewer";
 import { WorktreePanel } from "../panels/WorktreePanel";
 
 export function RightPanel(): React.ReactElement {
+  const t = useT();
   const rightTab = useAppStore((s) => s.layout.rightTab);
   const setRightTab = useAppStore((s) => s.setRightTab);
   const setExtensionState = useAppStore((s) => s.setExtensionState);
@@ -39,7 +41,7 @@ export function RightPanel(): React.ReactElement {
     <Box
       component="aside"
       id="omega-right-panel"
-      aria-label="工作台辅助面板"
+      aria-label={t("nav.asideAria")}
       sx={{
         width: "100%",
         display: "flex",
@@ -57,19 +59,19 @@ export function RightPanel(): React.ReactElement {
           allowScrollButtonsMobile
           sx={{ flexGrow: 1, minWidth: 0, minHeight: 44, "& .MuiTab-root": { minHeight: 44, minWidth: 0, px: 1.25, fontSize: "0.8125rem" } }}
         >
-          <Tab label="工作流" value="workflow" />
-          <Tab label="探索" value="scout" />
-          <Tab label="改动" value="diff" />
-          <Tab label="工作树" value="worktree" />
+          <Tab label={t("nav.tab.workflow")} value="workflow" />
+          <Tab label={t("nav.tab.scout")} value="scout" />
+          <Tab label={t("nav.tab.diff")} value="diff" />
+          <Tab label={t("nav.tab.worktree")} value="worktree" />
         </Tabs>
-        <Tooltip title="刷新扩展状态">
-          <IconButton size="small" aria-label="刷新扩展状态" onClick={() => void refresh()} sx={{ color: "var(--omega-text-muted)", mr: 1, minWidth: 40, minHeight: 40 }} disabled={extensionLoading}>
+        <Tooltip title={t("nav.refreshExtensionTooltip")}>
+          <IconButton size="small" aria-label={t("nav.refreshExtensionAria")} onClick={() => void refresh()} sx={{ color: "var(--omega-text-muted)", mr: 1, minWidth: 40, minHeight: 40 }} disabled={extensionLoading}>
             <RefreshIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       </Box>
-      {extensionLoading ? <Box role="status" aria-live="polite" sx={{ px: 1.25, py: 0.5, fontSize: "0.65625rem", color: "var(--omega-text-muted)" }}>正在刷新扩展状态…</Box> : null}
-      {extensionError ? <Box role="alert" sx={{ px: 1.25, py: 0.5, display: "flex", alignItems: "center", gap: 1, fontSize: "0.65625rem", color: "var(--omega-danger)" }}>{extensionError}<Button size="small" onClick={() => void refresh()} sx={{ textTransform: "none" }}>重试</Button></Box> : null}
+      {extensionLoading ? <Box role="status" aria-live="polite" sx={{ px: 1.25, py: 0.5, fontSize: "0.65625rem", color: "var(--omega-text-muted)" }}>{t("nav.refreshingExtension")}</Box> : null}
+      {extensionError ? <Box role="alert" sx={{ px: 1.25, py: 0.5, display: "flex", alignItems: "center", gap: 1, fontSize: "0.65625rem", color: "var(--omega-danger)" }}>{extensionError}<Button size="small" onClick={() => void refresh()} sx={{ textTransform: "none" }}>{t("common.retry")}</Button></Box> : null}
       <Box
         sx={{
           flexGrow: 1,

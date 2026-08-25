@@ -286,7 +286,7 @@ export function Composer(): React.ReactElement {
               setAttachments((prev) => [...prev, ...attachments].slice(0, MAX_IMAGES));
               setConnection("ready");
             }
-            setComposerError(`${res.code}: ${res.message ?? "未知错误"}`);
+            setComposerError(`${res.code}: ${res.message ?? t("common.unknownError")}`);
             useAppStore.getState().setComposerError(`发送失败（${res.code}）：${res.message ?? "未知错误"}`);
             return;
           }

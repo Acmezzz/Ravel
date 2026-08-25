@@ -5,6 +5,7 @@ import Button from "@mui/material/Button";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/useAppStore";
 import { userMessageKey } from "../../lib/prompt-recovery";
+import { useT } from "../../lib/i18n";
 
 const SUGGESTIONS = [
   "检查当前项目的测试状态",
@@ -16,6 +17,7 @@ const SUGGESTIONS = [
 const INFINITY_PATH = "M 16 16 C 16 9.5, 25 9.5, 25 16 C 25 22.5, 16 22.5, 16 16 C 16 9.5, 7 9.5, 7 16 C 7 22.5, 16 22.5, 16 16 Z";
 
 export function EmptyState(): React.ReactElement {
+  const t = useT();
   const setConnection = useAppStore((s) => s.setConnection);
   const sendSuggestion = React.useCallback(
     async (prompt: string) => {
@@ -35,7 +37,7 @@ export function EmptyState(): React.ReactElement {
         const res = await ipc.prompt(prompt, undefined, undefined, clientMessageId);
         if (!res.ok) {
           useAppStore.getState().dropLastIfOptimistic(key);
-          useAppStore.getState().setComposerError(`${res.code}: ${res.message ?? "未知错误"}`);
+          useAppStore.getState().setComposerError(`${res.code}: ${res.message ?? t("common.unknownError")}`);
           useAppStore.getState().setConnection("ready");
         }
       } catch (error) {

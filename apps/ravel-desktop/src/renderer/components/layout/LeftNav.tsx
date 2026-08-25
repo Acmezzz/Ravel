@@ -5,11 +5,13 @@ import Tab from "@mui/material/Tab";
 import Button from "@mui/material/Button";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppStore } from "../../store/useAppStore";
+import { useT } from "../../lib/i18n";
 import { SessionList } from "../sessions/SessionList";
 import { NewSessionDialog } from "../sessions/NewSessionDialog";
 import { FileTree } from "../files/FileTree";
 
 export function LeftNav(): React.ReactElement {
+  const t = useT();
   const [newOpen, setNewOpen] = React.useState(false);
   const leftTab = useAppStore((s) => s.layout.leftTab);
   const setLayout = useAppStore((s) => s.setLayout);
@@ -18,7 +20,7 @@ export function LeftNav(): React.ReactElement {
     <Box
       component="nav"
       id="omega-left-nav"
-      aria-label="会话与文件导航"
+      aria-label={t("nav.sessionsFilesAria")}
       sx={{
         width: "100%",
         display: "flex",
@@ -33,8 +35,8 @@ export function LeftNav(): React.ReactElement {
           onChange={(_e, value) => setLayout({ leftTab: value })}
           sx={{ minHeight: 32, "& .MuiTab-root": { minHeight: 32, minWidth: 48, fontSize: "0.75rem", px: 1, py: 0.25 } }}
         >
-          <Tab label="会话" value="sessions" />
-          <Tab label="文件" value="files" />
+          <Tab label={t("nav.tab.sessions")} value="sessions" />
+          <Tab label={t("nav.tab.files")} value="files" />
         </Tabs>
         {leftTab === "sessions" ? (
           <Button
@@ -56,7 +58,7 @@ export function LeftNav(): React.ReactElement {
               "&:active": { transform: "translateY(0.5px)", boxShadow: "var(--omega-inset-recessed)" },
             }}
           >
-            新建
+            {t("nav.newSession")}
           </Button>
         ) : null}
       </Box>
