@@ -1,16 +1,16 @@
-# Omega Desktop 实施状态与剩余路线图
+# Ravel Desktop 实施状态与剩余路线图
 
-> 更新日期：2026-08-24
-> 当前分支：`feat/omega-runtime-foundation`
-> 最近提交：Final frontend/backend optimization rollout
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate、packaged launch smoke。审查修复见 `docs/code-review-2026-08-24.md`；新的前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
+> 更新日期：2026-08-25
+> 当前分支：`main`
+> 最近提交：Ravel 仓库迁移与 P0/P1 发布准备
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate、packaged launch smoke、userData 迁移真实启动验收。历史审查修复见 `docs/code-review-2026-08-24.md`；前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
 >
-> Omega 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
+> Ravel 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
 ## 1. 产品与安全边界
 
 - Pi JSONL / `SessionManager` 是 session、消息、tree、时间戳和分支的权威源。
-- Omega 只持久化桌面设置、窗口状态、草稿、workspace allowlist、event cache 和必要 UI 缓存。
+- Ravel 只持久化桌面设置、窗口状态、草稿、workspace allowlist、event cache 和必要 UI 缓存。
 - Renderer 不拥有 raw filesystem、Git、凭据或 Pi SDK 访问权限。
 - Session path lookup 只接受 Pi sessions root 下的 canonical regular JSONL；workspace reader 对 read/readPage 拒绝目录、symlink 和其它非 regular file。
 - 所有特权操作经过 Main sender 校验、路径安全层和受控 DTO。
@@ -35,7 +35,7 @@
 - session 列表支持 `{ items, total, nextOffset, treeIndex }` 分页、workspace/worktree 根目录分组、parent/child 关系和加载更多。
 - `omega:readSessionMessages` 支持历史消息按 `sessionId / offset / limit` 分页，并使用 `mtime:size` 缓存。
 - Chat MessageList 支持从磁盘加载更早消息并去重 prepend。
-- 当前实时消息仍由 Pi `SessionManager` 负责，Omega 不维护第二份 transcript authority。
+- 当前实时消息仍由 Pi `SessionManager` 负责，Ravel 不维护第二份 transcript authority。
 
 ### 2.3 Worker、事件和关闭生命周期
 
@@ -48,7 +48,7 @@
 - Worker 关闭顺序固定为 `abort → bounded flush → dispose → kill`。
 - 运行中关闭提供等待、停止并退出、取消；flush 超时提供继续等待/强制退出风险提示。
 - Worker ready 后先拉 authoritative snapshot，再按 session/run/generation/sequence 过滤事件。
-- event cache 按 session 持久化到 `userData/event-cache`，通过 per-session 异步写队列写入，并按 300 条 / 4 MiB 双重上限保留尾部 ring；支持删除竞态失效、内存为空时异步恢复和带 `runtimeEpoch` 的 `limit/nextAfter` replay 分页。
+- event cache 按 session 持久化到 `userData/ravel/event-cache`，通过 per-session 异步写队列写入，并按 300 条 / 4 MiB 双重上限保留尾部 ring；支持删除竞态失效、内存为空时异步恢复和带 `runtimeEpoch` 的 `limit/nextAfter` replay 分页。
 - WorkerSlot pool 默认 cap=3、idle TTL=5 分钟，支持后台运行状态、空闲回收、同 workspace 空闲 slot 复用和 unref health check。
 
 ### 2.4 Shared IPC 与安全协议
@@ -83,14 +83,15 @@
 
 ### 2.7 Native integration、Updater 和验证
 
-- single-instance lock、second-instance focus。
-- workspace/session 启动参数和 `omega://` 深链解析。
+- single-instance lock、second-instance focus 与 deep link 转发。
+- workspace/session 启动参数；`ravel://` 深链在打包产物中注册 OS 协议（开发模式需 `RAVEL_REGISTER_PROTOCOL=1` 显式开启，自动化 smoke `RAVEL_AUTOTEST=1` 一律跳过），并兼容旧 `omega://` 入口；macOS 走 `open-url`。
 - window bounds 恢复、多显示器越界修正。
 - renderer crash/unresponsive 处理、原生通知、open/save/reveal 基础能力。
 - Updater core：semver、HTTPS-only manifest、受控文件名、SHA-256/size 校验、临时文件、原子 rename、单飞下载和失败清理。
 - Windows electron-builder 目标为 unpacked `dir`，不使用 NSIS。
 - `scripts/release-gate.mjs` 检查版本、dir target 和 manifest；`scripts/electron-smoke.mjs` 现在会启动真实 unpacked executable，使用隔离 `--user-data-dir=<unique>`，要求 `[main] agent worker ready`、DOM probe、autotest prompt/record、资源存在和退出码 0，并在超时/失败时收集 stdout/stderr；仅对退出码 0 且完全无输出的 single-instance 锁竞态自动重试一次。
-- 当前本地 packaged smoke 已通过：Worker 握手、DOM probe、autotest record 和干净退出码均验证；真实 provider、签名和网络下载仍不属于普通门禁。本轮 `package:dir` 在 electron-builder 下载构建依赖时因网络请求 600 秒超时，未生成新的 unpacked 产物；随后复跑既有产物 smoke 仍通过。
+- `scripts/migration-smoke.mjs` 用合成 `omega/` 旧目录跑两次真实打包启动：验证迁移创建 `userData/ravel`、文件字节一致（credentials 走 sha256 对比）、旧目录不被改动、二次启动不重复迁移。
+- 当前本地 packaged smoke 已通过：Worker 握手、DOM probe、autotest record 和干净退出码均验证；migration smoke 全部检查通过；真实 provider、签名和网络下载仍不属于普通门禁。
 
 ## 3. 当前验证门禁
 
@@ -99,19 +100,20 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 138/138 通过
+Desktop/security tests: 156/156 通过
 Release gate: 通过（离线配置门禁）
 Packaged launch smoke: 真实启动、Worker 握手、DOM probe、autotest record 和退出码均通过
+Migration smoke: 合成旧目录两次真实启动验收全部通过
 git diff --check: 通过
 ```
 
 真实 provider smoke 只有显式设置以下环境变量才运行：
 
 ```bash
-OMEGA_LIVE_PROVIDER=1 npm run --workspace=@omega/desktop sdk-check
+RAVEL_LIVE_PROVIDER=1 npm run --workspace=@ravel/desktop sdk-check
 ```
 
-已知非阻塞项：Renderer bundle 约 978 kB minified（298 kB gzip），可通过面板级动态导入继续拆包；完整 `package:dir` 仍可能受 electron-builder 依赖下载限制，但现有 unpacked 产物已纳入真实 smoke 门禁。
+已知非阻塞项：Renderer bundle 约 994 kB minified（302 kB gzip），可通过面板级动态导入继续拆包。
 
 ## 4. 剩余任务
 

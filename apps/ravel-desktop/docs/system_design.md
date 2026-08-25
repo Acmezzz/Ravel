@@ -1,7 +1,7 @@
-# Omega Desktop 渲染层现代化（React + MUI + Tailwind）系统设计与任务分解
+# Ravel Desktop 渲染层现代化（React + MUI + Tailwind）系统设计与任务分解
 
 > 架构师：**高见远**（software-architect）
-> 输入：PRD（产品经理 许清楚）、用户 4 项决策、现有 `apps/omega-desktop` 代码与 `.pi/extensions` 状态文件 schema
+> 输入：PRD（产品经理 许清楚）、用户 4 项决策、现有 `apps/ravel-desktop` 代码与 `.pi/extensions` 状态文件 schema
 > 目标：记录当前实现基线、受控 DTO/IPC 边界与后续演进约束
 > 安全红线：**渲染进程不拥有文件系统、Git、凭据或 Pi SDK 权限；默认事件使用有界 DTO，完整工具详情必须经受控 IPC 按需读取。**
 > 维护说明：本文早期 V1 任务分解中的自定义 JSON persistence、旧 vanilla renderer 与部分扩展 IPC 已完成迁移或删除；当前优化路线见 [`frontend-backend-optimization-2026-08-24.md`](./frontend-backend-optimization-2026-08-24.md)。
@@ -19,7 +19,7 @@
 | 状态管理 | **Zustand**（轻量、避免高频 delta 重渲染风暴），单 store |
 | 扩展 Web 化数据源 | 只读读取 `.pi/extensions` 的 **append-only 状态文件**（catalog/registry/tracker/coverage/rounds.jl + 派生 health/stats），由新增主进程模块 `state-reader.js` 派生为受控 DTO |
 | diff + 审批 | **(a) post-hoc 只读 git diff** 为 V1 主方案：预览=`git diff` 结构化 DTO；审批 reject=主进程 `git checkout -- <file>`（仅 git 管理文件），accept=保留。主进程特权执行，渲染进程无写权限 |
-| 会话持久化 | 当前以 Pi JSONL / `SessionManager` 作为 session、消息、tree 和分支的权威源；Omega 仅维护桌面设置、草稿、workspace registry、event cache 和必要 UI 缓存 |
+| 会话持久化 | 当前以 Pi JSONL / `SessionManager` 作为 session、消息、tree 和分支的权威源；Ravel 仅维护桌面设置、草稿、workspace registry、event cache 和必要 UI 缓存 |
 
 ---
 
@@ -36,7 +36,7 @@
 对应方案：
 
 - **构建产物 = 单文件 IIFE 经典脚本**：`vite.config.ts` 中 `build.rollupOptions.output.format='iife'` + `inlineDynamicImports:true` + `build.modulePreload:false`，输出 `dist/assets/index.js`（单 chunk、经典脚本）与 `dist/assets/index.css`（外部样式表）。`index.html` 仍以 `<script src="./dist/assets/index.js">` 经典方式引用。
-- **样式 nonce（安全可保留）**：引入一个**构建期常量 nonce**（如 `OMEGA_STYLE_NONCE`，提交进仓库即可，本地桌面应用可接受静态值）。`index.html` 的 CSP 改为 `style-src 'self' 'nonce-OMEGA_STYLE_NONCE'`（**仍无 `unsafe-inline'`**）；emotion 通过 `createCache({ key:'mui', nonce: OMEGA_STYLE_NONCE })` 把同一 nonce 写到注入的 `<style>` 上。这样既用上 MUI，又不放松脚本/内联安全 posture。
+- **样式 nonce（安全可保留）**：使用一个**构建期常量静态 nonce**（当前值为 `ravel-static-2026`，提交进仓库，本地桌面应用可接受静态值）。`index.html` 的 CSP 为 `style-src 'self' 'nonce-ravel-static-2026'`（**仍无 `unsafe-inline'`**）；emotion 通过 `createCache({ key:'mui', nonce: <同一静态值> })` 把同一 nonce 写到注入的 `<style>` 上。这样既用上 MUI，又不放松脚本/内联安全 posture。
 - **dev 循环**：由于 dev server 会破坏 CSP，采用「`vite build --watch` + `electron .`」的监听构建模式，或 `vite build` 后 `electron .` 加载 `dist/`。不跑带 HMR 的 dev server。
 
 ### 1.2 与现有 electron-builder 打包的衔接
@@ -51,7 +51,7 @@
 
 > 版本按仓库「依赖 pin 到精确版本」规则（`npm run check:pinned-deps`）由工程师填精确版本号；下表只列用途与大致主版本。
 
-**渲染进程（runtime，`apps/omega-desktop/package.json` 的 dependencies / devDependencies）：**
+**渲染进程（runtime，`apps/ravel-desktop/package.json` 的 dependencies / devDependencies）：**
 
 | 包 | 用途 | 类型 |
 |---|---|---|
@@ -122,35 +122,35 @@ store 切片：`connection`、`sessions`、`activeSessionId`、`messages`（Map/
 
 | 路径 | 职责 |
 |---|---|
-| `apps/omega-desktop/package.json` | 更新 deps + scripts（`dev`=vite build --watch+electron；`build:renderer`；`typecheck` 改为 tsc + node --check electron） |
-| `apps/omega-desktop/vite.config.ts` | Vite：root=app、entry=`src/renderer/main.tsx`、IIFE 单 chunk、`base:'./'`、`outDir:dist` |
-| `apps/omega-desktop/tailwind.config.ts` | Tailwind content globs + 从 `theme/tokens.ts` 生成颜色/间距/圆角 |
-| `apps/omega-desktop/postcss.config.js` | tailwindcss + autoprefixer |
-| `apps/omega-desktop/tsconfig.renderer.json` | 渲染进程 TS（jsx:react-jsx, moduleResolution:bundler） |
-| `apps/omega-desktop/index.html` | 改写为 Vite 入口（引用 `./dist/assets/*`），**保留并微调 CSP**（加 style nonce） |
-| `apps/omega-desktop/electron/main.js` | 新增 `omega:*` 的 `ipcMain.handle`；改造会话生命周期（多会话注册表） |
-| `apps/omega-desktop/electron/preload.js` | 扩展 `window.omega` 新增查询/会话/diff/审批方法（带校验） |
-| `apps/omega-desktop/electron-builder.yml` | `files` 改为 `dist/**/*`，移除 `renderer.js`/`styles.css` |
+| `apps/ravel-desktop/package.json` | 更新 deps + scripts（`dev`=vite build --watch+electron；`build:renderer`；`typecheck` 改为 tsc + node --check electron） |
+| `apps/ravel-desktop/vite.config.ts` | Vite：root=app、entry=`src/renderer/main.tsx`、IIFE 单 chunk、`base:'./'`、`outDir:dist` |
+| `apps/ravel-desktop/tailwind.config.ts` | Tailwind content globs + 从 `theme/tokens.ts` 生成颜色/间距/圆角 |
+| `apps/ravel-desktop/postcss.config.js` | tailwindcss + autoprefixer |
+| `apps/ravel-desktop/tsconfig.renderer.json` | 渲染进程 TS（jsx:react-jsx, moduleResolution:bundler） |
+| `apps/ravel-desktop/index.html` | 改写为 Vite 入口（引用 `./dist/assets/*`），**保留并微调 CSP**（加 style nonce） |
+| `apps/ravel-desktop/electron/main.js` | 新增 `omega:*` 的 `ipcMain.handle`；改造会话生命周期（多会话注册表） |
+| `apps/ravel-desktop/electron/preload.js` | 扩展 `window.omega` 新增查询/会话/diff/审批方法（带校验） |
+| `apps/ravel-desktop/electron-builder.yml` | `files` 改为 `dist/**/*`，移除 `renderer.js`/`styles.css` |
 
 **主进程新增模块（T02）**
 
 | 路径 | 职责 |
 |---|---|
-| `apps/omega-desktop/electron/state-reader.js` | 只读读取扩展 append-only 状态文件 → 受控 DTO（workflow*/scout*）；安全过滤 |
-| `apps/omega-desktop/electron/diff-service.js` | 主进程 git diff → `WorkspaceDiff`；revert → `ChangeApprovalResult`（特权） |
-| `apps/omega-desktop/electron/session-reader.js` | 受控读取 Pi JSONL session 摘要、树和分页消息；不构成第二份 transcript authority |
+| `apps/ravel-desktop/electron/state-reader.js` | 只读读取扩展 append-only 状态文件 → 受控 DTO（workflow*/scout*）；安全过滤 |
+| `apps/ravel-desktop/electron/diff-service.js` | 主进程 git diff → `WorkspaceDiff`；revert → `ChangeApprovalResult`（特权） |
+| `apps/ravel-desktop/electron/session-reader.js` | 受控读取 Pi JSONL session 摘要、树和分页消息；不构成第二份 transcript authority |
 
 **数据层（T02，渲染侧）**
 
 | 路径 | 职责 |
 |---|---|
-| `apps/omega-desktop/src/renderer/types/dto.ts` | 所有受控 DTO TS 接口 + `IpcResult<T>` 信封 |
-| `apps/omega-desktop/src/renderer/types/events.ts` | 扩展后的渲染事件流类型（含 `tool_execution_summary`） |
-| `apps/omega-desktop/src/renderer/ipc/client.ts` | 封装 `window.omega.*`（prompt + 新查询/会话/diff/审批） |
-| `apps/omega-desktop/src/renderer/store/useAppStore.ts` | Zustand 全局状态 |
-| `apps/omega-desktop/src/renderer/theme/tokens.ts` | 设计 token 单一来源（颜色/间距/圆角） |
-| `apps/omega-desktop/src/renderer/theme/emotion-cache.ts` | 带 nonce 的 MUI emotion cache |
-| `apps/omega-desktop/src/renderer/theme/ThemeProvider.tsx` | MUI `createTheme` + `StyledEngineProvider` + `CacheProvider` |
+| `apps/ravel-desktop/src/renderer/types/dto.ts` | 所有受控 DTO TS 接口 + `IpcResult<T>` 信封 |
+| `apps/ravel-desktop/src/renderer/types/events.ts` | 扩展后的渲染事件流类型（含 `tool_execution_summary`） |
+| `apps/ravel-desktop/src/renderer/ipc/client.ts` | 封装 `window.omega.*`（prompt + 新查询/会话/diff/审批） |
+| `apps/ravel-desktop/src/renderer/store/useAppStore.ts` | Zustand 全局状态 |
+| `apps/ravel-desktop/src/renderer/theme/tokens.ts` | 设计 token 单一来源（颜色/间距/圆角） |
+| `apps/ravel-desktop/src/renderer/theme/emotion-cache.ts` | 带 nonce 的 MUI emotion cache |
+| `apps/ravel-desktop/src/renderer/theme/ThemeProvider.tsx` | MUI `createTheme` + `StyledEngineProvider` + `CacheProvider` |
 
 **布局与核心组件（T03）**
 
@@ -457,7 +457,7 @@ export interface ToolExecutionSummaryEvent {
 #### 3.5 会话持久化方案（当前实现）
 
 - **权威存储**：Pi JSONL / `SessionManager` 负责 session、消息、tree、时间戳、分支和压缩 lineage。
-- **桌面侧缓存**：`userData/omega/` 仅保存桌面设置、窗口状态、草稿、workspace registry、event cache 和必要 UI 缓存；不再维护独立的 `persistence.js` 会话 JSON authority。
+- **桌面侧缓存**：`userData/ravel/`（由迁移模块从旧 `userData/omega/` 复制，原目录保留不动）仅保存桌面设置、窗口状态、草稿、workspace registry、event cache 和必要 UI 缓存；不再维护独立的 `persistence.js` 会话 JSON authority。
 - **读取边界**：`electron/session-reader.js` 以授权 workspace 和受控 session path 读取 JSONL，并提供摘要、树和分页消息；Renderer 不直接访问 JSONL。
 - **实时边界**：Worker runtime 负责当前 Agent turn 和事件流；Renderer 的 optimistic/transient state 必须在 worker ready、replay 或 idle transcript reconcile 时与 JSONL 权威源对账。
 - **生命周期**：new/load/switch/fork 等操作由 Main/Worker runtime 和 SessionManager 协同完成；切换或 replacement 必须绑定 generation/runtime epoch，旧事件和旧 prompt 不得写入新 runtime。
@@ -579,7 +579,7 @@ graph TD
 | `omega:compact` | snapshot | 手动压缩 |
 | `omega:authStatus` | provider 配置摘要 | 读 `auth.json` + `models.json`；本地 dummy key 显示「本地可用」 |
 
-`omega:listSessions` / `newSession` / `loadSession` 现在代理到 JSONL；`userData/omega/sessions` JSON 仅作回退缓存。
+`omega:listSessions` / `newSession` / `loadSession` 现在代理到 JSONL；旧版 `userData/omega/` 下的 JSON 缓存仅作迁移来源，不再写入（当前数据目录为 `userData/ravel/`）。
 
 ### 7.3 净化事件扩展
 

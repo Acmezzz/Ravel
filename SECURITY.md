@@ -28,11 +28,14 @@ coding agent trivially and this cannot be protected against.
 
 ## Reporting a Vulnerability
 
-If you believe you found a security vulnerability in Ravel Desktop, Pi, or
-another package in this repository, please report it privately by either:
+If you believe you found a security vulnerability in Ravel Desktop or another
+package in this repository, please report it privately through GitHub
+Security Advisories ("Private vulnerability reporting" on this repository).
+This is the only supported channel for Ravel; there is no public security
+email.
 
-- Opening a private report through GitHub Security Advisories for this repository
-- For upstream Pi runtime issues, also see `security@earendil.com`
+For vulnerabilities in the upstream Pi runtime itself, report them to the
+upstream Pi project rather than this repository.
 
 Please include:
 
@@ -46,9 +49,9 @@ reports and coordinate disclosure as appropriate.
 
 ## Scope
 
-Security issues in the distributed packages, command-line tools, APIs, and
-repository code are in scope as well as earendil operated infrastructure
-on `pi.dev`.
+Security issues in the distributed desktop application, command-line tools,
+APIs, and repository code are in scope. Upstream-operated infrastructure
+(such as `pi.dev`) is not in scope here.
 
 ## Out Of Scope
 
@@ -87,6 +90,6 @@ is out of scope.
 When possible, include the exact affected path, package version or commit SHA,
 configuration, and a proof of concept against the latest release or latest
 `main`.  For dependency reports, include evidence that the shipped dependency is
-affected and that the issue is reachable through Pi.  For exposed-secret reports,
-include evidence that the credential is owned by Earendil or grants access to
-Earendil-operated infrastructure or services.
+affected and that the issue is reachable through the shipped application.  For
+exposed-secret reports, include evidence that the credential is owned by this
+project or grants access to infrastructure operated for it.
