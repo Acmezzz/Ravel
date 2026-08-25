@@ -43,12 +43,23 @@ blocked and the workbench rendered as unstyled HTML. Fixed by aligning
   enlarged size; hit areas scale with the layout.
 - Renderer log at 200%: zero CSP violations, zero errors.
 
-## Residual notes
+## In-app zoom shortcuts (follow-up, implemented)
 
-- The two `Ctrl`-style page-zoom accelerators (Ctrl+=/Ctrl+-) are not yet
-  registered (frameless window, no menu). OS magnifier and
-  `--force-device-scale-factor` / `webContents.setZoomLevel` paths work;
-  wiring in-app zoom shortcuts is tracked as a follow-up enhancement, not a
-  1.4.4 blocker (text already scales via the mechanisms above).
-- Screenshots captured during the run are recorded in the session log; the
-  100% baseline and 200% run were both taken after the nonce fix.
+Configurable `zoomIn` / `zoomOut` / `zoomReset` shortcuts (defaults
+`Ctrl+=` / `Ctrl+-` / `Ctrl+0`) now live in the desktop keybindings schema
+(`electron/keybindings.js`, editable in Settings → 桌面与快捷键). The
+renderer applies them by scaling the root font size, which every rem-based
+text size follows (0.75x–2x, 0.25 steps).
+
+Verified over CDP (`Input.dispatchKeyEvent`, no OS focus needed) on the
+built bundle:
+
+```
+before:          root (unset)   body 14px
+after 3x Ctrl+=: root 28px      body 24.5px   (175%)
+after Ctrl+0:    root (unset)   body 14px     (reset)
+after Ctrl+-:    root 12px      body 10.5px   (75%)
+```
+
+A 175% screenshot was captured during the same run: text scales, layout
+reflows (left nav switches to its drawer breakpoint), nothing clips.

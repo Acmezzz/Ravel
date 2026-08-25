@@ -416,7 +416,12 @@ export function App(): React.ReactElement {
     };
   }, [setConnection, setShutdownPhase, setBootstrapError, setExtensionState, setExtensionLoading]);
 
-  const keybindings = useAppStore((s) => s.desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
+  // Text zoom: root-relative rem typography scales with the html font size.
+  const [textZoom, setTextZoom] = React.useState(1);
+  React.useEffect(() => {
+    document.documentElement.style.fontSize = textZoom === 1 ? "" : `${(16 * textZoom).toFixed(2)}px`;
+  }, [textZoom]);
+  const keybindings = useAppStore((s) => s.desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape", zoomIn: "Ctrl+=", zoomOut: "Ctrl+-", zoomReset: "Ctrl+0" });
 
   React.useEffect(() => {
     // Workbench shortcuts are stored in typed desktop settings.
@@ -432,6 +437,22 @@ export function App(): React.ReactElement {
       if (matchesKeybinding(keybindings.newSession, e)) {
         e.preventDefault();
         void startNewSession();
+        return;
+      }
+
+      if (matchesKeybinding(keybindings.zoomIn, e)) {
+        e.preventDefault();
+        setTextZoom((z) => Math.min(2, Math.round((z + 0.25) * 100) / 100));
+        return;
+      }
+      if (matchesKeybinding(keybindings.zoomOut, e)) {
+        e.preventDefault();
+        setTextZoom((z) => Math.max(0.75, Math.round((z - 0.25) * 100) / 100));
+        return;
+      }
+      if (matchesKeybinding(keybindings.zoomReset, e)) {
+        e.preventDefault();
+        setTextZoom(1);
         return;
       }
       if (matchesKeybinding(keybindings.abort, e) && useAppStore.getState().connection === "running") {

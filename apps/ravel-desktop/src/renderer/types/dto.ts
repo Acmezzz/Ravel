@@ -430,7 +430,7 @@ export interface DesktopSettings {
   rightPanelOpen: boolean;
   permissionProfile: "trusted" | "workspace-only" | "read-only" | "ask-before-command";
   sessionRecovery: Record<string, { state: string; running: boolean; unread: boolean; error: string | null; retryAttempt?: number; retryMaxAttempts?: number; retryDelayMs?: number; updatedAt: string }>;
-  keybindings: { commandPalette: string; newSession: string; abort: string };
+  keybindings: { commandPalette: string; newSession: string; abort: string; zoomIn: string; zoomOut: string; zoomReset: string };
   customProviders: Record<string, { id: string; name: string; baseUrl: string; api: string; headers: Record<string, string>; authHeader: boolean; models: Array<Record<string, unknown>> }>;
   windowBounds: DesktopWindowBounds | null;
 }

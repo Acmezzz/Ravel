@@ -80,7 +80,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
   const [resources, setResources] = React.useState<ResourceBundle | null>(null);
   const [workerCap, setWorkerCap] = React.useState(String(desktopSettings?.workerCap ?? 3));
   const [idleTtl, setIdleTtl] = React.useState(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
-  const [keybindings, setKeybindings] = React.useState(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
+  const [keybindings, setKeybindings] = React.useState(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape", zoomIn: "Ctrl+=", zoomOut: "Ctrl+-", zoomReset: "Ctrl+0" });
   const [desktopError, setDesktopError] = React.useState<string | null>(null);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
   const [resourceQuery, setResourceQuery] = React.useState("");
@@ -99,7 +99,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
     if (!open) return;
     setWorkerCap(String(desktopSettings?.workerCap ?? 3));
     setIdleTtl(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
-    setKeybindings(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
+    setKeybindings(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape", zoomIn: "Ctrl+=", zoomOut: "Ctrl+-", zoomReset: "Ctrl+0" });
     setDesktopError(null);
   }, [open, desktopSettings]);
 
@@ -322,6 +322,27 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                   label={t("settings.kb.abort")}
                   value={keybindings.abort}
                   onChange={(e) => setKeybindings((c) => ({ ...c, abort: e.target.value }))}
+                  onBlur={() => void applyDesktopPatch({ keybindings })}
+                />
+                <TextField
+                  size="small"
+                  label={t("settings.kb.zoomIn")}
+                  value={keybindings.zoomIn}
+                  onChange={(e) => setKeybindings((c) => ({ ...c, zoomIn: e.target.value }))}
+                  onBlur={() => void applyDesktopPatch({ keybindings })}
+                />
+                <TextField
+                  size="small"
+                  label={t("settings.kb.zoomOut")}
+                  value={keybindings.zoomOut}
+                  onChange={(e) => setKeybindings((c) => ({ ...c, zoomOut: e.target.value }))}
+                  onBlur={() => void applyDesktopPatch({ keybindings })}
+                />
+                <TextField
+                  size="small"
+                  label={t("settings.kb.zoomReset")}
+                  value={keybindings.zoomReset}
+                  onChange={(e) => setKeybindings((c) => ({ ...c, zoomReset: e.target.value }))}
                   onBlur={() => void applyDesktopPatch({ keybindings })}
                 />
               </Box>

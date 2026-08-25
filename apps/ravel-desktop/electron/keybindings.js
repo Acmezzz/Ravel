@@ -1,4 +1,4 @@
-export const DEFAULT_KEYBINDINGS = Object.freeze({ commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
+export const DEFAULT_KEYBINDINGS = Object.freeze({ commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape", zoomIn: "Ctrl+=", zoomOut: "Ctrl+-", zoomReset: "Ctrl+0" });
 
 export function normalizeKeybinding(value, fallback) {
   const text = typeof value === "string" ? value.trim().replace(/\s+/g, "") : "";
@@ -13,6 +13,9 @@ export function sanitizeKeybindings(value) {
     commandPalette: normalizeKeybinding(source.commandPalette, DEFAULT_KEYBINDINGS.commandPalette),
     newSession: normalizeKeybinding(source.newSession, DEFAULT_KEYBINDINGS.newSession),
     abort: normalizeKeybinding(source.abort, DEFAULT_KEYBINDINGS.abort),
+    zoomIn: normalizeKeybinding(source.zoomIn, DEFAULT_KEYBINDINGS.zoomIn),
+    zoomOut: normalizeKeybinding(source.zoomOut, DEFAULT_KEYBINDINGS.zoomOut),
+    zoomReset: normalizeKeybinding(source.zoomReset, DEFAULT_KEYBINDINGS.zoomReset),
   };
   const conflicts = Object.entries(result).reduce((map, [key, binding]) => {
     const owners = map.get(binding) ?? [];
