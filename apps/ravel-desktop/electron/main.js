@@ -37,6 +37,7 @@ import { assertLocalSource } from "./resource-center.js";
 import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 import { migrateOmegaUserData } from "./data-migration.js";
+import { DEEP_LINK_PROTOCOL, parseDeepLink, shouldRegisterProtocol } from "./deep-links.js";
 import { WorkerHost } from "./worker-host.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
@@ -94,12 +95,10 @@ function parseStartupRequest(argv = process.argv) {
     if (value === "--workspace" && typeof argv[index + 1] === "string") result.workspace = argv[++index];
     else if (value === "--session" && typeof argv[index + 1] === "string") result.sessionId = argv[++index];
     else if (typeof value === "string" && (value.startsWith("ravel://") || value.startsWith("omega://"))) {
-      try {
-        const url = new URL(value);
-        result.workspace = url.searchParams.get("workspace") ?? result.workspace;
-        result.sessionId = url.searchParams.get("session") ?? result.sessionId;
-      } catch {
-        /* ignore invalid deep links */
+      const link = parseDeepLink(value);
+      if (link) {
+        result.workspace = link.workspace ?? result.workspace;
+        result.sessionId = link.sessionId ?? result.sessionId;
       }
     }
   }
@@ -1772,26 +1771,63 @@ singleInstancePrimary = app.requestSingleInstanceLock();
 if (!singleInstancePrimary) {
   app.quit();
 } else {
+  registerRavelProtocol();
   app.on("second-instance", (_event, commandLine) => {
-    startupRequest = parseStartupRequest(commandLine);
-    focusMainWindow();
-    if (startupRequest.workspace && workspaceRegistry) {
-      void (async () => {
-        try {
-          const root = authorizedWorkspace(startupRequest.workspace);
-          if (!isForegroundBusy() && root !== activeCwd) {
-            const trust = projectTrust.inspect(root);
-            if (!trust.requiresTrust || trust.decision === "trusted") {
-              const result = await rpc("newSession", { workspace: root, projectTrusted: trust.decision === "trusted" }, "write_failed");
-              if (result.ok) rememberActive(result.data);
-            }
-          }
-        } catch {
-          /* startup deep-link is best effort; keep the existing window usable */
-        }
-      })();
-    }
+    applyIncomingRequest(parseStartupRequest(commandLine));
   });
+}
+
+let pendingDeepLinks = [];
+
+/** Apply a warm-start request (second instance or macOS open-url) to the live window. Best effort. */
+function applyIncomingRequest(request) {
+  focusMainWindow();
+  if (!workspaceRegistry || !win || win.isDestroyed()) return;
+  void (async () => {
+    try {
+      if (request.sessionId) {
+        await loadNamedSession({ sessionId: request.sessionId, workspace: request.workspace ?? undefined });
+        return;
+      }
+      if (!request.workspace) return;
+      const root = authorizedWorkspace(request.workspace);
+      if (!isForegroundBusy() && root !== activeCwd) {
+        const trust = projectTrust.inspect(root);
+        if (!trust.requiresTrust || trust.decision === "trusted") {
+          const result = await rpc("newSession", { workspace: root, projectTrusted: trust.decision === "trusted" }, "write_failed");
+          if (result.ok) rememberActive(result.data);
+        }
+      }
+    } catch {
+      /* startup deep-link is best effort; keep the existing window usable */
+    }
+  })();
+}
+
+// macOS hands protocol URLs through open-url instead of argv.
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  const link = parseDeepLink(url);
+  if (!link) return;
+  if (!win || win.isDestroyed()) pendingDeepLinks.push(link);
+  else applyIncomingRequest(link);
+});
+
+function flushPendingDeepLinks() {
+  const queued = pendingDeepLinks;
+  pendingDeepLinks = [];
+  for (const link of queued) applyIncomingRequest(link);
+}
+
+function registerRavelProtocol() {
+  if (!shouldRegisterProtocol({ isPackaged: app.isPackaged, env: process.env })) return;
+  try {
+    if (!app.isDefaultProtocolClient(DEEP_LINK_PROTOCOL) && !app.setAsDefaultProtocolClient(DEEP_LINK_PROTOCOL)) {
+      throw new Error("setAsDefaultProtocolClient returned false");
+    }
+  } catch (error) {
+    process.stderr.write(`[main] ${DEEP_LINK_PROTOCOL}:// protocol registration failed: ${error instanceof Error ? error.message : String(error)}\n`);
+  }
 }
 
 app
@@ -1818,6 +1854,7 @@ app
       await shutdown();
       app.exit(1);
     }
+    flushPendingDeepLinks();
     app.on("activate", () => {
       if (!BrowserWindow.getAllWindows().length) {
         void createWindow().catch((error) => {
