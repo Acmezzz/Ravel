@@ -131,10 +131,10 @@ export function FileViewer(): React.ReactElement {
     <Dialog open={viewer.open} onClose={closeViewer} fullWidth maxWidth="md">
       <DialogTitle sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1, pr: 6 }}>
         <Box sx={{ display: "flex", gap: 0.5, minWidth: 0, overflow: "auto" }}>
-          {tabs.map((tab) => <Typography key={tab} component="button" type="button" onClick={() => void useAppStore.getState().openViewer(tab)} sx={{ fontSize: 12, px: 0.75, py: 0.25, cursor: "pointer", whiteSpace: "nowrap", color: tab === viewer.path ? "var(--omega-accent)" : "var(--omega-text-muted)", border: "none", borderBottom: tab === viewer.path ? "2px solid var(--omega-accent)" : "2px solid transparent", background: "transparent" }}>{tab.split(/[\\/]/).pop()}</Typography>)}
+          {tabs.map((tab) => <Typography key={tab} component="button" type="button" onClick={() => void useAppStore.getState().openViewer(tab)} sx={{ fontSize: "0.75rem", px: 0.75, py: 0.25, cursor: "pointer", whiteSpace: "nowrap", color: tab === viewer.path ? "var(--omega-accent)" : "var(--omega-text-muted)", border: "none", borderBottom: tab === viewer.path ? "2px solid var(--omega-accent)" : "2px solid transparent", background: "transparent" }}>{tab.split(/[\\/]/).pop()}</Typography>)}
         </Box>
         {viewer.file ? (
-          <Typography component="span" sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
+          <Typography component="span" sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
             {formatSize(viewer.file.size)}
             {viewer.file.truncated ? "（已截断）" : ""}
           </Typography>
@@ -146,7 +146,7 @@ export function FileViewer(): React.ReactElement {
               component="button"
               type="button"
               onClick={() => setMode("source")}
-              sx={{ fontSize: 10.5, cursor: "pointer", color: mode === "source" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
+              sx={{ fontSize: "0.65625rem", cursor: "pointer", color: mode === "source" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
             >
               源码
             </Typography>
@@ -154,19 +154,19 @@ export function FileViewer(): React.ReactElement {
               component="button"
               type="button"
               onClick={() => setMode("preview")}
-              sx={{ fontSize: 10.5, cursor: "pointer", color: mode === "preview" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
+              sx={{ fontSize: "0.65625rem", cursor: "pointer", color: mode === "preview" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
             >
               预览
             </Typography>
           </Box>
         ) : null}
-        <Typography sx={{ fontSize: 10.5, color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
+        <Typography sx={{ fontSize: "0.65625rem", color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
         <Tooltip title="使用系统默认应用打开">
-          <IconButton aria-label="使用系统默认应用打开" size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: 10.5 }}>外部</Typography></IconButton>
+          <IconButton aria-label="使用系统默认应用打开" size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: "0.65625rem" }}>外部</Typography></IconButton>
         </Tooltip>
         <Tooltip title="在资源管理器中显示">
           <IconButton aria-label="在资源管理器中显示" size="small" onClick={() => void reveal()} sx={{ color: "var(--omega-text-dim)" }}>
-            <FolderOpenIcon sx={{ fontSize: 16 }} />
+            <FolderOpenIcon sx={{ fontSize: "1rem" }} />
           </IconButton>
         </Tooltip>
       </DialogTitle>
@@ -174,10 +174,10 @@ export function FileViewer(): React.ReactElement {
         {viewer.loading ? (
           <Box role="status" aria-live="polite" aria-busy="true" sx={{ display: "grid", placeItems: "center", py: 6 }}>
             <CircularProgress size={22} sx={{ color: "var(--omega-accent)" }} />
-            <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>正在加载文件…</Typography>
+            <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>正在加载文件…</Typography>
           </Box>
         ) : viewer.error ? (
-          <Box role="alert" sx={{ display: "grid", gap: 1 }}><Typography sx={{ fontSize: 13, color: "var(--omega-danger)" }}>{viewer.error}</Typography><Button size="small" onClick={() => { if (viewer.path) void useAppStore.getState().openViewer(viewer.path); }} sx={{ justifySelf: "start", textTransform: "none" }}>重试</Button></Box>
+          <Box role="alert" sx={{ display: "grid", gap: 1 }}><Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-danger)" }}>{viewer.error}</Typography><Button size="small" onClick={() => { if (viewer.path) void useAppStore.getState().openViewer(viewer.path); }} sx={{ justifySelf: "start", textTransform: "none" }}>重试</Button></Box>
         ) : isImage(viewer.file) ? (
           <Box component="img" src={viewer.file?.dataUrl} alt={viewer.path ?? "image"} sx={{ display: "block", maxWidth: "100%", maxHeight: "64vh", mx: "auto", objectFit: "contain" }} />
         ) : isAudio(viewer.file) ? (
@@ -185,11 +185,11 @@ export function FileViewer(): React.ReactElement {
         ) : isPdf(viewer.file) ? (
           <Box component="iframe" title={viewer.path ?? "PDF"} src={viewer.file?.dataUrl} sx={{ width: "100%", height: "64vh", border: 0 }} />
         ) : viewer.file?.binary ? (
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>该二进制文件暂不支持内嵌预览，可用资源管理器打开。</Typography>
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)" }}>该二进制文件暂不支持内嵌预览，可用资源管理器打开。</Typography>
         ) : mode === "preview" && isMarkdown(viewer.path) ? (
           <Box sx={{ maxHeight: "64vh", overflow: "auto" }}><Markdown>{viewer.file?.content ?? ""}</Markdown></Box>
         ) : isDocx(viewer.file) ? (
-          <Box sx={{ maxHeight: "64vh", overflow: "auto", p: 1.5, border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}><Typography component="pre" sx={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.7, m: 0 }}>{viewer.file?.content ?? ""}</Typography></Box>
+          <Box sx={{ maxHeight: "64vh", overflow: "auto", p: 1.5, border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}><Typography component="pre" sx={{ whiteSpace: "pre-wrap", fontSize: "0.8125rem", lineHeight: 1.7, m: 0 }}>{viewer.file?.content ?? ""}</Typography></Box>
         ) : mode === "preview" && isMermaid(viewer.path) ? (
           <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>Mermaid source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
         ) : mode === "preview" && isMath(viewer.path) ? (
@@ -202,7 +202,7 @@ export function FileViewer(): React.ReactElement {
               borderRadius: "10px",
               border: "1px solid var(--omega-border)",
               background: "var(--omega-bg-code)",
-              fontSize: 12,
+              fontSize: "0.75rem",
               lineHeight: 1.6,
               fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
               color: "var(--omega-text-soft)",
@@ -237,24 +237,24 @@ export function FileViewer(): React.ReactElement {
                 </Box>
               );
             })}
-            {pageError ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 1 }}>{pageError}</Typography> : null}
+            {pageError ? <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", mt: 1 }}>{pageError}</Typography> : null}
             {nextOffset !== null ? <Button size="small" onClick={() => void loadMore()} disabled={loadingMore} sx={{ mt: 1, textTransform: "none" }}>{loadingMore ? "加载中…" : "加载更多行"}</Button> : null}
           </Box>
         )}
-        {copyError ? <Typography role="alert" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: 12, color: "var(--omega-danger)" }}>{copyError}</Typography> : null}
-        {copied ? <Typography role="status" aria-live="polite" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: 12, color: "var(--omega-accent)" }}>已复制文件内容</Typography> : null}
+        {copyError ? <Typography role="alert" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: "0.75rem", color: "var(--omega-danger)" }}>{copyError}</Typography> : null}
+        {copied ? <Typography role="status" aria-live="polite" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: "0.75rem", color: "var(--omega-accent)" }}>已复制文件内容</Typography> : null}
         {viewer.file?.content ? (
           <Box sx={{ position: "absolute", top: 8, right: 12, display: "flex", gap: 0.5 }}>
             {selection ? (
               <Tooltip title={`引用 @${viewer.path}:${Math.min(selection.start, selection.end)}-${Math.max(selection.start, selection.end)}`}>
                 <IconButton aria-label="引用选中的行" size="small" onClick={quoteSelection} sx={{ color: "var(--omega-accent)" }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 700 }}>@</Typography>
+                  <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700 }}>@</Typography>
                 </IconButton>
               </Tooltip>
             ) : null}
             <Tooltip title={copied ? "已复制" : "复制内容"}>
               <IconButton aria-label="复制文件内容" size="small" onClick={() => void copy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
-                <ContentCopyIcon sx={{ fontSize: 16 }} />
+                <ContentCopyIcon sx={{ fontSize: "1rem" }} />
               </IconButton>
             </Tooltip>
           </Box>

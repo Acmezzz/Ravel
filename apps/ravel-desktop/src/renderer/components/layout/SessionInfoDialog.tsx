@@ -16,8 +16,8 @@ import type { AgentStateSnapshot } from "../../types/dto";
 function Stat({ label, value }: { label: string; value: string | number }): React.ReactElement {
   return (
     <Box sx={{ minWidth: 84 }}>
-      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>{label}</Typography>
-      <Typography sx={{ fontSize: 14, fontWeight: 600, color: "var(--omega-text)" }}>{value}</Typography>
+      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>{label}</Typography>
+      <Typography sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--omega-text)" }}>{value}</Typography>
     </Box>
   );
 }
@@ -105,7 +105,7 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
         <Box sx={{ flex: 1 }} />
         <Button
           size="small"
-          startIcon={busy ? <CircularProgress size={13} sx={{ color: "inherit" }} /> : <IosShareIcon sx={{ fontSize: 15 }} />}
+          startIcon={busy ? <CircularProgress size={13} sx={{ color: "inherit" }} /> : <IosShareIcon sx={{ fontSize: "0.9375rem" }} />}
           onClick={() => void exportHtml()}
           disabled={busy}
           sx={{ textTransform: "none" }}
@@ -114,8 +114,8 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
         </Button>
       </DialogTitle>
       <DialogContent sx={{ pb: 3 }}>
-        {loading ? <Box role="status" aria-live="polite" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}><CircularProgress size={15} /><Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>正在刷新会话信息…</Typography></Box> : null}
-        {error ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}><Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{error}</Typography><Button size="small" onClick={() => void loadState()} disabled={loading || busy} sx={{ textTransform: "none" }}>重试</Button></Box> : null}
+        {loading ? <Box role="status" aria-live="polite" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}><CircularProgress size={15} /><Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>正在刷新会话信息…</Typography></Box> : null}
+        {error ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}><Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)" }}>{error}</Typography><Button size="small" onClick={() => void loadState()} disabled={loading || busy} sx={{ textTransform: "none" }}>重试</Button></Box> : null}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 1.5 }}>
           <Chip size="small" label={snapshot?.sessionName || "未命名会话"} />
           {snapshot?.model ? (
@@ -141,7 +141,7 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
           component="button"
           type="button"
           onClick={() => void loadPrompt()}
-          sx={{ fontSize: 13, color: "var(--omega-accent)", cursor: "pointer", userSelect: "none", fontWeight: 600, border: "none", background: "transparent", p: 0 }}
+          sx={{ fontSize: "0.8125rem", color: "var(--omega-accent)", cursor: "pointer", userSelect: "none", fontWeight: 600, border: "none", background: "transparent", p: 0 }}
         >
           {promptOpen ? "▾ 隐藏系统提示词" : "▸ 查看系统提示词"}
         </Typography>
@@ -155,7 +155,7 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
               borderRadius: "10px",
               border: "1px solid var(--omega-border)",
               background: "var(--omega-bg-code)",
-              fontSize: 12,
+              fontSize: "0.75rem",
               lineHeight: 1.6,
               fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
               color: "var(--omega-text-muted)",
@@ -168,7 +168,7 @@ export function SessionInfoDialog({ open, onClose }: SessionInfoDialogProps): Re
             {systemPrompt ?? (promptError ? "加载失败" : "加载中…")}
           </Box>
         ) : null}
-        {promptError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.75 }}><Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{promptError}</Typography><Button size="small" onClick={() => { setSystemPrompt(null); void loadPrompt(true); }} sx={{ textTransform: "none" }}>重试提示词</Button></Box> : null}
+        {promptError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.75 }}><Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)" }}>{promptError}</Typography><Button size="small" onClick={() => { setSystemPrompt(null); void loadPrompt(true); }} sx={{ textTransform: "none" }}>重试提示词</Button></Box> : null}
       </DialogContent>
     </Dialog>
   );

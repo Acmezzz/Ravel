@@ -31,7 +31,7 @@ export function LeftNav(): React.ReactElement {
         <Tabs
           value={leftTab}
           onChange={(_e, value) => setLayout({ leftTab: value })}
-          sx={{ minHeight: 32, "& .MuiTab-root": { minHeight: 32, minWidth: 48, fontSize: 12, px: 1, py: 0.25 } }}
+          sx={{ minHeight: 32, "& .MuiTab-root": { minHeight: 32, minWidth: 48, fontSize: "0.75rem", px: 1, py: 0.25 } }}
         >
           <Tab label="会话" value="sessions" />
           <Tab label="文件" value="files" />
@@ -39,14 +39,14 @@ export function LeftNav(): React.ReactElement {
         {leftTab === "sessions" ? (
           <Button
             size="small"
-            startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+            startIcon={<AddIcon sx={{ fontSize: "0.9375rem" }} />}
             onClick={() => setNewOpen(true)}
             sx={{
               textTransform: "none",
               borderRadius: "999px",
               flex: "0 0 auto",
               fontWeight: 600,
-              fontSize: 12,
+              fontSize: "0.75rem",
               px: 1.25,
               height: 28,
               color: "var(--omega-accent)",

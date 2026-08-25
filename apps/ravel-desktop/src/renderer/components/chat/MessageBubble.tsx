@@ -126,9 +126,9 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
           }}
         >
           {isUser ? (
-            <Typography sx={{ fontSize: 14, lineHeight: 1.6 }}>{message.text}</Typography>
+            <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>{message.text}</Typography>
           ) : isError ? (
-            <Typography sx={{ fontSize: 14, lineHeight: 1.6 }}>{message.text}</Typography>
+            <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>{message.text}</Typography>
           ) : (
             <Markdown>{message.text}</Markdown>
           )}
@@ -153,13 +153,13 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
           >
             <Tooltip title={copied ? "已复制" : "复制消息"}>
               <IconButton size="small" aria-label="复制消息" onClick={() => void handleCopy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
-                {copied ? <CheckIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 15 }} />}
+                {copied ? <CheckIcon sx={{ fontSize: "0.9375rem" }} /> : <ContentCopyIcon sx={{ fontSize: "0.9375rem" }} />}
               </IconButton>
             </Tooltip>
             {canFork ? (
               <Tooltip title={forking ? "创建中…" : "从此处 Fork 新会话"}>
                 <IconButton size="small" aria-label="从此处 Fork 新会话" onClick={() => void handleFork()} disabled={forking} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
-                  <CallSplitIcon sx={{ fontSize: 15 }} />
+                  <CallSplitIcon sx={{ fontSize: "0.9375rem" }} />
                 </IconButton>
               </Tooltip>
             ) : null}

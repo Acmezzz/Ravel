@@ -206,7 +206,7 @@ export function MessageList(): React.ReactElement {
                 pb: 1,
                 maxHeight: 160,
                 overflowY: "auto",
-                fontSize: 12,
+                fontSize: "0.75rem",
                 lineHeight: 1.55,
                 fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
                 color: "var(--omega-text-muted)",
@@ -219,12 +219,12 @@ export function MessageList(): React.ReactElement {
           </Box>
         ) : null}
         {thinkingActive ? (
-          <Typography className="thinking-shimmer" sx={{ fontSize: 12, mb: 2, fontWeight: 600 }}>
+          <Typography className="thinking-shimmer" sx={{ fontSize: "0.75rem", mb: 2, fontWeight: 600 }}>
             思考中…
           </Typography>
         ) : null}
         {compacting ? (
-          <Typography sx={{ color: "var(--omega-warning)", fontSize: 12, mb: 2 }}>正在压缩上下文…</Typography>
+          <Typography sx={{ color: "var(--omega-warning)", fontSize: "0.75rem", mb: 2 }}>正在压缩上下文…</Typography>
         ) : null}
         <div ref={bottomRef} />
       </Box>

@@ -40,7 +40,7 @@ function SectionTitle({ title }: { title: string }): React.ReactElement {
   return (
     <Typography
       sx={{
-        fontSize: 10.5,
+        fontSize: "0.65625rem",
         fontWeight: 700,
         letterSpacing: "0.06em",
         textTransform: "uppercase",
@@ -56,7 +56,7 @@ function SectionTitle({ title }: { title: string }): React.ReactElement {
 function ResourceGroup({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
     <Box sx={{ mb: 1.5 }}>
-      <Typography sx={{ fontSize: 12, fontWeight: 600, color: "var(--omega-text-muted)", mb: 0.5 }}>
+      <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--omega-text-muted)", mb: 0.5 }}>
         {title}
       </Typography>
       {children}
@@ -188,7 +188,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         <Tabs
           value={activeTab}
           onChange={(_e, v) => setActiveTab(v)}
-          sx={{ minHeight: 38, "& .MuiTab-root": { minHeight: 38, fontSize: 13, px: 1.5 } }}
+          sx={{ minHeight: 38, "& .MuiTab-root": { minHeight: 38, fontSize: "0.8125rem", px: 1.5 } }}
         >
           <Tab label="Agent 行为" value="agent" />
           <Tab label="桌面与快捷键" value="desktop" />
@@ -241,8 +241,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
             >
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, px: 1.5, py: 1.25, minHeight: 48 }}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>自动压缩上下文</Typography>
-                  <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", mt: 0.25 }}>接近窗口上限时自动压缩历史</Typography>
+                  <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}>自动压缩上下文</Typography>
+                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", mt: 0.25 }}>接近窗口上限时自动压缩历史</Typography>
                 </Box>
                 <Switch
                   checked={agent?.autoCompaction ?? true}
@@ -253,8 +253,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               <Box sx={{ height: "1px", background: "var(--omega-border)" }} />
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, px: 1.5, py: 1.25, minHeight: 48 }}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>失败自动重试</Typography>
-                  <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", mt: 0.25 }}>请求失败时按策略自动重试</Typography>
+                  <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}>失败自动重试</Typography>
+                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", mt: 0.25 }}>请求失败时按策略自动重试</Typography>
                 </Box>
                 <Switch
                   checked={agent?.autoRetry ?? true}
@@ -359,18 +359,18 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 />
               </Box>
               {desktopError ? (
-                <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 0.75 }}>{desktopError}</Typography>
+                <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", mt: 0.75 }}>{desktopError}</Typography>
               ) : saveState === "saving" ? (
-                <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-text-muted)", mt: 0.75 }}>正在保存设置…</Typography>
+                <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", mt: 0.75 }}>正在保存设置…</Typography>
               ) : saveState === "saved" ? (
-                <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-success)", mt: 0.75 }}>设置已保存</Typography>
+                <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-success)", mt: 0.75 }}>设置已保存</Typography>
               ) : null}
             </Box>
 
             <Box sx={{ display: "flex", gap: 1, pt: 0.5, borderTop: "1px solid var(--omega-border)" }}>
               <Button
                 size="small"
-                startIcon={<HubOutlinedIcon sx={{ fontSize: 16 }} />}
+                startIcon={<HubOutlinedIcon sx={{ fontSize: "1rem" }} />}
                 onClick={() => {
                   onClose();
                   setModelCenterOpen(true);
@@ -381,7 +381,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               </Button>
               <Button
                 size="small"
-                startIcon={<ExtensionOutlinedIcon sx={{ fontSize: 16 }} />}
+                startIcon={<ExtensionOutlinedIcon sx={{ fontSize: "1rem" }} />}
                 onClick={() => {
                   onClose();
                   setResourceCenterOpen(true);
@@ -392,7 +392,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               </Button>
               <Button
                 size="small"
-                startIcon={<ShieldOutlinedIcon sx={{ fontSize: 16 }} />}
+                startIcon={<ShieldOutlinedIcon sx={{ fontSize: "1rem" }} />}
                 onClick={() => {
                   onClose();
                   setTrustCenterOpen(true);
@@ -408,12 +408,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         {activeTab === "resources" && (
           <Box sx={{ display: "flex", flexDirection: "column" }}>
             {agent?.projectTrusted === false ? (
-              <Typography sx={{ fontSize: 13, color: "var(--omega-warning)", mb: 1.5 }}>
+              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-warning)", mb: 1.5 }}>
                 当前项目未信任，项目扩展、技能和 prompt 处于休眠状态。
               </Typography>
             ) : null}
             {!resources ? (
-              <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载扩展资源…</Typography>
+              <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>加载扩展资源…</Typography>
             ) : (
               <>
                 <TextField
@@ -425,67 +425,67 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 />
                 <ResourceGroup title={`已加载扩展（${resources.extensions.filter((extension) => matchesResource([extension.name, extension.path])).length}/${resources.extensions.length}）`}>
                   {resources.extensions.length === 0 ? (
-                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前工作区未加载扩展。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>当前工作区未加载扩展。</Typography>
                   ) : null}
                   {resources.extensions
                     .filter((extension) => matchesResource([extension.name, extension.path]))
                     .map((extension) => (
                       <Box key={extension.path} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.35 }}>
-                        <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{extension.name}</Typography>
-                        {extension.commands > 0 ? <Chip size="small" label={`${extension.commands} 命令`} sx={{ height: 18, fontSize: 10.5 }} /> : null}
-                        {extension.tools > 0 ? <Chip size="small" label={`${extension.tools} 工具`} sx={{ height: 18, fontSize: 10.5 }} /> : null}
-                        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap title={extension.path}>
+                        <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600 }}>{extension.name}</Typography>
+                        {extension.commands > 0 ? <Chip size="small" label={`${extension.commands} 命令`} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
+                        {extension.tools > 0 ? <Chip size="small" label={`${extension.tools} 工具`} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
+                        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap title={extension.path}>
                           {extension.path}
                         </Typography>
                       </Box>
                     ))}
                   {resources.extensions.length > 0 && resources.extensions.every((extension) => !matchesResource([extension.name, extension.path])) ? (
-                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有匹配的扩展。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>没有匹配的扩展。</Typography>
                   ) : null}
                 </ResourceGroup>
 
                 <ResourceGroup title={`可用 Skills（${resources.skills.filter((skill) => matchesResource([skill.name, skill.description])).length}/${resources.skills.length}）`}>
                   {resources.skills.length === 0 ? (
-                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>无 skills。可用 /skill:name 调用。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>无 skills。可用 /skill:name 调用。</Typography>
                   ) : null}
                   {resources.skills
                     .filter((skill) => matchesResource([skill.name, skill.description]))
                     .map((skill) => (
                       <Box key={skill.filePath} sx={{ py: 0.35 }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>/skill:{skill.name}</Typography>
-                          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap>
+                          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600 }}>/skill:{skill.name}</Typography>
+                          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap>
                             {skill.description.slice(0, 60)}
                           </Typography>
                         </Box>
                       </Box>
                     ))}
                   {resources.skills.length > 0 && resources.skills.every((skill) => !matchesResource([skill.name, skill.description])) ? (
-                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有匹配的 skills。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>没有匹配的 skills。</Typography>
                   ) : null}
                 </ResourceGroup>
 
                 <ResourceGroup title={`Prompt 模板（${resources.prompts.filter((promptResource) => matchesResource([promptResource.name, promptResource.description])).length}/${resources.prompts.length}）`}>
                   {resources.prompts.length === 0 ? (
-                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>无 prompt 模板。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>无 prompt 模板。</Typography>
                   ) : null}
                   {resources.prompts
                     .filter((promptResource) => matchesResource([promptResource.name, promptResource.description]))
                     .map((promptResource) => (
                       <Box key={promptResource.filePath} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.35 }}>
-                        <Typography sx={{ fontSize: 13, fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-accent)" }}>
+                        <Typography sx={{ fontSize: "0.8125rem", fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-accent)" }}>
                           /{promptResource.name}
                         </Typography>
                         {promptResource.argumentHint ? (
-                          <Chip size="small" label={promptResource.argumentHint} sx={{ height: 18, fontSize: 10.5 }} />
+                          <Chip size="small" label={promptResource.argumentHint} sx={{ height: 18, fontSize: "0.65625rem" }} />
                         ) : null}
-                        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap>
+                        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap>
                           {promptResource.description.slice(0, 60)}
                         </Typography>
                       </Box>
                     ))}
                   {resources.prompts.length > 0 && resources.prompts.every((promptResource) => !matchesResource([promptResource.name, promptResource.description])) ? (
-                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有匹配的 prompt 模板。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>没有匹配的 prompt 模板。</Typography>
                   ) : null}
                 </ResourceGroup>
               </>

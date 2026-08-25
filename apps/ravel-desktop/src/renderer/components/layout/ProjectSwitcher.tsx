@@ -184,10 +184,10 @@ export function ProjectSwitcher(): React.ReactElement {
           "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
         }}
       >
-        <FolderOpenOutlinedIcon sx={{ fontSize: 16, color: "var(--omega-accent)", flex: "0 0 auto" }} />
+        <FolderOpenOutlinedIcon sx={{ fontSize: "1rem", color: "var(--omega-accent)", flex: "0 0 auto" }} />
         <Typography
           sx={{
-            fontSize: 13,
+            fontSize: "0.8125rem",
             fontWeight: 600,
             color: "var(--omega-text)",
             minWidth: 0,
@@ -202,11 +202,11 @@ export function ProjectSwitcher(): React.ReactElement {
         {dormant ? (
           <Chip
             size="small"
-            icon={<ShieldOutlinedIcon sx={{ fontSize: 12 }} />}
+            icon={<ShieldOutlinedIcon sx={{ fontSize: "0.75rem" }} />}
             label="未信任"
             sx={{
               height: 18,
-              fontSize: 10.5,
+              fontSize: "0.65625rem",
               flex: "0 0 auto",
               background: "var(--omega-warning-soft)",
               color: "var(--omega-warning)",
@@ -215,7 +215,7 @@ export function ProjectSwitcher(): React.ReactElement {
             }}
           />
         ) : null}
-        <ExpandMoreIcon sx={{ fontSize: 15, color: "var(--omega-text-muted)", flex: "0 0 auto", ml: "auto" }} />
+        <ExpandMoreIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-text-muted)", flex: "0 0 auto", ml: "auto" }} />
       </Box>
 
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
@@ -226,12 +226,12 @@ export function ProjectSwitcher(): React.ReactElement {
               <Box sx={{ minWidth: 240, display: "flex", alignItems: "center", gap: 1 }}>
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <Typography sx={{ fontSize: 13, fontWeight: workspace.realRoot === current ? 600 : 400 }}>
+                    <Typography sx={{ fontSize: "0.8125rem", fontWeight: workspace.realRoot === current ? 600 : 400 }}>
                       {labelFor(workspace.displayPath)}
                     </Typography>
-                    {chip ? <Chip size="small" label={chip} sx={{ height: 18, fontSize: 10.5 }} /> : null}
+                    {chip ? <Chip size="small" label={chip} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
                   </Box>
-                  <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace" }} noWrap>
+                  <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace" }} noWrap>
                     {workspace.displayPath}
                   </Typography>
                 </Box>
@@ -243,7 +243,7 @@ export function ProjectSwitcher(): React.ReactElement {
                       onClick={(event) => void removeWorkspace(workspace, event)}
                       sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-danger)" } }}
                     >
-                      <CloseIcon sx={{ fontSize: 14 }} />
+                      <CloseIcon sx={{ fontSize: "0.875rem" }} />
                     </IconButton>
                   </Tooltip>
                 ) : null}
@@ -252,10 +252,10 @@ export function ProjectSwitcher(): React.ReactElement {
           );
         })}
         <MenuItem disabled={busy} onClick={() => void choose()}>
-          <AddIcon sx={{ fontSize: 17, mr: 1, color: "var(--omega-accent)" }} /> 添加工作区…
+          <AddIcon sx={{ fontSize: "1.0625rem", mr: 1, color: "var(--omega-accent)" }} /> 添加工作区…
         </MenuItem>
         <MenuItem disabled={busy} onClick={() => { setAnchor(null); useAppStore.getState().setTrustCenterOpen(true); }}>
-          <ShieldOutlinedIcon sx={{ fontSize: 17, mr: 1, color: "var(--omega-accent)" }} /> 信任中心…
+          <ShieldOutlinedIcon sx={{ fontSize: "1.0625rem", mr: 1, color: "var(--omega-accent)" }} /> 信任中心…
         </MenuItem>
         {currentWorkspace?.requiresTrust ? (
           <MenuItem
@@ -266,10 +266,10 @@ export function ProjectSwitcher(): React.ReactElement {
               });
             }}
           >
-            <ShieldOutlinedIcon sx={{ fontSize: 17, mr: 1, color: "var(--omega-accent)" }} /> 项目信任…
+            <ShieldOutlinedIcon sx={{ fontSize: "1.0625rem", mr: 1, color: "var(--omega-accent)" }} /> 项目信任…
           </MenuItem>
         ) : null}
-        {error ? <Typography sx={{ px: 2, py: 0.75, maxWidth: 280, color: "var(--omega-danger)", fontSize: 10.5 }}>{error}</Typography> : null}
+        {error ? <Typography sx={{ px: 2, py: 0.75, maxWidth: 280, color: "var(--omega-danger)", fontSize: "0.65625rem" }}>{error}</Typography> : null}
       </Menu>
 
       <ProjectTrustDialog

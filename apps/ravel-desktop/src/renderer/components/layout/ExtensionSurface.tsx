@@ -26,7 +26,7 @@ export function ExtensionSurface(): React.ReactElement | null {
       {widgets.map((widget) => (
         <Paper key={widget.key} variant="outlined" sx={{ px: 1, py: 0.75, background: "var(--omega-bg-rail)" }}>
           <Typography variant="caption" sx={{ color: "var(--omega-text-muted)" }}>{widget.key}</Typography>
-          {widget.lines.map((line, index) => <Typography key={`${widget.key}-${index}`} component="div" sx={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{line}</Typography>)}
+          {widget.lines.map((line, index) => <Typography key={`${widget.key}-${index}`} component="div" sx={{ fontSize: "0.75rem", whiteSpace: "pre-wrap" }}>{line}</Typography>)}
         </Paper>
       ))}
     </Box>

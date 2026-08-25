@@ -101,10 +101,10 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
           "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
         }}
       >
-        <EmojiObjectsIcon className={streaming ? "pulse-dot" : undefined} sx={{ fontSize: 13, color: "var(--omega-accent)" }} />
+        <EmojiObjectsIcon className={streaming ? "pulse-dot" : undefined} sx={{ fontSize: "0.8125rem", color: "var(--omega-accent)" }} />
         <Typography
           className={streaming ? "thinking-shimmer" : undefined}
-          sx={{ fontSize: 12, color: "var(--omega-text-muted)", fontWeight: 550, letterSpacing: "0.005em" }}
+          sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", fontWeight: 550, letterSpacing: "0.005em" }}
         >
           {streaming
             ? ["思考中", "推理中", "整理中", "斟酌中"][Math.floor(Date.now() / 1600) % 4]
@@ -113,12 +113,12 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
               : "思考"}
         </Typography>
         {!streaming && !deferred ? (
-          <Typography className="mono-num" sx={{ fontSize: 10.5, fontWeight: 650, color: "var(--omega-accent-strong)", borderLeft: "1px solid var(--omega-border-strong)", pl: 0.75 }}>
+          <Typography className="mono-num" sx={{ fontSize: "0.65625rem", fontWeight: 650, color: "var(--omega-accent-strong)", borderLeft: "1px solid var(--omega-border-strong)", pl: 0.75 }}>
             {elapsed || 1}s
           </Typography>
         ) : null}
         {loading ? <CircularProgress size={10} sx={{ color: "var(--omega-accent)" }} /> : null}
-        <ExpandMoreIcon sx={{ fontSize: 14, color: "var(--omega-text-dim)", transform: open ? "rotate(180deg)" : "none", transition: "transform 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" }} />
+        <ExpandMoreIcon sx={{ fontSize: "0.875rem", color: "var(--omega-text-dim)", transform: open ? "rotate(180deg)" : "none", transition: "transform 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" }} />
       </Box>
       {open && (loaded ?? "") ? (
         <Box
@@ -134,7 +134,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
             overflowY: "auto",
           }}
         >
-          <Typography component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontSize: 12, lineHeight: 1.6, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace" }}>
+          <Typography component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontSize: "0.75rem", lineHeight: 1.6, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace" }}>
             {loaded ?? (loading ? "加载中…" : "")}
           </Typography>
         </Box>

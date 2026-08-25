@@ -107,15 +107,15 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
           aria-controls="omega-model-list"
           aria-activedescendant={flatModels[activeIndex] ? `omega-model-${flatModels[activeIndex].provider}-${flatModels[activeIndex].id}` : undefined}
         />
-        {error ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 0.75 }}>{error}</Typography> : null}
+        {error ? <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", mt: 0.75 }}>{error}</Typography> : null}
       </Box>
       <Box id="omega-model-list" role="listbox" aria-label="模型列表" sx={{ overflowY: "auto", px: 0.75, pb: 0.75 }}>
         {groups.length === 0 ? (
-          <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", px: 1, py: 1.5 }}>无匹配模型</Typography>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", px: 1, py: 1.5 }}>无匹配模型</Typography>
         ) : (
           groups.map((group) => (
             <Box key={group.provider} sx={{ mb: 1 }}>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", letterSpacing: "0.06em", px: 1, py: 0.5 }}>
+              <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-text-dim)", letterSpacing: "0.06em", px: 1, py: 0.5 }}>
                 {group.provider.toUpperCase()}
               </Typography>
               {group.models.map((model) => {
@@ -143,16 +143,16 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
                     }}
                   >
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }} noWrap>
+                      <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)" }} noWrap>
                         {model.id}
                       </Typography>
-                      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>
+                      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }} noWrap>
                         {model.contextWindow ? `${Math.round(model.contextWindow / 1000)}K ctx` : ""}
                         {model.reasoning ? " · reasoning" : ""}
                       </Typography>
                     </Box>
                     {isPending ? <CircularProgress size={14} sx={{ color: "var(--omega-accent)" }} /> : null}
-                    {model.selected && !isPending ? <CheckIcon sx={{ fontSize: 16, color: "var(--omega-accent)" }} /> : null}
+                    {model.selected && !isPending ? <CheckIcon sx={{ fontSize: "1rem", color: "var(--omega-accent)" }} /> : null}
                   </Box>
                 );
               })}

@@ -193,7 +193,7 @@ export function CommandPalette(): React.ReactElement {
             else if (e.key === "Enter" && items[activeIndex]) { e.preventDefault(); runItem(items[activeIndex]); }
           }}
         />
-        {error ? <Box role="alert" sx={{ color: "var(--omega-danger)", fontSize: 12, mt: 0.75 }}>{error}</Box> : null}
+        {error ? <Box role="alert" sx={{ color: "var(--omega-danger)", fontSize: "0.75rem", mt: 0.75 }}>{error}</Box> : null}
       </Box>
       <List id="omega-command-list" role="listbox" aria-label="桌面操作列表" sx={{ px: 1.25, pb: 1.25, pt: 0, maxHeight: 420 }}>
         {items.map((item, index) =>
@@ -214,8 +214,8 @@ export function CommandPalette(): React.ReactElement {
               }}
             >
               <ListItemText
-                primary={<span style={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{item.title}</span>}
-                secondary={<span style={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{item.description}</span>}
+                primary={<span style={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600 }}>{item.title}</span>}
+                secondary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>{item.description}</span>}
               />
               {index === activeIndex ? <kbd className="kbd">↵</kbd> : null}
             </ListItemButton>
@@ -236,15 +236,15 @@ export function CommandPalette(): React.ReactElement {
               }}
             >
               <ListItemText
-                primary={<span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--omega-accent)" }}>{commandLabel(item.command)}</span>}
-                secondary={<span style={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{item.command.description || item.command.source}</span>}
+                primary={<span style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-accent)" }}>{commandLabel(item.command)}</span>}
+                secondary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>{item.command.description || item.command.source}</span>}
               />
               {index === activeIndex ? <kbd className="kbd">↵</kbd> : null}
             </ListItemButton>
           ),
         )}
         {items.length === 0 ? (
-          <ListItemText primary={<span style={{ fontSize: 12, color: "var(--omega-text-dim)", padding: "8px" }}>无匹配命令</span>} />
+          <ListItemText primary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", padding: "8px" }}>无匹配命令</span>} />
         ) : null}
       </List>
     </Dialog>

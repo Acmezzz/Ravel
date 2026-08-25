@@ -39,20 +39,20 @@ export function ProjectTrustDialog({
     <Dialog open={open} onClose={busy ? undefined : onCancel} fullWidth maxWidth="sm" aria-busy={busy}>
       <DialogTitle sx={{ fontWeight: 700 }}>信任此项目？</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.5, pt: 1 }}>
-        {busy ? <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>正在保存信任设置…</Typography> : null}
-        <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }}>
+        {busy ? <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>正在保存信任设置…</Typography> : null}
+        <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)" }}>
           「{labelFor(workspace)}」包含可执行的项目扩展、技能或 prompt。
         </Typography>
-        <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, Consolas, monospace" }}>
+        <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)", fontFamily: "ui-monospace, Consolas, monospace" }}>
           {workspace}
         </Typography>
         <Box sx={{ background: "var(--omega-bg-soft)", borderRadius: "10px", px: 1.5, py: 1.25 }}>
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)", lineHeight: 1.6 }}>
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)", lineHeight: 1.6 }}>
             信任后才会加载该项目自己的 `.pi` 资源和技能。选择「永不信任」仍可打开工作区，但这些资源会保持休眠。
           </Typography>
         </Box>
         {trust?.saved === "trusted" ? (
-          <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>已保存过信任决策，可在此重新确认。</Typography>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>已保存过信任决策，可在此重新确认。</Typography>
         ) : null}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, gap: 0.5, flexWrap: "wrap" }}>

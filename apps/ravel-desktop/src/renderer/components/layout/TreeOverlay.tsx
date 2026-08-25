@@ -125,7 +125,7 @@ export function TreeOverlay(): React.ReactElement {
       <Dialog open={open} onClose={() => setTreeOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 700, pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
           会话分支
-          <Chip size="small" label={`${tree?.nodes.length ?? 0} 步`} sx={{ fontSize: 10.5 }} />
+          <Chip size="small" label={`${tree?.nodes.length ?? 0} 步`} sx={{ fontSize: "0.65625rem" }} />
           <Box sx={{ flex: 1 }} />
           <Button size="small" disabled={busy} onClick={() => void cloneCurrent()} sx={{ textTransform: "none" }}>
             复制当前分支
@@ -133,14 +133,14 @@ export function TreeOverlay(): React.ReactElement {
         </DialogTitle>
         {error ? (
           <Box sx={{ px: 3, pb: 1 }}>
-            <Typography role="alert" sx={{ fontSize: 13, color: "var(--omega-warning)" }}>{error}</Typography>
+            <Typography role="alert" sx={{ fontSize: "0.8125rem", color: "var(--omega-warning)" }}>{error}</Typography>
           </Box>
         ) : null}
         <Box sx={{ px: 2.5, pb: 1.5, maxHeight: 380, overflowY: "auto" }}>
           {!tree ? (
-            <Typography role="status" aria-live="polite" sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载中…</Typography>
+            <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>加载中…</Typography>
           ) : tree.nodes.length === 0 ? (
-            <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前会话还没有消息。</Typography>
+            <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>当前会话还没有消息。</Typography>
           ) : (
             tree.nodes.map((node, index) => {
               const onPath = activePath.has(node.id);
@@ -225,7 +225,7 @@ export function TreeOverlay(): React.ReactElement {
                   >
                     <Typography
                       sx={{
-                        fontSize: 10.5,
+                        fontSize: "0.65625rem",
                         fontWeight: 700,
                         letterSpacing: "0.04em",
                         color: node.role === "user" ? "var(--omega-accent)" : "var(--omega-text-dim)",
@@ -236,15 +236,15 @@ export function TreeOverlay(): React.ReactElement {
                       {ROLE_LABEL[node.role] ?? "?"}
                     </Typography>
                     {branched ? (
-                      <Chip size="small" label={`L${node.depth}`} sx={{ height: 16, fontSize: 10.5, flex: "0 0 auto" }} />
+                      <Chip size="small" label={`L${node.depth}`} sx={{ height: 16, fontSize: "0.65625rem", flex: "0 0 auto" }} />
                     ) : null}
-                    <Typography sx={{ fontSize: 13, color: onPath ? "var(--omega-text)" : "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap>
+                    <Typography sx={{ fontSize: "0.8125rem", color: onPath ? "var(--omega-text)" : "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap>
                       {node.label || node.preview || "（无预览）"}
                     </Typography>
                     {isLeaf ? (
-                      <Typography sx={{ fontSize: 10.5, color: "var(--omega-accent-strong)", flex: "0 0 auto" }}>当前</Typography>
+                      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-accent-strong)", flex: "0 0 auto" }}>当前</Typography>
                     ) : node.isLeaf ? (
-                      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>支线</Typography>
+                      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>支线</Typography>
                     ) : null}
                   </Box>
                 </Box>
@@ -253,12 +253,12 @@ export function TreeOverlay(): React.ReactElement {
           )}
         </Box>
         <Box sx={{ px: 3, pb: 2, borderTop: "1px solid var(--omega-border)", pt: 1.25 }}>
-          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", mb: 0.75 }}>
+          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", mb: 0.75 }}>
             单击预览将继承的上下文；双击或确认后才会破坏性回退。
           </Typography>
           {selected ? (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4 }}>
-              <Typography sx={{ fontSize: 12, color: "var(--omega-text)" }}>
+              <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text)" }}>
                 将继承 {inherited.length} 条消息到「{selected.label || selected.preview || selected.id}」
               </Typography>
               <Button
@@ -271,14 +271,14 @@ export function TreeOverlay(): React.ReactElement {
               </Button>
             </Box>
           ) : (
-            <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>选择一个节点查看 fork/rewind 预览。</Typography>
+            <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>选择一个节点查看 fork/rewind 预览。</Typography>
           )}
         </Box>
       </Dialog>
       <Dialog open={Boolean(rewindTarget)} onClose={() => setRewindTarget(null)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 700 }}>回退到此节点？</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }}>
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)" }}>
             这会把当前会话叶子改到「{rewindTarget?.label || rewindTarget?.preview || rewindTarget?.id}」，当前分支之后的消息将不再是活动叶子。生成中无法执行。
           </Typography>
         </DialogContent>

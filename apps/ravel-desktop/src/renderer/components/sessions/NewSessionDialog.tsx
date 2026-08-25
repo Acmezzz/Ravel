@@ -55,7 +55,7 @@ export function NewSessionDialog({ open, onClose }: NewSessionDialogProps): Reac
     <Dialog open={open} onClose={busy ? undefined : onClose} fullWidth maxWidth="xs" aria-busy={busy}>
       <DialogTitle sx={{ fontWeight: 700 }}>新建会话</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-        {error ? <Typography role="alert" sx={{ color: "var(--omega-danger)", fontSize: 12 }}>{error}</Typography> : null}
+        {error ? <Typography role="alert" sx={{ color: "var(--omega-danger)", fontSize: "0.75rem" }}>{error}</Typography> : null}
         <TextField
           label="标题"
           value={title}

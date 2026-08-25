@@ -46,7 +46,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         shape: { borderRadius: 10 },
         typography: {
           fontFamily,
-          fontSize: 14,
+          fontSize: "0.875rem",
           button: { fontWeight: 550, letterSpacing: "0.005em" },
         },
         transitions: {
@@ -120,7 +120,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 borderRadius: 8,
                 transition: `background-color 140ms ${EASE_OUT}, border-color 140ms ${EASE_OUT}, box-shadow 140ms ${EASE_OUT}, color 140ms ${EASE_OUT}, transform 140ms ${EASE_OUT}`,
               },
-              sizeSmall: { height: 22, fontSize: 12 },
+              sizeSmall: { height: 22, fontSize: "0.75rem" },
               outlined: {
                 borderColor: palette.borderStrong,
                 background: "transparent",
@@ -147,7 +147,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
               root: {
                 textTransform: "none",
                 fontWeight: 550,
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 letterSpacing: "0.005em",
                 color: palette.textMuted,
                 minHeight: 36,
@@ -165,7 +165,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 border: `1px solid ${palette.borderStrong}`,
                 boxShadow: palette.shadowMd,
                 color: palette.text,
-                fontSize: 12,
+                fontSize: "0.75rem",
                 fontWeight: 500,
                 letterSpacing: "0.005em",
                 padding: "5px 9px",
@@ -192,7 +192,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
             defaultProps: { disableRipple: true },
             styleOverrides: {
               root: {
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 fontWeight: 500,
                 borderRadius: 7,
                 margin: "1px 0",
@@ -221,7 +221,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
           MuiDialogTitle: {
             styleOverrides: {
               root: {
-                fontSize: 15,
+                fontSize: "0.9375rem",
                 fontWeight: 650,
                 letterSpacing: "-0.01em",
                 padding: "18px 20px 8px",
@@ -260,7 +260,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                   borderWidth: 1,
                 },
               },
-              input: { padding: "7px 12px", fontSize: 13 },
+              input: { padding: "7px 12px", fontSize: "0.8125rem" },
             },
           },
           MuiLinearProgress: {

@@ -44,7 +44,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         boxShadow: "var(--omega-inset-highlight)",
       }}
     >
-      <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text-muted)", mb: 1, letterSpacing: "0.04em" }}>
+      <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--omega-text-muted)", mb: 1, letterSpacing: "0.04em" }}>
         {title}
       </Typography>
       {children}
@@ -54,21 +54,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function CatalogView({ data }: { data: WorkflowCatalog }) {
   const [expanded, setExpanded] = React.useState(false);
-  if (data.features.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无目录数据。</Typography>;
+  if (data.features.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>无目录数据。</Typography>;
   const visible = expanded ? data.features : data.features.slice(0, MAX_FEATURES);
   return (
     <Stack spacing={1}>
       {visible.map((f) => (
         <Box key={f.id}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>{f.label}</Typography>
-          <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{f.description}</Typography>
+          <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}>{f.label}</Typography>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>{f.description}</Typography>
           {f.levelSemantics ? (
-            <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", mt: 0.5 }}>{f.levelSemantics}</Typography>
+            <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", mt: 0.5 }}>{f.levelSemantics}</Typography>
           ) : null}
           <Box sx={{ mt: 0.5, display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-            <Chip size="small" label={`${f.entryIds.length} 实体`} sx={{ height: 20, fontSize: 10.5 }} />
+            <Chip size="small" label={`${f.entryIds.length} 实体`} sx={{ height: 20, fontSize: "0.65625rem" }} />
             {f.aliases.slice(0, 4).map((a) => (
-              <Chip key={a} size="small" label={a} variant="outlined" sx={{ height: 20, fontSize: 10.5, color: "var(--omega-text-muted)" }} />
+              <Chip key={a} size="small" label={a} variant="outlined" sx={{ height: 20, fontSize: "0.65625rem", color: "var(--omega-text-muted)" }} />
             ))}
           </Box>
         </Box>
@@ -80,21 +80,21 @@ function CatalogView({ data }: { data: WorkflowCatalog }) {
 
 function RegistryView({ data }: { data: WorkflowRegistry }) {
   const [expanded, setExpanded] = React.useState(false);
-  if (data.entries.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无注册表数据。</Typography>;
+  if (data.entries.length === 0) return <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>无注册表数据。</Typography>;
   const visible = expanded ? data.entries : data.entries.slice(0, MAX_REGISTRY_ENTRIES);
   return (
     <Stack spacing={1}>
       {visible.map((e) => (
         <Box key={e.id} sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Chip size="small" label={`L${e.level}`} sx={{ height: 20, fontSize: 10.5 }} />
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{e.intent || e.id}</Typography>
+          <Chip size="small" label={`L${e.level}`} sx={{ height: 20, fontSize: "0.65625rem" }} />
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600 }}>{e.intent || e.id}</Typography>
           <Chip
             size="small"
             label={e.status}
             color={e.status === "active" ? "success" : e.status === "deprecated" ? "error" : "warning"}
-            sx={{ height: 20, fontSize: 10.5 }}
+            sx={{ height: 20, fontSize: "0.65625rem" }}
           />
-          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>
+          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-muted)" }}>
             ev {e.evidence} · use {e.usage} · esc {e.escapes}
           </Typography>
         </Box>
@@ -146,7 +146,7 @@ function StepRail({ total, current, escaped }: { total: number; current: number;
         );
       })}
       {overflow ? (
-        <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", ml: 0.75, flex: "0 0 auto" }}>
+        <Typography className="mono-num" sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", ml: 0.75, flex: "0 0 auto" }}>
           +{count - MAX_NODES}
         </Typography>
       ) : null}
@@ -157,15 +157,15 @@ function StepRail({ total, current, escaped }: { total: number; current: number;
 function TrackerView({ data }: { data: WorkflowTracker }) {
   return (
     <Stack spacing={0.5}>
-      <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }}>工作流：{data.workflowId}</Typography>
-      {data.intent ? <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>意图：{data.intent}</Typography> : null}
-      <Typography className="mono-num" sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>
+      <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)" }}>工作流：{data.workflowId}</Typography>
+      {data.intent ? <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>意图：{data.intent}</Typography> : null}
+      <Typography className="mono-num" sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>
         步骤 {data.currentIndex}/{data.stepCount}
         {data.escaped ? " · 已逃逸" : ""}
         {data.alternativeId ? ` · 备选 ${data.alternativeId}` : ""}
       </Typography>
       <StepRail total={data.stepCount} current={data.currentIndex} escaped={data.escaped} />
-      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>更新：{data.updatedAt || "未更新"}</Typography>
+      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>更新：{data.updatedAt || "未更新"}</Typography>
     </Stack>
   );
 }
@@ -173,11 +173,11 @@ function TrackerView({ data }: { data: WorkflowTracker }) {
 function CoverageView({ data }: { data: WorkflowMemoryCoverage }) {
   return (
     <Stack spacing={0.5}>
-      <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>已蒸馏至 seq：{data.distilledUpTo}</Typography>
-      <Typography sx={{ fontSize: 12, color: data.stale ? "var(--omega-warning)" : "var(--omega-success)" }}>
+      <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>已蒸馏至 seq：{data.distilledUpTo}</Typography>
+      <Typography sx={{ fontSize: "0.75rem", color: data.stale ? "var(--omega-warning)" : "var(--omega-success)" }}>
         状态：{data.stale ? "过期（需重新蒸馏）" : "覆盖完整"}
       </Typography>
-      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>片段数：{data.segments.length}</Typography>
+      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>片段数：{data.segments.length}</Typography>
     </Stack>
   );
 }
@@ -185,21 +185,21 @@ function CoverageView({ data }: { data: WorkflowMemoryCoverage }) {
 function StatsView({ data }: { data: WorkflowStats }) {
   return (
     <Stack spacing={0.5}>
-      <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>项目：{data.projectKey}</Typography>
-      <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>
+      <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>项目：{data.projectKey}</Typography>
+      <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>
         任务 {data.tasks} · 回合 {data.turns} · 待蒸馏 {data.pendingDistill}
       </Typography>
       {data.escapes.length > 0 ? (
         <Box sx={{ mt: 0.5 }}>
-          <Typography sx={{ fontSize: 10.5, color: "var(--omega-warning)" }}>逃逸记录：</Typography>
+          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)" }}>逃逸记录：</Typography>
           {data.escapes.slice(0, MAX_ESCAPES).map((e, i) => (
-            <Typography key={i} sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>
+            <Typography key={i} sx={{ fontSize: "0.65625rem", color: "var(--omega-text-muted)" }}>
               · {e.workflowId} @ step {e.stepIndex}：{e.reason}
             </Typography>
           ))}
         </Box>
       ) : (
-        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>无逃逸记录。</Typography>
+        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>无逃逸记录。</Typography>
       )}
     </Stack>
   );
@@ -213,19 +213,19 @@ function HealthView({ data }: { data: WorkflowHealth }) {
         label={`健康：${data.status}`}
         color={data.status === "ok" ? "success" : data.status === "warn" ? "warning" : "error"}
       />
-      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>
+      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-muted)" }}>
         任务 {data.summary.tasks} · 日志回合 {data.summary.journalTurns} · 待恢复 {data.summary.pendingRestore}
       </Typography>
       {data.issues.length > 0 ? (
         <Box sx={{ mt: 0.5 }}>
           {data.issues.slice(0, MAX_ISSUES).map((issue, i) => (
-            <Typography key={i} sx={{ fontSize: 10.5, color: issue.severity === "error" ? "var(--omega-danger)" : "var(--omega-warning)" }}>
+            <Typography key={i} sx={{ fontSize: "0.65625rem", color: issue.severity === "error" ? "var(--omega-danger)" : "var(--omega-warning)" }}>
               · [{issue.code}] {issue.detail}
             </Typography>
           ))}
         </Box>
       ) : (
-        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>无问题。</Typography>
+        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>无问题。</Typography>
       )}
     </Stack>
   );
@@ -252,19 +252,19 @@ export function WorkflowPanel(): React.ReactElement {
         sx={{
           mb: 1,
           minHeight: 36,
-          "& .MuiTab-root": { minHeight: 36, fontSize: 12, px: 0.9, minWidth: 0 },
+          "& .MuiTab-root": { minHeight: 36, fontSize: "0.75rem", px: 0.9, minWidth: 0 },
         }}
       >
         {SUBTABS.map((t) => (
           <Tab key={t} value={t} label={SUBTAB_LABEL[t]} />
         ))}
       </Tabs>
-      {sub === "catalog" ? <Section title="功能目录 Catalog">{catalog ? <CatalogView data={catalog} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无数据</Typography>}</Section> : null}
-      {sub === "registry" ? <Section title="注册表 Registry">{registry ? <RegistryView data={registry} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无数据</Typography>}</Section> : null}
-      {sub === "tracker" ? <Section title="运行快照 Tracker">{tracker ? <TrackerView data={tracker} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>当前任务无 tracker</Typography>}</Section> : null}
-      {sub === "coverage" ? <Section title="记忆覆盖 Coverage">{coverage ? <CoverageView data={coverage} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>当前任务无记忆日志</Typography>}</Section> : null}
-      {sub === "stats" ? <Section title="项目统计 Stats">{stats ? <StatsView data={stats} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无数据</Typography>}</Section> : null}
-      {sub === "health" ? <Section title="健康检查 Health">{health ? <HealthView data={health} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无数据</Typography>}</Section> : null}
+      {sub === "catalog" ? <Section title="功能目录 Catalog">{catalog ? <CatalogView data={catalog} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>无数据</Typography>}</Section> : null}
+      {sub === "registry" ? <Section title="注册表 Registry">{registry ? <RegistryView data={registry} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>无数据</Typography>}</Section> : null}
+      {sub === "tracker" ? <Section title="运行快照 Tracker">{tracker ? <TrackerView data={tracker} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>当前任务无 tracker</Typography>}</Section> : null}
+      {sub === "coverage" ? <Section title="记忆覆盖 Coverage">{coverage ? <CoverageView data={coverage} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>当前任务无记忆日志</Typography>}</Section> : null}
+      {sub === "stats" ? <Section title="项目统计 Stats">{stats ? <StatsView data={stats} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>无数据</Typography>}</Section> : null}
+      {sub === "health" ? <Section title="健康检查 Health">{health ? <HealthView data={health} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.75rem" }}>无数据</Typography>}</Section> : null}
     </Box>
   );
 }

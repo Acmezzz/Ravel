@@ -70,20 +70,20 @@ export function TitleBar(): React.ReactElement {
             background: "var(--omega-accent-gradient)",
             boxShadow: "0 1px 4px var(--omega-accent-soft)",
             color: "var(--omega-accent-foreground)",
-            fontSize: 10.5,
+            fontSize: "0.65625rem",
             fontWeight: 700,
           }}
         >
           Ω
         </Box>
-        <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-soft)" }}>
+        <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-soft)" }}>
           OMEGA DESKTOP
         </Typography>
       </Box>
       {workspaceLabel ? (
         <>
-          <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>·</Typography>
-          <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }} noWrap>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>·</Typography>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }} noWrap>
             {workspaceLabel}
           </Typography>
         </>
@@ -92,12 +92,12 @@ export function TitleBar(): React.ReactElement {
       <Box style={noDragStyle} sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
         <Tooltip title="最小化">
           <IconButton size="small" aria-label="最小化窗口" disableRipple onClick={() => void ipc.minimize()} sx={controlSx}>
-            <RemoveIcon sx={{ fontSize: 16 }} />
+            <RemoveIcon sx={{ fontSize: "1rem" }} />
           </IconButton>
         </Tooltip>
         <Tooltip title={maximized ? "还原" : "最大化"}>
           <IconButton size="small" aria-label={maximized ? "向下还原窗口" : "最大化窗口"} disableRipple onClick={() => void ipc.toggleMaximize()} sx={controlSx}>
-            {maximized ? <FilterNoneIcon sx={{ fontSize: 13 }} /> : <CropSquareIcon sx={{ fontSize: 13 }} />}
+            {maximized ? <FilterNoneIcon sx={{ fontSize: "0.8125rem" }} /> : <CropSquareIcon sx={{ fontSize: "0.8125rem" }} />}
           </IconButton>
         </Tooltip>
         <Tooltip title="关闭">
@@ -108,7 +108,7 @@ export function TitleBar(): React.ReactElement {
             onClick={() => void ipc.closeWindow()}
             sx={{ ...controlSx, "&:hover": { color: "#fff", background: "var(--omega-danger)" } }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
+            <CloseIcon sx={{ fontSize: "1rem" }} />
           </IconButton>
         </Tooltip>
       </Box>

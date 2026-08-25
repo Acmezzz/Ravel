@@ -34,7 +34,7 @@ export function CodeBlock({ language, className, children }: CodeBlockProps): Re
         {language ? (
           <Box
             sx={{
-              fontSize: 10.5,
+              fontSize: "0.65625rem",
               fontWeight: 650,
               letterSpacing: "0.06em",
               textTransform: "uppercase",
@@ -64,7 +64,7 @@ export function CodeBlock({ language, className, children }: CodeBlockProps): Re
               "&:hover": { color: "var(--omega-accent)", borderColor: "var(--omega-accent-line)" },
             }}
           >
-            <ContentCopyIcon sx={{ fontSize: 13 }} />
+            <ContentCopyIcon sx={{ fontSize: "0.8125rem" }} />
           </IconButton>
         </Tooltip>
       </Box>

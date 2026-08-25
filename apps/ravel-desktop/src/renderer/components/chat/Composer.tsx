@@ -61,7 +61,7 @@ function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string })
         sx={{
           flex: "0 0 auto",
           height: 18,
-          fontSize: 10.5,
+          fontSize: "0.65625rem",
           fontFamily: "ui-monospace, Consolas, monospace",
           borderRadius: 999,
           border: isSteer ? "1px solid var(--omega-accent)" : "1px solid var(--omega-border)",
@@ -69,7 +69,7 @@ function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string })
           background: "transparent",
         }}
       />
-      <Typography title={text} sx={{ fontSize: 12, color: "var(--omega-text-muted)", minWidth: 0 }} noWrap>
+      <Typography title={text} sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", minWidth: 0 }} noWrap>
         {truncate(text)}
       </Typography>
     </Box>
@@ -505,7 +505,7 @@ export function Composer(): React.ReactElement {
                 "&:hover": { background: "var(--omega-hover-fill)" },
               }}
             >
-              <Typography sx={{ fontSize: 13, color: "var(--omega-text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                 {entry}
               </Typography>
             </Box>
@@ -553,7 +553,7 @@ export function Composer(): React.ReactElement {
                 "&:hover": { background: "var(--omega-hover-fill)" },
               }}
             >
-              <Typography sx={{ fontSize: 12, fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-text)" }} noWrap>
+              <Typography sx={{ fontSize: "0.75rem", fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-text)" }} noWrap>
                 {path}
               </Typography>
             </Box>
@@ -562,7 +562,7 @@ export function Composer(): React.ReactElement {
       ) : null}
 
       {composerError ? (
-        <Typography id="omega-composer-error" role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", px: 1, pb: 0.75 }}>{composerError}</Typography>
+        <Typography id="omega-composer-error" role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", px: 1, pb: 0.75 }}>{composerError}</Typography>
       ) : null}
 
       {queued.length > 0 ? (
@@ -578,7 +578,7 @@ export function Composer(): React.ReactElement {
             background: "var(--omega-bg-soft)",
           }}
         >
-          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-muted)", flex: "0 0 auto", pr: 1 }}>
+          <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-text-muted)", flex: "0 0 auto", pr: 1 }}>
             队列 · {queued.length}
           </Typography>
           <Box sx={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
@@ -679,7 +679,7 @@ export function Composer(): React.ReactElement {
             background: "transparent",
             color: "var(--omega-text)",
             font: "inherit",
-            fontSize: 14,
+            fontSize: "0.875rem",
             lineHeight: 1.6,
             padding: "6px 8px 2px",
             boxSizing: "border-box",
@@ -688,7 +688,7 @@ export function Composer(): React.ReactElement {
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, minWidth: 0, px: 0.25 }}>
           <Tooltip title="命令面板（Ctrl+K）">
             <IconButton size="small" aria-label="打开命令面板" onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}>
-              <KeyboardCommandKeyIcon sx={{ fontSize: 18 }} />
+              <KeyboardCommandKeyIcon sx={{ fontSize: "1.125rem" }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="附加图片（最多 4 张）">
@@ -699,7 +699,7 @@ export function Composer(): React.ReactElement {
               disabled={shuttingDown || attachments.length >= MAX_IMAGES}
               sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}
             >
-              <AttachFileIcon sx={{ fontSize: 18 }} />
+              <AttachFileIcon sx={{ fontSize: "1.125rem" }} />
             </IconButton>
           </Tooltip>
           <Box sx={{ flex: 1, minWidth: 0 }} />
@@ -721,7 +721,7 @@ export function Composer(): React.ReactElement {
                     "&:disabled": { opacity: 0.45 },
                   }}
                 >
-                  <BoltIcon sx={{ fontSize: 18 }} />
+                  <BoltIcon sx={{ fontSize: "1.125rem" }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="彻底停止生成">
@@ -739,7 +739,7 @@ export function Composer(): React.ReactElement {
                     boxShadow: "var(--omega-inset-highlight)",
                   }}
                 >
-                  <StopIcon sx={{ fontSize: 16 }} />
+                  <StopIcon sx={{ fontSize: "1rem" }} />
                 </IconButton>
               </Tooltip>
             </>
@@ -764,7 +764,7 @@ export function Composer(): React.ReactElement {
                 "&:disabled": { opacity: 0.4, background: "var(--omega-border-strong)", boxShadow: "none", color: "var(--omega-text-dim)" },
               }}
             >
-              <SendIcon sx={{ fontSize: 16 }} />
+              <SendIcon sx={{ fontSize: "1rem" }} />
             </IconButton>
           )}
         </Box>

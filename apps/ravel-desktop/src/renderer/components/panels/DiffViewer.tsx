@@ -44,7 +44,7 @@ function HunkLine({ line }: { line: DiffFile["hunks"][number]["lines"][number] }
         display: "flex",
         bgcolor: bg,
         fontFamily: "ui-monospace, monospace",
-        fontSize: 12,
+        fontSize: "0.75rem",
         lineHeight: 1.65,
         whiteSpace: "pre",
         // Precision gutter marker: the sign column reads as a ruled edge.
@@ -115,7 +115,7 @@ function FileCard({
       }}
     >
       <AccordionSummary
-        expandIcon={<ExpandMoreIcon sx={{ color: "var(--omega-text-muted)", fontSize: 18 }} />}
+        expandIcon={<ExpandMoreIcon sx={{ color: "var(--omega-text-muted)", fontSize: "1.125rem" }} />}
         sx={{
           px: 0.75,
           minHeight: 44,
@@ -148,7 +148,7 @@ function FileCard({
               }}
               title={file.path}
               sx={{
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 color: "var(--omega-text)",
                 fontWeight: 600,
                 minWidth: 0,
@@ -169,15 +169,15 @@ function FileCard({
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, pl: "26px" }}>
             {fileName !== file.path ? (
-              <Typography title={file.path} sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, flex: "1 1 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <Typography title={file.path} sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, flex: "1 1 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {file.path}
               </Typography>
             ) : (
               <Box sx={{ flex: "1 1 0", minWidth: 0 }} />
             )}
-            <Chip size="small" label={STATUS_LABEL[file.status]} sx={{ flex: "0 0 auto", height: 18, fontSize: 10.5, background: STATUS_TONE[file.status].bg, color: STATUS_TONE[file.status].fg }} />
-            <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-success)", flex: "0 0 auto" }}>+{file.additions}</Typography>
-            <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-danger)", flex: "0 0 auto" }}>-{file.deletions}</Typography>
+            <Chip size="small" label={STATUS_LABEL[file.status]} sx={{ flex: "0 0 auto", height: 18, fontSize: "0.65625rem", background: STATUS_TONE[file.status].bg, color: STATUS_TONE[file.status].fg }} />
+            <Typography className="mono-num" sx={{ fontSize: "0.65625rem", color: "var(--omega-success)", flex: "0 0 auto" }}>+{file.additions}</Typography>
+            <Typography className="mono-num" sx={{ fontSize: "0.65625rem", color: "var(--omega-danger)", flex: "0 0 auto" }}>-{file.deletions}</Typography>
           </Box>
         </Box>
       </AccordionSummary>
@@ -196,14 +196,14 @@ function FileCard({
                 onChange={() => onToggleHunk(file.path, i)}
                 sx={{ p: 0.25, flex: "0 0 auto" }}
               />
-              <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hunk.header}</Typography>
+              <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hunk.header}</Typography>
             </Box>
             <Box sx={{ px: 1, py: 0.5, overflowX: "auto" }}>
               {hunk.lines.slice(0, MAX_RENDERED_LINES_PER_HUNK).map((line, j) => (
                 <HunkLine key={j} line={line} />
               ))}
               {hunk.lines.length > MAX_RENDERED_LINES_PER_HUNK ? (
-                <Typography sx={{ fontSize: 10.5, color: "var(--omega-warning)", py: 0.5 }}>
+                <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", py: 0.5 }}>
                   已折叠 {hunk.lines.length - MAX_RENDERED_LINES_PER_HUNK} 行，避免大 diff 阻塞界面。
                 </Typography>
               ) : null}
@@ -217,7 +217,7 @@ function FileCard({
 
 function SectionTitle({ label, count }: { label: string; count: number }): React.ReactElement {
   return (
-    <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em", mt: 0.25, mb: 0.75, "&:not(:first-of-type)": { mt: 1.25 } }}>
+    <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--omega-text-muted)", letterSpacing: "0.05em", mt: 0.25, mb: 0.75, "&:not(:first-of-type)": { mt: 1.25 } }}>
       {label}（{count}）
     </Typography>
   );
@@ -362,7 +362,7 @@ export function DiffViewer(): React.ReactElement {
           {busy ? "生成中…" : "生成 Git 快照"}
         </Button>
         {error ? (
-          <Typography sx={{ fontSize: 12, color: "var(--omega-danger)", mt: 1 }}>{error}</Typography>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", mt: 1 }}>{error}</Typography>
         ) : null}
       </Box>
     );
@@ -370,7 +370,7 @@ export function DiffViewer(): React.ReactElement {
 
   if (!snapshot.isGitRepo) {
     return (
-      <Typography sx={{ color: "var(--omega-warning)", fontSize: 13, mt: 2 }}>
+      <Typography sx={{ color: "var(--omega-warning)", fontSize: "0.8125rem", mt: 2 }}>
         当前工作区未纳入 git，无法审查变更。
       </Typography>
     );
@@ -405,7 +405,7 @@ export function DiffViewer(): React.ReactElement {
             {busy ? "…" : "刷新"}
           </Button>
         </Box>
-        <Typography title={snapshot.repoRoot} sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <Typography title={snapshot.repoRoot} sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {snapshot.repoRoot}
         </Typography>
       </Box>
@@ -413,7 +413,7 @@ export function DiffViewer(): React.ReactElement {
       {snapshot.log.length > 0 ? (
         <Box sx={{ maxHeight: 52, overflowY: "auto", mb: 0.75, minWidth: 0, flex: "0 0 auto" }}>
           {snapshot.log.slice(0, 3).map((entry) => (
-            <Typography key={entry.hash} title={`${entry.hash} ${entry.message}`} sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <Typography key={entry.hash} title={`${entry.hash} ${entry.message}`} sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {entry.hash.slice(0, 7)} {entry.message}
             </Typography>
           ))}
@@ -421,11 +421,11 @@ export function DiffViewer(): React.ReactElement {
       ) : null}
 
       {error ? (
-        <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", whiteSpace: "pre-wrap", mb: 1 }}>{error}</Typography>
+        <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", whiteSpace: "pre-wrap", mb: 1 }}>{error}</Typography>
       ) : null}
       {selectedUnstagedFiles + selectedStagedFiles > 0 ? (
         <Paper role="status" aria-live="polite" sx={{ p: 1, mb: 1, background: "var(--omega-selected)", border: "1px solid var(--omega-accent-line)", display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text)" }}>已选择</Typography>
+          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--omega-text)" }}>已选择</Typography>
           {selectedUnstagedFiles > 0 ? <Chip size="small" label={`未暂存 ${selectedUnstagedFiles} 文件${selectedUnstagedHunks ? ` · ${selectedUnstagedHunks} hunk` : ""}`} /> : null}
           {selectedStagedFiles > 0 ? <Chip size="small" label={`已暂存 ${selectedStagedFiles} 文件${selectedStagedHunks ? ` · ${selectedStagedHunks} hunk` : ""}`} /> : null}
           <Button size="small" onClick={clearSel} sx={{ textTransform: "none", ml: "auto" }}>清除选择</Button>
@@ -433,7 +433,7 @@ export function DiffViewer(): React.ReactElement {
       ) : null}
 
       {unstagedCount + stagedCount === 0 ? (
-        <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 13 }}>工作区干净，没有未提交的改动。</Typography>
+        <Typography sx={{ color: "var(--omega-text-dim)", fontSize: "0.8125rem" }}>工作区干净，没有未提交的改动。</Typography>
       ) : (
         <>
           <Box sx={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", pr: 0.25 }}>
@@ -441,7 +441,7 @@ export function DiffViewer(): React.ReactElement {
             {snapshot.unstaged.slice(0, MAX_RENDERED_FILES).map((file) => (
               <FileCard key={file.path} file={file} selection={unstagedSel} onToggleFile={toggleFile(setUnstagedSel)} onToggleHunk={toggleHunk(setUnstagedSel)} onOpenFile={(p) => void openViewer(p)} />
             ))}
-            {unstagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: 10.5, color: "var(--omega-warning)", mb: 1 }}>已折叠 {unstagedCount - MAX_RENDERED_FILES} 个未暂存文件。</Typography> : null}
+            {unstagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", mb: 1 }}>已折叠 {unstagedCount - MAX_RENDERED_FILES} 个未暂存文件。</Typography> : null}
             {unstagedCount > 0 ? (
               <Button size="small" variant="outlined" onClick={() => void stage()} disabled={busy || unstagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
                 暂存所选（{unstagedSel.files.size}）
@@ -452,7 +452,7 @@ export function DiffViewer(): React.ReactElement {
             {snapshot.staged.slice(0, MAX_RENDERED_FILES).map((file) => (
               <FileCard key={file.path} file={file} selection={stagedSel} onToggleFile={toggleFile(setStagedSel)} onToggleHunk={toggleHunk(setStagedSel)} onOpenFile={(p) => void openViewer(p)} />
             ))}
-            {stagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: 10.5, color: "var(--omega-warning)", mb: 1 }}>已折叠 {stagedCount - MAX_RENDERED_FILES} 个已暂存文件。</Typography> : null}
+            {stagedCount > MAX_RENDERED_FILES ? <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-warning)", mb: 1 }}>已折叠 {stagedCount - MAX_RENDERED_FILES} 个已暂存文件。</Typography> : null}
             {stagedCount > 0 ? (
               <Button size="small" variant="outlined" onClick={() => void unstage()} disabled={busy || stagedSel.files.size === 0} sx={{ textTransform: "none", mb: 1 }}>
                 取消暂存所选（{stagedSel.files.size}）

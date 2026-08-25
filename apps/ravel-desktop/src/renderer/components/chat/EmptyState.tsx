@@ -85,7 +85,7 @@ export function EmptyState(): React.ReactElement {
           sx={{
             mt: 2.5,
             fontWeight: 700,
-            fontSize: 22,
+            fontSize: "1.375rem",
             letterSpacing: "-0.018em",
             color: "var(--omega-text)",
           }}
@@ -95,7 +95,7 @@ export function EmptyState(): React.ReactElement {
         <Typography sx={{ maxWidth: 500, mx: "auto", mt: 0.75, color: "var(--omega-text-muted)", lineHeight: 1.7 }}>
           描述一个问题、目标或需要探索的方向，Agent 会在当前工作区中协助你。
         </Typography>
-        <Typography sx={{ mt: 2, fontSize: 12, color: "var(--omega-text-dim)" }}>
+        <Typography sx={{ mt: 2, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>
           <kbd className="kbd">Ctrl+K</kbd>
           {" "}命令面板 ·{" "}
           <kbd className="kbd">Ctrl+Shift+N</kbd>

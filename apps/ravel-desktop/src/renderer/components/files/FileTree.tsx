@@ -76,25 +76,25 @@ function TreeRow({
       {isDir ? (
         <>
           <IconButton size="small" aria-label={expanded ? `折叠 ${name}` : `展开 ${name}`} sx={{ p: 0, color: "var(--omega-text-dim)" }} onClick={(e) => { e.stopPropagation(); onToggleDir(rel); }}>
-            {expanded ? <ExpandMoreIcon sx={{ fontSize: 14 }} /> : <ChevronRightIcon sx={{ fontSize: 14 }} />}
+            {expanded ? <ExpandMoreIcon sx={{ fontSize: "0.875rem" }} /> : <ChevronRightIcon sx={{ fontSize: "0.875rem" }} />}
           </IconButton>
           {expanded ? (
-            <FolderOpenIcon sx={{ fontSize: 15, color: "var(--omega-accent)" }} />
+            <FolderOpenIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-accent)" }} />
           ) : (
-            <FolderIcon sx={{ fontSize: 15, color: "var(--omega-accent)" }} />
+            <FolderIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-accent)" }} />
           )}
         </>
       ) : (
         <>
           <Box sx={{ width: 22 }} />
-          <InsertDriveFileIcon sx={{ fontSize: 15, color: "var(--omega-text-dim)" }} />
+          <InsertDriveFileIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-text-dim)" }} />
         </>
       )}
-      <Typography sx={{ fontSize: 13, color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap title={rel}>
+      <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap title={rel}>
         {name}
       </Typography>
       {!isDir && size > 0 ? (
-        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
+        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
       ) : null}
       <Tooltip title="在资源管理器中显示">
         <IconButton
@@ -106,7 +106,7 @@ function TreeRow({
           }}
           sx={{ flex: "0 0 auto", p: 0.25, color: "var(--omega-text-dim)", opacity: 0, ".MuiBox-root:hover &": { opacity: 1 } }}
         >
-          <FolderOpenIcon sx={{ fontSize: 13 }} />
+          <FolderOpenIcon sx={{ fontSize: "0.8125rem" }} />
         </IconButton>
       </Tooltip>
     </Box>
@@ -196,7 +196,7 @@ export function FileTree(): React.ReactElement {
     );
     if (state?.loading && !listing) {
       rows.push(
-        <Typography key={`l:${rel}`} sx={{ fontSize: 12, color: "var(--omega-text-dim)", pl: 1 + depth * 1.25, py: 0.25 }}>
+        <Typography key={`l:${rel}`} sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", pl: 1 + depth * 1.25, py: 0.25 }}>
           加载中…
         </Typography>,
       );
@@ -205,7 +205,7 @@ export function FileTree(): React.ReactElement {
     if (state?.error) {
       rows.push(
         <Box key={`e:${rel}`} role="alert" sx={{ display: "flex", alignItems: "center", gap: 0.75, pl: 1 + depth * 1.25, py: 0.25 }}>
-          <Typography sx={{ fontSize: 12, color: "var(--omega-danger)", minWidth: 0 }}>{state.error}</Typography>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", minWidth: 0 }}>{state.error}</Typography>
           <Button size="small" onClick={() => void loadDir(rel)} sx={{ minWidth: 0, p: 0, textTransform: "none", flex: "0 0 auto" }}>重试</Button>
         </Box>,
       );
@@ -269,11 +269,11 @@ export function FileTree(): React.ReactElement {
   return (
     <Box sx={{ width: "100%" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, px: 1, py: 0.5, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, flex: 1 }} noWrap>工作区文件</Typography>
-        <Tooltip title="导入文件到工作区"><IconButton size="small" aria-label="导入文件到工作区" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32 }}><UploadFileIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
+        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, flex: 1 }} noWrap>工作区文件</Typography>
+        <Tooltip title="导入文件到工作区"><IconButton size="small" aria-label="导入文件到工作区" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32 }}><UploadFileIcon sx={{ fontSize: "0.875rem" }} /></IconButton></Tooltip>
         <Tooltip title="刷新">
           <IconButton size="small" aria-label="刷新文件树" onClick={refreshAll} sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32 }}>
-            <RefreshIcon sx={{ fontSize: 14 }} />
+            <RefreshIcon sx={{ fontSize: "0.875rem" }} />
           </IconButton>
         </Tooltip>
       </Box>
@@ -281,15 +281,15 @@ export function FileTree(): React.ReactElement {
       <Dialog open={Boolean(upload)} onClose={() => setUpload(null)} fullWidth maxWidth="xs">
         <DialogTitle>导入文件到工作区</DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
-          <Typography sx={{ fontSize: 12 }}>源文件：{upload?.name}</Typography>
+          <Typography sx={{ fontSize: "0.75rem" }}>源文件：{upload?.name}</Typography>
           <TextField autoFocus size="small" label="目标相对路径" value={target} onChange={(event) => setTarget(event.target.value)} helperText="只能写入当前授权 workspace 内的相对路径。" />
-          {uploadError ? <Typography sx={{ color: "var(--omega-danger)", fontSize: 12 }}>{uploadError}</Typography> : null}
+          {uploadError ? <Typography sx={{ color: "var(--omega-danger)", fontSize: "0.75rem" }}>{uploadError}</Typography> : null}
         </DialogContent>
         <DialogActions><Button onClick={() => setUpload(null)}>取消</Button><Button variant="contained" onClick={() => void uploadSelected()}>导入</Button></DialogActions>
       </Dialog>
       <Dialog open={Boolean(conflictTarget)} onClose={() => setConflictTarget(null)} fullWidth maxWidth="xs">
         <DialogTitle>目标文件已存在</DialogTitle>
-        <DialogContent><Typography sx={{ fontSize: 12 }}>「{conflictTarget?.path}」已存在。选择覆盖，或保留为新文件。</Typography></DialogContent>
+        <DialogContent><Typography sx={{ fontSize: "0.75rem" }}>「{conflictTarget?.path}」已存在。选择覆盖，或保留为新文件。</Typography></DialogContent>
         <DialogActions><Button onClick={() => setConflictTarget(null)}>取消</Button><Button onClick={() => void uploadSelected("keep-both", conflictTarget?.token ?? undefined)}>保留两份</Button><Button color="error" variant="contained" onClick={() => void uploadSelected("overwrite", conflictTarget?.token ?? undefined)}>覆盖</Button></DialogActions>
       </Dialog>
     </Box>

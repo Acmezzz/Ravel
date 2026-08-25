@@ -67,7 +67,7 @@ export function WorktreePanel(): React.ReactElement {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
-      <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>
+      <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>
         Worktree 是独立工作副本。创建后请用项目切换器打开该目录，而不是用 slash command。
       </Typography>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
@@ -82,13 +82,13 @@ export function WorktreePanel(): React.ReactElement {
           选择目录并创建
         </Button>
       </Box>
-      {error ? <Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{error}</Typography> : null}
+      {error ? <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)" }}>{error}</Typography> : null}
       {!list ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载工作树…</Typography>
+        <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>加载工作树…</Typography>
       ) : !list.isGitRepo ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前工作区不是 Git 仓库。</Typography>
+        <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>当前工作区不是 Git 仓库。</Typography>
       ) : list.worktrees.length === 0 ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有列出工作树。</Typography>
+        <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>没有列出工作树。</Typography>
       ) : (
         list.worktrees.map((worktree) => (
           <Box
@@ -103,17 +103,17 @@ export function WorktreePanel(): React.ReactElement {
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, flexWrap: "wrap" }}>
-              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: "1 1 auto" }} noWrap title={worktree.path}>
+              <Typography sx={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: "1 1 auto" }} noWrap title={worktree.path}>
                 {worktree.branch || (worktree.detached ? "detached" : "worktree")}
               </Typography>
-              {worktree.current ? <Chip size="small" label="当前" sx={{ height: 18, fontSize: 10.5 }} /> : null}
-              {worktree.dirty ? <Chip size="small" label={`改动 ${worktree.staged ?? 0}/${worktree.unstaged ?? 0}/${worktree.untracked ?? 0}`} sx={{ height: 18, fontSize: 10.5 }} /> : null}
-              {worktree.locked ? <Chip size="small" label="锁定" sx={{ height: 18, fontSize: 10.5 }} /> : null}
+              {worktree.current ? <Chip size="small" label="当前" sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
+              {worktree.dirty ? <Chip size="small" label={`改动 ${worktree.staged ?? 0}/${worktree.unstaged ?? 0}/${worktree.untracked ?? 0}`} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
+              {worktree.locked ? <Chip size="small" label="锁定" sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
             </Box>
-            <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap title={worktree.path}>
+            <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }} noWrap title={worktree.path}>
               {worktree.path} · {worktree.headShort || "no HEAD"}
             </Typography>
-            {worktree.recentCommit?.message ? <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>{worktree.recentCommit.message}</Typography> : null}
+            {worktree.recentCommit?.message ? <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }} noWrap>{worktree.recentCommit.message}</Typography> : null}
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button size="small" disabled={worktree.current || busy} onClick={() => setRemoving(worktree)} sx={{ textTransform: "none" }}>
                 删除
@@ -125,7 +125,7 @@ export function WorktreePanel(): React.ReactElement {
       <Dialog open={Boolean(removing)} onClose={() => setRemoving(null)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 700 }}>删除 worktree</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }}>
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)" }}>
             {removing?.dirty
               ? `${removing.path} 有未提交更改。强制删除会丢掉这些更改。`
               : `确定删除 ${removing?.path}？`}

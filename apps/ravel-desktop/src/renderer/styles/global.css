@@ -149,7 +149,7 @@ body {
     radial-gradient(ellipse 80% 50% at 15% -10%, var(--omega-glow-1) 0, transparent 60%),
     radial-gradient(ellipse 70% 55% at 90% 110%, var(--omega-glow-2) 0, transparent 60%),
     var(--omega-bg);
-  font: 14px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 0.875rem/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "ss01", "cv05", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -218,7 +218,7 @@ body {
 .md-body {
   word-break: break-word;
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.7;
   letter-spacing: 0.001em;
 }
@@ -260,7 +260,7 @@ body {
 }
 .md-body code {
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
 .md-body :not(pre) > code {
@@ -288,7 +288,7 @@ body {
   border-collapse: collapse;
   margin: 0.85em 0;
   width: 100%;
-  font-size: 13px;
+  font-size: 0.8125rem;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--omega-border);
@@ -455,7 +455,7 @@ body {
   background: var(--omega-bg-elevated);
   box-shadow: var(--omega-inset-highlight);
   color: var(--omega-text-muted);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 550;
   font-family: inherit;
   line-height: 1;
@@ -472,7 +472,7 @@ body {
 
 /* Overline label — the small caps section header used across panels */
 .overline-label {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 650;
   letter-spacing: 0.07em;
   text-transform: uppercase;

@@ -188,7 +188,7 @@ export function SessionList(): React.ReactElement {
 
   if (sessions.length === 0) {
     return (
-      <Box sx={{ p: 2, color: "var(--omega-text-dim)", fontSize: 12, textAlign: "center" }}>
+      <Box sx={{ p: 2, color: "var(--omega-text-dim)", fontSize: "0.75rem", textAlign: "center" }}>
         暂无会话，点击「新建」开始。
       </Box>
     );
@@ -220,19 +220,19 @@ export function SessionList(): React.ReactElement {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 15, color: "var(--omega-text-dim)" }} />
+                <SearchIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-text-dim)" }} />
               </InputAdornment>
             ),
-            sx: { fontSize: 13, borderRadius: "10px", background: "var(--omega-bg-soft)", boxShadow: "var(--omega-inset-recessed)" },
+            sx: { fontSize: "0.8125rem", borderRadius: "10px", background: "var(--omega-bg-soft)", boxShadow: "var(--omega-inset-recessed)" },
           }}
         />
         {query.trim() ? (
-          <Typography role="status" aria-live="polite" sx={{ display: "block", fontSize: 10.5, color: "var(--omega-text-dim)", px: 0.75, pt: 0.5 }}>
+          <Typography role="status" aria-live="polite" sx={{ display: "block", fontSize: "0.65625rem", color: "var(--omega-text-dim)", px: 0.75, pt: 0.5 }}>
             {filtered.length > 0 ? `匹配 ${filtered.length} 个会话` : "没有匹配的会话"}
           </Typography>
         ) : null}
       </Box>
-      {loadError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.75, pb: 1 }}><Typography sx={{ fontSize: 12, color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</Typography>{failedSessionId ? <Button size="small" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null} sx={{ textTransform: "none", flex: "0 0 auto" }}>重试加载</Button> : null}<Button size="small" onClick={() => { setLoadError(null); setFailedSessionId(null); }} sx={{ textTransform: "none", flex: "0 0 auto" }}>关闭</Button></Box> : null}
+      {loadError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.75, pb: 1 }}><Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</Typography>{failedSessionId ? <Button size="small" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null} sx={{ textTransform: "none", flex: "0 0 auto" }}>重试加载</Button> : null}<Button size="small" onClick={() => { setLoadError(null); setFailedSessionId(null); }} sx={{ textTransform: "none", flex: "0 0 auto" }}>关闭</Button></Box> : null}
       {[...groups.entries()].map(([workspace, items]) => {
         const isCurrentWorkspace = Boolean(items[0] && activeWorkspace && items[0].workspace === activeWorkspace);
         return (
@@ -246,21 +246,21 @@ export function SessionList(): React.ReactElement {
               gap: 0.75,
               minWidth: 0,
               fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
-              fontSize: 10.5,
+              fontSize: "0.65625rem",
               letterSpacing: 0,
             }}
             title={workspace}
           >
             <Typography
               component="span"
-              sx={{ fontSize: 10.5, fontFamily: "inherit", color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              sx={{ fontSize: "0.65625rem", fontFamily: "inherit", color: "var(--omega-text-dim)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
             >
               {workspace}
             </Typography>
             {isCurrentWorkspace ? (
               <Typography
                 component="span"
-                sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-accent-strong)", background: "var(--omega-accent-soft)", borderRadius: "5px", px: 0.6, py: 0.1, flex: "0 0 auto" }}
+                sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-accent-strong)", background: "var(--omega-accent-soft)", borderRadius: "5px", px: 0.6, py: 0.1, flex: "0 0 auto" }}
               >
                 当前
               </Typography>
@@ -324,7 +324,7 @@ export function SessionList(): React.ReactElement {
                     primary={
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
                         {unread ? <Box className="pulse-dot" sx={{ width: 6, height: 6, borderRadius: "50%", background: "var(--omega-accent)", boxShadow: "0 0 6px var(--omega-accent)", flex: "0 0 auto" }} /> : null}
-                        <Typography sx={{ fontSize: 13, fontWeight: active || unread ? 600 : 500, letterSpacing: "0.002em", color: "var(--omega-text)", minWidth: 0 }} noWrap>
+                        <Typography sx={{ fontSize: "0.8125rem", fontWeight: active || unread ? 600 : 500, letterSpacing: "0.002em", color: "var(--omega-text)", minWidth: 0 }} noWrap>
                           {nested ? `↳ ${session.title}` : session.title}
                         </Typography>
                         {status ? (
@@ -333,7 +333,7 @@ export function SessionList(): React.ReactElement {
                             label={status}
                             sx={{
                               height: 17,
-                              fontSize: 10.5,
+                              fontSize: "0.65625rem",
                               fontWeight: 600,
                               border: "none",
                               background: failed ? "var(--omega-danger-soft)" : isCompacting ? "var(--omega-warning-soft)" : "var(--omega-accent-soft)",
@@ -344,7 +344,7 @@ export function SessionList(): React.ReactElement {
                       </Box>
                     }
                     secondary={
-                      <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} component="span" noWrap>
+                      <Typography className="mono-num" sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }} component="span" noWrap>
                         {relativeTime(session.updatedAt)}
                         {session.messageCount ? ` · ${session.messageCount} 条` : ""}
                         {session.parentSessionId ? " · 分支" : ""}
@@ -366,7 +366,7 @@ export function SessionList(): React.ReactElement {
                               }}
                               sx={{ color: "var(--omega-text-dim)", minWidth: 40, minHeight: 40, "&:hover": { color: "var(--omega-accent)" } }}
                             >
-                              <ContentCopyIcon sx={{ fontSize: 15 }} />
+                              <ContentCopyIcon sx={{ fontSize: "0.9375rem" }} />
                             </IconButton>
                           </span>
                         </Tooltip>
@@ -377,7 +377,7 @@ export function SessionList(): React.ReactElement {
                             onClick={(e) => openRename(session.id, e)}
                             sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32, "&:hover": { color: "var(--omega-accent)" } }}
                           >
-                            <EditIcon sx={{ fontSize: 15 }} />
+                            <EditIcon sx={{ fontSize: "0.9375rem" }} />
                           </IconButton>
                         </Tooltip>
                       </>
@@ -392,7 +392,7 @@ export function SessionList(): React.ReactElement {
                         }}
                         sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32, "&:hover": { color: "var(--omega-danger)" } }}
                       >
-                        <DeleteIcon sx={{ fontSize: 15 }} />
+                        <DeleteIcon sx={{ fontSize: "0.9375rem" }} />
                       </IconButton>
                     </Tooltip>
                   </Box>
@@ -415,7 +415,7 @@ export function SessionList(): React.ReactElement {
             size="small"
             disabled={loadingMore}
             onClick={() => void loadMore()}
-            sx={{ textTransform: "none", fontSize: 12, color: "var(--omega-text-muted)" }}
+            sx={{ textTransform: "none", fontSize: "0.75rem", color: "var(--omega-text-muted)" }}
           >
             {loadingMore ? "加载中…" : `加载更多（${sessions.length}/${sessionTotal}）`}
           </Button>
@@ -448,7 +448,7 @@ export function SessionList(): React.ReactElement {
       <Dialog open={deleting !== null} onClose={() => setDeleting(null)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 700 }}>删除会话</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)" }}>
             将永久删除会话「{deleting?.title}」的 JSONL 记录，此操作不可恢复。确定删除？
           </Typography>
         </DialogContent>

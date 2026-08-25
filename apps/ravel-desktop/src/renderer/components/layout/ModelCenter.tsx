@@ -70,7 +70,7 @@ function ProviderCard({
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap>
+        <Typography sx={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap>
           {provider.name}
         </Typography>
         <Chip
@@ -78,14 +78,14 @@ function ProviderCard({
           label={provider.configured ? "已配置" : "配置中"}
           sx={{
             height: 18,
-            fontSize: 10.5,
+            fontSize: "0.65625rem",
             flex: "0 0 auto",
             background: provider.configured ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)",
             color: provider.configured ? "var(--omega-accent)" : "var(--omega-text-muted)",
           }}
         />
         {provider.source ? (
-          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", ml: "auto", minWidth: 0 }} noWrap>
+          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", ml: "auto", minWidth: 0 }} noWrap>
             {provider.source}
           </Typography>
         ) : null}
@@ -103,9 +103,9 @@ function ProviderCard({
         }}
       />
       {error ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{error}</Typography>
+        <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)" }}>{error}</Typography>
       ) : (
-        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>
+        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>
           Key 只写入本机凭据库，界面不会读取或显示已保存的明文。
         </Typography>
       )}
@@ -230,7 +230,7 @@ export function ModelCenter(): React.ReactElement {
             <Typography className="overline-label">已配置提供商</Typography>
             <Button
               size="small"
-              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+              startIcon={<AddIcon sx={{ fontSize: "1rem" }} />}
               onClick={(event) => setAddAnchor(event.currentTarget)}
               sx={{ textTransform: "none", minWidth: 0 }}
             >
@@ -263,13 +263,13 @@ export function ModelCenter(): React.ReactElement {
               </MenuItem>
             </Menu>
           </Box>
-          <Typography sx={{ fontSize: 12, color: auth?.ready ? "var(--omega-text-muted)" : "var(--omega-warning)" }}>
+          <Typography sx={{ fontSize: "0.75rem", color: auth?.ready ? "var(--omega-text-muted)" : "var(--omega-warning)" }}>
             {auth?.label ?? "正在读取认证状态"}
           </Typography>
           {visibleProviders.length === 0 ? (
             <Box sx={{ border: "1px dashed var(--omega-border-strong)", borderRadius: "12px", p: 1.5 }}>
-              <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>还没有配置提供商。</Typography>
-              <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", mt: 0.5 }}>用右上角「添加」从目录里选择供应商，再粘贴 API key。</Typography>
+              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)" }}>还没有配置提供商。</Typography>
+              <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", mt: 0.5 }}>用右上角「添加」从目录里选择供应商，再粘贴 API key。</Typography>
             </Box>
           ) : (
             visibleProviders.map((provider) => (
@@ -279,17 +279,17 @@ export function ModelCenter(): React.ReactElement {
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
           <Typography className="overline-label">模型</Typography>
-          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>
+          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>
             只列出当前可用模型。配置提供商后会刷新目录；本地 Provider 可离线使用。
           </Typography>
           <TextField size="small" placeholder="搜索模型…" value={query} onChange={(e) => setQuery(e.target.value)} />
           <Box sx={{ overflowY: "auto", maxHeight: 420, pr: 0.5, minWidth: 0 }}>
             {groups.length === 0 ? (
-              <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", py: 1.5 }}>无匹配模型。先添加并配置提供商。</Typography>
+              <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", py: 1.5 }}>无匹配模型。先添加并配置提供商。</Typography>
             ) : (
               groups.map((group) => (
                 <Box key={group.provider} sx={{ mb: 1.25, minWidth: 0 }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-dim)", letterSpacing: "0.06em", px: 0.5, py: 0.5 }}>
+                  <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-text-dim)", letterSpacing: "0.06em", px: 0.5, py: 0.5 }}>
                     {group.provider.toUpperCase()}
                   </Typography>
                   {group.models.map((model) => {
@@ -314,16 +314,16 @@ export function ModelCenter(): React.ReactElement {
                         }}
                       >
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }} noWrap>
+                          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)" }} noWrap>
                             {model.id}
                           </Typography>
-                          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>
+                          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }} noWrap>
                             {model.contextWindow ? `${Math.round(model.contextWindow / 1000)}K ctx` : ""}
                             {model.reasoning ? " · reasoning" : ""}
                           </Typography>
                         </Box>
                         {isPending ? <CircularProgress size={14} sx={{ color: "var(--omega-accent)" }} /> : null}
-                        {model.selected && !isPending ? <CheckIcon sx={{ fontSize: 16, color: "var(--omega-accent)" }} /> : null}
+                        {model.selected && !isPending ? <CheckIcon sx={{ fontSize: "1rem", color: "var(--omega-accent)" }} /> : null}
                       </Box>
                     );
                   })}
@@ -370,7 +370,7 @@ export function ModelCenter(): React.ReactElement {
         </DialogActions>
       </Dialog>
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
-        <Typography sx={{ fontSize: 12, color: status ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>
+        <Typography sx={{ fontSize: "0.75rem", color: status ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>
           {status ?? "未配置的供应商都收在「添加」菜单里。"}
         </Typography>
         <Button variant="contained" onClick={() => setOpen(false)} sx={{ textTransform: "none" }}>

@@ -83,7 +83,7 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
         minWidth: 0,
       }}
     >
-      {error ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", whiteSpace: "pre-wrap" }}>{error}</Typography> : null}
+      {error ? <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", whiteSpace: "pre-wrap" }}>{error}</Typography> : null}
       <Button
         variant="contained"
         fullWidth
@@ -121,18 +121,18 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
           <WarningAmberIcon sx={{ color: "var(--omega-warning)" }} /> 确认还原改动？
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13, color: "var(--omega-text-soft)" }}>
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-soft)" }}>
             将还原选中的 {selectedFiles.length} 个文件。已纳入 git 的文件会回到上一次提交/暂存状态。
           </Typography>
           {hasUntrackedSelected ? (
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, mt: 1 }}>
-              <WarningAmberIcon sx={{ fontSize: 16, color: "var(--omega-danger)", mt: "2px", flex: "0 0 auto" }} />
-              <Typography sx={{ fontSize: 13, color: "var(--omega-danger)", fontWeight: 600 }}>
+              <WarningAmberIcon sx={{ fontSize: "1rem", color: "var(--omega-danger)", mt: "2px", flex: "0 0 auto" }} />
+              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-danger)", fontWeight: 600 }}>
                 其中包含未跟踪的新文件，还原将通过 git clean 永久删除，此操作不可撤销。
               </Typography>
             </Box>
           ) : null}
-          <Box component="ul" sx={{ mt: 1, pl: 2, color: "var(--omega-text-muted)", fontSize: 12, maxHeight: 160, overflowY: "auto" }}>
+          <Box component="ul" sx={{ mt: 1, pl: 2, color: "var(--omega-text-muted)", fontSize: "0.75rem", maxHeight: 160, overflowY: "auto" }}>
             {selectedFiles.map((f) => (
               <li key={f}>{f}</li>
             ))}
