@@ -1,6 +1,6 @@
 # Development Rules
 
-Omega Desktop (`apps/omega-desktop`) is the product surface of this fork. Keep Electron isolation, IPC allowlists, and path containment intact. Do not reintroduce `nodeIntegration`, renderer filesystem access, or unvalidated IPC channels.
+Ravel Desktop (`apps/ravel-desktop`) is the product surface of this fork. Keep Electron isolation, IPC allowlists, and path containment intact. Do not reintroduce `nodeIntegration`, renderer filesystem access, or unvalidated IPC channels.
 
 ## Conversational Style
 

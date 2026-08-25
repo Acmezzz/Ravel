@@ -1,11 +1,11 @@
 MIT License
 
 Copyright (c) 2025 Mario Zechner
-Copyright (c) 2026 Omega contributors
+Copyright (c) 2026 Ravel contributors
 
 Upstream Pi packages remain under Mario Zechner's copyright.
-Omega Desktop (`apps/omega-desktop`) and product-layer changes in this fork
-are copyright Omega contributors, licensed under the same MIT terms.
+Ravel Desktop (`apps/ravel-desktop`) and product-layer changes in this fork
+are copyright Ravel contributors, licensed under the same MIT terms.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

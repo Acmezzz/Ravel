@@ -30,17 +30,17 @@
 			"packages/session-backends/*/src/**/*.ts",
 			"packages/session-backends/*/test/**/*.ts",
 			"packages/coding-agent/examples/**/*.ts",
-			"apps/omega-desktop/src/**/*.ts",
-			"apps/omega-desktop/src/**/*.tsx",
-			"apps/omega-desktop/electron/**/*.js",
-			"apps/omega-desktop/electron/**/*.mjs",
-			"apps/omega-desktop/test/**/*.mjs",
+			"apps/ravel-desktop/src/**/*.ts",
+			"apps/ravel-desktop/src/**/*.tsx",
+			"apps/ravel-desktop/electron/**/*.js",
+			"apps/ravel-desktop/electron/**/*.mjs",
+			"apps/ravel-desktop/test/**/*.mjs",
 			"!**/node_modules/**/*",
 			"!**/test-sessions.ts",
 			"!**/models.generated.ts",
 			"!**/*.models.ts",
-			"!apps/omega-desktop/dist/**/*",
-			"!apps/omega-desktop/release/**/*"
+			"!apps/ravel-desktop/dist/**/*",
+			"!apps/ravel-desktop/release/**/*"
 		]
 	}
 }
