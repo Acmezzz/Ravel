@@ -27,9 +27,9 @@ function StatusCard({ data }: { data: ScoutStatus }) {
       </Box>
       <Box sx={{ mt: 0.5 }}>
         {data.currentRoundId ? (
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>当前轮：{data.currentRoundId}</Typography>
+          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>当前轮：{data.currentRoundId}</Typography>
         ) : (
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>暂无进行中的探索轮。</Typography>
+          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>暂无进行中的探索轮。</Typography>
         )}
       </Box>
     </Paper>
@@ -46,16 +46,16 @@ function RoundCard({ round }: { round: NonNullable<ScoutRounds["rounds"][number]
         <Chip size="small" label={`verified: ${round.verifiedOutcome}`} color={round.verifiedOutcome === "succeeded" ? "success" : "default"} />
       </Box>
       <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)", mt: 0.5 }}>目标：{round.taskBrief.objective || "未提供"}</Typography>
-      <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>
+      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>
         {round.runs.length} 个 Scout · {round.runs.reduce((acc, r) => acc + r.proposalCount, 0)} 个 proposal · 模型 {round.model}
       </Typography>
       {round.selection ? (
-        <Typography sx={{ fontSize: 11, color: "var(--omega-accent)", mt: 0.5 }}>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-accent)", mt: 0.5 }}>
           已采纳 {round.selection.selectedProposalIds.length} 个提案
         </Typography>
       ) : null}
       <Button size="small" onClick={() => setExpanded((value) => !value)} sx={{ mt: 0.5, textTransform: "none" }}>{expanded ? "收起运行详情" : "查看运行详情"}</Button>
-      {expanded ? <Box sx={{ mt: 0.75 }}>{round.runs.map((run) => <Typography key={run.scoutId} sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>· {run.scoutId}：{run.proposalCount} 个提案</Typography>)}</Box> : null}
+      {expanded ? <Box sx={{ mt: 0.75 }}>{round.runs.map((run) => <Typography key={run.scoutId} sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>· {run.scoutId}：{run.proposalCount} 个提案</Typography>)}</Box> : null}
     </Paper>
   );
 }
@@ -74,13 +74,13 @@ function ProposalCard({ proposal }: { proposal: NonNullable<ScoutProposals["prop
         </Box>
       ) : null}
       {proposal.assumptions.length > 0 ? (
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>假设：{proposal.assumptions.join("；")}</Typography>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>假设：{proposal.assumptions.join("；")}</Typography>
       ) : null}
       {proposal.expectedEvidence.length > 0 ? (
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>预期证据：{proposal.expectedEvidence.join("；")}</Typography>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>预期证据：{proposal.expectedEvidence.join("；")}</Typography>
       ) : null}
       {proposal.closureStatus ? (
-        <Chip size="small" label={`闭合：${proposal.closureStatus}`} sx={{ mt: 0.5, height: 20, fontSize: 11 }} />
+        <Chip size="small" label={`闭合：${proposal.closureStatus}`} sx={{ mt: 0.5, height: 20, fontSize: 10.5 }} />
       ) : null}
     </Paper>
   );
@@ -104,7 +104,7 @@ export function ScoutPanel(): React.ReactElement {
       {rounds && rounds.rounds.length > 0 ? (
         <>
           {rounds.rounds.slice(0, MAX_ROUNDS).map((r) => <RoundCard key={r.roundId} round={r} />)}
-          {rounds.rounds.length > MAX_ROUNDS ? <Typography sx={{ fontSize: 11, color: "var(--omega-warning)" }}>已折叠 {rounds.rounds.length - MAX_ROUNDS} 个探索轮。</Typography> : null}
+          {rounds.rounds.length > MAX_ROUNDS ? <Typography sx={{ fontSize: 10.5, color: "var(--omega-warning)" }}>已折叠 {rounds.rounds.length - MAX_ROUNDS} 个探索轮。</Typography> : null}
         </>
       ) : (
         <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无探索轮记录。</Typography>
@@ -114,7 +114,7 @@ export function ScoutPanel(): React.ReactElement {
       {proposals && proposals.proposals.length > 0 ? (
         <>
           {proposals.proposals.slice(0, MAX_PROPOSALS).map((p) => <ProposalCard key={p.id} proposal={p} />)}
-          {proposals.proposals.length > MAX_PROPOSALS ? <Typography sx={{ fontSize: 11, color: "var(--omega-warning)" }}>已折叠 {proposals.proposals.length - MAX_PROPOSALS} 个提案。</Typography> : null}
+          {proposals.proposals.length > MAX_PROPOSALS ? <Typography sx={{ fontSize: 10.5, color: "var(--omega-warning)" }}>已折叠 {proposals.proposals.length - MAX_PROPOSALS} 个提案。</Typography> : null}
         </>
       ) : (
         <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>当前轮无提案。</Typography>

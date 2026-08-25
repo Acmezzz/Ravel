@@ -70,13 +70,13 @@ export function TitleBar(): React.ReactElement {
             background: "var(--omega-accent-gradient)",
             boxShadow: "0 1px 4px var(--omega-accent-soft)",
             color: "var(--omega-accent-foreground)",
-            fontSize: 11,
+            fontSize: 10.5,
             fontWeight: 700,
           }}
         >
           Ω
         </Box>
-        <Typography sx={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-soft)" }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-soft)" }}>
           OMEGA DESKTOP
         </Typography>
       </Box>

@@ -51,8 +51,8 @@ export function TrustCenter(): React.ReactElement {
         const inherited = items.some((parent) => parent.realRoot !== workspace.realRoot && workspace.realRoot.startsWith(`${parent.realRoot.replace(/[\\/]$/, "")}${workspace.realRoot.includes("\\") ? "\\" : "/"}`) && parent.trust === "trusted");
         return <Box key={workspace.workspaceId} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.75, borderBottom: "1px solid var(--omega-border)" }}>
           <Box sx={{ minWidth: 0, flex: 1 }}><Typography sx={{ fontSize: 13, fontWeight: 600 }} noWrap>{workspace.displayPath}</Typography><Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>{workspace.resourcesDormant ? "项目资源休眠" : "项目资源可用"}</Typography></Box>
-          {inherited ? <Chip size="small" label="继承父目录信任" sx={{ height: 19, fontSize: 10 }} /> : null}
-          <Chip size="small" label={workspace.trust === "trusted" ? "trusted" : workspace.trust === "untrusted" ? "untrusted" : "undecided"} color={workspace.trust === "trusted" ? "success" : "default"} sx={{ height: 19, fontSize: 10 }} />
+          {inherited ? <Chip size="small" label="继承父目录信任" sx={{ height: 19, fontSize: 10.5 }} /> : null}
+          <Chip size="small" label={workspace.trust === "trusted" ? "trusted" : workspace.trust === "untrusted" ? "untrusted" : "undecided"} color={workspace.trust === "trusted" ? "success" : "default"} sx={{ height: 19, fontSize: 10.5 }} />
           <TextField select size="small" value="" disabled={busy === workspace.realRoot} onChange={(event) => { const value = event.target.value as ProjectTrustChoice; if (value) void decide(workspace, value); }} sx={{ minWidth: 120 }}><MenuItem value="">设置…</MenuItem>{choices.map((choice) => <MenuItem key={choice.value} value={choice.value}>{choice.label}</MenuItem>)}</TextField>
         </Box>;
       })}

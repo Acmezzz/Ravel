@@ -90,11 +90,11 @@ function TreeRow({
           <InsertDriveFileIcon sx={{ fontSize: 15, color: "var(--omega-text-dim)" }} />
         </>
       )}
-      <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap title={rel}>
+      <Typography sx={{ fontSize: 13, color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap title={rel}>
         {name}
       </Typography>
       {!isDir && size > 0 ? (
-        <Typography sx={{ fontSize: 10, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
       ) : null}
       <Tooltip title="在资源管理器中显示">
         <IconButton
@@ -196,7 +196,7 @@ export function FileTree(): React.ReactElement {
     );
     if (state?.loading && !listing) {
       rows.push(
-        <Typography key={`l:${rel}`} sx={{ fontSize: 11.5, color: "var(--omega-text-dim)", pl: 1 + depth * 1.25, py: 0.25 }}>
+        <Typography key={`l:${rel}`} sx={{ fontSize: 12, color: "var(--omega-text-dim)", pl: 1 + depth * 1.25, py: 0.25 }}>
           加载中…
         </Typography>,
       );
@@ -205,7 +205,7 @@ export function FileTree(): React.ReactElement {
     if (state?.error) {
       rows.push(
         <Box key={`e:${rel}`} role="alert" sx={{ display: "flex", alignItems: "center", gap: 0.75, pl: 1 + depth * 1.25, py: 0.25 }}>
-          <Typography sx={{ fontSize: 11.5, color: "var(--omega-danger)", minWidth: 0 }}>{state.error}</Typography>
+          <Typography sx={{ fontSize: 12, color: "var(--omega-danger)", minWidth: 0 }}>{state.error}</Typography>
           <Button size="small" onClick={() => void loadDir(rel)} sx={{ minWidth: 0, p: 0, textTransform: "none", flex: "0 0 auto" }}>重试</Button>
         </Box>,
       );
@@ -269,7 +269,7 @@ export function FileTree(): React.ReactElement {
   return (
     <Box sx={{ width: "100%" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, px: 1, py: 0.5, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)", minWidth: 0, flex: 1 }} noWrap>工作区文件</Typography>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, flex: 1 }} noWrap>工作区文件</Typography>
         <Tooltip title="导入文件到工作区"><IconButton size="small" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)" }}><UploadFileIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
         <Tooltip title="刷新">
           <IconButton size="small" onClick={refreshAll} sx={{ color: "var(--omega-text-dim)" }}>

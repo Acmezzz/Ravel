@@ -55,9 +55,9 @@ function ResourceRow({
           {title}
         </Typography>
         {chips?.map((chip) => (
-          <Chip key={chip} size="small" label={chip} sx={{ height: 18, fontSize: 10 }} />
+          <Chip key={chip} size="small" label={chip} sx={{ height: 18, fontSize: 10.5 }} />
         ))}
-        {dormant ? <Chip size="small" label="休眠" sx={{ height: 18, fontSize: 10, color: "var(--omega-warning)" }} /> : null}
+        {dormant ? <Chip size="small" label="休眠" sx={{ height: 18, fontSize: 10.5, color: "var(--omega-warning)" }} /> : null}
         {onToggle ? (
           <Switch
             checked={enabled}
@@ -68,7 +68,7 @@ function ResourceRow({
         ) : null}
       </Box>
       {subtitle ? (
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }} noWrap title={subtitle}>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap title={subtitle}>
           {subtitle}
         </Typography>
       ) : null}
@@ -131,11 +131,11 @@ export function ResourceCenter(): React.ReactElement {
     <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md">
       <DialogTitle sx={{ fontWeight: 700 }}>资源中心</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.5, pt: 1 }}>
-        <Typography sx={{ fontSize: 12.5, color: "var(--omega-text-muted)" }}>
+        <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>
           管理当前会话加载的扩展、Skills 和 Prompt 模板。安装只接受本机路径，不会联网下载 npm/git 包。
         </Typography>
         {bundle?.projectTrusted === false ? (
-          <Typography sx={{ fontSize: 12.5, color: "var(--omega-warning)" }}>
+          <Typography sx={{ fontSize: 13, color: "var(--omega-warning)" }}>
             当前项目未信任，项目级资源处于休眠状态。可在项目切换器中重新设置信任。
           </Typography>
         ) : null}
@@ -182,7 +182,7 @@ export function ResourceCenter(): React.ReactElement {
         >
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>允许 /skill 调用</Typography>
-            <Typography sx={{ fontSize: 11.5, color: "var(--omega-text-dim)" }}>模型可通过 slash 命令触发 Skills</Typography>
+            <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>模型可通过 slash 命令触发 Skills</Typography>
           </Box>
           <Switch
             checked={bundle?.skillCommandsEnabled !== false}
@@ -196,8 +196,8 @@ export function ResourceCenter(): React.ReactElement {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        {error ? <Typography sx={{ fontSize: 12.5, color: "var(--omega-danger)" }}>{error}</Typography> : null}
-        {status ? <Typography sx={{ fontSize: 12.5, color: "var(--omega-accent)" }}>{status}</Typography> : null}
+        {error ? <Typography sx={{ fontSize: 13, color: "var(--omega-danger)" }}>{error}</Typography> : null}
+        {status ? <Typography sx={{ fontSize: 13, color: "var(--omega-accent)" }}>{status}</Typography> : null}
 
         <Typography className="overline-label">
           扩展（{extensions.length}）
@@ -327,10 +327,10 @@ export function ResourceCenter(): React.ReactElement {
               sx={{ border: "1px solid var(--omega-border)", borderRadius: "12px", p: 1.1, display: "flex", gap: 1, alignItems: "center" }}
             >
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 600 }} noWrap>
+                <Typography sx={{ fontSize: 13, fontWeight: 600 }} noWrap>
                   {pkg.source}
                 </Typography>
-                <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }} noWrap>
+                <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>
                   {scopeLabel(pkg.scope)} {pkg.installedPath}
                 </Typography>
               </Box>

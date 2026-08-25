@@ -61,7 +61,7 @@ function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string })
         sx={{
           flex: "0 0 auto",
           height: 18,
-          fontSize: 10,
+          fontSize: 10.5,
           fontFamily: "ui-monospace, Consolas, monospace",
           borderRadius: 999,
           border: isSteer ? "1px solid var(--omega-accent)" : "1px solid var(--omega-border)",
@@ -505,7 +505,7 @@ export function Composer(): React.ReactElement {
                 "&:hover": { background: "var(--omega-hover-fill)" },
               }}
             >
-              <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              <Typography sx={{ fontSize: 13, color: "var(--omega-text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                 {entry}
               </Typography>
             </Box>
@@ -578,7 +578,7 @@ export function Composer(): React.ReactElement {
             background: "var(--omega-bg-soft)",
           }}
         >
-          <Typography sx={{ fontSize: 11, fontWeight: 700, color: "var(--omega-text-muted)", flex: "0 0 auto", pr: 1 }}>
+          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-text-muted)", flex: "0 0 auto", pr: 1 }}>
             队列 · {queued.length}
           </Typography>
           <Box sx={{ flex: 1, minWidth: 0, overflow: "hidden" }}>

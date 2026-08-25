@@ -43,11 +43,11 @@ export function ProjectTrustDialog({
         <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }}>
           「{labelFor(workspace)}」包含可执行的项目扩展、技能或 prompt。
         </Typography>
-        <Typography sx={{ fontSize: 12.5, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, Consolas, monospace" }}>
+        <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, Consolas, monospace" }}>
           {workspace}
         </Typography>
         <Box sx={{ background: "var(--omega-bg-soft)", borderRadius: "10px", px: 1.5, py: 1.25 }}>
-          <Typography sx={{ fontSize: 12.5, color: "var(--omega-text-muted)", lineHeight: 1.6 }}>
+          <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)", lineHeight: 1.6 }}>
             信任后才会加载该项目自己的 `.pi` 资源和技能。选择「永不信任」仍可打开工作区，但这些资源会保持休眠。
           </Typography>
         </Box>

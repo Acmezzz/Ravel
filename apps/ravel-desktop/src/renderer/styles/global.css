@@ -29,11 +29,11 @@ body,
   --omega-border: rgba(28, 26, 22, 0.08);
   --omega-border-strong: rgba(28, 26, 22, 0.15);
 
-  /* Text — four-step hierarchy */
+  /* Text — four-step hierarchy (dim ≥4.5:1 on rail/panel/canvas) */
   --omega-text: #1a1916;
   --omega-text-soft: #2c2a26;
   --omega-text-muted: #5e5b54;
-  --omega-text-dim: #8e8a81;
+  --omega-text-dim: #706b62;
 
   /* Accent — Amber */
   --omega-accent: #c67d12;
@@ -100,7 +100,7 @@ html.dark {
   --omega-text: #f3f0ea;
   --omega-text-soft: #e8e4dc;
   --omega-text-muted: #a8a295;
-  --omega-text-dim: #6f6a60;
+  --omega-text-dim: #938c7e;
 
   --omega-accent: #e8b44a;
   --omega-accent-strong: #f0c56a;
@@ -260,7 +260,7 @@ body {
 }
 .md-body code {
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 12.5px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .md-body :not(pre) > code {
@@ -632,15 +632,16 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .status-ring,
-  .status-core,
-  .thinking-shimmer,
-  .stream-caret::after,
-  .rise-in,
-  .pulse-dot,
-  .shimmer-border::after {
-    animation: none !important;
+  /* Universal freeze: every animation runs one 0.01ms frame and all
+   * transitions resolve instantly (WCAG-recommended catch-all). */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
+  /* Static shimmer overlay would stay visible without its sweep — hide it. */
   .shimmer-border::after {
     display: none;
   }

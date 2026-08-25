@@ -46,7 +46,7 @@ export function LeftNav(): React.ReactElement {
               borderRadius: "999px",
               flex: "0 0 auto",
               fontWeight: 600,
-              fontSize: 11.5,
+              fontSize: 12,
               px: 1.25,
               height: 28,
               color: "var(--omega-accent)",

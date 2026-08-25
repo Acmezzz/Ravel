@@ -187,7 +187,7 @@ export function ProjectSwitcher(): React.ReactElement {
         <FolderOpenOutlinedIcon sx={{ fontSize: 16, color: "var(--omega-accent)", flex: "0 0 auto" }} />
         <Typography
           sx={{
-            fontSize: 12.5,
+            fontSize: 13,
             fontWeight: 600,
             color: "var(--omega-text)",
             minWidth: 0,
@@ -206,7 +206,7 @@ export function ProjectSwitcher(): React.ReactElement {
             label="未信任"
             sx={{
               height: 18,
-              fontSize: 10,
+              fontSize: 10.5,
               flex: "0 0 auto",
               background: "var(--omega-warning-soft)",
               color: "var(--omega-warning)",
@@ -229,7 +229,7 @@ export function ProjectSwitcher(): React.ReactElement {
                     <Typography sx={{ fontSize: 13, fontWeight: workspace.realRoot === current ? 600 : 400 }}>
                       {labelFor(workspace.displayPath)}
                     </Typography>
-                    {chip ? <Chip size="small" label={chip} sx={{ height: 18, fontSize: 10 }} /> : null}
+                    {chip ? <Chip size="small" label={chip} sx={{ height: 18, fontSize: 10.5 }} /> : null}
                   </Box>
                   <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace" }} noWrap>
                     {workspace.displayPath}
@@ -268,7 +268,7 @@ export function ProjectSwitcher(): React.ReactElement {
             <ShieldOutlinedIcon sx={{ fontSize: 17, mr: 1, color: "var(--omega-accent)" }} /> 项目信任…
           </MenuItem>
         ) : null}
-        {error ? <Typography sx={{ px: 2, py: 0.75, maxWidth: 280, color: "var(--omega-danger)", fontSize: 11 }}>{error}</Typography> : null}
+        {error ? <Typography sx={{ px: 2, py: 0.75, maxWidth: 280, color: "var(--omega-danger)", fontSize: 10.5 }}>{error}</Typography> : null}
       </Menu>
 
       <ProjectTrustDialog

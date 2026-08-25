@@ -134,7 +134,7 @@ export function FileViewer(): React.ReactElement {
           {tabs.map((tab) => <Typography key={tab} component="button" type="button" onClick={() => void useAppStore.getState().openViewer(tab)} sx={{ fontSize: 12, px: 0.75, py: 0.25, cursor: "pointer", whiteSpace: "nowrap", color: tab === viewer.path ? "var(--omega-accent)" : "var(--omega-text-muted)", border: "none", borderBottom: tab === viewer.path ? "2px solid var(--omega-accent)" : "2px solid transparent", background: "transparent" }}>{tab.split(/[\\/]/).pop()}</Typography>)}
         </Box>
         {viewer.file ? (
-          <Typography component="span" sx={{ fontSize: 11, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
+          <Typography component="span" sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
             {formatSize(viewer.file.size)}
             {viewer.file.truncated ? "（已截断）" : ""}
           </Typography>
@@ -146,7 +146,7 @@ export function FileViewer(): React.ReactElement {
               component="button"
               type="button"
               onClick={() => setMode("source")}
-              sx={{ fontSize: 11, cursor: "pointer", color: mode === "source" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
+              sx={{ fontSize: 10.5, cursor: "pointer", color: mode === "source" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
             >
               源码
             </Typography>
@@ -154,15 +154,15 @@ export function FileViewer(): React.ReactElement {
               component="button"
               type="button"
               onClick={() => setMode("preview")}
-              sx={{ fontSize: 11, cursor: "pointer", color: mode === "preview" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
+              sx={{ fontSize: 10.5, cursor: "pointer", color: mode === "preview" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
             >
               预览
             </Typography>
           </Box>
         ) : null}
-        <Typography sx={{ fontSize: 10, color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
+        <Typography sx={{ fontSize: 10.5, color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
         <Tooltip title="使用系统默认应用打开">
-          <IconButton aria-label="使用系统默认应用打开" size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: 10 }}>外部</Typography></IconButton>
+          <IconButton aria-label="使用系统默认应用打开" size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: 10.5 }}>外部</Typography></IconButton>
         </Tooltip>
         <Tooltip title="在资源管理器中显示">
           <IconButton aria-label="在资源管理器中显示" size="small" onClick={() => void reveal()} sx={{ color: "var(--omega-text-dim)" }}>
@@ -248,7 +248,7 @@ export function FileViewer(): React.ReactElement {
             {selection ? (
               <Tooltip title={`引用 @${viewer.path}:${Math.min(selection.start, selection.end)}-${Math.max(selection.start, selection.end)}`}>
                 <IconButton aria-label="引用选中的行" size="small" onClick={quoteSelection} sx={{ color: "var(--omega-accent)" }}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 700 }}>@</Typography>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 700 }}>@</Typography>
                 </IconButton>
               </Tooltip>
             ) : null}

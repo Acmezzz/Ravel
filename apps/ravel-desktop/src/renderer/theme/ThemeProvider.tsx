@@ -120,7 +120,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 borderRadius: 8,
                 transition: `background-color 140ms ${EASE_OUT}, border-color 140ms ${EASE_OUT}, box-shadow 140ms ${EASE_OUT}, color 140ms ${EASE_OUT}, transform 140ms ${EASE_OUT}`,
               },
-              sizeSmall: { height: 22, fontSize: 11.5 },
+              sizeSmall: { height: 22, fontSize: 12 },
               outlined: {
                 borderColor: palette.borderStrong,
                 background: "transparent",
@@ -147,7 +147,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
               root: {
                 textTransform: "none",
                 fontWeight: 550,
-                fontSize: 12.5,
+                fontSize: 13,
                 letterSpacing: "0.005em",
                 color: palette.textMuted,
                 minHeight: 36,
@@ -165,15 +165,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 border: `1px solid ${palette.borderStrong}`,
                 boxShadow: palette.shadowMd,
                 color: palette.text,
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: 500,
                 letterSpacing: "0.005em",
                 padding: "5px 9px",
                 borderRadius: 8,
                 backdropFilter: "blur(12px)",
               },
-              arrow: { color: palette.bgOverlay },
-            },
+              arrow: { color: palette.bgOverlay },            },
           },
           MuiMenu: {
             styleOverrides: {

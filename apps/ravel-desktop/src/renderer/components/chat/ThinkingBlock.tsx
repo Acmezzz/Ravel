@@ -104,7 +104,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
         <EmojiObjectsIcon className={streaming ? "pulse-dot" : undefined} sx={{ fontSize: 13, color: "var(--omega-accent)" }} />
         <Typography
           className={streaming ? "thinking-shimmer" : undefined}
-          sx={{ fontSize: 11.5, color: "var(--omega-text-muted)", fontWeight: 550, letterSpacing: "0.005em" }}
+          sx={{ fontSize: 12, color: "var(--omega-text-muted)", fontWeight: 550, letterSpacing: "0.005em" }}
         >
           {streaming
             ? ["思考中", "推理中", "整理中", "斟酌中"][Math.floor(Date.now() / 1600) % 4]
@@ -113,7 +113,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
               : "思考"}
         </Typography>
         {!streaming && !deferred ? (
-          <Typography className="mono-num" sx={{ fontSize: 10, fontWeight: 650, color: "var(--omega-accent)", borderLeft: "1px solid var(--omega-border-strong)", pl: 0.75 }}>
+          <Typography className="mono-num" sx={{ fontSize: 10.5, fontWeight: 650, color: "var(--omega-accent-strong)", borderLeft: "1px solid var(--omega-border-strong)", pl: 0.75 }}>
             {elapsed || 1}s
           </Typography>
         ) : null}
@@ -122,6 +122,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
       </Box>
       {open && (loaded ?? "") ? (
         <Box
+          className="rise-in"
           sx={{
             mt: 0.75,
             p: 1.25,
@@ -131,7 +132,6 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
             boxShadow: "var(--omega-inset-recessed)",
             maxHeight: 260,
             overflowY: "auto",
-            animation: "omega-rise .16s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
           }}
         >
           <Typography component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontSize: 12, lineHeight: 1.6, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace" }}>

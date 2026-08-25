@@ -54,12 +54,12 @@ function CatalogView({ data }: { data: WorkflowCatalog }) {
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>{f.label}</Typography>
           <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>{f.description}</Typography>
           {f.levelSemantics ? (
-            <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)", mt: 0.5 }}>{f.levelSemantics}</Typography>
+            <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", mt: 0.5 }}>{f.levelSemantics}</Typography>
           ) : null}
           <Box sx={{ mt: 0.5, display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-            <Chip size="small" label={`${f.entryIds.length} 实体`} sx={{ height: 20, fontSize: 11 }} />
+            <Chip size="small" label={`${f.entryIds.length} 实体`} sx={{ height: 20, fontSize: 10.5 }} />
             {f.aliases.slice(0, 4).map((a) => (
-              <Chip key={a} size="small" label={a} variant="outlined" sx={{ height: 20, fontSize: 11, color: "var(--omega-text-muted)" }} />
+              <Chip key={a} size="small" label={a} variant="outlined" sx={{ height: 20, fontSize: 10.5, color: "var(--omega-text-muted)" }} />
             ))}
           </Box>
         </Box>
@@ -77,15 +77,15 @@ function RegistryView({ data }: { data: WorkflowRegistry }) {
     <Stack spacing={1}>
       {visible.map((e) => (
         <Box key={e.id} sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Chip size="small" label={`L${e.level}`} sx={{ height: 20, fontSize: 11 }} />
+          <Chip size="small" label={`L${e.level}`} sx={{ height: 20, fontSize: 10.5 }} />
           <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{e.intent || e.id}</Typography>
           <Chip
             size="small"
             label={e.status}
             color={e.status === "active" ? "success" : e.status === "deprecated" ? "error" : "warning"}
-            sx={{ height: 20, fontSize: 11 }}
+            sx={{ height: 20, fontSize: 10.5 }}
           />
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>
+          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>
             ev {e.evidence} · use {e.usage} · esc {e.escapes}
           </Typography>
         </Box>
@@ -137,7 +137,7 @@ function StepRail({ total, current, escaped }: { total: number; current: number;
         );
       })}
       {overflow ? (
-        <Typography className="mono-num" sx={{ fontSize: 10, color: "var(--omega-text-dim)", ml: 0.75, flex: "0 0 auto" }}>
+        <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", ml: 0.75, flex: "0 0 auto" }}>
           +{count - MAX_NODES}
         </Typography>
       ) : null}
@@ -156,7 +156,7 @@ function TrackerView({ data }: { data: WorkflowTracker }) {
         {data.alternativeId ? ` · 备选 ${data.alternativeId}` : ""}
       </Typography>
       <StepRail total={data.stepCount} current={data.currentIndex} escaped={data.escaped} />
-      <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>更新：{data.updatedAt || "未更新"}</Typography>
+      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>更新：{data.updatedAt || "未更新"}</Typography>
     </Stack>
   );
 }
@@ -168,7 +168,7 @@ function CoverageView({ data }: { data: WorkflowMemoryCoverage }) {
       <Typography sx={{ fontSize: 12, color: data.stale ? "var(--omega-warning)" : "var(--omega-success)" }}>
         状态：{data.stale ? "过期（需重新蒸馏）" : "覆盖完整"}
       </Typography>
-      <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>片段数：{data.segments.length}</Typography>
+      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>片段数：{data.segments.length}</Typography>
     </Stack>
   );
 }
@@ -182,15 +182,15 @@ function StatsView({ data }: { data: WorkflowStats }) {
       </Typography>
       {data.escapes.length > 0 ? (
         <Box sx={{ mt: 0.5 }}>
-          <Typography sx={{ fontSize: 11, color: "var(--omega-warning)" }}>逃逸记录：</Typography>
+          <Typography sx={{ fontSize: 10.5, color: "var(--omega-warning)" }}>逃逸记录：</Typography>
           {data.escapes.slice(0, MAX_ESCAPES).map((e, i) => (
-            <Typography key={i} sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>
+            <Typography key={i} sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>
               · {e.workflowId} @ step {e.stepIndex}：{e.reason}
             </Typography>
           ))}
         </Box>
       ) : (
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>无逃逸记录。</Typography>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>无逃逸记录。</Typography>
       )}
     </Stack>
   );
@@ -204,19 +204,19 @@ function HealthView({ data }: { data: WorkflowHealth }) {
         label={`健康：${data.status}`}
         color={data.status === "ok" ? "success" : data.status === "warn" ? "warning" : "error"}
       />
-      <Typography sx={{ fontSize: 11, color: "var(--omega-text-muted)" }}>
+      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-muted)" }}>
         任务 {data.summary.tasks} · 日志回合 {data.summary.journalTurns} · 待恢复 {data.summary.pendingRestore}
       </Typography>
       {data.issues.length > 0 ? (
         <Box sx={{ mt: 0.5 }}>
           {data.issues.slice(0, MAX_ISSUES).map((issue, i) => (
-            <Typography key={i} sx={{ fontSize: 11, color: issue.severity === "error" ? "var(--omega-danger)" : "var(--omega-warning)" }}>
+            <Typography key={i} sx={{ fontSize: 10.5, color: issue.severity === "error" ? "var(--omega-danger)" : "var(--omega-warning)" }}>
               · [{issue.code}] {issue.detail}
             </Typography>
           ))}
         </Box>
       ) : (
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>无问题。</Typography>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>无问题。</Typography>
       )}
     </Stack>
   );
@@ -243,7 +243,7 @@ export function WorkflowPanel(): React.ReactElement {
         sx={{
           mb: 1,
           minHeight: 36,
-          "& .MuiTab-root": { minHeight: 36, fontSize: 11.5, px: 0.9, minWidth: 0 },
+          "& .MuiTab-root": { minHeight: 36, fontSize: 12, px: 0.9, minWidth: 0 },
         }}
       >
         {SUBTABS.map((t) => (

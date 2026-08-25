@@ -223,7 +223,7 @@ export function SessionList(): React.ReactElement {
                 <SearchIcon sx={{ fontSize: 15, color: "var(--omega-text-dim)" }} />
               </InputAdornment>
             ),
-            sx: { fontSize: 12.5, borderRadius: "10px", background: "var(--omega-bg-soft)", boxShadow: "var(--omega-inset-recessed)" },
+            sx: { fontSize: 13, borderRadius: "10px", background: "var(--omega-bg-soft)", boxShadow: "var(--omega-inset-recessed)" },
           }}
         />
         {query.trim() ? (
@@ -232,7 +232,7 @@ export function SessionList(): React.ReactElement {
           </Typography>
         ) : null}
       </Box>
-      {loadError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.75, pb: 1 }}><Typography sx={{ fontSize: 11.5, color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</Typography>{failedSessionId ? <Button size="small" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null} sx={{ textTransform: "none", flex: "0 0 auto" }}>重试加载</Button> : null}<Button size="small" onClick={() => { setLoadError(null); setFailedSessionId(null); }} sx={{ textTransform: "none", flex: "0 0 auto" }}>关闭</Button></Box> : null}
+      {loadError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.75, pb: 1 }}><Typography sx={{ fontSize: 12, color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</Typography>{failedSessionId ? <Button size="small" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null} sx={{ textTransform: "none", flex: "0 0 auto" }}>重试加载</Button> : null}<Button size="small" onClick={() => { setLoadError(null); setFailedSessionId(null); }} sx={{ textTransform: "none", flex: "0 0 auto" }}>关闭</Button></Box> : null}
       {[...groups.entries()].map(([workspace, items]) => {
         const isCurrentWorkspace = Boolean(items[0] && activeWorkspace && items[0].workspace === activeWorkspace);
         return (
@@ -260,7 +260,7 @@ export function SessionList(): React.ReactElement {
             {isCurrentWorkspace ? (
               <Typography
                 component="span"
-                sx={{ fontSize: 10, fontWeight: 700, color: "var(--omega-accent)", background: "var(--omega-accent-soft)", borderRadius: "5px", px: 0.6, py: 0.1, flex: "0 0 auto" }}
+                sx={{ fontSize: 10.5, fontWeight: 700, color: "var(--omega-accent-strong)", background: "var(--omega-accent-soft)", borderRadius: "5px", px: 0.6, py: 0.1, flex: "0 0 auto" }}
               >
                 当前
               </Typography>
@@ -333,7 +333,7 @@ export function SessionList(): React.ReactElement {
                             label={status}
                             sx={{
                               height: 17,
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight: 600,
                               border: "none",
                               background: failed ? "var(--omega-danger-soft)" : isCompacting ? "var(--omega-warning-soft)" : "var(--omega-accent-soft)",

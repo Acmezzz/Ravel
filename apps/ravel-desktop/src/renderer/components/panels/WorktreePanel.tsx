@@ -103,14 +103,14 @@ export function WorktreePanel(): React.ReactElement {
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, flexWrap: "wrap" }}>
-              <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: "1 1 auto" }} noWrap title={worktree.path}>
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--omega-text)", minWidth: 0, flex: "1 1 auto" }} noWrap title={worktree.path}>
                 {worktree.branch || (worktree.detached ? "detached" : "worktree")}
               </Typography>
-              {worktree.current ? <Chip size="small" label="当前" sx={{ height: 18, fontSize: 10 }} /> : null}
-              {worktree.dirty ? <Chip size="small" label={`改动 ${worktree.staged ?? 0}/${worktree.unstaged ?? 0}/${worktree.untracked ?? 0}`} sx={{ height: 18, fontSize: 10 }} /> : null}
-              {worktree.locked ? <Chip size="small" label="锁定" sx={{ height: 18, fontSize: 10 }} /> : null}
+              {worktree.current ? <Chip size="small" label="当前" sx={{ height: 18, fontSize: 10.5 }} /> : null}
+              {worktree.dirty ? <Chip size="small" label={`改动 ${worktree.staged ?? 0}/${worktree.unstaged ?? 0}/${worktree.untracked ?? 0}`} sx={{ height: 18, fontSize: 10.5 }} /> : null}
+              {worktree.locked ? <Chip size="small" label="锁定" sx={{ height: 18, fontSize: 10.5 }} /> : null}
             </Box>
-            <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }} noWrap title={worktree.path}>
+            <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap title={worktree.path}>
               {worktree.path} · {worktree.headShort || "no HEAD"}
             </Typography>
             {worktree.recentCommit?.message ? <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>{worktree.recentCommit.message}</Typography> : null}

@@ -34,7 +34,7 @@ export function CodeBlock({ language, className, children }: CodeBlockProps): Re
         {language ? (
           <Box
             sx={{
-              fontSize: 10,
+              fontSize: 10.5,
               fontWeight: 650,
               letterSpacing: "0.06em",
               textTransform: "uppercase",

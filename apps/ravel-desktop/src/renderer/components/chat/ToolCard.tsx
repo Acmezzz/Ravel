@@ -118,11 +118,11 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
           <Box sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", display: "grid", placeItems: "center" }}>
             {KIND_ICON[card.kind] ?? <DescriptionIcon sx={{ fontSize: 15 }} />}
           </Box>
-          <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", fontWeight: 600, letterSpacing: "0.005em", flex: "0 0 auto" }} noWrap>
+          <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600, letterSpacing: "0.005em", flex: "0 0 auto" }} noWrap>
             {KIND_LABEL[card.kind] ?? "工具"} · {card.toolName}
           </Typography>
           {card.target ? (
-            <Typography className="mono-num" sx={{ fontSize: 11.5, color: "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap title={card.target}>
+            <Typography className="mono-num" sx={{ fontSize: 12, color: "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap title={card.target}>
               {card.target}
             </Typography>
           ) : null}
@@ -138,7 +138,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
                 border: "1px solid var(--omega-border)",
                 background: "var(--omega-bg-code)",
                 fontFamily: "ui-monospace, Consolas, monospace",
-                fontSize: 11,
+                fontSize: 10.5,
                 fontVariantNumeric: "tabular-nums",
               }}
             >
@@ -147,11 +147,11 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
             </Box>
           ) : null}
           {duration && card.status !== "running" ? (
-            <Typography className="mono-num" sx={{ fontSize: 10.5, fontWeight: 650, color: "var(--omega-accent)", flex: "0 0 auto" }}>
+            <Typography className="mono-num" sx={{ fontSize: 10.5, fontWeight: 650, color: "var(--omega-accent-strong)", flex: "0 0 auto" }}>
               {duration}
             </Typography>
           ) : null}
-          <Typography sx={{ fontSize: 11, fontWeight: 550, color, flex: "0 0 auto" }}>
+          <Typography sx={{ fontSize: 10.5, fontWeight: 550, color, flex: "0 0 auto" }}>
             {card.status === "running" ? "运行中" : card.status === "error" ? "失败" : "完成"}
           </Typography>
         </Box>
@@ -173,7 +173,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
                   background: "var(--omega-bg-code)",
                   maxHeight: 220,
                   overflow: "auto",
-                  fontSize: 11.5,
+                  fontSize: 12,
                   lineHeight: 1.55,
                   fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
                   color: "var(--omega-text-soft)",
@@ -200,7 +200,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
                   background: "var(--omega-bg-code)",
                   maxHeight: 300,
                   overflow: "auto",
-                  fontSize: 11.5,
+                  fontSize: 12,
                   lineHeight: 1.55,
                   fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
                   color: card.isError ? "var(--omega-error-text)" : "var(--omega-text-soft)",
@@ -212,7 +212,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
               </Box>
             </Box>
           ) : null}
-          <Box sx={{ display: "flex", gap: 2, color: "var(--omega-text-dim)", fontSize: 11 }}>
+          <Box sx={{ display: "flex", gap: 2, color: "var(--omega-text-dim)", fontSize: 10.5 }}>
             {card.startedAt ? <span>开始 {new Date(card.startedAt).toLocaleTimeString()}</span> : null}
             {card.endedAt ? <span>结束 {new Date(card.endedAt).toLocaleTimeString()}</span> : null}
           </Box>

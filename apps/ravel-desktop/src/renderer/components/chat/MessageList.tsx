@@ -206,7 +206,7 @@ export function MessageList(): React.ReactElement {
                 pb: 1,
                 maxHeight: 160,
                 overflowY: "auto",
-                fontSize: 11.5,
+                fontSize: 12,
                 lineHeight: 1.55,
                 fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
                 color: "var(--omega-text-muted)",

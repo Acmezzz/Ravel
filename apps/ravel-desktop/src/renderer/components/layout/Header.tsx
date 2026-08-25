@@ -357,7 +357,7 @@ export function Header(): React.ReactElement {
         {/* identity cluster */}
         <StatusGlyph bootstrapError={bootstrapError} />
         <Box sx={{ minWidth: 0, flex: "0 1 auto", maxWidth: 180 }}>
-          <Typography sx={{ fontWeight: 650, fontSize: 13.5, lineHeight: 1.2, color: "var(--omega-text)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sessionTitle}>
+          <Typography sx={{ fontWeight: 650, fontSize: 14, lineHeight: 1.2, color: "var(--omega-text)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sessionTitle}>
             {sessionTitle}
           </Typography>
           <Typography
@@ -371,7 +371,7 @@ export function Header(): React.ReactElement {
                   : shuttingDown || compacting
                     ? "var(--omega-warning)"
                     : running
-                      ? "var(--omega-accent)"
+                      ? "var(--omega-accent-strong)"
                       : "var(--omega-text-muted)",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -413,7 +413,7 @@ export function Header(): React.ReactElement {
             "&:hover": shuttingDown ? undefined : { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)", transform: "translateY(-0.5px)", boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)" },
           }}
         >
-          <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {modelLabel}
           </Typography>
           <ExpandMoreIcon sx={{ fontSize: 15, color: "var(--omega-text-muted)", flex: "0 0 auto" }} />
@@ -430,7 +430,7 @@ export function Header(): React.ReactElement {
             cursor: shuttingDown || agent?.supportsThinking === false ? "default" : "pointer",
             pointerEvents: shuttingDown || agent?.supportsThinking === false ? "none" : "auto",
             opacity: shuttingDown || agent?.supportsThinking === false ? 0.5 : 1,
-            fontSize: 11,
+            fontSize: 10.5,
             height: 24,
             flex: "0 0 auto",
             border: "1px solid var(--omega-border)",
@@ -454,7 +454,7 @@ export function Header(): React.ReactElement {
         <Tooltip title={`上下文 ${usageLabel}`}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 0.25, flex: "0 0 auto" }}>
             <ContextDonut percent={usagePercent ?? 0} />
-            <Typography className="mono-num" sx={{ fontSize: 11, color: "var(--omega-text-muted)", display: { xs: "none", md: "block" } }}>
+            <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-text-muted)", display: { xs: "none", md: "block" } }}>
               {usageLabel}
             </Typography>
           </Box>

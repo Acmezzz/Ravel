@@ -146,7 +146,7 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
                       <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }} noWrap>
                         {model.id}
                       </Typography>
-                      <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }} noWrap>
+                      <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>
                         {model.contextWindow ? `${Math.round(model.contextWindow / 1000)}K ctx` : ""}
                         {model.reasoning ? " · reasoning" : ""}
                       </Typography>

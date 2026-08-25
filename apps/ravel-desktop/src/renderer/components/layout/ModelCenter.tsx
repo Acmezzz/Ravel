@@ -78,7 +78,7 @@ function ProviderCard({
           label={provider.configured ? "已配置" : "配置中"}
           sx={{
             height: 18,
-            fontSize: 10,
+            fontSize: 10.5,
             flex: "0 0 auto",
             background: provider.configured ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)",
             color: provider.configured ? "var(--omega-accent)" : "var(--omega-text-muted)",
@@ -103,9 +103,9 @@ function ProviderCard({
         }}
       />
       {error ? (
-        <Typography sx={{ fontSize: 11.5, color: "var(--omega-danger)" }}>{error}</Typography>
+        <Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{error}</Typography>
       ) : (
-        <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>
+        <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>
           Key 只写入本机凭据库，界面不会读取或显示已保存的明文。
         </Typography>
       )}
@@ -268,8 +268,8 @@ export function ModelCenter(): React.ReactElement {
           </Typography>
           {visibleProviders.length === 0 ? (
             <Box sx={{ border: "1px dashed var(--omega-border-strong)", borderRadius: "12px", p: 1.5 }}>
-              <Typography sx={{ fontSize: 12.5, color: "var(--omega-text-muted)" }}>还没有配置提供商。</Typography>
-              <Typography sx={{ fontSize: 11.5, color: "var(--omega-text-dim)", mt: 0.5 }}>用右上角「添加」从目录里选择供应商，再粘贴 API key。</Typography>
+              <Typography sx={{ fontSize: 13, color: "var(--omega-text-muted)" }}>还没有配置提供商。</Typography>
+              <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", mt: 0.5 }}>用右上角「添加」从目录里选择供应商，再粘贴 API key。</Typography>
             </Box>
           ) : (
             visibleProviders.map((provider) => (
@@ -279,7 +279,7 @@ export function ModelCenter(): React.ReactElement {
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
           <Typography className="overline-label">模型</Typography>
-          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>
+          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }}>
             只列出当前可用模型。配置提供商后会刷新目录；本地 Provider 可离线使用。
           </Typography>
           <TextField size="small" placeholder="搜索模型…" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -317,7 +317,7 @@ export function ModelCenter(): React.ReactElement {
                           <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }} noWrap>
                             {model.id}
                           </Typography>
-                          <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }} noWrap>
+                          <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)" }} noWrap>
                             {model.contextWindow ? `${Math.round(model.contextWindow / 1000)}K ctx` : ""}
                             {model.reasoning ? " · reasoning" : ""}
                           </Typography>
@@ -370,7 +370,7 @@ export function ModelCenter(): React.ReactElement {
         </DialogActions>
       </Dialog>
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
-        <Typography sx={{ fontSize: 11.5, color: status ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>
+        <Typography sx={{ fontSize: 12, color: status ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>
           {status ?? "未配置的供应商都收在「添加」菜单里。"}
         </Typography>
         <Button variant="contained" onClick={() => setOpen(false)} sx={{ textTransform: "none" }}>

@@ -55,7 +55,7 @@ export function RightPanel(): React.ReactElement {
           variant="scrollable"
           scrollButtons="auto"
           allowScrollButtonsMobile
-          sx={{ flexGrow: 1, minWidth: 0, minHeight: 44, "& .MuiTab-root": { minHeight: 44, minWidth: 0, px: 1.25, fontSize: 12.5 } }}
+          sx={{ flexGrow: 1, minWidth: 0, minHeight: 44, "& .MuiTab-root": { minHeight: 44, minWidth: 0, px: 1.25, fontSize: 13 } }}
         >
           <Tab label="Workflow" value="workflow" />
           <Tab label="Scout" value="scout" />
@@ -68,8 +68,8 @@ export function RightPanel(): React.ReactElement {
           </IconButton>
         </Tooltip>
       </Box>
-      {extensionLoading ? <Box role="status" aria-live="polite" sx={{ px: 1.25, py: 0.5, fontSize: 11, color: "var(--omega-text-muted)" }}>正在刷新扩展状态…</Box> : null}
-      {extensionError ? <Box role="alert" sx={{ px: 1.25, py: 0.5, display: "flex", alignItems: "center", gap: 1, fontSize: 11, color: "var(--omega-danger)" }}>{extensionError}<Button size="small" onClick={() => void refresh()} sx={{ textTransform: "none" }}>重试</Button></Box> : null}
+      {extensionLoading ? <Box role="status" aria-live="polite" sx={{ px: 1.25, py: 0.5, fontSize: 10.5, color: "var(--omega-text-muted)" }}>正在刷新扩展状态…</Box> : null}
+      {extensionError ? <Box role="alert" sx={{ px: 1.25, py: 0.5, display: "flex", alignItems: "center", gap: 1, fontSize: 10.5, color: "var(--omega-danger)" }}>{extensionError}<Button size="small" onClick={() => void refresh()} sx={{ textTransform: "none" }}>重试</Button></Box> : null}
       <Box
         sx={{
           flexGrow: 1,

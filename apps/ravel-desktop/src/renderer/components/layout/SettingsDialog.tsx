@@ -40,7 +40,7 @@ function SectionTitle({ title }: { title: string }): React.ReactElement {
   return (
     <Typography
       sx={{
-        fontSize: 11,
+        fontSize: 10.5,
         fontWeight: 700,
         letterSpacing: "0.06em",
         textTransform: "uppercase",
@@ -56,7 +56,7 @@ function SectionTitle({ title }: { title: string }): React.ReactElement {
 function ResourceGroup({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
     <Box sx={{ mb: 1.5 }}>
-      <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: "var(--omega-text-muted)", mb: 0.5 }}>
+      <Typography sx={{ fontSize: 12, fontWeight: 600, color: "var(--omega-text-muted)", mb: 0.5 }}>
         {title}
       </Typography>
       {children}
@@ -225,7 +225,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, px: 1.5, py: 1.25, minHeight: 48 }}>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>自动压缩上下文</Typography>
-                  <Typography sx={{ fontSize: 11.5, color: "var(--omega-text-dim)", mt: 0.25 }}>接近窗口上限时自动压缩历史</Typography>
+                  <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", mt: 0.25 }}>接近窗口上限时自动压缩历史</Typography>
                 </Box>
                 <Switch
                   checked={agent?.autoCompaction ?? true}
@@ -237,7 +237,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, px: 1.5, py: 1.25, minHeight: 48 }}>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--omega-text)" }}>失败自动重试</Typography>
-                  <Typography sx={{ fontSize: 11.5, color: "var(--omega-text-dim)", mt: 0.25 }}>请求失败时按策略自动重试</Typography>
+                  <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)", mt: 0.25 }}>请求失败时按策略自动重试</Typography>
                 </Box>
                 <Switch
                   checked={agent?.autoRetry ?? true}
@@ -391,7 +391,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         {activeTab === "resources" && (
           <Box sx={{ display: "flex", flexDirection: "column" }}>
             {agent?.projectTrusted === false ? (
-              <Typography sx={{ fontSize: 12.5, color: "var(--omega-warning)", mb: 1.5 }}>
+              <Typography sx={{ fontSize: 13, color: "var(--omega-warning)", mb: 1.5 }}>
                 当前项目未信任，项目扩展、技能和 prompt 处于休眠状态。
               </Typography>
             ) : null}
@@ -405,9 +405,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                   ) : (
                     resources.extensions.map((extension) => (
                       <Box key={extension.path} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.35 }}>
-                        <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", fontWeight: 600 }}>{extension.name}</Typography>
-                        {extension.commands > 0 ? <Chip size="small" label={`${extension.commands} 命令`} sx={{ height: 18, fontSize: 10 }} /> : null}
-                        {extension.tools > 0 ? <Chip size="small" label={`${extension.tools} 工具`} sx={{ height: 18, fontSize: 10 }} /> : null}
+                        <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{extension.name}</Typography>
+                        {extension.commands > 0 ? <Chip size="small" label={`${extension.commands} 命令`} sx={{ height: 18, fontSize: 10.5 }} /> : null}
+                        {extension.tools > 0 ? <Chip size="small" label={`${extension.tools} 工具`} sx={{ height: 18, fontSize: 10.5 }} /> : null}
                         <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap title={extension.path}>
                           {extension.path}
                         </Typography>
@@ -423,7 +423,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                     resources.skills.map((skill) => (
                       <Box key={skill.filePath} sx={{ py: 0.35 }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography sx={{ fontSize: 12.5, color: "var(--omega-text)", fontWeight: 600 }}>/skill:{skill.name}</Typography>
+                          <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>/skill:{skill.name}</Typography>
                           <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap>
                             {skill.description.slice(0, 60)}
                           </Typography>
@@ -439,11 +439,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                   ) : (
                     resources.prompts.map((promptResource) => (
                       <Box key={promptResource.filePath} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.35 }}>
-                        <Typography sx={{ fontSize: 12.5, fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-accent)" }}>
+                        <Typography sx={{ fontSize: 13, fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-accent)" }}>
                           /{promptResource.name}
                         </Typography>
                         {promptResource.argumentHint ? (
-                          <Chip size="small" label={promptResource.argumentHint} sx={{ height: 18, fontSize: 10 }} />
+                          <Chip size="small" label={promptResource.argumentHint} sx={{ height: 18, fontSize: 10.5 }} />
                         ) : null}
                         <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap>
                           {promptResource.description.slice(0, 60)}
