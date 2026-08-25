@@ -6,7 +6,7 @@
  */
 
 /** Static style nonce shared by the index.html CSP and emotion's cache. */
-export const STYLE_NONCE = "omega-static-2026";
+export const STYLE_NONCE = "ravel-static-2026";
 
 export const fontFamily =
   'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
