@@ -110,13 +110,15 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
                   order: 2,
                   color: "var(--omega-accent-foreground)",
                   background: "var(--omega-accent-gradient)",
-                  border: "1px solid var(--omega-accent-line)",
+                  border: "1px solid rgba(255, 255, 255, 0.28)",
                   borderRadius: "16px 4px 16px 16px",
                   px: 1.75,
                   py: 1.1,
                   whiteSpace: "pre-wrap",
                   overflowWrap: "anywhere",
-                  boxShadow: "0 2px 10px var(--omega-accent-soft)",
+                  // Double-edge treatment: bright inner rim + warm outer bloom.
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 12px var(--omega-accent-soft)",
                 }
               : {
                   color: isError ? "var(--omega-error-text)" : "var(--omega-text-soft)",

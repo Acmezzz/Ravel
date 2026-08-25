@@ -65,15 +65,17 @@ body,
   --omega-scrollbar-hover: rgba(28, 26, 22, 0.30);
   --omega-selection: rgba(198, 125, 18, 0.22);
 
-  /* Shadows — three-level scale */
+  /* Shadows — tactile & multi-layered scale */
   --omega-shadow-sm: 0 1px 2px rgba(26, 25, 22, 0.05);
   --omega-shadow-md: 0 4px 16px rgba(26, 25, 22, 0.08), 0 1px 3px rgba(26, 25, 22, 0.05);
   --omega-shadow-lg: 0 16px 48px rgba(26, 25, 22, 0.14), 0 4px 12px rgba(26, 25, 22, 0.06);
-  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.70);
+  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --omega-inset-recessed: inset 0 1px 3px rgba(26, 25, 22, 0.08);
 
   /* Ambient glow — amber tint */
   --omega-glow-1: rgba(198, 125, 18, 0.05);
   --omega-glow-2: rgba(224, 154, 42, 0.04);
+  --omega-glow-accent: 0 0 12px rgba(198, 125, 18, 0.20);
 
   /* Motion — one shared easing family */
   --omega-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -129,10 +131,12 @@ html.dark {
   --omega-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
   --omega-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30);
   --omega-shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.38);
-  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --omega-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --omega-inset-recessed: inset 0 1px 3px rgba(0, 0, 0, 0.45);
 
   --omega-glow-1: rgba(201, 137, 20, 0.07);
   --omega-glow-2: rgba(232, 180, 74, 0.05);
+  --omega-glow-accent: 0 0 16px rgba(232, 180, 74, 0.28);
 }
 
 /* ============================================================
@@ -341,7 +345,42 @@ body {
 }
 
 /* ============================================================
- * Streaming & thinking indicators
+ * Tactile & Instrument Utilities (Tactile Embossed / Recessed)
+ * ========================================================== */
+.tactile-btn {
+  position: relative;
+  box-shadow: var(--omega-shadow-sm), var(--omega-inset-highlight);
+  transition: transform 120ms var(--omega-ease-out), box-shadow 120ms var(--omega-ease-out), background-color 120ms var(--omega-ease-out);
+}
+.tactile-btn:hover {
+  transform: translateY(-0.5px);
+  box-shadow: var(--omega-shadow-md), var(--omega-inset-highlight);
+}
+.tactile-btn:active {
+  transform: translateY(0.5px);
+  box-shadow: var(--omega-shadow-sm), var(--omega-inset-recessed);
+}
+
+.tactile-recessed {
+  box-shadow: var(--omega-inset-recessed);
+}
+
+.tactile-accent {
+  background: var(--omega-accent-gradient);
+  color: var(--omega-accent-foreground);
+  box-shadow: var(--omega-shadow-sm), var(--omega-inset-highlight), var(--omega-glow-accent);
+  transition: transform 120ms var(--omega-ease-out), box-shadow 120ms var(--omega-ease-out);
+}
+.tactile-accent:hover {
+  transform: translateY(-0.5px);
+  box-shadow: var(--omega-shadow-md), var(--omega-inset-highlight), 0 0 20px rgba(232, 180, 74, 0.40);
+}
+.tactile-accent:active {
+  transform: translateY(0.5px);
+  box-shadow: var(--omega-shadow-sm), var(--omega-inset-recessed);
+}
+
+/* Streaming & thinking indicators
  * ========================================================== */
 .stream-caret::after {
   content: "▍";
@@ -404,7 +443,7 @@ body {
  * Shared primitives
  * ========================================================== */
 
-/* Keyboard hint chips — one shared treatment, no per-element inline dup. */
+/* Keyboard hint chips — physical key treatment: raised bevel, pressed feel. */
 .kbd {
   display: inline-flex;
   align-items: center;
@@ -414,6 +453,7 @@ body {
   border: 1px solid var(--omega-border-strong);
   border-bottom-width: 2px;
   background: var(--omega-bg-elevated);
+  box-shadow: var(--omega-inset-highlight);
   color: var(--omega-text-muted);
   font-size: 10.5px;
   font-weight: 550;
@@ -504,6 +544,68 @@ body {
   }
 }
 
+/* ============================================================
+ * Status glyph — the one live instrument (∞ mark, signature element)
+ * ========================================================== */
+@keyframes omega-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes omega-core-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.92);
+    opacity: 0.82;
+  }
+}
+
+/* GPU-only shimmer sweep for live borders (transform/opacity, no reflow). */
+@keyframes omega-shimmer-sweep {
+  0% {
+    transform: translateX(-130%) skewX(-14deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  60% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateX(230%) skewX(-14deg);
+    opacity: 0;
+  }
+}
+.shimmer-border {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shimmer-border::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 34%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--omega-accent-soft),
+    rgba(255, 255, 255, 0.10),
+    var(--omega-accent-soft),
+    transparent
+  );
+  will-change: transform, opacity;
+  animation: omega-shimmer-sweep 2.8s var(--omega-ease-out) infinite;
+}
+
 .status-ring {
   transform-origin: center;
 }
@@ -535,7 +637,11 @@ body {
   .thinking-shimmer,
   .stream-caret::after,
   .rise-in,
-  .pulse-dot {
+  .pulse-dot,
+  .shimmer-border::after {
     animation: none !important;
+  }
+  .shimmer-border::after {
+    display: none;
   }
 }

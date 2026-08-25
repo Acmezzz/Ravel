@@ -223,7 +223,7 @@ export function SessionList(): React.ReactElement {
                 <SearchIcon sx={{ fontSize: 15, color: "var(--omega-text-dim)" }} />
               </InputAdornment>
             ),
-            sx: { fontSize: 12.5, borderRadius: "10px", background: "var(--omega-bg-soft)" },
+            sx: { fontSize: 12.5, borderRadius: "10px", background: "var(--omega-bg-soft)", boxShadow: "var(--omega-inset-recessed)" },
           }}
         />
         {query.trim() ? (
@@ -292,11 +292,27 @@ export function SessionList(): React.ReactElement {
                     py: 0.75,
                     pl: nested ? 2.75 : 1.25,
                     border: "1px solid transparent",
+                    position: "relative",
                     transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+                    "&::before": {
+                      content: '""',
+                      position: "absolute",
+                      left: 0,
+                      top: "22%",
+                      bottom: "22%",
+                      width: 2,
+                      borderRadius: 2,
+                      background: "var(--omega-accent)",
+                      opacity: 0,
+                      transform: "scaleY(0.4)",
+                      transition: "opacity 160ms var(--omega-ease-out), transform 160ms var(--omega-ease-out)",
+                    },
                     "&.Mui-selected": {
                       background: "var(--omega-selected)",
                       borderColor: "var(--omega-accent-line)",
+                      boxShadow: "var(--omega-inset-highlight)",
                     },
+                    "&.Mui-selected::before": { opacity: 1, transform: "scaleY(1)" },
                     "&.Mui-selected:hover": { background: "var(--omega-selected)" },
                     "&:hover": { background: "var(--omega-hover-fill)" },
                     "& .row-actions": { opacity: 0 },

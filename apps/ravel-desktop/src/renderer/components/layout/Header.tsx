@@ -94,9 +94,10 @@ function Divider(): React.ReactElement {
 }
 
 /**
- * Signature element: the Ω mark is a live instrument. The ring spins while a
- * turn runs (slow) or compaction works (fast); the core breathes while the
- * model thinks; idle is perfectly still. Reduced motion freezes everything.
+ * Signature element: the ∞ mark is a live instrument. The outer ring spins
+ * while a turn runs (slow) or compaction works (fast); the infinity core
+ * breathes while the model thinks; idle is perfectly still. Reduced motion
+ * freezes everything. The core sits in a recessed instrument well.
  */
 function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): React.ReactElement {
   const connection = useAppStore((s) => s.connection);
@@ -107,16 +108,14 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
   const canRetryWorker = useAppStore((s) => s.canRetryWorker);
 
   const failed = Boolean(bootstrapError) || Boolean(workerError) || connection === "error";
-  const ringColor =
+  const liveColor =
     failed
       ? "var(--omega-danger)"
       : shutdownPhase !== "idle"
         ? "var(--omega-warning)"
         : compacting
           ? "var(--omega-warning)"
-          : connection === "running"
-            ? "var(--omega-accent)"
-            : "transparent";
+          : "var(--omega-accent)";
   const label = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection });
 
   const retryWorker = React.useCallback(async () => {
@@ -130,6 +129,10 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
       useAppStore.getState().setConnection("error");
     }
   }, [canRetryWorker]);
+
+  // Lemniscate (∞) drawn as one continuous path so the stroke reads as a
+  // single filament — the workshop-lamp wire, not a typed character.
+  const INFINITY_PATH = "M 16 16 C 16 9.5, 25 9.5, 25 16 C 25 22.5, 16 22.5, 16 16 C 16 9.5, 7 9.5, 7 16 C 7 22.5, 16 22.5, 16 16 Z";
 
   return (
     <Tooltip title={`状态：${label}${bootstrapError || workerError ? `（${bootstrapError ?? workerError}）` : ""}`}>
@@ -146,14 +149,14 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
       >
         <svg width="40" height="40" viewBox="0 0 40 40" style={{ position: "absolute", inset: 0 }}>
           <circle cx="20" cy="20" r="18" fill="none" stroke={failed ? "var(--omega-danger)" : "var(--omega-border)"} strokeWidth="1.5" opacity={failed ? 0.9 : 0.7} />
-          {(connection === "running" || compacting) && !failed && (
+          {(connection === "running" || compacting || shutdownPhase !== "idle") && !failed && (
             <circle
               className={`status-ring ${compacting ? "is-compacting" : "is-running"}`}
               cx="20"
               cy="20"
               r="18"
               fill="none"
-              stroke={ringColor}
+              stroke={liveColor}
               strokeWidth="2"
               strokeLinecap="round"
               strokeDasharray="30 83"
@@ -175,35 +178,57 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
             placeItems: "center",
             borderRadius: "9px",
             border: `1px solid ${failed ? "var(--omega-danger)" : "var(--omega-border-strong)"}`,
-            color: failed ? "var(--omega-danger)" : "var(--omega-accent)",
-            background: "var(--omega-accent-soft)",
-            boxShadow: "var(--omega-inset-highlight)",
-            fontSize: 15,
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            transition: "transform 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 140ms",
+            background: "var(--omega-bg-soft)",
+            boxShadow: `${canRetryWorker ? "var(--omega-inset-highlight)" : "var(--omega-inset-recessed)"}`,
+            transition: "transform 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 140ms var(--omega-ease-out)",
             cursor: canRetryWorker ? "pointer" : "default",
-            "&:hover": canRetryWorker ? { transform: "scale(1.05)" } : undefined,
+            "&:hover": canRetryWorker ? { transform: "translateY(-0.5px)", boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)" } : undefined,
           }}
         >
-          Ω
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 32 32"
+            aria-hidden
+            style={{
+              display: "block",
+              filter: thinkingActive && !failed ? "drop-shadow(0 0 4px rgba(232, 180, 74, 0.55))" : undefined,
+            }}
+          >
+            <path d={INFINITY_PATH} fill="none" stroke={failed ? "var(--omega-danger)" : thinkingActive || connection === "running" || compacting ? liveColor : "var(--omega-text-muted)"} strokeWidth="2.6" strokeLinecap="round" />
+          </svg>
         </Box>
       </Box>
     </Tooltip>
   );
 }
 
-/** Compact context donut replacing the linear bar — data reads as an instrument. */
+/** Compact context gauge: recessed instrument dial with threshold ticks. */
 function ContextDonut({ percent }: { percent: number }): React.ReactElement {
   const clamped = Math.max(0, Math.min(100, percent));
   const radius = 8;
   const circumference = 2 * Math.PI * radius;
   const color = clamped >= 85 ? "var(--omega-danger)" : clamped >= 65 ? "var(--omega-warning)" : "var(--omega-accent)";
+  // Threshold ticks at 65% (warning) and 85% (danger) — the dial carries its own redlines.
+  const tickAngle = (pct: number) => (pct / 100) * 360 - 90;
+  const tickPoint = (pct: number, r1: number, r2: number) => {
+    const a = (tickAngle(pct) * Math.PI) / 180;
+    return {
+      x1: 12 + r1 * Math.cos(a),
+      y1: 12 + r1 * Math.sin(a),
+      x2: 12 + r2 * Math.cos(a),
+      y2: 12 + r2 * Math.sin(a),
+    };
+  };
+  const warnTick = tickPoint(65, 10.2, 12);
+  const dangerTick = tickPoint(85, 10.2, 12);
   return (
     <Tooltip title={`上下文已用 ${Math.round(clamped)}%`}>
       <Box sx={{ position: "relative", width: 24, height: 24, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
         <svg width="24" height="24" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r={radius} fill="none" stroke="var(--omega-border)" strokeWidth="3" />
+          <line {...warnTick} stroke="var(--omega-border-strong)" strokeWidth="1" strokeLinecap="round" opacity={clamped < 65 ? 0.9 : 0.35} />
+          <line {...dangerTick} stroke="var(--omega-danger)" strokeWidth="1" strokeLinecap="round" opacity={clamped < 85 ? 0.55 : 1} />
+          <circle cx="12" cy="12" r={radius} fill="none" stroke="var(--omega-border)" strokeWidth="3" opacity="0.9" />
           <circle
             cx="12"
             cy="12"
@@ -214,6 +239,7 @@ function ContextDonut({ percent }: { percent: number }): React.ReactElement {
             strokeLinecap="round"
             strokeDasharray={`${(clamped / 100) * circumference} ${circumference}`}
             transform="rotate(-90 12 12)"
+            style={{ transition: "stroke-dasharray 400ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), stroke 200ms var(--omega-ease-out)" }}
           />
         </svg>
         <Typography className="mono-num" sx={{ fontSize: 7.5, fontWeight: 700, color: "var(--omega-text-muted)", position: "absolute" }}>
@@ -380,10 +406,11 @@ export function Header(): React.ReactElement {
             borderRadius: "9px",
             border: "1px solid var(--omega-border)",
             background: "var(--omega-bg-soft)",
+            boxShadow: "var(--omega-inset-highlight)",
             cursor: shuttingDown ? "default" : "pointer",
             opacity: shuttingDown ? 0.55 : 1,
-            transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-            "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
+            transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), transform 140ms var(--omega-ease-out), box-shadow 140ms var(--omega-ease-out)",
+            "&:hover": shuttingDown ? undefined : { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)", transform: "translateY(-0.5px)", boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)" },
           }}
         >
           <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "var(--omega-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -472,7 +499,9 @@ export function Header(): React.ReactElement {
               color: "var(--omega-danger)",
               background: "var(--omega-danger-soft)",
               border: "1px solid transparent",
-              "&:hover": { background: "var(--omega-danger-soft)", borderColor: "var(--omega-danger)" },
+              transition: "background-color 140ms var(--omega-ease-out), border-color 140ms var(--omega-ease-out), transform 140ms var(--omega-ease-out), box-shadow 140ms var(--omega-ease-out)",
+              "&:hover": { background: "var(--omega-danger-soft)", borderColor: "var(--omega-danger)", transform: "translateY(-0.5px)", boxShadow: "0 0 12px rgba(240, 117, 132, 0.25)" },
+              "&:active": { transform: "translateY(0.5px)" },
             }}
           >
             停止

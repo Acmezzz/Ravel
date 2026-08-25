@@ -84,6 +84,7 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
       <Box
         {...clickableRole}
         onClick={handleToggle}
+        className={streaming ? "shimmer-border" : undefined}
         sx={{
           display: "inline-flex",
           alignItems: "center",
@@ -91,15 +92,16 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
           px: 1.25,
           py: 0.4,
           borderRadius: "999px",
-          border: "1px solid var(--omega-border)",
+          border: `1px solid ${streaming ? "var(--omega-accent-line)" : "var(--omega-border)"}`,
           background: "var(--omega-bg-soft)",
+          boxShadow: streaming ? "var(--omega-inset-recessed)" : "var(--omega-inset-highlight)",
           cursor: "pointer",
           userSelect: "none",
-          transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+          transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 140ms var(--omega-ease-out)",
           "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
         }}
       >
-        <EmojiObjectsIcon sx={{ fontSize: 13, color: "var(--omega-accent)" }} />
+        <EmojiObjectsIcon className={streaming ? "pulse-dot" : undefined} sx={{ fontSize: 13, color: "var(--omega-accent)" }} />
         <Typography
           className={streaming ? "thinking-shimmer" : undefined}
           sx={{ fontSize: 11.5, color: "var(--omega-text-muted)", fontWeight: 550, letterSpacing: "0.005em" }}
@@ -108,8 +110,13 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
             ? ["思考中", "推理中", "整理中", "斟酌中"][Math.floor(Date.now() / 1600) % 4]
             : deferred
               ? "思考（点击加载）"
-              : `思考了 ${elapsed || 1}s`}
+              : "思考"}
         </Typography>
+        {!streaming && !deferred ? (
+          <Typography className="mono-num" sx={{ fontSize: 10, fontWeight: 650, color: "var(--omega-accent)", borderLeft: "1px solid var(--omega-border-strong)", pl: 0.75 }}>
+            {elapsed || 1}s
+          </Typography>
+        ) : null}
         {loading ? <CircularProgress size={10} sx={{ color: "var(--omega-accent)" }} /> : null}
         <ExpandMoreIcon sx={{ fontSize: 14, color: "var(--omega-text-dim)", transform: open ? "rotate(180deg)" : "none", transition: "transform 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" }} />
       </Box>
@@ -119,8 +126,9 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
             mt: 0.75,
             p: 1.25,
             borderRadius: "10px",
-            border: "1px dashed var(--omega-border-strong)",
+            border: "1px solid var(--omega-border)",
             background: "var(--omega-bg-code)",
+            boxShadow: "var(--omega-inset-recessed)",
             maxHeight: 260,
             overflowY: "auto",
             animation: "omega-rise .16s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",

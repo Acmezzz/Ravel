@@ -627,7 +627,7 @@ export function Composer(): React.ReactElement {
           transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
           "&:focus-within": {
             borderColor: "var(--omega-accent-line)",
-            boxShadow: "var(--omega-shadow-md), 0 0 0 3px var(--omega-accent-soft)",
+            boxShadow: "var(--omega-shadow-md), 0 0 0 3px var(--omega-accent-soft), var(--omega-glow-accent)",
           },
         }}
       >
@@ -717,6 +717,7 @@ export function Composer(): React.ReactElement {
                     width: 34,
                     height: 34,
                     flex: "0 0 auto",
+                    boxShadow: "var(--omega-inset-highlight)",
                     "&:disabled": { opacity: 0.45 },
                   }}
                 >
@@ -735,6 +736,7 @@ export function Composer(): React.ReactElement {
                     width: 34,
                     height: 34,
                     flex: "0 0 auto",
+                    boxShadow: "var(--omega-inset-highlight)",
                   }}
                 >
                   <StopIcon sx={{ fontSize: 16 }} />
@@ -755,8 +757,10 @@ export function Composer(): React.ReactElement {
                 minWidth: 40,
                 minHeight: 40,
                 flex: "0 0 auto",
-                boxShadow: "0 2px 8px var(--omega-accent-soft)",
-                "&:hover": { filter: "brightness(1.08)" },
+                boxShadow: "0 2px 8px var(--omega-accent-soft), var(--omega-inset-highlight), var(--omega-glow-accent)",
+                transition: "transform 120ms var(--omega-ease-out), box-shadow 120ms var(--omega-ease-out), filter 120ms var(--omega-ease-out)",
+                "&:hover": { filter: "brightness(1.08)", transform: "translateY(-0.5px)", boxShadow: "0 4px 14px var(--omega-accent-soft), var(--omega-inset-highlight), 0 0 20px rgba(232, 180, 74, 0.40)" },
+                "&:active": { transform: "translateY(0.5px)" },
                 "&:disabled": { opacity: 0.4, background: "var(--omega-border-strong)", boxShadow: "none", color: "var(--omega-text-dim)" },
               }}
             >

@@ -48,6 +48,16 @@ function diffStat(resultText?: string): { added: number; removed: number } | nul
   return added + removed > 0 ? { added, removed } : null;
 }
 
+/** Precision duration readout: ms under 1s, otherwise one decimal in s. */
+function formatDuration(startedAt?: string, endedAt?: string): string | null {
+  if (!startedAt || !endedAt) return null;
+  const start = Date.parse(startedAt);
+  const end = Date.parse(endedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+  const ms = end - start;
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
 export interface ToolCardProps {
   card: ToolCardState;
 }
@@ -61,6 +71,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
   const [detail, setDetail] = React.useState<{ argsJson?: string; resultText?: string; isError?: boolean } | null>(null);
   const [expanded, setExpanded] = React.useState(false);
   const stat = card.kind === "edit" || card.kind === "write" ? diffStat(detail?.resultText ?? card.resultText) : null;
+  const duration = formatDuration(card.startedAt, card.endedAt);
 
   const loadDetail = React.useCallback(async () => {
     if (detail || !card.toolCallId) return;
@@ -81,10 +92,11 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
         mb: 1,
         width: "100%",
         overflow: "hidden",
+        boxShadow: "var(--omega-inset-highlight)",
         transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
         "&:hover": {
           borderColor: card.isError ? "var(--omega-danger)" : "var(--omega-border-strong)",
-          boxShadow: "var(--omega-shadow-sm)",
+          boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)",
         },
         "&:before": { display: "none" },
       }}
@@ -93,7 +105,15 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, width: "100%" }}>
           <Box
             className={card.status === "running" ? "pulse-dot" : undefined}
-            sx={{ width: 6, height: 6, borderRadius: 999, background: color, flex: "0 0 auto", boxShadow: `0 0 6px ${color}` }}
+            sx={{
+              position: "relative",
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              background: color,
+              flex: "0 0 auto",
+              boxShadow: card.status === "running" ? `0 0 7px ${color}` : "none",
+            }}
           />
           <Box sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", display: "grid", placeItems: "center" }}>
             {KIND_ICON[card.kind] ?? <DescriptionIcon sx={{ fontSize: 15 }} />}
@@ -107,10 +127,29 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
             </Typography>
           ) : null}
           {stat ? (
-            <Box sx={{ display: "flex", gap: 0.75, flex: "0 0 auto", fontFamily: "ui-monospace, Consolas, monospace", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 0.75,
+                flex: "0 0 auto",
+                px: 0.75,
+                py: 0.1,
+                borderRadius: "6px",
+                border: "1px solid var(--omega-border)",
+                background: "var(--omega-bg-code)",
+                fontFamily: "ui-monospace, Consolas, monospace",
+                fontSize: 11,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               <span style={{ color: "var(--omega-success)" }}>+{stat.added}</span>
-              <span style={{ color: "var(--omega-danger)" }}>-{stat.removed}</span>
+              <span style={{ color: "var(--omega-danger)" }}>−{stat.removed}</span>
             </Box>
+          ) : null}
+          {duration && card.status !== "running" ? (
+            <Typography className="mono-num" sx={{ fontSize: 10.5, fontWeight: 650, color: "var(--omega-accent)", flex: "0 0 auto" }}>
+              {duration}
+            </Typography>
           ) : null}
           <Typography sx={{ fontSize: 11, fontWeight: 550, color, flex: "0 0 auto" }}>
             {card.status === "running" ? "运行中" : card.status === "error" ? "失败" : "完成"}

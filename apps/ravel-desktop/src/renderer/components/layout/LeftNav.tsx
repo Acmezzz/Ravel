@@ -51,7 +51,9 @@ export function LeftNav(): React.ReactElement {
               height: 28,
               color: "var(--omega-accent)",
               background: "var(--omega-accent-soft)",
-              "&:hover": { background: "var(--omega-accent-soft)", transform: "translateY(-1px)", boxShadow: "var(--omega-shadow-sm)" },
+              boxShadow: "var(--omega-inset-highlight)",
+              "&:hover": { background: "var(--omega-accent-soft)", transform: "translateY(-0.5px)", boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)" },
+              "&:active": { transform: "translateY(0.5px)", boxShadow: "var(--omega-inset-recessed)" },
             }}
           >
             新建

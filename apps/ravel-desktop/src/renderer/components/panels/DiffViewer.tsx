@@ -38,7 +38,19 @@ function HunkLine({ line }: { line: DiffFile["hunks"][number]["lines"][number] }
   const color = line.type === "add" ? "var(--omega-success)" : line.type === "del" ? "var(--omega-danger)" : "var(--omega-text-dim)";
   const prefix = line.type === "add" ? "+" : line.type === "del" ? "-" : " ";
   return (
-    <Box component="div" sx={{ display: "flex", bgcolor: bg, fontFamily: "ui-monospace, monospace", fontSize: 12, lineHeight: 1.65, whiteSpace: "pre" }}>
+    <Box
+      component="div"
+      sx={{
+        display: "flex",
+        bgcolor: bg,
+        fontFamily: "ui-monospace, monospace",
+        fontSize: 12,
+        lineHeight: 1.65,
+        whiteSpace: "pre",
+        // Precision gutter marker: the sign column reads as a ruled edge.
+        boxShadow: line.type === "add" ? "inset 2px 0 0 var(--omega-success)" : line.type === "del" ? "inset 2px 0 0 var(--omega-danger)" : undefined,
+      }}
+    >
       <Box component="span" sx={{ color, flex: "0 0 auto", userSelect: "none", px: 0.75, fontWeight: 600 }}>
         {prefix}
       </Box>
@@ -96,6 +108,9 @@ function FileCard({
         mb: 0.75,
         minWidth: 0,
         overflow: "hidden",
+        boxShadow: "var(--omega-inset-highlight)",
+        transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+        "&:hover": { borderColor: "var(--omega-border-strong)", boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)" },
         "&:before": { display: "none" },
       }}
     >
@@ -168,7 +183,7 @@ function FileCard({
       </AccordionSummary>
       <AccordionDetails sx={{ px: 1, pt: 0, minWidth: 0 }}>
         {file.hunks.slice(0, MAX_RENDERED_HUNKS_PER_FILE).map((hunk, i) => (
-          <Box key={i} sx={{ mt: 0.75, border: "1px solid var(--omega-border)", borderRadius: "8px", overflow: "hidden", minWidth: 0 }}>
+          <Box key={i} sx={{ mt: 0.75, border: "1px solid var(--omega-border)", borderRadius: "8px", overflow: "hidden", minWidth: 0, background: "var(--omega-bg-code)", boxShadow: "var(--omega-inset-recessed)" }}>
             <Box
               sx={{ display: "flex", alignItems: "center", background: "var(--omega-bg)", cursor: "pointer", minWidth: 0 }}
               onClick={() => onToggleHunk(file.path, i)}

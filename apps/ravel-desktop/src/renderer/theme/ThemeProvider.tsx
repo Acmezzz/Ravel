@@ -76,18 +76,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
               contained: {
                 background: palette.accentGradient,
                 color: palette.accentForeground,
-                boxShadow: "none",
+                boxShadow: `${palette.shadowSm}, ${palette.insetHighlight}, ${palette.glowAccent}`,
                 "&:hover": {
                   background: palette.accentGradient,
                   filter: "brightness(1.07)",
-                  boxShadow: `0 4px 14px ${palette.shadow}`,
+                  transform: "translateY(-0.5px)",
+                  boxShadow: `${palette.shadowMd}, ${palette.insetHighlight}, ${palette.glowAccent}`,
                 },
+                "&:active": { transform: "translateY(0.5px)" },
               },
               outlined: {
                 borderColor: palette.borderStrong,
+                boxShadow: palette.insetHighlight,
                 "&:hover": {
                   borderColor: palette.accent,
                   background: palette.accentSoft,
+                  transform: "translateY(-0.5px)",
+                  boxShadow: `${palette.shadowSm}, ${palette.insetHighlight}`,
                 },
               },
               text: {
@@ -177,6 +182,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 border: `1px solid ${palette.borderStrong}`,
                 borderRadius: 12,
                 boxShadow: `${palette.shadowLg}, ${palette.insetHighlight}`,
+                backgroundImage: "none",
+                backdropFilter: "blur(18px) saturate(1.4)",
                 maxHeight: 380,
               },
               list: { padding: "5px" },
@@ -195,6 +202,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
                 "&.Mui-selected": {
                   background: palette.accentSoft,
                   color: palette.accent,
+                  boxShadow: palette.insetHighlight,
                   "&:hover": { background: palette.accentSoft },
                 },
               },

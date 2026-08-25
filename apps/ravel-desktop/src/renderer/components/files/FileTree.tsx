@@ -68,7 +68,9 @@ function TreeRow({
         minWidth: 0,
         borderRadius: "7px",
         cursor: "pointer",
-        "&:hover": { background: "var(--omega-hover-fill)" },
+        border: "1px solid transparent",
+        transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+        "&:hover": { background: "var(--omega-hover-fill)", borderColor: "var(--omega-border)" },
       }}
     >
       {isDir ? (

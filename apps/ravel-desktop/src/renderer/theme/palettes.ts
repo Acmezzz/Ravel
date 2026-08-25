@@ -54,6 +54,10 @@ export interface Palette {
   shadowLg: string;
   /** Subtle top highlight inset on dark elevated surfaces (premium depth cue). */
   insetHighlight: string;
+  /** Inward shadow for recessed instrument surfaces (status wells, donut bases). */
+  insetRecessed: string;
+  /** Soft outer amber glow for signature accent moments (send button, active marks). */
+  glowAccent: string;
   /** Foreground color with reliable contrast on the Amber accent surfaces. */
   accentForeground: string;
   /** Accent gradient for signature moments (send button, user bubble). */
@@ -90,7 +94,9 @@ export const darkPalette: Palette = {
   shadowSm: "0 1px 2px rgba(0, 0, 0, 0.40)",
   shadowMd: "0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30)",
   shadowLg: "0 20px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.38)",
-  insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.06)",
+  insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+  insetRecessed: "inset 0 1px 3px rgba(0, 0, 0, 0.45)",
+  glowAccent: "0 0 16px rgba(232, 180, 74, 0.28)",
   accentForeground: "#2b1b05",
   accentGradient: "linear-gradient(135deg, #c98914 0%, #e8b44a 100%)",
 };
@@ -125,7 +131,9 @@ export const lightPalette: Palette = {
   shadowSm: "0 1px 2px rgba(26, 25, 22, 0.05)",
   shadowMd: "0 4px 16px rgba(26, 25, 22, 0.08), 0 1px 3px rgba(26, 25, 22, 0.05)",
   shadowLg: "0 16px 48px rgba(26, 25, 22, 0.14), 0 4px 12px rgba(26, 25, 22, 0.06)",
-  insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.70)",
+  insetHighlight: "inset 0 1px 0 rgba(255, 255, 255, 0.85)",
+  insetRecessed: "inset 0 1px 3px rgba(26, 25, 22, 0.08)",
+  glowAccent: "0 0 12px rgba(198, 125, 18, 0.20)",
   accentForeground: "#2b1b05",
   accentGradient: "linear-gradient(135deg, #c67d12 0%, #e09a2a 100%)",
 };

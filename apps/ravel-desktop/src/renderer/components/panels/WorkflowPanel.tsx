@@ -26,7 +26,15 @@ type SubTab = (typeof SUBTABS)[number];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Paper sx={{ p: 1.5, mb: 1.5, background: "var(--omega-bg-panel)", border: "1px solid var(--omega-border)" }}>
+    <Paper
+      sx={{
+        p: 1.5,
+        mb: 1.5,
+        background: "var(--omega-bg-panel)",
+        border: "1px solid var(--omega-border)",
+        boxShadow: "var(--omega-inset-highlight)",
+      }}
+    >
       <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--omega-text-muted)", mb: 1, letterSpacing: "0.04em" }}>
         {title}
       </Typography>
@@ -87,16 +95,67 @@ function RegistryView({ data }: { data: WorkflowRegistry }) {
   );
 }
 
+/** Precision step rail: one node per step, hairline connectors, live pulse on the current step. */
+function StepRail({ total, current, escaped }: { total: number; current: number; escaped: boolean }) {
+  const MAX_NODES = 12;
+  const count = Math.max(total, current + 1);
+  const overflow = count > MAX_NODES;
+  const nodes = Math.min(count, MAX_NODES);
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0, mt: 1, mb: 0.5 }}>
+      {Array.from({ length: nodes }, (_, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <React.Fragment key={i}>
+            {i > 0 ? (
+              <Box
+                sx={{
+                  flex: "1 1 auto",
+                  minWidth: 8,
+                  height: 1,
+                  background: done || active ? "var(--omega-accent-line)" : "var(--omega-border-strong)",
+                  transition: "background 200ms var(--omega-ease-out)",
+                }}
+              />
+            ) : null}
+            <Box
+              className={active && !escaped ? "pulse-dot" : undefined}
+              title={`步骤 ${i + 1}`}
+              sx={{
+                width: 9,
+                height: 9,
+                borderRadius: "50%",
+                flex: "0 0 auto",
+                border: `1px solid ${active ? "var(--omega-accent)" : done ? "var(--omega-success)" : "var(--omega-border-strong)"}`,
+                background: active ? "var(--omega-accent)" : done ? "var(--omega-success-soft)" : "transparent",
+                boxShadow: active ? "0 0 7px var(--omega-accent)" : "none",
+                transition: "all 200ms var(--omega-ease-out)",
+              }}
+            />
+          </React.Fragment>
+        );
+      })}
+      {overflow ? (
+        <Typography className="mono-num" sx={{ fontSize: 10, color: "var(--omega-text-dim)", ml: 0.75, flex: "0 0 auto" }}>
+          +{count - MAX_NODES}
+        </Typography>
+      ) : null}
+    </Box>
+  );
+}
+
 function TrackerView({ data }: { data: WorkflowTracker }) {
   return (
     <Stack spacing={0.5}>
       <Typography sx={{ fontSize: 13, color: "var(--omega-text)" }}>工作流：{data.workflowId}</Typography>
       {data.intent ? <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>意图：{data.intent}</Typography> : null}
-      <Typography sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>
+      <Typography className="mono-num" sx={{ fontSize: 12, color: "var(--omega-text-muted)" }}>
         步骤 {data.currentIndex}/{data.stepCount}
         {data.escaped ? " · 已逃逸" : ""}
         {data.alternativeId ? ` · 备选 ${data.alternativeId}` : ""}
       </Typography>
+      <StepRail total={data.stepCount} current={data.currentIndex} escaped={data.escaped} />
       <Typography sx={{ fontSize: 11, color: "var(--omega-text-dim)" }}>更新：{data.updatedAt || "未更新"}</Typography>
     </Stack>
   );
