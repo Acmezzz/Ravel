@@ -29,6 +29,7 @@ import { useAppStore, type ConnectionState, type ShutdownPhase } from "../../sto
 import { ipc } from "../../ipc/client";
 import type { ThinkingLevel } from "../../types/dto";
 import type { ThemeMode } from "../../theme/palettes";
+import { useT, useLanguage, translate, type MessageKey, type Language } from "../../lib/i18n";
 import { SettingsDialog } from "./SettingsDialog";
 import { SessionInfoDialog } from "./SessionInfoDialog";
 import { ModelPicker } from "./ModelPicker";
@@ -37,20 +38,20 @@ import { ResourceCenter } from "./ResourceCenter";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { clickableRole } from "../../lib/a11y";
 
-const THINKING_LABEL: Record<ThinkingLevel, string> = {
-  off: "思考 off",
-  minimal: "思考 min",
-  low: "思考 low",
-  medium: "思考 mid",
-  high: "思考 high",
-  xhigh: "思考 xhigh",
-  max: "思考 max",
+const THINKING_KEY: Record<ThinkingLevel, MessageKey> = {
+  off: "thinking.off",
+  minimal: "thinking.minimal",
+  low: "thinking.low",
+  medium: "thinking.medium",
+  high: "thinking.high",
+  xhigh: "thinking.xhigh",
+  max: "thinking.max",
 };
 
-const THEME_LABEL: Record<ThemeMode, string> = {
-  light: "浅色",
-  dark: "深色",
-  system: "跟随系统",
+const THEME_KEY: Record<ThemeMode, MessageKey> = {
+  light: "theme.light",
+  dark: "theme.dark",
+  system: "theme.system",
 };
 
 interface StatusInputs {
@@ -63,19 +64,19 @@ interface StatusInputs {
   connection: ConnectionState;
 }
 
-function statusLabelOf(s: StatusInputs): string {
-  if (s.bootstrapError) return "初始化失败";
-  if (s.workerError && s.canRetryWorker) return "可重试";
-  if (s.workerError) return "Worker 失败";
-  if (s.shutdownPhase === "closing") return "正在停止";
-  if (s.shutdownPhase === "flushing") return "保存会话";
-  if (s.shutdownPhase === "exiting") return "正在退出";
-  if (s.compacting) return "压缩中";
-  if (s.thinkingActive) return "思考中";
-  if (s.connection === "running") return "运行中";
-  if (s.connection === "error") return "错误";
-  if (s.connection === "connecting") return "连接中";
-  return "就绪";
+function statusLabelOf(s: StatusInputs, language: Language): string {
+  if (s.bootstrapError) return translate(language, "status.initFailed");
+  if (s.workerError && s.canRetryWorker) return translate(language, "status.retryable");
+  if (s.workerError) return translate(language, "status.workerFailed");
+  if (s.shutdownPhase === "closing") return translate(language, "status.closing");
+  if (s.shutdownPhase === "flushing") return translate(language, "status.flushing");
+  if (s.shutdownPhase === "exiting") return translate(language, "status.exiting");
+  if (s.compacting) return translate(language, "status.compacting");
+  if (s.thinkingActive) return translate(language, "status.thinking");
+  if (s.connection === "running") return translate(language, "status.running");
+  if (s.connection === "error") return translate(language, "status.error");
+  if (s.connection === "connecting") return translate(language, "status.connecting");
+  return translate(language, "status.ready");
 }
 
 /** Vertical hairline separating header clusters — grouping is information. */
@@ -109,6 +110,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
   const canRetryWorker = useAppStore((s) => s.canRetryWorker);
 
   const failed = Boolean(bootstrapError) || Boolean(workerError) || connection === "error";
+  const language = useLanguage();
   const liveColor =
     failed
       ? "var(--omega-danger)"
@@ -117,7 +119,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
         : compacting
           ? "var(--omega-warning)"
           : "var(--omega-accent)";
-  const label = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection });
+  const label = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection }, language);
 
   const retryWorker = React.useCallback(async () => {
     if (!canRetryWorker) return;
@@ -280,6 +282,8 @@ export function Header(): React.ReactElement {
   const setConnection = useAppStore((s) => s.setConnection);
   const themeMode = useAppStore((s) => s.themeMode);
   const setThemeMode = useAppStore((s) => s.setThemeMode);
+  const t = useT();
+  const language = useLanguage();
 
   const [thinkingAnchor, setThinkingAnchor] = React.useState<HTMLElement | null>(null);
   const settingsOpen = useAppStore((s) => s.layout.settingsOpen);
@@ -299,7 +303,7 @@ export function Header(): React.ReactElement {
   const nextTheme: ThemeMode = themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light";
   const ThemeIcon = themeMode === "light" ? LightModeIcon : themeMode === "dark" ? DarkModeIcon : SettingsBrightnessIcon;
 
-  const statusLabel = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection });
+  const statusLabel = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection }, language);
   const sessionTitle = workerError ? "Worker 未就绪" : extensionTitle || agent?.sessionName || "新会话";
 
   const handleAbort = React.useCallback(async () => {
@@ -421,7 +425,7 @@ export function Header(): React.ReactElement {
         </Box>
         <Chip
           size="small"
-          label={THINKING_LABEL[agent?.thinkingLevel ?? "off"]}
+          label={t(THINKING_KEY[agent?.thinkingLevel ?? "off"])}
           onClick={(e) => {
             if (shuttingDown || agent?.supportsThinking === false) return;
             setThinkingAnchor(e.currentTarget);
@@ -447,7 +451,7 @@ export function Header(): React.ReactElement {
         <Menu anchorEl={thinkingAnchor} open={Boolean(thinkingAnchor)} onClose={() => setThinkingAnchor(null)}>
           {thinkingLevels.map((level) => (
             <MenuItem key={level} selected={agent?.thinkingLevel === level} onClick={() => void handleSetThinking(level)}>
-              {THINKING_LABEL[level] ?? level}
+              {t(THINKING_KEY[level])}
             </MenuItem>
           ))}
         </Menu>
@@ -544,9 +548,9 @@ export function Header(): React.ReactElement {
         <Menu anchorEl={utilityAnchor} open={Boolean(utilityAnchor)} onClose={() => setUtilityAnchor(null)}>
           <MenuItem onClick={() => { setUtilityAnchor(null); setModelCenterOpen(true); }} disabled={shuttingDown}><HubOutlinedIcon fontSize="small" sx={{ mr: 1 }} />模型中心</MenuItem>
           <MenuItem onClick={() => { setUtilityAnchor(null); useAppStore.getState().setResourceCenterOpen(true); }} disabled={shuttingDown}><ExtensionOutlinedIcon fontSize="small" sx={{ mr: 1 }} />资源中心</MenuItem>
-          <MenuItem onClick={(e) => { setUtilityAnchor(null); setThemeMode(nextTheme, { x: e.clientX, y: e.clientY }); }}><ThemeIcon fontSize="small" sx={{ mr: 1 }} />主题：{THEME_LABEL[themeMode]}</MenuItem>
+          <MenuItem onClick={(e) => { setUtilityAnchor(null); setThemeMode(nextTheme, { x: e.clientX, y: e.clientY }); }}><ThemeIcon fontSize="small" sx={{ mr: 1 }} />{t("menu.theme")}：{t(THEME_KEY[themeMode])}</MenuItem>
           <Divider />
-          <Box className="overline-label" sx={{ px: 1.5, py: 0.5 }}>思考档位</Box>
+          <Box className="overline-label" sx={{ px: 1.5, py: 0.5 }}>{t("menu.thinkingGroup")}</Box>
           {(agent?.supportsThinking === false ? [] : thinkingLevels).map((level) => (
             <MenuItem
               key={level}
@@ -554,7 +558,7 @@ export function Header(): React.ReactElement {
               disabled={shuttingDown}
               onClick={() => void handleSetThinking(level)}
             >
-              {THINKING_LABEL[level] ?? level}
+              {t(THINKING_KEY[level])}
             </MenuItem>
           ))}
           <Divider />
