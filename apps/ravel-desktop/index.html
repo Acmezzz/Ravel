@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!--
+    CSP (system_design.md §1.1 / 安全红线):
+      - default-src 'self'; script-src 'self'  → no inline scripts, no eval.
+      - style-src 'self' 'nonce-ravel-static-2026' → MUI/emotion inject <style>
+        with this SAME static nonce; still NO 'unsafe-inline' / 'unsafe-eval'.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'nonce-ravel-static-2026'; object-src 'none'; base-uri 'none'; form-action 'self'" />
+  <title>Ravel Desktop</title>
+  <link rel="stylesheet" href="./dist/assets/style.css" />
+</head>
+<body>
+  <div id="root"></div>
+  <script src="./dist/assets/index.js"></script>
+</body>
+</html>

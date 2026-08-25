@@ -1,0 +1,28 @@
+appId: com.ravel.desktop
+productName: Ravel Desktop
+artifactName: ravel-desktop-${version}-${os}-${arch}.${ext}
+directories:
+  output: release
+  buildResources: build
+files:
+  - electron/**/*
+  - dist/**/*
+  - index.html
+  - package.json
+extraResources:
+  - from: ../../.pi/extensions
+    to: ravel-runtime/.pi/extensions
+  - from: ../../packages/coding-agent/dist
+    to: ravel-runtime/packages/coding-agent/dist
+asar: true
+npmRebuild: false
+publish: null
+linux:
+  target:
+    - AppImage
+win:
+  target:
+    - dir
+mac:
+  target:
+    - dmg

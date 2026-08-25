@@ -60,10 +60,10 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Desktop typecheck
-        run: npm run --workspace=@omega/desktop typecheck && npm run --workspace=@omega/desktop typecheck:renderer
+        run: npm run --workspace=@ravel/desktop typecheck && npm run --workspace=@ravel/desktop typecheck:renderer
 
       - name: Desktop tests
-        run: npm run --workspace=@omega/desktop test
+        run: npm run --workspace=@ravel/desktop test
 
       - name: Desktop release gate
-        run: npm run --workspace=@omega/desktop release:gate
+        run: npm run --workspace=@ravel/desktop release:gate

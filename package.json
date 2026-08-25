@@ -1,5 +1,5 @@
 {
-	"name": "omega-monorepo",
+	"name": "ravel-monorepo",
 	"private": true,
 	"type": "module",
 	"workspaces": [
