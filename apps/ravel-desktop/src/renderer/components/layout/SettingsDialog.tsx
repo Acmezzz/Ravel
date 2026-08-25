@@ -17,19 +17,20 @@ import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { useT } from "../../lib/i18n";
 import type { ResourceBundle } from "../../types/dto";
 
-const MODE_LABEL: Record<"all" | "one-at-a-time", string> = {
-  all: "全部合并发送",
-  "one-at-a-time": "逐条发送",
+const MODE_KEY: Record<"all" | "one-at-a-time", "settings.mode.all" | "settings.mode.oneAtATime"> = {
+  all: "settings.mode.all",
+  "one-at-a-time": "settings.mode.oneAtATime",
 };
 
-const PERMISSION_LABEL: Record<NonNullable<NonNullable<ReturnType<typeof useAppStore.getState>["desktopSettings"]>["permissionProfile"]>, string> = {
-  trusted: "Trusted（当前用户权限）",
-  "workspace-only": "Workspace-only（仅限工作区）",
-  "read-only": "Read-only（只读）",
-  "ask-before-command": "Ask before command（执行前确认）",
-};
+const PERMISSION_KEY = {
+  trusted: "settings.permission.trusted",
+  "workspace-only": "settings.permission.workspaceOnly",
+  "read-only": "settings.permission.readOnly",
+  "ask-before-command": "settings.permission.askBeforeCommand",
+} as const;
 
 export interface SettingsDialogProps {
   open: boolean;
@@ -65,6 +66,7 @@ function ResourceGroup({ title, children }: { title: string; children: React.Rea
 }
 
 export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElement {
+  const t = useT();
   const agent = useAppStore((s) => s.agent);
   const setAgent = useAppStore((s) => s.setAgent);
   const desktopSettings = useAppStore((s) => s.desktopSettings);
@@ -94,12 +96,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
   );
 
   React.useEffect(() => {
-    if (!open) {
-      setResourceQuery("");
-    }
-  }, [open]);
-
-  React.useEffect(() => {
     if (!open) return;
     setWorkerCap(String(desktopSettings?.workerCap ?? 3));
     setIdleTtl(String(Math.round((desktopSettings?.workerIdleTtlMs ?? 300_000) / 60_000)));
@@ -110,6 +106,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
   React.useEffect(() => {
     if (!open) {
       setResources(null);
+      setResourceQuery("");
       return;
     }
     void ipc.listResources().then((res) => {
@@ -167,22 +164,22 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
     const cap = Number.parseInt(workerCap, 10);
     const minutes = Number.parseInt(idleTtl, 10);
     if (!Number.isInteger(cap) || cap < 1 || cap > 8) {
-      setDesktopError("后台会话上限必须是 1–8 的整数");
+      setDesktopError(t("settings.error.workerCap"));
       return;
     }
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
-      setDesktopError("空闲回收时间必须是 1–60 分钟");
+      setDesktopError(t("settings.error.idleTtl"));
       return;
     }
     await applyDesktopPatch({
       workerCap: cap,
       workerIdleTtlMs: minutes * 60_000,
     });
-  }, [applyDesktopPatch, workerCap, idleTtl]);
+  }, [applyDesktopPatch, workerCap, idleTtl, t]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>设置</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>{t("settings.title")}</DialogTitle>
 
       <Box sx={{ px: 3, borderBottom: "1px solid var(--omega-border)" }}>
         <Tabs
@@ -190,9 +187,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
           onChange={(_e, v) => setActiveTab(v)}
           sx={{ minHeight: 38, "& .MuiTab-root": { minHeight: 38, fontSize: "0.8125rem", px: 1.5 } }}
         >
-          <Tab label="Agent 行为" value="agent" />
-          <Tab label="桌面与快捷键" value="desktop" />
-          <Tab label="工作区资源" value="resources" />
+          <Tab label={t("settings.tab.agent")} value="agent" />
+          <Tab label={t("settings.tab.desktop")} value="desktop" />
+          <Tab label={t("settings.tab.resources")} value="resources" />
         </Tabs>
       </Box>
 
@@ -203,13 +200,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               select
               fullWidth
               size="small"
-              label="转向模式（生成中插入消息）"
+              label={t("settings.steeringMode")}
               value={agent?.steeringMode ?? "all"}
               onChange={(e) => void apply({ steeringMode: e.target.value as "all" | "one-at-a-time" })}
             >
-              {(Object.keys(MODE_LABEL) as Array<"all" | "one-at-a-time">).map((mode) => (
+              {(Object.keys(MODE_KEY) as Array<"all" | "one-at-a-time">).map((mode) => (
                 <MenuItem key={mode} value={mode}>
-                  {MODE_LABEL[mode]}
+                  {t(MODE_KEY[mode])}
                 </MenuItem>
               ))}
             </TextField>
@@ -218,13 +215,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               select
               fullWidth
               size="small"
-              label="后续消息模式（排队消息）"
+              label={t("settings.followUpMode")}
               value={agent?.followUpMode ?? "all"}
               onChange={(e) => void apply({ followUpMode: e.target.value as "all" | "one-at-a-time" })}
             >
-              {(Object.keys(MODE_LABEL) as Array<"all" | "one-at-a-time">).map((mode) => (
+              {(Object.keys(MODE_KEY) as Array<"all" | "one-at-a-time">).map((mode) => (
                 <MenuItem key={mode} value={mode}>
-                  {MODE_LABEL[mode]}
+                  {t(MODE_KEY[mode])}
                 </MenuItem>
               ))}
             </TextField>
@@ -241,8 +238,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
             >
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, px: 1.5, py: 1.25, minHeight: 48 }}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}>自动压缩上下文</Typography>
-                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", mt: 0.25 }}>接近窗口上限时自动压缩历史</Typography>
+                  <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}>{t("settings.autoCompaction")}</Typography>
+                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", mt: 0.25 }}>{t("settings.autoCompactionHint")}</Typography>
                 </Box>
                 <Switch
                   checked={agent?.autoCompaction ?? true}
@@ -253,8 +250,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               <Box sx={{ height: "1px", background: "var(--omega-border)" }} />
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, px: 1.5, py: 1.25, minHeight: 48 }}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}>失败自动重试</Typography>
-                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", mt: 0.25 }}>请求失败时按策略自动重试</Typography>
+                  <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}>{t("settings.autoRetry")}</Typography>
+                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", mt: 0.25 }}>{t("settings.autoRetryHint")}</Typography>
                 </Box>
                 <Switch
                   checked={agent?.autoRetry ?? true}
@@ -269,12 +266,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         {activeTab === "desktop" && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Box>
-              <SectionTitle title="权限配置" />
+              <SectionTitle title={t("settings.section.permission")} />
               <TextField
                 select
                 fullWidth
                 size="small"
-                label="工具权限 profile"
+                label={t("settings.permissionProfile")}
                 value={desktopSettings?.permissionProfile ?? "trusted"}
                 onChange={(event) => {
                   const profile = event.target.value as NonNullable<NonNullable<ReturnType<typeof useAppStore.getState>["desktopSettings"]>["permissionProfile"]>;
@@ -293,36 +290,36 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                     setSaveState("idle");
                   });
                 }}
-                helperText="Read-only 和 Workspace-only 会在工具执行前阻止越界或写入。"
+                helperText={t("settings.permissionHelper")}
               >
-                {Object.entries(PERMISSION_LABEL).map(([value, label]) => (
+                {Object.entries(PERMISSION_KEY).map(([value, key]) => (
                   <MenuItem key={value} value={value}>
-                    {label}
+                    {t(key)}
                   </MenuItem>
                 ))}
               </TextField>
             </Box>
 
             <Box>
-              <SectionTitle title="快捷键" />
+              <SectionTitle title={t("settings.section.keybindings")} />
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.25 }}>
                 <TextField
                   size="small"
-                  label="打开命令面板"
+                  label={t("settings.kb.commandPalette")}
                   value={keybindings.commandPalette}
                   onChange={(e) => setKeybindings((c) => ({ ...c, commandPalette: e.target.value }))}
                   onBlur={() => void applyDesktopPatch({ keybindings })}
                 />
                 <TextField
                   size="small"
-                  label="新建会话"
+                  label={t("settings.kb.newSession")}
                   value={keybindings.newSession}
                   onChange={(e) => setKeybindings((c) => ({ ...c, newSession: e.target.value }))}
                   onBlur={() => void applyDesktopPatch({ keybindings })}
                 />
                 <TextField
                   size="small"
-                  label="停止 Agent"
+                  label={t("settings.kb.abort")}
                   value={keybindings.abort}
                   onChange={(e) => setKeybindings((c) => ({ ...c, abort: e.target.value }))}
                   onBlur={() => void applyDesktopPatch({ keybindings })}
@@ -331,12 +328,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
             </Box>
 
             <Box>
-              <SectionTitle title="运行时管理" />
+              <SectionTitle title={t("settings.section.runtime")} />
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.25 }}>
                 <TextField
                   select
                   size="small"
-                  label="界面语言"
+                  label={t("settings.language")}
                   value={desktopSettings?.language ?? "zh-CN"}
                   onChange={(e) => void applyDesktopPatch({ language: e.target.value as "zh-CN" | "en-US" })}
                 >
@@ -345,14 +342,14 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 </TextField>
                 <TextField
                   size="small"
-                  label="后台 Worker 上限"
+                  label={t("settings.workerCap")}
                   value={workerCap}
                   onChange={(e) => setWorkerCap(e.target.value)}
                   onBlur={() => void applyDesktop()}
                 />
                 <TextField
                   size="small"
-                  label="空闲回收（分钟）"
+                  label={t("settings.idleTtl")}
                   value={idleTtl}
                   onChange={(e) => setIdleTtl(e.target.value)}
                   onBlur={() => void applyDesktop()}
@@ -361,9 +358,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               {desktopError ? (
                 <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", mt: 0.75 }}>{desktopError}</Typography>
               ) : saveState === "saving" ? (
-                <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", mt: 0.75 }}>正在保存设置…</Typography>
+                <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", mt: 0.75 }}>{t("settings.saving")}</Typography>
               ) : saveState === "saved" ? (
-                <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-success)", mt: 0.75 }}>设置已保存</Typography>
+                <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-success)", mt: 0.75 }}>{t("settings.saved")}</Typography>
               ) : null}
             </Box>
 
@@ -377,7 +374,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 }}
                 sx={{ textTransform: "none" }}
               >
-                模型中心
+                {t("settings.openModelCenter")}
               </Button>
               <Button
                 size="small"
@@ -388,7 +385,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 }}
                 sx={{ textTransform: "none" }}
               >
-                资源中心
+                {t("settings.openResourceCenter")}
               </Button>
               <Button
                 size="small"
@@ -399,7 +396,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                 }}
                 sx={{ textTransform: "none" }}
               >
-                信任中心
+                {t("settings.openTrustCenter")}
               </Button>
             </Box>
           </Box>
@@ -409,44 +406,54 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
           <Box sx={{ display: "flex", flexDirection: "column" }}>
             {agent?.projectTrusted === false ? (
               <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-warning)", mb: 1.5 }}>
-                当前项目未信任，项目扩展、技能和 prompt 处于休眠状态。
+                {t("settings.untrustedProject")}
               </Typography>
             ) : null}
             {!resources ? (
-              <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>加载扩展资源…</Typography>
+              <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.loadingResources")}</Typography>
             ) : (
               <>
                 <TextField
                   size="small"
-                  label="搜索扩展、技能与 Prompt 模板"
+                  label={t("settings.resourceSearch")}
                   value={resourceQuery}
                   onChange={(e) => setResourceQuery(e.target.value)}
-                  helperText={resourceQuery.trim() ? "仅显示匹配项" : undefined}
+                  helperText={resourceQuery.trim() ? t("settings.resourceFiltered") : undefined}
                 />
-                <ResourceGroup title={`已加载扩展（${resources.extensions.filter((extension) => matchesResource([extension.name, extension.path])).length}/${resources.extensions.length}）`}>
+                <ResourceGroup
+                  title={t("settings.group.extensions", {
+                    matched: resources.extensions.filter((extension) => matchesResource([extension.name, extension.path])).length,
+                    total: resources.extensions.length,
+                  })}
+                >
                   {resources.extensions.length === 0 ? (
-                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>当前工作区未加载扩展。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.extensionsEmpty")}</Typography>
                   ) : null}
                   {resources.extensions
                     .filter((extension) => matchesResource([extension.name, extension.path]))
                     .map((extension) => (
                       <Box key={extension.path} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.35 }}>
                         <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600 }}>{extension.name}</Typography>
-                        {extension.commands > 0 ? <Chip size="small" label={`${extension.commands} 命令`} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
-                        {extension.tools > 0 ? <Chip size="small" label={`${extension.tools} 工具`} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
+                        {extension.commands > 0 ? <Chip size="small" label={t("settings.chip.commands", { n: extension.commands })} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
+                        {extension.tools > 0 ? <Chip size="small" label={t("settings.chip.tools", { n: extension.tools })} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
                         <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, ml: "auto" }} noWrap title={extension.path}>
                           {extension.path}
                         </Typography>
                       </Box>
                     ))}
                   {resources.extensions.length > 0 && resources.extensions.every((extension) => !matchesResource([extension.name, extension.path])) ? (
-                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>没有匹配的扩展。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.extensionsNoMatch")}</Typography>
                   ) : null}
                 </ResourceGroup>
 
-                <ResourceGroup title={`可用 Skills（${resources.skills.filter((skill) => matchesResource([skill.name, skill.description])).length}/${resources.skills.length}）`}>
+                <ResourceGroup
+                  title={t("settings.group.skills", {
+                    matched: resources.skills.filter((skill) => matchesResource([skill.name, skill.description])).length,
+                    total: resources.skills.length,
+                  })}
+                >
                   {resources.skills.length === 0 ? (
-                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>无 skills。可用 /skill:name 调用。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.skillsEmpty")}</Typography>
                   ) : null}
                   {resources.skills
                     .filter((skill) => matchesResource([skill.name, skill.description]))
@@ -461,13 +468,18 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                       </Box>
                     ))}
                   {resources.skills.length > 0 && resources.skills.every((skill) => !matchesResource([skill.name, skill.description])) ? (
-                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>没有匹配的 skills。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.skillsNoMatch")}</Typography>
                   ) : null}
                 </ResourceGroup>
 
-                <ResourceGroup title={`Prompt 模板（${resources.prompts.filter((promptResource) => matchesResource([promptResource.name, promptResource.description])).length}/${resources.prompts.length}）`}>
+                <ResourceGroup
+                  title={t("settings.group.prompts", {
+                    matched: resources.prompts.filter((promptResource) => matchesResource([promptResource.name, promptResource.description])).length,
+                    total: resources.prompts.length,
+                  })}
+                >
                   {resources.prompts.length === 0 ? (
-                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>无 prompt 模板。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.promptsEmpty")}</Typography>
                   ) : null}
                   {resources.prompts
                     .filter((promptResource) => matchesResource([promptResource.name, promptResource.description]))
@@ -485,7 +497,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                       </Box>
                     ))}
                   {resources.prompts.length > 0 && resources.prompts.every((promptResource) => !matchesResource([promptResource.name, promptResource.description])) ? (
-                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>没有匹配的 prompt 模板。</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.promptsNoMatch")}</Typography>
                   ) : null}
                 </ResourceGroup>
               </>
@@ -496,7 +508,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
 
       <DialogActions sx={{ px: 3, py: 1.5, borderTop: "1px solid var(--omega-border)" }}>
         <Button variant="contained" onClick={onClose} sx={{ textTransform: "none", px: 2.5 }}>
-          完成
+          {t("settings.done")}
         </Button>
       </DialogActions>
     </Dialog>

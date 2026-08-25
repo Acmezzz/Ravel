@@ -12,6 +12,7 @@ import EditIcon from "@mui/icons-material/EditOutlined";
 import NoteAddIcon from "@mui/icons-material/NoteAddOutlined";
 import type { ToolCardState } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { useT, type MessageKey } from "../../lib/i18n";
 
 const STATUS_COLOR: Record<string, string> = {
   running: "var(--omega-warning)",
@@ -19,13 +20,13 @@ const STATUS_COLOR: Record<string, string> = {
   error: "var(--omega-danger)",
 };
 
-const KIND_LABEL: Record<string, string> = {
-  read: "读取",
-  edit: "编辑",
-  write: "写入",
-  bash: "执行",
-  search: "搜索",
-  other: "工具",
+const KIND_KEY: Record<string, MessageKey> = {
+  read: "toolcard.kind.read",
+  edit: "toolcard.kind.edit",
+  write: "toolcard.kind.write",
+  bash: "toolcard.kind.bash",
+  search: "toolcard.kind.search",
+  other: "toolcard.kind.other",
 };
 
 const KIND_ICON: Record<string, React.ReactElement> = {
@@ -67,6 +68,7 @@ export interface ToolCardProps {
  * +/- diff badge; expanded shows raw args JSON and the paired result text.
  */
 function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
+  const t = useT();
   const color = STATUS_COLOR[card.status] ?? "var(--omega-text-muted)";
   const [detail, setDetail] = React.useState<{ argsJson?: string; resultText?: string; isError?: boolean } | null>(null);
   const [expanded, setExpanded] = React.useState(false);
@@ -119,7 +121,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
             {KIND_ICON[card.kind] ?? <DescriptionIcon sx={{ fontSize: "0.9375rem" }} />}
           </Box>
           <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600, letterSpacing: "0.005em", flex: "0 0 auto" }} noWrap>
-            {KIND_LABEL[card.kind] ?? "工具"} · {card.toolName}
+            {t(KIND_KEY[card.kind] ?? "toolcard.kind.other")} · {card.toolName}
           </Typography>
           {card.target ? (
             <Typography className="mono-num" sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap title={card.target}>
@@ -152,7 +154,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
             </Typography>
           ) : null}
           <Typography sx={{ fontSize: "0.65625rem", fontWeight: 550, color, flex: "0 0 auto" }}>
-            {card.status === "running" ? "运行中" : card.status === "error" ? "失败" : "完成"}
+            {t(card.status === "running" ? "toolcard.status.running" : card.status === "error" ? "toolcard.status.error" : "toolcard.status.done")}
           </Typography>
         </Box>
       </AccordionSummary>
@@ -161,7 +163,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
           {card.argsJson ? (
             <Box>
               <Typography className="overline-label" sx={{ mb: 0.5 }}>
-                参数
+                {t("toolcard.args")}
               </Typography>
               <Box
                 component="pre"
@@ -188,7 +190,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
           {card.resultText ? (
             <Box>
               <Typography className="overline-label" sx={{ mb: 0.5 }}>
-                结果{card.isError ? "（出错）" : ""}
+                {t(card.isError ? "toolcard.resultError" : "toolcard.result")}
               </Typography>
               <Box
                 component="pre"
@@ -213,8 +215,8 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
             </Box>
           ) : null}
           <Box sx={{ display: "flex", gap: 2, color: "var(--omega-text-dim)", fontSize: "0.65625rem" }}>
-            {card.startedAt ? <span>开始 {new Date(card.startedAt).toLocaleTimeString()}</span> : null}
-            {card.endedAt ? <span>结束 {new Date(card.endedAt).toLocaleTimeString()}</span> : null}
+            {card.startedAt ? <span>{t("toolcard.startedAt", { time: new Date(card.startedAt).toLocaleTimeString() })}</span> : null}
+            {card.endedAt ? <span>{t("toolcard.endedAt", { time: new Date(card.endedAt).toLocaleTimeString() })}</span> : null}
           </Box>
         </Box>
       </AccordionDetails>

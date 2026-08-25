@@ -16,6 +16,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { userMessageKey } from "../../lib/prompt-recovery";
 import { clearDraft, getDraft, mergeDraftText, setDraft, type DraftImage } from "../../lib/draft-store";
+import { useT } from "../../lib/i18n";
 import type { PromptImage } from "../../types/dto";
 
 const MAX_IMAGES = 4;
@@ -52,12 +53,13 @@ function truncate(text: string, max = 120): string {
 }
 
 function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string }): React.ReactElement {
+  const t = useT();
   const isSteer = kind === "steer";
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1, py: 0.25, minWidth: 0 }}>
       <Chip
         size="small"
-        label={isSteer ? "插入当前轮" : "后续消息"}
+        label={isSteer ? t("composer.queueSteer") : t("composer.queueFollowUp")}
         sx={{
           flex: "0 0 auto",
           height: 18,
@@ -77,6 +79,7 @@ function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string })
 }
 
 export function Composer(): React.ReactElement {
+  const t = useT();
   const [text, setText] = React.useState("");
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
   const [historyOpen, setHistoryOpen] = React.useState(false);
@@ -484,7 +487,7 @@ export function Composer(): React.ReactElement {
           }}
         >
           <Typography className="overline-label" sx={{ px: 1, py: 0.5 }}>
-            输入历史（↑↓ 选择，Enter 应用）
+            {t("composer.historyTitle")}
           </Typography>
           {inputHistory.map((entry, index) => (
             <Box
@@ -532,7 +535,7 @@ export function Composer(): React.ReactElement {
           }}
         >
           <Typography className="overline-label" sx={{ px: 1, py: 0.5 }}>
-            文件（@ 引用，↑↓ 选择）
+            {t("composer.atTitle")}
           </Typography>
           {atItems.map((path, index) => (
             <Box
@@ -589,8 +592,8 @@ export function Composer(): React.ReactElement {
               <QueuedRow key={`f-${index}`} kind="followUp" text={entry} />
             ))}
           </Box>
-          <Tooltip title="撤回全部排队消息到输入框">
-            <IconButton size="small" aria-label="撤回全部排队消息" onClick={() => void recallQueue()} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", "&:hover": { color: "var(--omega-accent)" } }}>
+          <Tooltip title={t("composer.recallTooltip")}>
+            <IconButton size="small" aria-label={t("composer.recallAria")} onClick={() => void recallQueue()} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", "&:hover": { color: "var(--omega-accent)" } }}>
               <ReplayIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -667,7 +670,7 @@ export function Composer(): React.ReactElement {
             isComposingRef.current = false;
             lastCompositionEndAtRef.current = Date.now();
           }}
-          placeholder={running ? "生成中，输入后排队发送…" : "输入消息…"}
+          placeholder={running ? t("composer.placeholderRunning") : t("composer.placeholder")}
           minRows={1}
           maxRows={8}
           style={{
@@ -686,15 +689,15 @@ export function Composer(): React.ReactElement {
           }}
         />
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, minWidth: 0, px: 0.25 }}>
-          <Tooltip title="命令面板（Ctrl+K）">
-            <IconButton size="small" aria-label="打开命令面板" onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}>
+          <Tooltip title={t("composer.commandPaletteTooltip")}>
+            <IconButton size="small" aria-label={t("composer.commandPaletteAria")} onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}>
               <KeyboardCommandKeyIcon sx={{ fontSize: "1.125rem" }} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="附加图片（最多 4 张）">
+          <Tooltip title={t("composer.attachTooltip", { n: MAX_IMAGES })}>
             <IconButton
               size="small"
-              aria-label="附加图片"
+              aria-label={t("composer.attachAria")}
               onClick={() => fileRef.current?.click()}
               disabled={shuttingDown || attachments.length >= MAX_IMAGES}
               sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}
@@ -705,9 +708,9 @@ export function Composer(): React.ReactElement {
           <Box sx={{ flex: 1, minWidth: 0 }} />
           {running ? (
             <>
-              <Tooltip title="打断当前生成并插入这条消息（Steer）">
+              <Tooltip title={t("composer.steerTooltip")}>
                 <IconButton
-                  aria-label="插入当前生成"
+                  aria-label={t("composer.steerAria")}
                   onClick={() => send("steer")}
                   disabled={shuttingDown || canSend}
                   sx={{
@@ -726,7 +729,7 @@ export function Composer(): React.ReactElement {
               </Tooltip>
               <Tooltip title="彻底停止生成">
                 <IconButton
-                  aria-label="停止生成"
+                  aria-label={t("composer.stopAria")}
                   onClick={() => void abort()}
                   disabled={shuttingDown}
                   sx={{
@@ -745,7 +748,7 @@ export function Composer(): React.ReactElement {
             </>
           ) : (
             <IconButton
-              aria-label="发送消息"
+              aria-label={t("composer.sendAria")}
               onClick={() => send()}
               disabled={shuttingDown || canSend}
               sx={{

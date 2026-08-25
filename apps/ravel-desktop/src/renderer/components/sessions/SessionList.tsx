@@ -22,27 +22,29 @@ import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { useT, type MessageKey, type TranslateParams } from "../../lib/i18n";
 
 function groupKey(session: { workspace: string; workspaceId?: string; workspaceLabel?: string }): string {
   if (session.workspaceId) return session.workspaceLabel ? `${session.workspaceLabel} · ${session.workspaceId.slice(-8)}` : session.workspaceId;
   return session.workspace || "其他工作区";
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(t: (key: MessageKey, params?: TranslateParams) => string, iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 1) return t("sessions.justNow");
+  if (minutes < 60) return t("sessions.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t("sessions.hoursAgo", { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
+  if (days < 30) return t("sessions.daysAgo", { n: days });
   return date.toLocaleDateString();
 }
 
 export function SessionList(): React.ReactElement {
+  const t = useT();
   const sessions = useAppStore((s) => s.sessions);
   const sessionActivity = useAppStore((s) => s.sessionActivity);
   const compacting = useAppStore((s) => s.compacting);
@@ -189,7 +191,7 @@ export function SessionList(): React.ReactElement {
   if (sessions.length === 0) {
     return (
       <Box sx={{ p: 2, color: "var(--omega-text-dim)", fontSize: "0.75rem", textAlign: "center" }}>
-        暂无会话，点击「新建」开始。
+        {t("sessions.empty")}
       </Box>
     );
   }
@@ -213,8 +215,8 @@ export function SessionList(): React.ReactElement {
         <TextField
           fullWidth
           size="small"
-          label="搜索会话"
-          placeholder="搜索会话…"
+          label={t("sessions.search")}
+          placeholder={t("sessions.search")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           InputProps={{
@@ -228,11 +230,11 @@ export function SessionList(): React.ReactElement {
         />
         {query.trim() ? (
           <Typography role="status" aria-live="polite" sx={{ display: "block", fontSize: "0.65625rem", color: "var(--omega-text-dim)", px: 0.75, pt: 0.5 }}>
-            {filtered.length > 0 ? `匹配 ${filtered.length} 个会话` : "没有匹配的会话"}
+            {filtered.length > 0 ? t("sessions.matchCount", { n: filtered.length }) : t("sessions.noMatch")}
           </Typography>
         ) : null}
       </Box>
-      {loadError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.75, pb: 1 }}><Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</Typography>{failedSessionId ? <Button size="small" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null} sx={{ textTransform: "none", flex: "0 0 auto" }}>重试加载</Button> : null}<Button size="small" onClick={() => { setLoadError(null); setFailedSessionId(null); }} sx={{ textTransform: "none", flex: "0 0 auto" }}>关闭</Button></Box> : null}
+      {loadError ? <Box role="alert" sx={{ display: "flex", alignItems: "center", gap: 1, px: 0.75, pb: 1 }}><Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</Typography>{failedSessionId ? <Button size="small" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null} sx={{ textTransform: "none", flex: "0 0 auto" }}>{t("sessions.retryLoad")}</Button> : null}<Button size="small" onClick={() => { setLoadError(null); setFailedSessionId(null); }} sx={{ textTransform: "none", flex: "0 0 auto" }}>{t("sessions.dismissError")}</Button></Box> : null}
       {[...groups.entries()].map(([workspace, items]) => {
         const isCurrentWorkspace = Boolean(items[0] && activeWorkspace && items[0].workspace === activeWorkspace);
         return (
@@ -262,7 +264,7 @@ export function SessionList(): React.ReactElement {
                 component="span"
                 sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-accent-strong)", background: "var(--omega-accent-soft)", borderRadius: "5px", px: 0.6, py: 0.1, flex: "0 0 auto" }}
               >
-                当前
+                {t("sessions.badgeCurrent")}
               </Typography>
             ) : null}
           </Box>
@@ -275,7 +277,7 @@ export function SessionList(): React.ReactElement {
               const unread = Boolean(activity?.unread && !active);
               const isCompacting = Boolean(activity?.compacting || (active && compacting));
               const failed = Boolean(activity?.failed);
-              const status = failed ? "失败" : isCompacting ? "压缩中" : running ? "运行中" : unread ? "未读" : nested ? "子会话" : null;
+              const status = failed ? t("sessions.status.failed") : isCompacting ? t("sessions.status.compacting") : running ? t("sessions.status.running") : unread ? t("sessions.status.unread") : nested ? t("sessions.status.nested") : null;
               return (
                 <ListItemButton
                   key={session.id}
@@ -345,20 +347,20 @@ export function SessionList(): React.ReactElement {
                     }
                     secondary={
                       <Typography className="mono-num" sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }} component="span" noWrap>
-                        {relativeTime(session.updatedAt)}
-                        {session.messageCount ? ` · ${session.messageCount} 条` : ""}
-                        {session.parentSessionId ? " · 分支" : ""}
+                        {relativeTime(t, session.updatedAt)}
+                        {session.messageCount ? ` · ${t("sessions.messageCount", { n: session.messageCount })}` : ""}
+                        {session.parentSessionId ? ` · ${t("sessions.branched")}` : ""}
                       </Typography>
                     }
                   />
                   <Box className="row-actions" sx={{ display: "flex", alignItems: "center", gap: 0.25, transition: "opacity .12s ease" }}>
                     {active ? (
                       <>
-                        <Tooltip title={connection === "running" ? "生成中无法复制" : cloning ? "复制中…" : "复制当前分支"}>
+                        <Tooltip title={connection === "running" ? t("sessions.copyDisabledRunning") : cloning ? t("sessions.copying") : t("sessions.copyBranchTooltip")}>
                           <span>
                               <IconButton
                               size="small"
-                              aria-label="复制当前分支"
+                              aria-label={t("sessions.copyBranchAria")}
                               disabled={connection === "running" || cloning}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -370,10 +372,10 @@ export function SessionList(): React.ReactElement {
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="重命名当前会话">
+                        <Tooltip title={t("sessions.renameTooltip")}>
                           <IconButton
                             size="small"
-                            aria-label="重命名当前会话"
+                            aria-label={t("sessions.renameAria")}
                             onClick={(e) => openRename(session.id, e)}
                             sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32, "&:hover": { color: "var(--omega-accent)" } }}
                           >
@@ -382,10 +384,10 @@ export function SessionList(): React.ReactElement {
                         </Tooltip>
                       </>
                     ) : null}
-                    <Tooltip title="删除会话">
+                    <Tooltip title={t("sessions.deleteTooltip")}>
                       <IconButton
                         size="small"
-                        aria-label={`删除会话 ${session.title}`}
+                        aria-label={t("sessions.deleteAria", { title: session.title })}
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleting({ id: session.id, title: session.title });
@@ -404,9 +406,9 @@ export function SessionList(): React.ReactElement {
         );
       })}
       <Menu open={contextMenu !== null} onClose={() => setContextMenu(null)} anchorReference="anchorPosition" anchorPosition={contextMenu ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined}>
-        <MenuItem onClick={() => { const item = sessions.find((session) => session.id === contextMenu?.id); if (item) setRenaming({ id: item.id, name: item.title }); setContextMenu(null); }}>重命名</MenuItem>
-        <MenuItem onClick={() => { if (contextMenu?.id) void navigator.clipboard?.writeText(contextMenu.id); setContextMenu(null); }}>复制 session ID</MenuItem>
-        <MenuItem onClick={() => { const item = sessions.find((session) => session.id === contextMenu?.id); if (item) setDeleting({ id: item.id, title: item.title }); setContextMenu(null); }}>删除会话</MenuItem>
+        <MenuItem onClick={() => { const item = sessions.find((session) => session.id === contextMenu?.id); if (item) setRenaming({ id: item.id, name: item.title }); setContextMenu(null); }}>{t("sessions.menu.rename")}</MenuItem>
+        <MenuItem onClick={() => { if (contextMenu?.id) void navigator.clipboard?.writeText(contextMenu.id); setContextMenu(null); }}>{t("sessions.menu.copyId")}</MenuItem>
+        <MenuItem onClick={() => { const item = sessions.find((session) => session.id === contextMenu?.id); if (item) setDeleting({ id: item.id, title: item.title }); setContextMenu(null); }}>{t("sessions.menu.delete")}</MenuItem>
       </Menu>
       {sessionNextOffset != null ? (
         <Box sx={{ px: 1, pb: 1.5 }}>
@@ -417,18 +419,18 @@ export function SessionList(): React.ReactElement {
             onClick={() => void loadMore()}
             sx={{ textTransform: "none", fontSize: "0.75rem", color: "var(--omega-text-muted)" }}
           >
-            {loadingMore ? "加载中…" : `加载更多（${sessions.length}/${sessionTotal}）`}
+            {loadingMore ? t("sessions.loadingMore") : t("sessions.loadMore", { loaded: sessions.length, total: sessionTotal })}
           </Button>
         </Box>
       ) : null}
       <Dialog open={renaming !== null} onClose={() => setRenaming(null)} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ fontWeight: 700 }}>重命名会话</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t("sessions.renameTitle")}</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
           <TextField
             autoFocus
             fullWidth
             size="small"
-            label="会话名称"
+            label={t("sessions.renameLabel")}
             value={renaming?.name ?? ""}
             onChange={(e) => setRenaming((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
             onKeyDown={(e) => {
@@ -438,26 +440,26 @@ export function SessionList(): React.ReactElement {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setRenaming(null)} sx={{ textTransform: "none" }}>
-            取消
+            {t("sessions.cancel")}
           </Button>
           <Button variant="contained" onClick={() => void commitRename()} sx={{ textTransform: "none" }}>
-            保存
+            {t("sessions.save")}
           </Button>
         </DialogActions>
       </Dialog>
       <Dialog open={deleting !== null} onClose={() => setDeleting(null)} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ fontWeight: 700 }}>删除会话</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t("sessions.deleteTitle")}</DialogTitle>
         <DialogContent>
           <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)" }}>
-            将永久删除会话「{deleting?.title}」的 JSONL 记录，此操作不可恢复。确定删除？
+            {t("sessions.deleteBody", { title: deleting?.title ?? "" })}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDeleting(null)} sx={{ textTransform: "none" }}>
-            取消
+            {t("sessions.cancel")}
           </Button>
           <Button variant="contained" color="error" onClick={() => void commitDelete()} sx={{ textTransform: "none" }}>
-            删除
+            {t("sessions.delete")}
           </Button>
         </DialogActions>
       </Dialog>
