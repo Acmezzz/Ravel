@@ -84,11 +84,11 @@ export function WorktreePanel(): React.ReactElement {
       </Box>
       {error ? <Typography sx={{ fontSize: 12, color: "var(--omega-danger)" }}>{error}</Typography> : null}
       {!list ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载 worktree…</Typography>
+        <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载工作树…</Typography>
       ) : !list.isGitRepo ? (
         <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前工作区不是 Git 仓库。</Typography>
       ) : list.worktrees.length === 0 ? (
-        <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有列出 worktree。</Typography>
+        <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有列出工作树。</Typography>
       ) : (
         list.worktrees.map((worktree) => (
           <Box

@@ -57,10 +57,10 @@ export function RightPanel(): React.ReactElement {
           allowScrollButtonsMobile
           sx={{ flexGrow: 1, minWidth: 0, minHeight: 44, "& .MuiTab-root": { minHeight: 44, minWidth: 0, px: 1.25, fontSize: 13 } }}
         >
-          <Tab label="Workflow" value="workflow" />
-          <Tab label="Scout" value="scout" />
-          <Tab label="Diff" value="diff" />
-          <Tab label="Worktree" value="worktree" />
+          <Tab label="工作流" value="workflow" />
+          <Tab label="探索" value="scout" />
+          <Tab label="改动" value="diff" />
+          <Tab label="工作树" value="worktree" />
         </Tabs>
         <Tooltip title="刷新扩展状态">
           <IconButton size="small" aria-label="刷新扩展状态" onClick={() => void refresh()} sx={{ color: "var(--omega-text-muted)", mr: 1, minWidth: 40, minHeight: 40 }} disabled={extensionLoading}>

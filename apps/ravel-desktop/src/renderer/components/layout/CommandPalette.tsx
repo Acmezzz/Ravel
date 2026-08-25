@@ -96,8 +96,8 @@ export function CommandPalette(): React.ReactElement {
       {
         kind: "ui",
         id: "worktree",
-        title: "打开 Worktree",
-        description: "查看、创建和删除 Git worktree",
+        title: "打开工作树",
+        description: "查看、创建和删除 Git worktree 副本",
         run: () => useAppStore.getState().setRightTab("worktree"),
       },
     ],

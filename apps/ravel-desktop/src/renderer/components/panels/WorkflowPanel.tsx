@@ -18,6 +18,15 @@ import type {
 } from "../../types/dto";
 
 const SUBTABS = ["catalog", "registry", "tracker", "coverage", "stats", "health"] as const;
+/** Chinese-first tab labels — internal keys never surface as UI copy. */
+const SUBTAB_LABEL: Record<(typeof SUBTABS)[number], string> = {
+  catalog: "功能目录",
+  registry: "注册表",
+  tracker: "运行快照",
+  coverage: "记忆覆盖",
+  stats: "统计",
+  health: "健康检查",
+};
 const MAX_FEATURES = 80;
 const MAX_REGISTRY_ENTRIES = 120;
 const MAX_ISSUES = 40;
@@ -247,7 +256,7 @@ export function WorkflowPanel(): React.ReactElement {
         }}
       >
         {SUBTABS.map((t) => (
-          <Tab key={t} value={t} label={t} />
+          <Tab key={t} value={t} label={SUBTAB_LABEL[t]} />
         ))}
       </Tabs>
       {sub === "catalog" ? <Section title="功能目录 Catalog">{catalog ? <CatalogView data={catalog} /> : <Typography sx={{ color: "var(--omega-text-dim)", fontSize: 12 }}>无数据</Typography>}</Section> : null}

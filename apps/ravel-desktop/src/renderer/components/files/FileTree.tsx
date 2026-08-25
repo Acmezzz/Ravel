@@ -270,9 +270,9 @@ export function FileTree(): React.ReactElement {
     <Box sx={{ width: "100%" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, px: 1, py: 0.5, minWidth: 0 }}>
         <Typography sx={{ fontSize: 10.5, color: "var(--omega-text-dim)", minWidth: 0, flex: 1 }} noWrap>工作区文件</Typography>
-        <Tooltip title="导入文件到工作区"><IconButton size="small" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)" }}><UploadFileIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
+        <Tooltip title="导入文件到工作区"><IconButton size="small" aria-label="导入文件到工作区" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32 }}><UploadFileIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
         <Tooltip title="刷新">
-          <IconButton size="small" onClick={refreshAll} sx={{ color: "var(--omega-text-dim)" }}>
+          <IconButton size="small" aria-label="刷新文件树" onClick={refreshAll} sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32 }}>
             <RefreshIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>

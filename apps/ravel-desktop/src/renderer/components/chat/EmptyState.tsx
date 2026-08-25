@@ -4,6 +4,7 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/useAppStore";
+import { userMessageKey } from "../../lib/prompt-recovery";
 
 const SUGGESTIONS = [
   "检查当前项目的测试状态",
@@ -11,19 +12,36 @@ const SUGGESTIONS = [
   "为这个模块编写单元测试",
 ];
 
+// Lemniscate identity mark — must match the Header status glyph.
+const INFINITY_PATH = "M 16 16 C 16 9.5, 25 9.5, 25 16 C 25 22.5, 16 22.5, 16 16 C 16 9.5, 7 9.5, 7 16 C 7 22.5, 16 22.5, 16 16 Z";
+
 export function EmptyState(): React.ReactElement {
   const setConnection = useAppStore((s) => s.setConnection);
   const sendSuggestion = React.useCallback(
     async (prompt: string) => {
+      // Route through the same optimistic-message flow as the Composer so the
+      // bubble (and MessageList) appears immediately instead of after the
+      // first token arrives.
+      const clientMessageId = `suggestion-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const messageId = `optimistic-${clientMessageId}`;
+      const sentAt = Date.now();
+      const key = userMessageKey({ text: prompt, images: [] });
+      useAppStore.getState().addOptimisticMessage(
+        { key, clientMessageId, messageId, text: prompt, createdAt: sentAt },
+        { role: "user", id: messageId, text: prompt, ts: new Date().toISOString() },
+      );
       setConnection("running");
       try {
-        const res = await ipc.prompt(prompt);
+        const res = await ipc.prompt(prompt, undefined, undefined, clientMessageId);
         if (!res.ok) {
+          useAppStore.getState().dropLastIfOptimistic(key);
           useAppStore.getState().setComposerError(`${res.code}: ${res.message ?? "未知错误"}`);
           useAppStore.getState().setConnection("ready");
         }
       } catch (error) {
         console.error("prompt failed", error);
+        useAppStore.getState().dropLastIfOptimistic(key);
+        useAppStore.getState().setComposerError(error instanceof Error ? error.message : String(error));
         useAppStore.getState().setConnection("ready");
       }
     },
@@ -56,11 +74,11 @@ export function EmptyState(): React.ReactElement {
             background: "var(--omega-accent-soft)",
             boxShadow: "var(--omega-shadow-md), var(--omega-inset-highlight)",
             color: "var(--omega-accent)",
-            fontSize: 34,
-            fontWeight: 700,
           }}
         >
-          Ω
+          <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden>
+            <path d={INFINITY_PATH} fill="none" stroke="var(--omega-accent)" strokeWidth="2.4" strokeLinecap="round" />
+          </svg>
         </Box>
         <Typography
           variant="h5"
@@ -81,7 +99,7 @@ export function EmptyState(): React.ReactElement {
           <kbd className="kbd">Ctrl+K</kbd>
           {" "}命令面板 ·{" "}
           <kbd className="kbd">Ctrl+Shift+N</kbd>
-          {" "}新建会话 · 生成中可发送转向指令或停止
+          {" "}新建会话 · 生成中可插入消息或停止
         </Typography>
         <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1, mt: 3 }}>
           {SUGGESTIONS.map((s) => (

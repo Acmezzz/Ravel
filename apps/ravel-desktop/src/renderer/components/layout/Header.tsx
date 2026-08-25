@@ -11,6 +11,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Button from "@mui/material/Button";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import StopIcon from "@mui/icons-material/Stop";
 import CompressIcon from "@mui/icons-material/Compress";
 import SettingsIcon from "@mui/icons-material/SettingsOutlined";
@@ -433,6 +434,7 @@ export function Header(): React.ReactElement {
             fontSize: 10.5,
             height: 24,
             flex: "0 0 auto",
+            display: { xs: "none", lg: "inline-flex" },
             border: "1px solid var(--omega-border)",
             background: "var(--omega-bg-soft)",
             color: "var(--omega-text-muted)",
@@ -454,7 +456,7 @@ export function Header(): React.ReactElement {
         <Tooltip title={`上下文 ${usageLabel}`}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 0.25, flex: "0 0 auto" }}>
             <ContextDonut percent={usagePercent ?? 0} />
-            <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-text-muted)", display: { xs: "none", md: "block" } }}>
+            <Typography className="mono-num" sx={{ fontSize: 10.5, color: "var(--omega-text-muted)", display: { xs: "none", lg: "block" } }}>
               {usageLabel}
             </Typography>
           </Box>
@@ -509,7 +511,7 @@ export function Header(): React.ReactElement {
         ) : (
           <Tooltip title="压缩上下文">
             <span style={{ flex: "0 0 auto" }}>
-              <IconButton size="small" onClick={() => void handleCompact()} disabled={busy || compacting} sx={iconBtnSx}>
+              <IconButton size="small" aria-label="压缩上下文" onClick={() => void handleCompact()} disabled={busy || compacting} sx={iconBtnSx}>
                 <CompressIcon fontSize="small" />
               </IconButton>
             </span>
@@ -519,30 +521,43 @@ export function Header(): React.ReactElement {
         <Box sx={{ flexGrow: 1, minWidth: 0 }} />
 
         {/* utility cluster */}
-        <Tooltip title={focusMode ? "退出 Focus Mode" : "Focus Mode"}>
-          <IconButton size="small" onClick={toggleFocusMode} sx={{ ...iconBtnSx, color: focusMode ? "var(--omega-accent)" : iconBtnSx.color }}>
+        <Tooltip title={focusMode ? "退出专注模式" : "专注模式"}>
+          <IconButton size="small" aria-label={focusMode ? "退出专注模式" : "进入专注模式"} onClick={toggleFocusMode} sx={{ ...iconBtnSx, minWidth: 32, minHeight: 32, color: focusMode ? "var(--omega-accent)" : iconBtnSx.color }}>
             <CenterFocusStrongIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Tooltip title={leftOpen ? "收起左栏" : "展开左栏"}>
-          <IconButton size="small" aria-label={leftOpen ? "收起左侧导航" : "展开左侧导航"} aria-expanded={leftOpen} aria-controls="omega-left-drawer" onClick={toggleLeftPanel} sx={iconBtnSx}>
+          <IconButton size="small" aria-label={leftOpen ? "收起左侧导航" : "展开左侧导航"} aria-expanded={leftOpen} aria-controls="omega-left-drawer" onClick={toggleLeftPanel} sx={{ ...iconBtnSx, minWidth: 32, minHeight: 32 }}>
             <MenuOpenIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Tooltip title={rightOpen ? "收起右栏" : "展开右栏"}>
-          <IconButton size="small" aria-label={rightOpen ? "收起右侧面板" : "展开右侧面板"} aria-expanded={rightOpen} aria-controls="omega-right-drawer" onClick={toggleRightPanel} sx={iconBtnSx}>
+          <IconButton size="small" aria-label={rightOpen ? "收起右侧面板" : "展开右侧面板"} aria-expanded={rightOpen} aria-controls="omega-right-drawer" onClick={toggleRightPanel} sx={{ ...iconBtnSx, minWidth: 32, minHeight: 32 }}>
             {rightOpen ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
           </IconButton>
         </Tooltip>
         <Tooltip title="更多工作台操作">
-          <IconButton size="small" onClick={(e) => setUtilityAnchor(e.currentTarget)} sx={iconBtnSx}>
-            <ExpandMoreIcon fontSize="small" />
+          <IconButton size="small" aria-label="更多工作台操作" onClick={(e) => setUtilityAnchor(e.currentTarget)} sx={{ ...iconBtnSx, minWidth: 32, minHeight: 32 }}>
+            <MoreHorizIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Menu anchorEl={utilityAnchor} open={Boolean(utilityAnchor)} onClose={() => setUtilityAnchor(null)}>
           <MenuItem onClick={() => { setUtilityAnchor(null); setModelCenterOpen(true); }} disabled={shuttingDown}><HubOutlinedIcon fontSize="small" sx={{ mr: 1 }} />模型中心</MenuItem>
           <MenuItem onClick={() => { setUtilityAnchor(null); useAppStore.getState().setResourceCenterOpen(true); }} disabled={shuttingDown}><ExtensionOutlinedIcon fontSize="small" sx={{ mr: 1 }} />资源中心</MenuItem>
           <MenuItem onClick={(e) => { setUtilityAnchor(null); setThemeMode(nextTheme, { x: e.clientX, y: e.clientY }); }}><ThemeIcon fontSize="small" sx={{ mr: 1 }} />主题：{THEME_LABEL[themeMode]}</MenuItem>
+          <Divider />
+          <Box className="overline-label" sx={{ px: 1.5, py: 0.5 }}>思考档位</Box>
+          {(agent?.supportsThinking === false ? [] : thinkingLevels).map((level) => (
+            <MenuItem
+              key={level}
+              selected={agent?.thinkingLevel === level}
+              disabled={shuttingDown}
+              onClick={() => void handleSetThinking(level)}
+            >
+              {THINKING_LABEL[level] ?? level}
+            </MenuItem>
+          ))}
+          <Divider />
           <MenuItem onClick={() => { setUtilityAnchor(null); if (!running) setTreeOpen(true); }} disabled={running}><AccountTreeIcon fontSize="small" sx={{ mr: 1 }} />会话分支树</MenuItem>
           <MenuItem onClick={() => { setUtilityAnchor(null); setInfoOpen(true); }}><InfoOutlinedIcon fontSize="small" sx={{ mr: 1 }} />会话信息 / 导出</MenuItem>
           <MenuItem onClick={() => { setUtilityAnchor(null); setSettingsOpen(true); }}><SettingsIcon fontSize="small" sx={{ mr: 1 }} />设置</MenuItem>

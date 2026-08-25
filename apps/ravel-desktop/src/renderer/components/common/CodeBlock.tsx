@@ -52,6 +52,7 @@ export function CodeBlock({ language, className, children }: CodeBlockProps): Re
         <Tooltip title="复制">
           <IconButton
             size="small"
+            aria-label="复制代码"
             onClick={copy}
             sx={{
               color: "var(--omega-text-dim)",

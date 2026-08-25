@@ -81,6 +81,23 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
   const [keybindings, setKeybindings] = React.useState(desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape" });
   const [desktopError, setDesktopError] = React.useState<string | null>(null);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
+  const [resourceQuery, setResourceQuery] = React.useState("");
+
+  /** Case-insensitive match against name/description/path for resource lists. */
+  const matchesResource = React.useCallback(
+    (fields: Array<string | undefined | null>) => {
+      const q = resourceQuery.trim().toLowerCase();
+      if (!q) return true;
+      return fields.some((field) => (field ?? "").toLowerCase().includes(q));
+    },
+    [resourceQuery],
+  );
+
+  React.useEffect(() => {
+    if (!open) {
+      setResourceQuery("");
+    }
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -399,11 +416,20 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
               <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>加载扩展资源…</Typography>
             ) : (
               <>
-                <ResourceGroup title={`已加载扩展（${resources.extensions.length}）`}>
+                <TextField
+                  size="small"
+                  label="搜索扩展、技能与 Prompt 模板"
+                  value={resourceQuery}
+                  onChange={(e) => setResourceQuery(e.target.value)}
+                  helperText={resourceQuery.trim() ? "仅显示匹配项" : undefined}
+                />
+                <ResourceGroup title={`已加载扩展（${resources.extensions.filter((extension) => matchesResource([extension.name, extension.path])).length}/${resources.extensions.length}）`}>
                   {resources.extensions.length === 0 ? (
                     <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>当前工作区未加载扩展。</Typography>
-                  ) : (
-                    resources.extensions.map((extension) => (
+                  ) : null}
+                  {resources.extensions
+                    .filter((extension) => matchesResource([extension.name, extension.path]))
+                    .map((extension) => (
                       <Box key={extension.path} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.35 }}>
                         <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>{extension.name}</Typography>
                         {extension.commands > 0 ? <Chip size="small" label={`${extension.commands} 命令`} sx={{ height: 18, fontSize: 10.5 }} /> : null}
@@ -412,15 +438,19 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                           {extension.path}
                         </Typography>
                       </Box>
-                    ))
-                  )}
+                    ))}
+                  {resources.extensions.length > 0 && resources.extensions.every((extension) => !matchesResource([extension.name, extension.path])) ? (
+                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有匹配的扩展。</Typography>
+                  ) : null}
                 </ResourceGroup>
 
-                <ResourceGroup title={`可用 Skills（${resources.skills.length}）`}>
+                <ResourceGroup title={`可用 Skills（${resources.skills.filter((skill) => matchesResource([skill.name, skill.description])).length}/${resources.skills.length}）`}>
                   {resources.skills.length === 0 ? (
                     <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>无 skills。可用 /skill:name 调用。</Typography>
-                  ) : (
-                    resources.skills.map((skill) => (
+                  ) : null}
+                  {resources.skills
+                    .filter((skill) => matchesResource([skill.name, skill.description]))
+                    .map((skill) => (
                       <Box key={skill.filePath} sx={{ py: 0.35 }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                           <Typography sx={{ fontSize: 13, color: "var(--omega-text)", fontWeight: 600 }}>/skill:{skill.name}</Typography>
@@ -429,15 +459,19 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                           </Typography>
                         </Box>
                       </Box>
-                    ))
-                  )}
+                    ))}
+                  {resources.skills.length > 0 && resources.skills.every((skill) => !matchesResource([skill.name, skill.description])) ? (
+                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有匹配的 skills。</Typography>
+                  ) : null}
                 </ResourceGroup>
 
-                <ResourceGroup title={`Prompt 模板（${resources.prompts.length}）`}>
+                <ResourceGroup title={`Prompt 模板（${resources.prompts.filter((promptResource) => matchesResource([promptResource.name, promptResource.description])).length}/${resources.prompts.length}）`}>
                   {resources.prompts.length === 0 ? (
                     <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>无 prompt 模板。</Typography>
-                  ) : (
-                    resources.prompts.map((promptResource) => (
+                  ) : null}
+                  {resources.prompts
+                    .filter((promptResource) => matchesResource([promptResource.name, promptResource.description]))
+                    .map((promptResource) => (
                       <Box key={promptResource.filePath} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.35 }}>
                         <Typography sx={{ fontSize: 13, fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-accent)" }}>
                           /{promptResource.name}
@@ -449,8 +483,10 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                           {promptResource.description.slice(0, 60)}
                         </Typography>
                       </Box>
-                    ))
-                  )}
+                    ))}
+                  {resources.prompts.length > 0 && resources.prompts.every((promptResource) => !matchesResource([promptResource.name, promptResource.description])) ? (
+                    <Typography sx={{ fontSize: 12, color: "var(--omega-text-dim)" }}>没有匹配的 prompt 模板。</Typography>
+                  ) : null}
                 </ResourceGroup>
               </>
             )}

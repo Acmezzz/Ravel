@@ -91,18 +91,19 @@ export function TitleBar(): React.ReactElement {
       <Box sx={{ flex: 1 }} />
       <Box style={noDragStyle} sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
         <Tooltip title="最小化">
-          <IconButton size="small" disableRipple onClick={() => void ipc.minimize()} sx={controlSx}>
+          <IconButton size="small" aria-label="最小化窗口" disableRipple onClick={() => void ipc.minimize()} sx={controlSx}>
             <RemoveIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Tooltip>
         <Tooltip title={maximized ? "还原" : "最大化"}>
-          <IconButton size="small" disableRipple onClick={() => void ipc.toggleMaximize()} sx={controlSx}>
+          <IconButton size="small" aria-label={maximized ? "向下还原窗口" : "最大化窗口"} disableRipple onClick={() => void ipc.toggleMaximize()} sx={controlSx}>
             {maximized ? <FilterNoneIcon sx={{ fontSize: 13 }} /> : <CropSquareIcon sx={{ fontSize: 13 }} />}
           </IconButton>
         </Tooltip>
         <Tooltip title="关闭">
           <IconButton
             size="small"
+            aria-label="关闭窗口"
             disableRipple
             onClick={() => void ipc.closeWindow()}
             sx={{ ...controlSx, "&:hover": { color: "#fff", background: "var(--omega-danger)" } }}

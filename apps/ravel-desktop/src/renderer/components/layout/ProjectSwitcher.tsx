@@ -239,6 +239,7 @@ export function ProjectSwitcher(): React.ReactElement {
                   <Tooltip title="从列表中移除">
                     <IconButton
                       size="small"
+                      aria-label={`从列表中移除 ${labelFor(workspace.displayPath)}`}
                       onClick={(event) => void removeWorkspace(workspace, event)}
                       sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-danger)" } }}
                     >

@@ -85,27 +85,33 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
     >
       {error ? <Typography role="alert" sx={{ fontSize: 12, color: "var(--omega-danger)", whiteSpace: "pre-wrap" }}>{error}</Typography> : null}
       <Button
-        variant="outlined"
+        variant="contained"
         fullWidth
         onClick={() => void accept()}
         disabled={busy}
         sx={{
           textTransform: "none",
           fontWeight: 600,
-          color: "var(--omega-success)",
-          borderColor: "var(--omega-border-strong)",
-          "&:hover": { borderColor: "var(--omega-success)", background: "var(--omega-success-soft)" },
+          background: "var(--omega-accent-gradient)",
+          color: "var(--omega-accent-foreground)",
+          boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight), var(--omega-glow-accent)",
+          "&:hover": { background: "var(--omega-accent-gradient)", filter: "brightness(1.07)" },
         }}
       >
         保留全部改动
       </Button>
       <Button
-        variant="contained"
-        color="error"
+        variant="outlined"
         fullWidth
         onClick={openReject}
         disabled={busy || selectedFiles.length === 0}
-        sx={{ textTransform: "none", fontWeight: 600, background: "var(--omega-danger)", "&:hover": { background: "var(--omega-danger)", filter: "brightness(1.06)" } }}
+        sx={{
+          textTransform: "none",
+          fontWeight: 600,
+          color: "var(--omega-danger)",
+          borderColor: "var(--omega-border-strong)",
+          "&:hover": { borderColor: "var(--omega-danger)", background: "var(--omega-danger-soft)" },
+        }}
       >
         还原所选 · {selectedFiles.length}
       </Button>
@@ -119,9 +125,12 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
             将还原选中的 {selectedFiles.length} 个文件。已纳入 git 的文件会回到上一次提交/暂存状态。
           </Typography>
           {hasUntrackedSelected ? (
-            <Typography sx={{ fontSize: 13, color: "var(--omega-danger)", mt: 1, fontWeight: 600 }}>
-              ⚠️ 其中包含未跟踪的新文件，还原将通过 git clean 永久删除，此操作不可撤销。
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, mt: 1 }}>
+              <WarningAmberIcon sx={{ fontSize: 16, color: "var(--omega-danger)", mt: "2px", flex: "0 0 auto" }} />
+              <Typography sx={{ fontSize: 13, color: "var(--omega-danger)", fontWeight: 600 }}>
+                其中包含未跟踪的新文件，还原将通过 git clean 永久删除，此操作不可撤销。
+              </Typography>
+            </Box>
           ) : null}
           <Box component="ul" sx={{ mt: 1, pl: 2, color: "var(--omega-text-muted)", fontSize: 12, maxHeight: 160, overflowY: "auto" }}>
             {selectedFiles.map((f) => (

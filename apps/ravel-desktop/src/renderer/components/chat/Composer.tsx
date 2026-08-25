@@ -590,7 +590,7 @@ export function Composer(): React.ReactElement {
             ))}
           </Box>
           <Tooltip title="撤回全部排队消息到输入框">
-            <IconButton size="small" onClick={() => void recallQueue()} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", "&:hover": { color: "var(--omega-accent)" } }}>
+            <IconButton size="small" aria-label="撤回全部排队消息" onClick={() => void recallQueue()} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", "&:hover": { color: "var(--omega-accent)" } }}>
               <ReplayIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -705,7 +705,7 @@ export function Composer(): React.ReactElement {
           <Box sx={{ flex: 1, minWidth: 0 }} />
           {running ? (
             <>
-              <Tooltip title="打断当前生成并注入这条消息（steer）">
+              <Tooltip title="打断当前生成并插入这条消息（Steer）">
                 <IconButton
                   aria-label="插入当前生成"
                   onClick={() => send("steer")}

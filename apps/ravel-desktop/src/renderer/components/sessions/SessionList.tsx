@@ -351,7 +351,7 @@ export function SessionList(): React.ReactElement {
                       </Typography>
                     }
                   />
-                  <Box className="row-actions" sx={{ display: "flex", transition: "opacity .12s ease" }}>
+                  <Box className="row-actions" sx={{ display: "flex", alignItems: "center", gap: 0.25, transition: "opacity .12s ease" }}>
                     {active ? (
                       <>
                         <Tooltip title={connection === "running" ? "生成中无法复制" : cloning ? "复制中…" : "复制当前分支"}>
@@ -375,7 +375,7 @@ export function SessionList(): React.ReactElement {
                             size="small"
                             aria-label="重命名当前会话"
                             onClick={(e) => openRename(session.id, e)}
-                            sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}
+                            sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32, "&:hover": { color: "var(--omega-accent)" } }}
                           >
                             <EditIcon sx={{ fontSize: 15 }} />
                           </IconButton>
@@ -390,7 +390,7 @@ export function SessionList(): React.ReactElement {
                           e.stopPropagation();
                           setDeleting({ id: session.id, title: session.title });
                         }}
-                        sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-danger)" } }}
+                        sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32, "&:hover": { color: "var(--omega-danger)" } }}
                       >
                         <DeleteIcon sx={{ fontSize: 15 }} />
                       </IconButton>
