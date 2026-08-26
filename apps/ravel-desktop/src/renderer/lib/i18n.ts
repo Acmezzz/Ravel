@@ -102,8 +102,8 @@ const messages = {
     "settings.chip.tools": "{n} 工具",
     "settings.done": "完成",
 
-    "composer.placeholder": "输入消息…",
-    "composer.placeholderRunning": "生成中，输入后排队发送…",
+    "composer.placeholder": "输入消息 · @ 引用会话 · ! 执行命令",
+    "composer.placeholderRunning": "生成中 · Enter 排队 · Ctrl+Enter 转向",
     "composer.queue": "队列 · {n}",
     "composer.queueSteer": "插入当前轮",
     "composer.queueFollowUp": "后续消息",
@@ -368,8 +368,8 @@ const messages = {
     "settings.chip.tools": "{n} tools",
     "settings.done": "Done",
 
-    "composer.placeholder": "Type a message…",
-    "composer.placeholderRunning": "Generating — input will queue…",
+    "composer.placeholder": "Type a message · @ references a session · ! runs a command",
+    "composer.placeholderRunning": "Generating · Enter queues · Ctrl+Enter steers",
     "composer.queue": "Queue · {n}",
     "composer.queueSteer": "Insert into current turn",
     "composer.queueFollowUp": "Follow-up",

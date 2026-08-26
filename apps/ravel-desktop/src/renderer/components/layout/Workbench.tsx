@@ -16,12 +16,15 @@ import { Header } from "./Header";
 import { LeftNav } from "./LeftNav";
 import { ChatPanel } from "../chat/ChatPanel";
 import { RightPanel } from "./RightPanel";
+import { PanelResizeHandle } from "./PanelResizeHandle";
 
 const RIGHT_COLLAPSED_RAIL_PX = 44;
 const MIN_SIDEBAR_PX = 200;
 const MAX_SIDEBAR_PX = 420;
+const DEFAULT_SIDEBAR_PX = 260;
 const MIN_RIGHT_PX = 260;
 const MAX_RIGHT_PX = 620;
+const DEFAULT_RIGHT_PX = 440;
 
 function loadWidths(): { left: number; right: number } {
   try {
@@ -29,21 +32,29 @@ function loadWidths(): { left: number; right: number } {
     if (raw) {
       const parsed = JSON.parse(raw) as { left?: number; right?: number };
       return {
-        left: Math.min(MAX_SIDEBAR_PX, Math.max(MIN_SIDEBAR_PX, parsed.left ?? 260)),
-        right: Math.min(MAX_RIGHT_PX, Math.max(MIN_RIGHT_PX, parsed.right ?? 440)),
+        left: Math.min(MAX_SIDEBAR_PX, Math.max(MIN_SIDEBAR_PX, parsed.left ?? DEFAULT_SIDEBAR_PX)),
+        right: Math.min(MAX_RIGHT_PX, Math.max(MIN_RIGHT_PX, parsed.right ?? DEFAULT_RIGHT_PX)),
       };
     }
   } catch {
     /* defaults */
   }
-  return { left: 260, right: 440 };
+  return { left: DEFAULT_SIDEBAR_PX, right: DEFAULT_RIGHT_PX };
+}
+
+/** Imperative inert toggle (React 18 has no inert prop): drawers make the workbench behind them non-interactive. */
+function inertRef(active: boolean) {
+  return (element: HTMLElement | null) => {
+    if (!element) return;
+    if (active) element.setAttribute("inert", "");
+    else element.removeAttribute("inert");
+  };
 }
 
 /**
- * Three-column workbench (Codex-style) with drag-resizable side panels
- * (layout technique ported from pi-app main-layout-shell, MIT): only
- * grid-template-columns transitions, dragging disables the transition, and
- * the collapsed right panel keeps a slim icon rail.
+ * Three-column workbench (Codex-style) with drag- and keyboard-resizable side
+ * panels: grid-template-columns transitions while panels animate, dragging
+ * disables the transition, and collapsed panels keep a slim icon rail.
  */
 export function Workbench(): React.ReactElement {
   const rightOpen = useAppStore((s) => s.layout.rightPanelOpen);
@@ -67,57 +78,12 @@ export function Workbench(): React.ReactElement {
     }
   }, []);
 
-  // Pointer capture: releasing outside the window still ends the drag
-  // (mousemove/mouseup on window would miss it and lock the cursor).
-  const startDrag = React.useCallback(
-    (side: "left" | "right") => (e: React.PointerEvent) => {
-      e.preventDefault();
-      const target = e.currentTarget as HTMLElement;
-      try {
-        target.setPointerCapture(e.pointerId);
-      } catch {
-        /* older Electron */
-      }
-      setDragging(side);
-      const startX = e.clientX;
-      const startWidths = { ...widthsRef.current };
-      const onMove = (move: PointerEvent) => {
-        const delta = side === "left" ? move.clientX - startX : startX - move.clientX;
-        if (side === "left") {
-          const left = Math.min(MAX_SIDEBAR_PX, Math.max(MIN_SIDEBAR_PX, startWidths.left + delta));
-          widthsRef.current = { ...widthsRef.current, left };
-          setWidths(widthsRef.current);
-        } else {
-          const right = Math.min(MAX_RIGHT_PX, Math.max(MIN_RIGHT_PX, startWidths.right + delta));
-          widthsRef.current = { ...widthsRef.current, right };
-          setWidths(widthsRef.current);
-        }
-      };
-      const cleanup = (up?: PointerEvent) => {
-        if (up) {
-          try {
-            target.releasePointerCapture(up.pointerId);
-          } catch {
-            /* already released */
-          }
-        }
-        target.removeEventListener("pointermove", onMove);
-        target.removeEventListener("pointerup", onUp);
-        target.removeEventListener("lostpointercapture", onLost);
-        setDragging(null);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-        persist(widthsRef.current);
-      };
-      const onUp = (up: PointerEvent) => cleanup(up);
-      const onLost = () => cleanup();
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-      target.addEventListener("pointermove", onMove);
-      target.addEventListener("pointerup", onUp);
-      target.addEventListener("lostpointercapture", onLost);
+  const changeWidth = React.useCallback(
+    (side: "left" | "right") => (value: number) => {
+      widthsRef.current = { ...widthsRef.current, [side]: value };
+      setWidths(widthsRef.current);
     },
-    [persist],
+    [],
   );
 
   const effectiveLeftOpen = leftOpen && !focusMode && !compactViewport;
@@ -159,6 +125,10 @@ export function Workbench(): React.ReactElement {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [compactLeftOpen, compactRightOpen]);
 
+  // While a compact drawer overlays the workbench, the chat column behind it
+  // must be pointer- and AT-inert (modal-sheet pattern).
+  const centerInertRef = React.useMemo(() => inertRef(compactLeftOpen || compactRightOpen), [compactLeftOpen, compactRightOpen]);
+
   return (
     <Box
       data-focus-mode={focusMode ? "true" : "false"}
@@ -187,24 +157,23 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
           </Box>
         )}
-        {effectiveLeftOpen ? <Box
-          onPointerDown={startDrag("left")}
-          sx={{
-            position: "absolute",
-            right: -1,
-            top: 0,
-            bottom: 0,
-            width: 5,
-            cursor: "col-resize",
-            zIndex: 5,
-            touchAction: "none",
-            transition: "background 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-            "&:hover": { background: "var(--omega-accent-line)" },
-            "&:active": { background: "var(--omega-accent)" },
-          }}
-        /> : null}
+        {effectiveLeftOpen ? (
+          <PanelResizeHandle
+            side="left"
+            label="调整左栏宽度"
+            value={widths.left}
+            min={MIN_SIDEBAR_PX}
+            max={MAX_SIDEBAR_PX}
+            defaultValue={DEFAULT_SIDEBAR_PX}
+            onChange={changeWidth("left")}
+            onDragStateChange={(isDragging) => {
+              setDragging(isDragging ? "left" : (current) => (current === "left" ? null : current));
+              if (!isDragging) persist(widthsRef.current);
+            }}
+          />
+        ) : null}
       </Box>
-      <Box sx={{ minHeight: 0, overflow: "hidden", display: "flex" }}>
+      <Box ref={centerInertRef} sx={{ minHeight: 0, overflow: "hidden", display: "flex" }}>
         <ChatPanel />
       </Box>
       {compactLeftOpen ? (
@@ -276,20 +245,17 @@ export function Workbench(): React.ReactElement {
           </Box>
         )}
         {effectiveRightOpen ? (
-          <Box
-            onPointerDown={startDrag("right")}
-            sx={{
-              position: "absolute",
-              left: -1,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              cursor: "col-resize",
-              zIndex: 5,
-              touchAction: "none",
-              transition: "background 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-              "&:hover": { background: "var(--omega-accent-line)" },
-              "&:active": { background: "var(--omega-accent)" },
+          <PanelResizeHandle
+            side="right"
+            label="调整右栏宽度"
+            value={widths.right}
+            min={MIN_RIGHT_PX}
+            max={MAX_RIGHT_PX}
+            defaultValue={DEFAULT_RIGHT_PX}
+            onChange={changeWidth("right")}
+            onDragStateChange={(isDragging) => {
+              setDragging(isDragging ? "right" : (current) => (current === "right" ? null : current));
+              if (!isDragging) persist(widthsRef.current);
             }}
           />
         ) : null}

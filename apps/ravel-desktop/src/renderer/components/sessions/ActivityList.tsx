@@ -12,16 +12,17 @@ import Typography from "@mui/material/Typography";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CloseIcon from "@mui/icons-material/Close";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
 import NotificationImportantOutlinedIcon from "@mui/icons-material/NotificationImportantOutlined";
 import { useAppStore } from "../../store/useAppStore";
-import { useT } from "../../lib/i18n";
 import { openSessionInStore } from "../../lib/open-session";
-import { activitySignature, filterRows, readClearedMap, writeClearedMap, type ActivityFilter } from "../../lib/activity-projection";
+import { useT } from "../../lib/i18n";
+import { clearRow, filterRows, isAttention, readClearedMap, writeClearedMap, type ActivityFilter } from "../../lib/activity-projection";
 import type { ActivityRow } from "../../types/dto";
 
 function statusColor(status: ActivityRow["status"]): string {
-  if (status === "waiting") return "#b45309";
-  if (status === "failed") return "#dc2626";
+  if (status === "waiting") return "var(--omega-warning)";
+  if (status === "failed") return "var(--omega-danger)";
   if (status === "running") return "var(--omega-accent)";
   return "var(--omega-text-dim)";
 }
@@ -57,9 +58,9 @@ export function ActivityList(): React.ReactElement {
   // Join with the session list for titles/workspaces the tracker does not carry.
   const sessionById = React.useMemo(() => new Map(sessions.map((session) => [session.id, session])), [sessions]);
 
-  const clearRow = React.useCallback((row: ActivityRow) => {
+  const clearOne = React.useCallback((row: ActivityRow) => {
     setCleared((current) => {
-      const next = { ...current, [row.sessionId]: activitySignature(row) };
+      const next = clearRow(current, row);
       writeClearedMap(next);
       return next;
     });
@@ -67,9 +68,9 @@ export function ActivityList(): React.ReactElement {
 
   const clearVisible = React.useCallback(() => {
     setCleared((current) => {
-      const next = { ...current };
+      let next = current;
       for (const row of visible) {
-        if (row.status === "done") next[row.sessionId] = activitySignature(row);
+        if (row.status !== "running") next = clearRow(next, row);
       }
       writeClearedMap(next);
       return next;
@@ -109,16 +110,20 @@ export function ActivityList(): React.ReactElement {
       </Box>
       <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
         {visible.length === 0 ? (
-          <Typography variant="body2" sx={{ color: "var(--omega-text-dim)", textAlign: "center", mt: 4, px: 2 }}>
-            {t("activity.empty")}
-          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, mt: 6, px: 3, textAlign: "center" }}>
+            <InboxOutlinedIcon sx={{ fontSize: 28, color: "var(--omega-text-dim)" }} />
+            <Typography variant="body2" sx={{ color: "var(--omega-text-dim)" }}>
+              {t("activity.empty")}
+            </Typography>
+          </Box>
         ) : (
           visible.map((row) => {
             const session = sessionById.get(row.sessionId);
             const title = row.title ?? session?.title ?? row.sessionId.slice(0, 12);
             const workspaceLabel = session?.workspaceLabel ?? session?.workspace ?? row.workspace ?? "";
             const unread = sessionActivity[row.sessionId]?.unread ?? false;
-            const attention = row.status === "waiting" || row.status === "failed" || unread;
+            const attention = isAttention(row, cleared, unread);
+            const dismissible = row.status !== "running";
             return (
               <ListItemButton
                 key={row.sessionId}
@@ -126,15 +131,22 @@ export function ActivityList(): React.ReactElement {
                 selected={row.sessionId === activeSessionId}
                 disabled={loadingId === row.sessionId}
                 onClick={() => void openSession(row.sessionId)}
-                sx={{ alignItems: "flex-start", py: 0.75, borderRadius: 1, mb: 0.25 }}
+                sx={{
+                  alignItems: "flex-start",
+                  py: 0.75,
+                  borderRadius: 1,
+                  mb: 0.25,
+                  "&.Mui-selected": { background: "var(--omega-selected)", "&:hover": { background: "var(--omega-selected)" } },
+                  "&:hover": { background: "var(--omega-hover-fill)" },
+                }}
               >
-                <Box sx={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", mr: 1, mt: 0.25, borderRadius: 999, background: "var(--omega-selected)", flex: "0 0 auto" }}>
+                <Box sx={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", mr: 1, mt: 0.25, borderRadius: 999, background: "var(--omega-bg-soft)", boxShadow: "var(--omega-inset-recessed)", flex: "0 0 auto" }}>
                   {statusIcon(row.status)}
                 </Box>
                 <ListItemText
                   primary={
                     <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0 }}>
-                      <Typography component="span" variant="body2" noWrap sx={{ fontWeight: attention ? 700 : 500, color: "var(--omega-text)" }}>
+                      <Typography component="span" variant="body2" noWrap sx={{ fontWeight: attention ? 700 : 500, color: attention ? "var(--omega-text)" : "var(--omega-text-muted)" }}>
                         {title}
                       </Typography>
                       {unread ? (
@@ -145,32 +157,37 @@ export function ActivityList(): React.ReactElement {
                     </Box>
                   }
                   secondary={
-                    <>
-                      <Typography component="span" variant="caption" noWrap display="block" sx={{ color: "var(--omega-text-muted)" }}>
-                        {[workspaceLabel, row.status === "failed" ? row.lastError : null].filter(Boolean).join(" · ")}
-                      </Typography>
-                    </>
+                    <Typography component="span" variant="caption" noWrap display="block" sx={{ color: row.status === "failed" ? "var(--omega-danger)" : "var(--omega-text-muted)" }}>
+                      {[workspaceLabel, row.status === "failed" ? row.lastError : null].filter(Boolean).join(" · ")}
+                    </Typography>
                   }
                 />
                 <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.25, alignSelf: "center", flex: "0 0 auto" }}>
                   <Typography component="span" variant="caption" sx={{ color: statusColor(row.status), fontWeight: 600, whiteSpace: "nowrap" }}>
                     {t(`activity.status.${row.status}` as const)}
                   </Typography>
-                  {(row.status === "done" || (!attention && row.status !== "running")) && (
+                  {dismissible ? (
                     <Tooltip title={t("activity.clearOne")}>
                       <IconButton
                         size="small"
-                        aria-label={t("activity.clearOne")}
+                        aria-label={`${t("activity.clearOne")} ${title}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          clearRow(row);
+                          clearOne(row);
                         }}
-                        sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-text)" } }}
+                        sx={{
+                          color: row.status === "waiting" || row.status === "failed" ? "var(--omega-warning)" : "var(--omega-text-dim)",
+                          opacity: 0,
+                          "@media (hover: none)": { opacity: 1 },
+                          ".MuiListItemButton-root:hover &": { opacity: 1 },
+                          "&:focus-visible": { opacity: 1 },
+                          "&:hover": { color: "var(--omega-danger)" },
+                        }}
                       >
                         <CloseIcon sx={{ fontSize: 14 }} />
                       </IconButton>
                     </Tooltip>
-                  )}
+                  ) : null}
                 </Box>
               </ListItemButton>
             );

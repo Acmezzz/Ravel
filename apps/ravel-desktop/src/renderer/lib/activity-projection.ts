@@ -42,14 +42,23 @@ export function writeClearedMap(map: Record<string, string>): void {
 }
 
 /**
- * A row needs attention when it is waiting/failed, still unread, or its
- * completion signature has not been dismissed yet.
+ * A row needs attention until its current signature is dismissed. The
+ * signature carries status AND updatedAt, so a new failure on the same
+ * session re-alerts naturally after the previous one was cleared.
  */
 export function isAttention(row: ActivityRow, cleared: Record<string, string>, unread: boolean): boolean {
-  if (row.status === "waiting" || row.status === "failed") return true;
+  if (activitySignature(row) === (cleared[row.sessionId] ?? "")) return false;
+  if (row.status === "running") return false;
   if (unread) return true;
-  if (row.status === "done") return activitySignature(row) !== (cleared[row.sessionId] ?? "");
-  return false;
+  return row.status === "waiting" || row.status === "failed" || row.status === "done";
+}
+
+/**
+ * Dismissing a row records its current signature; the row may still be shown
+ * under "all" but stops counting toward attention.
+ */
+export function clearRow(map: Record<string, string>, row: ActivityRow): Record<string, string> {
+  return { ...map, [row.sessionId]: activitySignature(row) };
 }
 
 /** Badge count for the nav tab: un-dismissed attention rows. */
