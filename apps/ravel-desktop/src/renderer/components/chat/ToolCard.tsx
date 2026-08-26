@@ -13,11 +13,19 @@ import NoteAddIcon from "@mui/icons-material/NoteAddOutlined";
 import type { ToolCardState } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { useT, type MessageKey } from "../../lib/i18n";
+import { lineDiff, parseToolEdits, type ToolDiffBlock } from "../../lib/tool-diff";
 
 const STATUS_COLOR: Record<string, string> = {
   running: "var(--omega-warning)",
   done: "var(--omega-success)",
   error: "var(--omega-danger)",
+};
+
+const APPROVAL_COLOR: Record<string, string> = {
+  "allowed-once": "var(--omega-success)",
+  rejected: "var(--omega-danger)",
+  cancelled: "var(--omega-warning)",
+  unavailable: "var(--omega-warning)",
 };
 
 const KIND_KEY: Record<string, MessageKey> = {
@@ -59,6 +67,47 @@ function formatDuration(startedAt?: string, endedAt?: string): string | null {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
+function DiffBlockView({ block }: { block: ToolDiffBlock }): React.ReactElement {
+  const t = useT();
+  return (
+    <Box
+      sx={{
+        borderRadius: "8px",
+        border: "1px solid var(--omega-border)",
+        background: "var(--omega-bg-code)",
+        overflow: "hidden",
+        maxHeight: 300,
+        overflowY: "auto",
+      }}
+    >
+      <Box component="pre" sx={{ m: 0, p: 1, fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", fontSize: "0.71875rem", lineHeight: 1.5 }}>
+        {block.lines.map((line, index) => (
+          <Box
+            key={index}
+            sx={{
+              display: "block",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+              color: line.type === "add" ? "var(--omega-success)" : line.type === "del" ? "var(--omega-danger)" : "var(--omega-text-soft)",
+              background:
+                line.type === "add" ? "rgba(46, 160, 67, 0.12)" : line.type === "del" ? "rgba(248, 81, 73, 0.10)" : "transparent",
+              px: 0.5,
+            }}
+          >
+            {line.type === "add" ? "+ " : line.type === "del" ? "- " : "  "}
+            {line.content}
+          </Box>
+        ))}
+      </Box>
+      {block.truncated ? (
+        <Typography sx={{ px: 1, py: 0.5, fontSize: "0.65625rem", color: "var(--omega-warning)", borderTop: "1px solid var(--omega-border)" }}>
+          {t("toolcard.diffTruncated", { n: block.lines.length })}
+        </Typography>
+      ) : null}
+    </Box>
+  );
+}
+
 export interface ToolCardProps {
   card: ToolCardState;
 }
@@ -72,7 +121,22 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
   const color = STATUS_COLOR[card.status] ?? "var(--omega-text-muted)";
   const [detail, setDetail] = React.useState<{ argsJson?: string; resultText?: string; isError?: boolean } | null>(null);
   const [expanded, setExpanded] = React.useState(false);
-  const stat = card.kind === "edit" || card.kind === "write" ? diffStat(detail?.resultText ?? card.resultText) : null;
+
+  // Structured diff from the tool's own oldText/newText; the +/- text guess is
+  // only a fallback when no structured pairs exist.
+  const effectiveArgsJson = detail?.argsJson ?? card.argsJson;
+  const diffBlocks = React.useMemo<{ path?: string; block: ToolDiffBlock }[]>(() => {
+    if (card.kind !== "edit") return [];
+    const parsed = parseToolEdits(effectiveArgsJson);
+    if (!parsed) return [];
+    return parsed.edits.map((edit) => ({ ...(parsed.path ? { path: parsed.path } : {}), block: lineDiff(edit.oldText, edit.newText) }));
+  }, [card.kind, effectiveArgsJson]);
+  const totalDiff = diffBlocks.reduce(
+    (acc, item) => ({ additions: acc.additions + item.block.additions, deletions: acc.deletions + item.block.deletions }),
+    { additions: 0, deletions: 0 },
+  );
+  const rawStat = diffBlocks.length > 0 ? totalDiff : card.kind === "edit" || card.kind === "write" ? diffStat(detail?.resultText ?? card.resultText) : null;
+  const stat = rawStat ? { added: "additions" in rawStat ? rawStat.additions : rawStat.added, removed: "deletions" in rawStat ? rawStat.deletions : rawStat.removed } : null;
   const duration = formatDuration(card.startedAt, card.endedAt);
 
   const loadDetail = React.useCallback(async () => {
@@ -153,6 +217,22 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
               {duration}
             </Typography>
           ) : null}
+          {card.approval ? (
+            <Typography
+              sx={{
+                fontSize: "0.65625rem",
+                fontWeight: 600,
+                flex: "0 0 auto",
+                px: 0.75,
+                py: 0.1,
+                borderRadius: "6px",
+                border: `1px solid ${APPROVAL_COLOR[card.approval] ?? "var(--omega-border)"}`,
+                color: APPROVAL_COLOR[card.approval] ?? "var(--omega-text-muted)",
+              }}
+            >
+              {t(`toolcard.approval.${card.approval}` as MessageKey)}
+            </Typography>
+          ) : null}
           <Typography sx={{ fontSize: "0.65625rem", fontWeight: 550, color, flex: "0 0 auto" }}>
             {t(card.status === "running" ? "toolcard.status.running" : card.status === "error" ? "toolcard.status.error" : "toolcard.status.done")}
           </Typography>
@@ -160,6 +240,19 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
       </AccordionSummary>
       <AccordionDetails sx={{ px: 1.5, pt: 0, pb: 1.25 }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {diffBlocks.length > 0 ? (
+            diffBlocks.map((item, index) => (
+              <Box key={index}>
+                {diffBlocks.length > 1 || item.path ? (
+                  <Typography className="overline-label" sx={{ mb: 0.5 }}>
+                    {item.path ? `${item.path} · ` : ""}
+                    +{item.block.additions} −{item.block.deletions}
+                  </Typography>
+                ) : null}
+                <DiffBlockView block={item.block} />
+              </Box>
+            ))
+          ) : null}
           {card.argsJson ? (
             <Box>
               <Typography className="overline-label" sx={{ mb: 0.5 }}>

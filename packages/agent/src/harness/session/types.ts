@@ -187,6 +187,49 @@ export interface WriteDeferredRecord extends RecordBase {
 	target: ProvisionedEntry;
 }
 
+/** Closed outcome vocabulary for a durable approval decision. */
+export type ApprovalOutcome = "allowed-once" | "rejected" | "cancelled" | "unavailable";
+
+export const APPROVAL_OUTCOMES: readonly ApprovalOutcome[] = ["allowed-once", "rejected", "cancelled", "unavailable"];
+
+/**
+ * Closed vocabulary explaining why a decision reached its outcome. Absent on
+ * records written before decision explainability landed; writers always set it.
+ */
+export type ApprovalReasonCode = "user-allowed" | "user-denied" | "ui-cancelled" | "timeout" | "no-answerer";
+
+export const APPROVAL_REASON_CODES: readonly ApprovalReasonCode[] = [
+	"user-allowed",
+	"user-denied",
+	"ui-cancelled",
+	"timeout",
+	"no-answerer",
+];
+
+export interface ApprovalAskedRecord extends RecordBase {
+	type: "approval_asked";
+	runId: string;
+	toolCallId: string;
+	toolName: string;
+	/** Stable digest of the effective tool arguments; raw args are not copied. */
+	argsDigest: string;
+	/** Permission profile in effect when the ask was issued; absent on legacy asks. */
+	policyProfile?: string;
+}
+
+export interface ApprovalDecidedRecord extends RecordBase {
+	type: "approval_decided";
+	runId: string;
+	toolCallId: string;
+	/** The approval_asked record id this decision closes. */
+	askedId: string;
+	outcome: ApprovalOutcome;
+	/** Why the outcome happened; absent on legacy decisions. */
+	reasonCode?: ApprovalReasonCode;
+	/** Extension UI RPC correlation id, when an interactive request produced this decision. */
+	uiRequestId?: string;
+}
+
 export type UsageRecord = RecordBase & { type: "usage"; usage: Usage } & (
 		| {
 				cause: "assistant" | "compaction" | "branch_summary" | "deferred_fetch";
@@ -209,7 +252,9 @@ export type LaneRecord =
 	| QueueEnqueuedRecord
 	| QueueCancelledRecord
 	| WriteDeferredRecord
-	| UsageRecord;
+	| UsageRecord
+	| ApprovalAskedRecord
+	| ApprovalDecidedRecord;
 export type NewRecord<TRecord extends LaneRecord = LaneRecord> = TRecord extends LaneRecord
 	? Omit<TRecord, "seq" | "timestamp">
 	: never;

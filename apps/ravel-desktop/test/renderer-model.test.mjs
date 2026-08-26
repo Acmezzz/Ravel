@@ -11,8 +11,6 @@ const read = (rel) => readFile(new URL(rel, import.meta.url), "utf8");
   const approval = await read("../src/renderer/components/panels/ApprovalBar.tsx");
   const diff = await read("../src/renderer/components/panels/DiffViewer.tsx");
   const right = await read("../src/renderer/components/layout/RightPanel.tsx");
-  const workflow = await read("../src/renderer/components/panels/WorkflowPanel.tsx");
-  const scout = await read("../src/renderer/components/panels/ScoutPanel.tsx");
   assert.match(info, /role="alert"/);
   assert.match(info, /重试/);
   assert.match(info, /requestEpoch/);
@@ -27,13 +25,10 @@ const read = (rel) => readFile(new URL(rel, import.meta.url), "utf8");
   assert.match(workbench, /展开右侧面板/);
   assert.match(approval, /selectedItems, snapshotToken/);
   assert.match(approval, /role="alert"/);
-  assert.match(diff, /已选择/);
-  assert.match(diff, /清除选择/);
-  assert.match(right, /extensionError/);
-  assert.match(right, /role="status"/);
-  assert.match(workflow, /展开其余/);
-  assert.match(scout, /查看运行详情/);
-  assert.match(scout, /展开其余/);
+  assert.match(diff, /diff\.selected/);
+  assert.match(diff, /diff\.clearSelection/);
+  assert.match(right, /nav\.tab\.diff/);
+  assert.match(right, /nav\.tab\.worktree/);
 });
 
 test("agent:event message_start contract is preserved (role/id/text)", () => {
@@ -358,9 +353,7 @@ test("composer sends are non-blocking with optimistic rollback guards", async ()
 
 test("panels no longer hardcode dark-only backgrounds", async () => {
   const approval = await read("../src/renderer/components/panels/ApprovalBar.tsx");
-  const scout = await read("../src/renderer/components/panels/ScoutPanel.tsx");
   assert.doesNotMatch(approval, /#151923/);
-  assert.doesNotMatch(scout, /#151923/);
 });
 
 test("agent tools include the pi search tools (grep/find/ls)", async () => {
@@ -380,15 +373,15 @@ test("native menu bar is replaced by the in-app title bar", async () => {
 
 test("session list supports search, rename, and delete affordances", async () => {
   const source = await read("../src/renderer/components/sessions/SessionList.tsx");
-  assert.match(source, /搜索会话/);
+  assert.match(source, /sessions\.search/);
   assert.match(source, /setSessionName/);
   assert.match(source, /deleteSession/);
   assert.match(source, /sessionActivity/);
   assert.match(source, /parentSessionId/);
-  assert.match(source, /运行中/);
-  assert.match(source, /未读/);
-  assert.match(source, /子会话/);
-  assert.match(source, /加载更多/);
+  assert.match(source, /sessions\.status\.running/);
+  assert.match(source, /sessions\.status\.unread/);
+  assert.match(source, /sessions\.status\.nested/);
+  assert.match(source, /sessions\.loadMore/);
   assert.match(source, /applySessionPage/);
   assert.match(source, /sessionNextOffset/);
 });
@@ -478,6 +471,23 @@ test("git review backend applies hunk patches via stdin only", async () => {
   assert.match(diff, /parseStatusPath/);
 });
 
+test("streaming deltas are attributed per session/epoch/run bucket", async () => {
+  const lib = await read("../src/renderer/lib/stream-bucket.ts");
+  assert.match(lib, /sessionId.*runtimeEpoch.*runId/s);
+  const app = await read("../src/renderer/App.tsx");
+  assert.match(app, /store\.setStreamingBucket\(streamBucketOf\(meta\), id\)/);
+  assert.match(
+    app,
+    /useAppStore\.getState\(\)\.streamingBuckets\[bucket\] \?\? store\.ensureStreamingAssistant\(bucket\)/,
+  );
+  // Closing a run deletes only its own bucket; a late delta from an old run
+  // cannot feed a newer run's bubble.
+  assert.match(app, /delete nextBuckets\[bucket\]/);
+  const store = await read("../src/renderer/store/useAppStore.ts");
+  assert.match(store, /ensureStreamingAssistant: \(bucket\) =>/);
+  assert.match(store, /clearStreamingBuckets: \(\) => set\(\{ streamingBuckets: \{\} \}\)/);
+});
+
 test("composer supports @ file completion and ! bash passthrough", async () => {
   const source = await read("../src/renderer/components/chat/Composer.tsx");
   assert.match(source, /detectAtToken/);
@@ -509,14 +519,14 @@ test("Project Switcher, replay, and worker recovery reconcile surfaces exist", a
   assert.match(switcher, /workspaceId/);
   assert.match(client, /recentEvents/);
   assert.match(app, /recentEvents/);
-  assert.match(app, /streamingAssistantId: null/);
+  assert.match(app, /streamingBuckets: \{\}/);
+  assert.match(app, /streamBucketOf\(meta\)/);
   assert.match(app, /queuedMessages/);
   assert.match(app, /setSessionTree/);
   assert.match(app, /未确认发送的消息没有自动重发/);
   assert.match(app, /const reconciled = await refreshControlPlane\(\)/);
   assert.match(app, /state\?\.isStreaming !== true/);
   assert.match(switcher, /bumpWorkspaceEpoch/);
-  assert.match(switcher, /queryExtensionState/);
   assert.match(switcher, /listModels/);
   assert.match(switcher, /ProjectTrustDialog/);
   assert.match(switcher, /removeWorkspace/);
@@ -615,16 +625,10 @@ test("stage 5 workbench keeps focus and narrow layouts explicit", async () => {
   assert.match(css, /--omega-accent/);
 });
 
-test("stage 4 bounds large diff and extension projections", async () => {
+test("stage 4 bounds large diff projections", async () => {
   const diff = await read("../src/renderer/components/panels/DiffViewer.tsx");
-  const scout = await read("../src/renderer/components/panels/ScoutPanel.tsx");
-  const workflow = await read("../src/renderer/components/panels/WorkflowPanel.tsx");
   assert.match(diff, /MAX_RENDERED_FILES/);
   assert.match(diff, /MAX_RENDERED_LINES_PER_HUNK/);
-  assert.match(scout, /MAX_ROUNDS/);
-  assert.match(scout, /MAX_PROPOSALS/);
-  assert.match(workflow, /MAX_FEATURES/);
-  assert.match(workflow, /MAX_ISSUES/);
 });
 
 test("UX audit closes execution gaps and avoids misleading controls", async () => {
@@ -643,9 +647,9 @@ test("UX audit closes execution gaps and avoids misleading controls", async () =
   assert.match(sessions, /loadError/);
   assert.doesNotMatch(app, /⚠️/);
   assert.doesNotMatch(composer, /⚠️/);
-  assert.match(composer, /aria-label="发送消息"/);
-  assert.match(composer, /aria-label="停止生成"/);
-  assert.match(composer, /插入当前轮/);
+  assert.match(composer, /composer\.sendAria/);
+  assert.match(composer, /composer\.stopAria/);
+  assert.match(composer, /composer\.queueSteer/);
   assert.doesNotMatch(viewer, /setDiffMode/);
   assert.doesNotMatch(viewer, /diffMode \?/);
   assert.match(header, /aria-label=\{canRetryWorker \? "重试 Agent worker"/);
@@ -673,9 +677,9 @@ test("R5: resource inventory is exposed through the worker and surfaced in setti
   assert.ok(main.includes('ipcMain.handle("omega:listResources",'));
   const settings = await read("../src/renderer/components/layout/SettingsDialog.tsx");
   assert.match(settings, /listResources/);
-  assert.match(settings, /扩展（/);
-  assert.match(settings, /Skills（/);
-  assert.match(settings, /资源中心/);
+  assert.match(settings, /settings\.extensionsEmpty/);
+  assert.match(settings, /settings\.group\.skills/);
+  assert.match(settings, /settings\.openResourceCenter/);
 });
 
 test("resource center manages local install, enable, and reload without network", async () => {
@@ -693,5 +697,21 @@ test("resource center manages local install, enable, and reload without network"
   assert.match(center, /reloadResources/);
   assert.match(center, /不会联网/);
   const palette = await read("../src/renderer/components/layout/CommandPalette.tsx");
-  assert.match(palette, /打开资源中心/);
+  assert.match(palette, /palette\.resourceCenter\.title/);
+});
+
+test("optimistic reconciliation is identity-only (no text or single-pending guesses)", async () => {
+  const store = await read("../src/renderer/store/useAppStore.ts");
+  assert.doesNotMatch(store, /item\.text === delivered\.text/);
+  assert.match(store, /item\.clientMessageId === clientMessageId/);
+});
+
+test("compaction stays append-only in the human timeline projection", async () => {
+  const bridge = await read("../electron/agent-bridge.js");
+  assert.match(bridge, /markers/);
+  assert.match(bridge, /operations/);
+  assert.match(bridge, /approvals/);
+  const list = await read("../src/renderer/components/chat/MessageList.tsx");
+  assert.match(list, /CompactionMarkerRow/);
+  assert.match(list, /buildTimelineRows/);
 });

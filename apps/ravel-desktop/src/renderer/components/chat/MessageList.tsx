@@ -6,8 +6,9 @@ import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { MessageBubble } from "./MessageBubble";
 import { ToolCard } from "./ToolCard";
-import type { SessionMessage } from "../../types/dto";
-import type { ToolCardState } from "../../store/useAppStore";
+import { buildTimelineRows } from "../../lib/operation-timeline";
+import { useT, type MessageKey } from "../../lib/i18n";
+import type { TimelineOperation, TranscriptMarker } from "../../types/dto";
 
 const WINDOW_SIZE = 60;
 const SCROLL_MEMORY_CAP = 40;
@@ -24,25 +25,64 @@ function rememberScroll(sessionId: string, snapshot: { scrollTop: number; atBott
   }
 }
 
-function buildAttachmentIndex(messages: SessionMessage[], toolCards: ToolCardState[]) {
-  const visibleIds = new Set(messages.map((message) => message.id));
-  const byMessage = new Map<string, ToolCardState[]>();
-  const loose: ToolCardState[] = [];
-  for (const card of toolCards) {
-    if (card.afterMessageId && visibleIds.has(card.afterMessageId)) {
-      const list = byMessage.get(card.afterMessageId) ?? [];
-      list.push(card);
-      byMessage.set(card.afterMessageId, list);
-    } else {
-      loose.push(card);
-    }
-  }
-  return { byMessage, loose };
+function OperationRow({ operation, index }: { operation: TimelineOperation; index: number | null }): React.ReactElement {
+  const t = useT();
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, my: 2 }} data-operation-id={operation.id}>
+      <Typography className="overline-label" sx={{ color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
+        {t("timeline.turn", { n: index ?? "-" })}
+      </Typography>
+      <Box sx={{ height: 1, flex: 1, background: "var(--omega-border)" }} />
+      {operation.status === "open" ? (
+        <Box component="span" className="pulse-dot" sx={{ width: 6, height: 6, borderRadius: "50%", background: "var(--omega-accent)" }} />
+      ) : null}
+      <Typography
+        className="overline-label"
+        sx={{
+          color:
+            operation.status === "failed"
+              ? "var(--omega-danger)"
+              : operation.status === "open"
+                ? "var(--omega-accent)"
+                : "var(--omega-text-dim)",
+          flex: "0 0 auto",
+        }}
+      >
+        {t(`timeline.status.${operation.status}` as MessageKey)}
+      </Typography>
+    </Box>
+  );
+}
+
+function CompactionMarkerRow(): React.ReactElement {
+  const t = useT();
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.75,
+        my: 1.5,
+        px: 1,
+        py: 0.5,
+        borderRadius: "9px",
+        border: "1px dashed var(--omega-border)",
+        color: "var(--omega-text-dim)",
+      }}
+    >
+      <span style={{ fontSize: "0.8125rem", color: "var(--omega-accent)" }}>∞</span>
+      <Typography className="overline-label" sx={{ color: "var(--omega-text-dim)" }}>
+        {t("marker.compaction")}
+      </Typography>
+    </Box>
+  );
 }
 
 export function MessageList(): React.ReactElement {
   const messages = useAppStore((s) => s.messages);
   const toolCards = useAppStore((s) => s.toolCards);
+  const markers = useAppStore((s) => s.markers);
+  const operations = useAppStore((s) => s.operations);
   const thinkingActive = useAppStore((s) => s.thinkingActive);
   const compacting = useAppStore((s) => s.compacting);
   const bashTail = useAppStore((s) => s.bashTail);
@@ -108,7 +148,21 @@ export function MessageList(): React.ReactElement {
     }
     return null;
   }, [visible]);
-  const { byMessage, loose } = React.useMemo(() => buildAttachmentIndex(visible, toolCards), [visible, toolCards]);
+  const { rows, looseCards } = React.useMemo(
+    () => buildTimelineRows(toolCards, operations, visible),
+    [toolCards, operations, visible],
+  );
+  // Compaction boundaries land right after their anchor message.
+  const markersByAnchor = React.useMemo(() => {
+    const byAnchor = new Map<string, TranscriptMarker[]>();
+    for (const marker of markers) {
+      if (!marker.afterEntryId) continue;
+      const list = byAnchor.get(marker.afterEntryId) ?? [];
+      list.push(marker);
+      byAnchor.set(marker.afterEntryId, list);
+    }
+    return byAnchor;
+  }, [markers]);
 
   // Save the outgoing session's scroll position; restore the incoming one.
   const prevSessionRef = React.useRef<string | null>(activeSessionId);
@@ -171,15 +225,32 @@ export function MessageList(): React.ReactElement {
             {canLoadHistorical ? <Button size="small" variant="text" onClick={() => void loadHistoricalMessages()} disabled={historyLoading} sx={{ textTransform: "none" }}>{historyLoading ? "读取历史中…" : "从磁盘读取更早消息"}</Button> : null}
           </Box>
         ) : null}
-        {visible.map((message) => (
-          <React.Fragment key={message.id}>
-            <MessageBubble message={message} streamingRun={thinkingActive && message.id === lastAssistantId} />
-            {(byMessage.get(message.id) ?? []).map((card) => (
-              <ToolCard key={card.toolCallId} card={card} />
-            ))}
-          </React.Fragment>
-        ))}
-        {loose.map((card) => (
+        {(() => {
+          let turnOrdinal = 0;
+          return rows.map((row) => {
+            if (row.kind === "operation-start") {
+              if (row.operation.kind !== "run") {
+                return <OperationRow key={`op-${row.operation.id}`} operation={row.operation} index={null} />;
+              }
+              turnOrdinal += 1;
+              return <OperationRow key={`op-${row.operation.id}`} operation={row.operation} index={turnOrdinal} />;
+            }
+            const message = row.message;
+            const anchoredMarkers = message.entryId ? markersByAnchor.get(message.entryId) : undefined;
+            return (
+              <React.Fragment key={message.id}>
+                <MessageBubble message={message} streamingRun={thinkingActive && message.id === lastAssistantId} />
+                {row.cards.map((card) => (
+                  <ToolCard key={card.toolCallId} card={card} />
+                ))}
+                {(anchoredMarkers ?? []).map((marker) => (
+                  <CompactionMarkerRow key={marker.entryId} />
+                ))}
+              </React.Fragment>
+            );
+          });
+        })()}
+        {looseCards.map((card) => (
           <ToolCard key={card.toolCallId} card={card} />
         ))}
         {runningBash ? (

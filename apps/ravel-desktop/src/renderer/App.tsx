@@ -9,6 +9,7 @@ import { TrustCenter } from "./components/layout/TrustCenter";
 import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
 import { matchesKeybinding } from "./lib/keybindings";
+import { streamBucketOf } from "./lib/stream-bucket";
 import type { EventMeta, SafeEvent } from "./types/events";
 
 async function applyDesktopSettings(): Promise<void> {
@@ -99,8 +100,6 @@ export function App(): React.ReactElement {
   const setConnection = useAppStore((s) => s.setConnection);
   const setShutdownPhase = useAppStore((s) => s.setShutdownPhase);
   const setBootstrapError = useAppStore((s) => s.setBootstrapError);
-  const setExtensionState = useAppStore((s) => s.setExtensionState);
-  const setExtensionLoading = useAppStore((s) => s.setExtensionLoading);
   const themeMode = useAppStore((s) => s.themeMode);
 
   // Follow OS theme changes while in `system` mode.
@@ -177,7 +176,7 @@ export function App(): React.ReactElement {
               text: event.message.text ?? "",
               ts: new Date().toISOString(),
             });
-            store.setStreamingAssistantId(id);
+            store.setStreamingBucket(streamBucketOf(meta), id);
           }
           break;
         }
@@ -197,31 +196,39 @@ export function App(): React.ReactElement {
             );
           } else if (event.message.role === "assistant") {
             // Authoritative final text: replace the streaming bubble, covering
-            // deltas missed across a mid-run reload.
+            // deltas missed across a mid-run reload. Only this run's bucket
+            // closes; other runs (if any) keep their own bubbles.
             const finalId = event.message.id;
-            const streamingId = store.streamingAssistantId;
-            useAppStore.setState((state) => ({
-              messages: state.messages.map((message) => {
-                if (finalId && message.id === finalId) {
-                  return { ...message, text: event.message.text ?? message.text };
-                }
-                if (streamingId && message.id === streamingId && (!finalId || finalId !== message.id)) {
-                  return { ...message, id: finalId ?? message.id, text: event.message.text ?? message.text };
-                }
-                return message;
-              }),
-              streamingAssistantId: null,
-            }));
+            const bucket = streamBucketOf(meta);
+            const streamingId = useAppStore.getState().streamingBuckets[bucket];
+            useAppStore.setState((state) => {
+              const nextBuckets = { ...state.streamingBuckets };
+              delete nextBuckets[bucket];
+              return {
+                messages: state.messages.map((message) => {
+                  if (finalId && message.id === finalId) {
+                    return { ...message, text: event.message.text ?? message.text };
+                  }
+                  if (streamingId && message.id === streamingId && (!finalId || finalId !== message.id)) {
+                    return { ...message, id: finalId ?? message.id, text: event.message.text ?? message.text };
+                  }
+                  return message;
+                }),
+                streamingBuckets: nextBuckets,
+              };
+            });
           }
           break;
         }
         case "message_update": {
           const update = event.assistantMessageEvent;
           if (update.type === "text_delta") {
-            const id = store.streamingAssistantId ?? store.ensureStreamingAssistant();
+            const bucket = streamBucketOf(meta);
+            const id = useAppStore.getState().streamingBuckets[bucket] ?? store.ensureStreamingAssistant(bucket);
             store.appendDelta(id, update.delta);
           } else if (update.type === "thinking_delta") {
-            const id = store.streamingAssistantId ?? store.ensureStreamingAssistant();
+            const bucket = streamBucketOf(meta);
+            const id = useAppStore.getState().streamingBuckets[bucket] ?? store.ensureStreamingAssistant(bucket);
             useAppStore.setState((state) => ({
               messages: state.messages.map((message) =>
                 message.id === id ? { ...message, thinking: (message.thinking ?? "") + update.delta } : message,
@@ -273,7 +280,7 @@ export function App(): React.ReactElement {
           setConnection("running");
           store.setComposerError(null);
           if (activeSessionId) store.markSessionActivity(activeSessionId, { running: true, failed: false });
-          useAppStore.setState({ bashTail: "", streamingAssistantId: null, lastAgentStartAt: Date.now() });
+          useAppStore.setState({ bashTail: "", streamingBuckets: {}, lastAgentStartAt: Date.now() });
           break;
         case "agent_end":
         case "turn_end":
@@ -310,7 +317,7 @@ export function App(): React.ReactElement {
         setBootstrapError(null);
         setConnection("ready");
         useAppStore.getState().setWorkerError(null);
-        useAppStore.setState({ streamingAssistantId: null, thinkingActive: false, compacting: false, retrying: false, bashTail: "" });
+        useAppStore.setState({ streamingBuckets: {}, thinkingActive: false, compacting: false, retrying: false, bashTail: "" });
         void (async () => {
           const reconciled = await refreshControlPlane();
           if (!reconciled) {
@@ -376,13 +383,6 @@ export function App(): React.ReactElement {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     })();
-    void (async () => {
-      setExtensionLoading(true);
-      const res = await ipc.queryExtensionState({ scope: "all" });
-      if (cancelled) return;
-      if (res.ok) setExtensionState(res.data);
-      setExtensionLoading(false);
-    })();
 
     return () => {
       cancelled = true;
@@ -390,7 +390,7 @@ export function App(): React.ReactElement {
       offStatus();
       offTransport();
     };
-  }, [setConnection, setShutdownPhase, setBootstrapError, setExtensionState, setExtensionLoading]);
+  }, [setConnection, setShutdownPhase, setBootstrapError]);
 
   // Text zoom: root-relative rem typography scales with the html font size.
   const [textZoom, setTextZoom] = React.useState(1);

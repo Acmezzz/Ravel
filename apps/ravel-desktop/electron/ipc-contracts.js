@@ -45,7 +45,6 @@ export const IPC_CHANNELS = Object.freeze({
   getSystemPrompt: "omega:getSystemPrompt",
   exportHtml: "omega:exportHtml",
   bash: "omega:bash",
-  queryExtensionState: "omega:queryExtensionState",
   listDir: "omega:listDir",
   readFile: "omega:readFile",
   readFilePage: "omega:readFilePage",

@@ -46,7 +46,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
         shape: { borderRadius: 10 },
         typography: {
           fontFamily,
-          fontSize: "0.875rem",
+          fontSize: 14,
           button: { fontWeight: 550, letterSpacing: "0.005em" },
         },
         transitions: {

@@ -5,6 +5,7 @@
 > 目标：记录当前实现基线、受控 DTO/IPC 边界与后续演进约束
 > 安全红线：**渲染进程不拥有文件系统、Git、凭据或 Pi SDK 权限；默认事件使用有界 DTO，完整工具详情必须经受控 IPC 按需读取。**
 > 维护说明：本文早期 V1 任务分解中的自定义 JSON persistence、旧 vanilla renderer 与部分扩展 IPC 已完成迁移或删除；当前优化路线见 [`frontend-backend-optimization-2026-08-24.md`](./frontend-backend-optimization-2026-08-24.md)。
+> 2026-08-26 切片 0：`journal-workflow` / `exploration-scout` 两个内置插件及其 `WorkflowPanel` / `ScoutPanel` / `state-reader.js` / `omega:queryExtensionState` 链路已整体删除；右栏只保留 Diff / Worktree，默认 Diff。本文涉及 workflow*/scout* DTO、Scout 模式与扩展状态拉取的章节仅作历史记录，不再反映现状。
 
 ---
 

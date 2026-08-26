@@ -30,6 +30,7 @@ import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
 import { validateCustomProvider } from "./custom-providers.js";
+import { appendFact, closeStaleApprovals, closeStaleOperations } from "./session-facts.js";
 
 /** @type {import("./agent-bridge.js").ReturnType<typeof bridge.createRuntime> | null} */
 let runtime = null;
@@ -77,15 +78,18 @@ function cancelAllExtensionUI() {
 }
 
 function createDesktopExtensionUIContext() {
-  const request = (payload, defaultValue, timeout) => {
-    const id = randomUUID();
-    const meta = extensionMeta();
-    const requestPayload = { type: "extension_ui_request", id, ...payload, ...meta };
-    const effectiveTimeout = Number.isFinite(timeout) && timeout > 0 ? Math.min(timeout, 10 * 60 * 1000) : 5 * 60 * 1000;
-    return new Promise((resolve) => {
+	const request = (payload, timeout, onIssued) => {
+		const id = randomUUID();
+		const meta = extensionMeta();
+		const requestPayload = { type: "extension_ui_request", id, ...payload, ...meta };
+		const effectiveTimeout = Number.isFinite(timeout) && timeout > 0 ? Math.min(timeout, 10 * 60 * 1000) : 5 * 60 * 1000;
+		onIssued?.(id);
+		return new Promise((resolve) => {
       const timer = setTimeout(() => {
         pendingExtensionUI.delete(id);
-        resolve(defaultValue);
+        // Sentinel (not a default value) so approval flows can distinguish
+        // "no answerer" (unavailable) from an explicit deny.
+        resolve({ timedOut: true });
       }, effectiveTimeout);
       pendingExtensionUI.set(id, { resolve, timer, ...meta });
       post({ type: "extension-ui-request", request: requestPayload });
@@ -93,10 +97,10 @@ function createDesktopExtensionUIContext() {
   };
 
   return {
-    select: (title, options, opts) => request({ method: "select", title, options, timeout: opts?.timeout }, undefined, opts?.timeout),
-    confirm: (title, message, opts) => request({ method: "confirm", title, message, timeout: opts?.timeout }, false, opts?.timeout),
-    input: (title, placeholder, opts) => request({ method: "input", title, placeholder, timeout: opts?.timeout }, undefined, opts?.timeout),
-    editor: (title, prefill) => request({ method: "editor", title, prefill }, undefined),
+    select: (title, options, opts) => request({ method: "select", title, options, timeout: opts?.timeout }, opts?.timeout),
+    confirm: (title, message, opts) => request({ method: "confirm", title, message, timeout: opts?.timeout }, opts?.timeout, opts?.onIssued),
+    input: (title, placeholder, opts) => request({ method: "input", title, placeholder, timeout: opts?.timeout }, opts?.timeout),
+    editor: (title, prefill) => request({ method: "editor", title, prefill }),
     notify: (message, notifyType) => {
       post({ type: "extension-ui-request", request: { type: "extension_ui_request", id: randomUUID(), method: "notify", message, notifyType, ...extensionMeta() } });
     },
@@ -145,9 +149,98 @@ async function bindSession(session) {
     toolCallGuard: createPermissionGuard({
       profile: permissionProfile,
       cwd: runtime.cwd,
-      confirm: (title, message) => uiContext.confirm(title, message),
+      confirm: (title, message, onIssued) => uiContext.confirm(title, message, { onIssued }),
+      facts: {
+        runId: () => activeRunId ?? "",
+        appendAsked: (asked) => appendFact(session.sessionManager, asked),
+        appendDecided: (decided) => appendFact(session.sessionManager, decided),
+      },
     }),
   });
+}
+
+/**
+ * Durable operation bookkeeping around one prompt. The first prompt of a run
+ * opens an `operation_started` fact; steering/followUp prompts join the open
+ * operation instead of opening a second one (two open operations would be
+ * reducer-level corruption). Best effort: fact failures never block prompts.
+ */
+function beginOperationFact(session, operationId, text) {
+  activeRunId = operationId;
+  try {
+    appendFact(session.sessionManager, {
+      type: "operation_started",
+      id: operationId,
+      lane: "main",
+      sourceLeafId: session.sessionManager.getLeafId(),
+      intent: {
+        kind: "run",
+        originalPrompt: [{ role: "user", content: [{ type: "text", text }], timestamp: Date.now() }],
+        initialMessages: [],
+      },
+      timestamp: Date.now(),
+    });
+  } catch (error) {
+    console.error("operation_started fact failed", error);
+  }
+}
+
+function endOperationFact(session, operationId, outcome, error) {
+  try {
+    appendFact(session.sessionManager, {
+      type: "operation_finished",
+      id: `finish-${operationId}`,
+      lane: "main",
+      runId: operationId,
+      outcome,
+      ...(outcome === "failed" && error
+        ? { error: { code: String(error.code ?? error.name ?? "error"), message: String(error.message ?? error).slice(0, 500) } }
+        : {}),
+      timestamp: Date.now(),
+    });
+  } catch (factError) {
+    console.error("operation_finished fact failed", factError);
+  }
+}
+
+/**
+ * Record a compaction as an operation fact pair. The Pi compact API only
+ * reveals its compaction entry afterwards, so both records are appended once
+ * the outcome is known — still truthful, still append-only.
+ */
+function recordCompactionFact(sessionManager, knownIds, error) {
+  const newest = [...sessionManager.getEntries()]
+    .reverse()
+    .find((entry) => entry.type === "compaction" && !knownIds.has(entry.id));
+  if (!newest && !error) return;
+  const operationId = `op-${randomUUID()}`;
+  try {
+    appendFact(sessionManager, {
+      type: "operation_started",
+      id: operationId,
+      lane: "main",
+      sourceLeafId: null,
+      intent: { kind: "compaction", resultEntryId: newest ? newest.id : `missing-${operationId}` },
+      timestamp: Date.now(),
+    });
+    endOperationFact({ sessionManager }, operationId, error ? "failed" : "completed", error ?? undefined);
+  } catch (factError) {
+    console.error("compaction facts failed", factError);
+  }
+}
+
+/** Close approval asks and open operations left behind by a previous worker's death. */
+function settleSessionFacts() {
+	try {
+		closeStaleApprovals(runtime.session.sessionManager);
+	} catch (error) {
+		console.error("stale approval recovery failed", error);
+	}
+	try {
+		closeStaleOperations(runtime.session.sessionManager);
+	} catch (error) {
+		console.error("stale operation recovery failed", error);
+	}
 }
 
 function attach(session) {
@@ -157,8 +250,6 @@ function attach(session) {
     /* best effort */
   }
   unsubscribe = session.subscribe((event) => {
-    if (event?.type === "agent_start" || event?.type === "turn_start") activeRunId = activeRunId ?? `run-${Date.now()}-${eventSequence + 1}`;
-    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") activeRunId = null;
     const meta = {
       sequence: ++eventSequence,
       sessionId: runtime?.session?.sessionId ?? session?.sessionId,
@@ -214,6 +305,7 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   });
   attach(runtime.session);
   await bindSession(runtime.session);
+  settleSessionFacts();
   post({ type: "init-done", sessionId: runtime.session.sessionId, cwd: runtime.cwd });
 }
 
@@ -245,11 +337,29 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
       error.code = "stale_runtime";
       throw error;
     }
+    // A prompt issued while a run is streaming steers that run: it joins the
+    // open operation instead of opening a second one.
+    let operationId = null;
+    if (!session.isStreaming && !activeRunId) {
+      operationId = `op-${randomUUID()}`;
+      beginOperationFact(session, operationId, text);
+    }
     const trackedClientMessageId = typeof clientMessageId === "string" ? clientMessageId : null;
     if (trackedClientMessageId) activeClientMessageIds.add(trackedClientMessageId);
     try {
       await session.prompt(text, options);
       autoTitleFor(text);
+      if (operationId) {
+        endOperationFact(session, operationId, "completed");
+        if (activeRunId === operationId) activeRunId = null;
+      }
+    } catch (error) {
+      if (operationId) {
+        const aborted = error instanceof Error && (error.name === "AbortError" || /abort/i.test(error.message));
+        endOperationFact(session, operationId, aborted ? "aborted" : "failed", error);
+        if (activeRunId === operationId) activeRunId = null;
+      }
+      throw error;
     } finally {
       if (trackedClientMessageId) activeClientMessageIds.delete(trackedClientMessageId);
     }
@@ -349,6 +459,7 @@ async function recreateForWorkspace(workspace) {
   });
   attach(runtime.session);
   await bindSession(runtime.session);
+  settleSessionFacts();
 }
 
 const methods = {
@@ -408,7 +519,18 @@ const methods = {
     return bridge.snapshotOf(runtime);
   },
   listCommands: () => bridge.listCommands(runtime),
-  compact: () => runtime.session.compact().then(() => bridge.snapshotOf(runtime)),
+  compact: async () => {
+    const sessionManager = runtime.session.sessionManager;
+    const knownIds = new Set(sessionManager.getEntries().map((entry) => entry.id));
+    try {
+      await runtime.session.compact();
+    } catch (error) {
+      recordCompactionFact(sessionManager, knownIds, error);
+      throw error;
+    }
+    recordCompactionFact(sessionManager, knownIds, null);
+    return bridge.snapshotOf(runtime);
+  },
   authStatus: () => bridge.authStatusOf(runtime),
   newSession: async ({ workspace, title, projectTrusted: trusted }) => {
     const nextTrusted = typeof trusted === "boolean" ? trusted : projectTrusted;
@@ -439,6 +561,7 @@ const methods = {
       error.code = "cancelled";
       throw error;
     }
+    settleSessionFacts();
     return bridge.sessionRecordOf(runtime);
   },
   fork: async ({ entryId }) => {

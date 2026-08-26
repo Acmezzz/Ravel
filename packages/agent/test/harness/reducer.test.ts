@@ -1125,3 +1125,96 @@ describe("lane-state reduction", () => {
 		expect(input.records[0]).toMatchObject({ type: "queue_enqueued", target: { id: "next" } });
 	});
 });
+
+describe("approval pairing", () => {
+	function approvalAsked(
+		seq: number,
+		overrides: Partial<
+			Pick<
+				Extract<LaneRecord, { type: "approval_asked" }>,
+				"id" | "runId" | "toolCallId" | "toolName" | "argsDigest"
+			>
+		> = {},
+	): Extract<LaneRecord, { type: "approval_asked" }> {
+		return {
+			type: "approval_asked",
+			id: overrides.id ?? `ask-${seq}`,
+			lane: "main",
+			seq,
+			timestamp: seq,
+			runId: overrides.runId ?? "run-1",
+			toolCallId: overrides.toolCallId ?? "call-1",
+			toolName: overrides.toolName ?? "bash",
+			argsDigest: overrides.argsDigest ?? "digest-1",
+		};
+	}
+
+	function approvalDecided(
+		seq: number,
+		overrides: Partial<
+			Pick<Extract<LaneRecord, { type: "approval_decided" }>, "id" | "runId" | "toolCallId" | "askedId" | "outcome">
+		> = {},
+	): Extract<LaneRecord, { type: "approval_decided" }> {
+		return {
+			type: "approval_decided",
+			id: overrides.id ?? `decide-${seq}`,
+			lane: "main",
+			seq,
+			timestamp: seq,
+			runId: overrides.runId ?? "run-1",
+			toolCallId: overrides.toolCallId ?? "call-1",
+			askedId: overrides.askedId ?? "ask-2",
+			outcome: overrides.outcome ?? "allowed-once",
+		};
+	}
+
+	it("accepts a well-formed ask/decide pair", () => {
+		const records = [runStarted(1), approvalAsked(2), approvalDecided(3)];
+		expect(validateRecordLog(recoverySlice(records))).toBeUndefined();
+	});
+
+	it("accepts every closed-vocabulary outcome", () => {
+		for (const outcome of ["allowed-once", "rejected", "cancelled", "unavailable"] as const) {
+			const records = [runStarted(1), approvalAsked(2), approvalDecided(3, { outcome })];
+			expect(validateRecordLog(recoverySlice(records))).toBeUndefined();
+		}
+	});
+
+	const approvalCorruptionCases: { name: string; reason: RecordLogCorruptionReason; records: () => LaneRecord[] }[] = [
+		{
+			name: "a decision without a prior ask",
+			reason: "approval_decision_without_ask",
+			records: (): LaneRecord[] => [runStarted(1), approvalDecided(2)],
+		},
+		{
+			name: "a decision whose tool identity differs from its ask",
+			reason: "approval_identity_mismatch",
+			records: (): LaneRecord[] => [
+				runStarted(1),
+				approvalAsked(2),
+				approvalAsked(3, { id: "ask-3", toolCallId: "call-2" }),
+				approvalDecided(4, { id: "decide-cross", askedId: "ask-3", toolCallId: "call-1" }),
+			],
+		},
+		{
+			name: "two decisions for one ask",
+			reason: "duplicate_approval_decision",
+			records: (): LaneRecord[] => [
+				runStarted(1),
+				approvalAsked(2),
+				approvalDecided(3),
+				approvalDecided(4, { id: "decide-again", outcome: "rejected" }),
+			],
+		},
+	];
+	for (const { name, reason, records } of approvalCorruptionCases) {
+		it(`rejects ${name}`, () => {
+			expectCorruption(recoverySlice(records()), reason);
+		});
+	}
+
+	it("rejects decisions appended after the operation finished via the generic finish rule", () => {
+		const records = [runStarted(1), operationFinished(2), approvalAsked(3), approvalDecided(4, { askedId: "ask-3" })];
+		expectCorruption(recoverySlice(records), "record_after_finish");
+	});
+});

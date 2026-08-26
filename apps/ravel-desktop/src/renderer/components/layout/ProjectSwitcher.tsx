@@ -33,12 +33,11 @@ let workspaceLoadGeneration = 0;
 
 async function applyWorkspaceRecord(generation: number): Promise<void> {
   const store = useAppStore.getState();
-  const [state, models, commands, sessions, extensions, git] = await Promise.all([
+  const [state, models, commands, sessions, git] = await Promise.all([
     ipc.getState(),
     ipc.listModels(),
     ipc.listCommands(),
     ipc.listSessions(),
-    ipc.queryExtensionState({ scope: "all" }),
     ipc.gitSnapshot(),
   ]);
   if (generation !== workspaceLoadGeneration) return;
@@ -52,7 +51,6 @@ async function applyWorkspaceRecord(generation: number): Promise<void> {
   if (models.ok) store.setModels(models.data);
   if (commands.ok) store.setCommands(commands.data);
   if (sessions.ok) store.applySessionPage(sessions.data);
-  if (extensions.ok) store.setExtensionState(extensions.data);
   store.setGitSnapshot(git.ok ? git.data : null);
   store.closeViewer();
   store.bumpWorkspaceEpoch();

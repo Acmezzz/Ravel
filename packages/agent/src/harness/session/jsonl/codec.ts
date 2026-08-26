@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "../../types.ts";
 import type { SessionMutation } from "../state.ts";
 import type { Entry, LaneRecord } from "../types.ts";
+import { APPROVAL_OUTCOMES, APPROVAL_REASON_CODES } from "../types.ts";
 import { JsonlDecodeError } from "./errors.ts";
 import type { JsonlSessionMetadata, JsonlV4Header } from "./types.ts";
 
@@ -23,6 +24,8 @@ const RECORD_TYPES = new Set<LaneRecord["type"]>([
 	"queue_cancelled",
 	"write_deferred",
 	"usage",
+	"approval_asked",
+	"approval_decided",
 ]);
 const OPERATION_KINDS = new Set(["run", "compaction", "navigation"]);
 
@@ -162,6 +165,27 @@ function parseRecordMutation(
 		}
 	}
 	if (type === "operation_finished") requireString(value.runId, "runId");
+	if (type === "approval_asked") {
+		requireString(value.runId, "runId");
+		requireString(value.toolCallId, "toolCallId");
+		requireString(value.toolName, "toolName");
+		requireString(value.argsDigest, "argsDigest");
+		// Optional explainability fields: absent on legacy asks, validated when present.
+		if (value.policyProfile !== undefined) requireString(value.policyProfile, "policyProfile");
+	}
+	if (type === "approval_decided") {
+		requireString(value.runId, "runId");
+		requireString(value.toolCallId, "toolCallId");
+		requireString(value.askedId, "askedId");
+		if (!APPROVAL_OUTCOMES.includes(value.outcome as never)) {
+			throw new JsonlDecodeError("schema", `has invalid approval outcome ${JSON.stringify(value.outcome)}`);
+		}
+		if (value.policyProfile !== undefined) requireString(value.policyProfile, "policyProfile");
+		if (value.uiRequestId !== undefined) requireString(value.uiRequestId, "uiRequestId");
+		if (value.reasonCode !== undefined && !APPROVAL_REASON_CODES.includes(value.reasonCode as never)) {
+			throw new JsonlDecodeError("schema", `has invalid approval reason code ${JSON.stringify(value.reasonCode)}`);
+		}
+	}
 	const { kind: _kind, ...recordFields } = value;
 	return {
 		kind: "record",

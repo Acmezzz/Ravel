@@ -44,7 +44,6 @@ export const IPC_CHANNELS = {
   getSystemPrompt: "omega:getSystemPrompt",
   exportHtml: "omega:exportHtml",
   bash: "omega:bash",
-  queryExtensionState: "omega:queryExtensionState",
   listDir: "omega:listDir",
   readFile: "omega:readFile",
   readFilePage: "omega:readFilePage",

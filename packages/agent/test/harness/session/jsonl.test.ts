@@ -825,3 +825,172 @@ describe("JSONL v4 persistence", () => {
 		expect(existsSync(`${metadata.path}.tmp`)).toBe(false);
 	});
 });
+
+describe("JSONL approval records", () => {
+	it("persists an approval ask/decide pair and preserves it across reopen", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		const session = await repository.create({ id: "approvals", cwd: root });
+		const asked = await session.appendRecord({
+			type: "approval_asked",
+			id: "ask-1",
+			lane: "main",
+			runId: "run-1",
+			toolCallId: "call-1",
+			toolName: "bash",
+			argsDigest: "sha256:abc123",
+		});
+		const decided = await session.appendRecord({
+			type: "approval_decided",
+			id: "decide-1",
+			lane: "main",
+			runId: "run-1",
+			toolCallId: "call-1",
+			askedId: "ask-1",
+			outcome: "rejected",
+		});
+
+		expect(asked.seq).toBeGreaterThan(0);
+		expect(decided.seq).toBe(asked.seq + 1);
+
+		const reopened = await repository.open(await session.getMetadata());
+		const records = await reopened.findRecords({ lane: "main", order: "oldestFirst" });
+		const approvals = records.filter((record) => record.type.startsWith("approval_"));
+		expect(approvals.map((record) => record.type)).toEqual(["approval_asked", "approval_decided"]);
+		expect(approvals[1]).toMatchObject({ askedId: "ask-1", outcome: "rejected" });
+		expect("argsDigest" in approvals[1]!).toBe(false);
+		expect((approvals[0] as { argsDigest?: string }).argsDigest).toBe("sha256:abc123");
+	});
+
+	it("rejects a decision outcome outside the closed vocabulary on open", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		await repository.create({ id: "bad-outcome", cwd: root });
+		const metadata = (await repository.list({ cwd: root }))[0]!;
+		const lines = readFileSync(metadata.path, "utf8").split("\n").filter(Boolean);
+		const mutations = [
+			{ kind: "lane", seq: 1, lane: "main", leafId: null },
+			{
+				kind: "record",
+				seq: 2,
+				type: "approval_decided",
+				id: "decide-bad",
+				lane: "main",
+				timestamp: 2,
+				runId: "run-1",
+				toolCallId: "call-1",
+				askedId: "ask-missing",
+				outcome: "maybe",
+			},
+		];
+		writeFileSync(
+			metadata.path,
+			`${[...lines.slice(0, 1), ...mutations.map((m) => JSON.stringify(m))].join("\n")}\n`,
+		);
+
+		await expect(repository.open(metadata)).rejects.toMatchObject({ code: "invalid_entry" });
+	});
+
+	it("rejects an approval record with a missing pairing field on open", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		await repository.create({ id: "missing-field", cwd: root });
+		const metadata = (await repository.list({ cwd: root }))[0]!;
+		const lines = readFileSync(metadata.path, "utf8").split("\n").filter(Boolean);
+		const mutations = [
+			{ kind: "lane", seq: 1, lane: "main", leafId: null },
+			{
+				kind: "record",
+				seq: 2,
+				type: "approval_decided",
+				id: "decide-no-ask",
+				lane: "main",
+				timestamp: 2,
+				runId: "run-1",
+				toolCallId: "call-1",
+				outcome: "allowed-once",
+			},
+		];
+		writeFileSync(
+			metadata.path,
+			`${[...lines.slice(0, 1), ...mutations.map((m) => JSON.stringify(m))].join("\n")}\n`,
+		);
+
+		await expect(repository.open(metadata)).rejects.toMatchObject({ code: "invalid_entry" });
+	});
+
+	it("persists explainability fields and keeps legacy records without them readable", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		const session = await repository.create({ id: "explainability", cwd: root });
+		await session.appendRecord({
+			type: "approval_asked",
+			id: "ask-e1",
+			lane: "main",
+			runId: "run-1",
+			toolCallId: "call-1",
+			toolName: "bash",
+			argsDigest: "sha256:abc123",
+			policyProfile: "ask-before-command",
+		});
+		await session.appendRecord({
+			type: "approval_decided",
+			id: "decide-e1",
+			lane: "main",
+			runId: "run-1",
+			toolCallId: "call-1",
+			askedId: "ask-e1",
+			outcome: "allowed-once",
+			reasonCode: "user-allowed",
+			uiRequestId: "ui-req-7",
+		});
+		// A legacy decision written before explainability fields existed.
+		await session.appendRecord({
+			type: "approval_decided",
+			id: "decide-legacy",
+			lane: "main",
+			runId: "run-1",
+			toolCallId: "call-2",
+			askedId: "ask-missing-legacy",
+			outcome: "rejected",
+		});
+
+		const reopened = await repository.open(await session.getMetadata());
+		const records = await reopened.findRecords({ lane: "main", order: "oldestFirst" });
+		const decided = records.filter((record) => record.type === "approval_decided");
+		expect(decided[0]).toMatchObject({ reasonCode: "user-allowed", uiRequestId: "ui-req-7" });
+		expect("reasonCode" in decided[1]!).toBe(false);
+		const asked = records.find((record) => record.type === "approval_asked") as { policyProfile?: string };
+		expect(asked.policyProfile).toBe("ask-before-command");
+	});
+
+	it("rejects a decision with an unknown reason code on open", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		await repository.create({ id: "bad-reason", cwd: root });
+		const metadata = (await repository.list({ cwd: root }))[0]!;
+		const lines = readFileSync(metadata.path, "utf8").split("\n").filter(Boolean);
+		const mutations = [
+			{ kind: "lane", seq: 1, lane: "main", leafId: null },
+			{
+				kind: "record",
+				seq: 2,
+				type: "approval_decided",
+				id: "decide-bad-reason",
+				lane: "main",
+				timestamp: 2,
+				runId: "run-1",
+				toolCallId: "call-1",
+				askedId: "ask-1",
+				outcome: "rejected",
+				reasonCode: "because-i-said-so",
+			},
+		];
+		writeFileSync(
+			metadata.path,
+			`${[...lines.slice(0, 1), ...mutations.map((m) => JSON.stringify(m))].join("\n")}\n`,
+		);
+
+		await expect(repository.open(metadata)).rejects.toMatchObject({ code: "invalid_entry" });
+	});
+});

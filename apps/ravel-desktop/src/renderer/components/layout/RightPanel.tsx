@@ -7,8 +7,6 @@ import Tooltip from "@mui/material/Tooltip";
 import CloseIcon from "@mui/icons-material/Close";
 import { useAppStore } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
-import { WorkflowPanel } from "../panels/WorkflowPanel";
-import { ScoutPanel } from "../panels/ScoutPanel";
 import { DiffViewer } from "../panels/DiffViewer";
 import { WorktreePanel } from "../panels/WorktreePanel";
 
@@ -38,8 +36,6 @@ export function RightPanel(): React.ReactElement {
           scrollButtons={false}
           sx={{ flexGrow: 1, minWidth: 0, minHeight: 40, "& .MuiTab-root": { minHeight: 40, minWidth: 0, px: 0.75, fontSize: "0.75rem" } }}
         >
-          <Tab label={t("nav.tab.workflow")} value="workflow" />
-          <Tab label={t("nav.tab.scout")} value="scout" />
           <Tab label={t("nav.tab.diff")} value="diff" />
           <Tab label={t("nav.tab.worktree")} value="worktree" />
         </Tabs>
@@ -61,8 +57,6 @@ export function RightPanel(): React.ReactElement {
           flexDirection: "column",
         }}
       >
-        {rightTab === "workflow" ? <WorkflowPanel /> : null}
-        {rightTab === "scout" ? <ScoutPanel /> : null}
         {rightTab === "diff" ? <DiffViewer /> : null}
         {rightTab === "worktree" ? <WorktreePanel /> : null}
       </Box>

@@ -11,6 +11,7 @@ import type {
 	ToolStartedRecord,
 	WriteDeferredRecord,
 } from "./session/types.ts";
+import { APPROVAL_OUTCOMES } from "./session/types.ts";
 
 /**
  * Machine-readable category for a contradiction in a lane's durable recovery
@@ -31,7 +32,11 @@ export type RecordLogCorruptionReason =
 	| "tool_call_mismatch"
 	| "duplicate_tool_invocation"
 	| "provisioned_entry_mismatch"
-	| "invalid_deferred_handle";
+	| "invalid_deferred_handle"
+	| "approval_decision_without_ask"
+	| "approval_identity_mismatch"
+	| "duplicate_approval_decision"
+	| "invalid_approval_outcome";
 
 export class RecordLogCorruption extends Error {
 	readonly reason: RecordLogCorruptionReason;
@@ -282,6 +287,44 @@ function validateDeferredHandles(entries: Iterable<Entry>): void {
 	}
 }
 
+interface ApprovalAskState {
+	runId: string;
+	toolCallId: string;
+}
+
+/**
+ * Tracks approval ask/decided pairing. Decisions must close a prior ask with
+ * matching identity, exactly once, and outcomes stay in the closed vocabulary.
+ */
+class ApprovalPairing {
+	private readonly asks = new Map<string, ApprovalAskState>();
+	private readonly decidedAsks = new Set<string>();
+
+	ask(record: Extract<LaneRecord, { type: "approval_asked" }>): void {
+		this.asks.set(record.id, { runId: record.runId, toolCallId: record.toolCallId });
+	}
+
+	decide(record: Extract<LaneRecord, { type: "approval_decided" }>): void {
+		const ask = this.asks.get(record.askedId);
+		if (!ask) {
+			corrupt(
+				"approval_decision_without_ask",
+				`Approval decision ${record.id} closes unknown ask ${record.askedId}`,
+			);
+		}
+		if (this.decidedAsks.has(record.askedId)) {
+			corrupt("duplicate_approval_decision", `Approval ask ${record.askedId} is decided more than once`);
+		}
+		if (ask.runId !== record.runId || ask.toolCallId !== record.toolCallId) {
+			corrupt(
+				"approval_identity_mismatch",
+				`Approval decision ${record.id} does not match the run/tool identity of ask ${record.askedId}`,
+			);
+		}
+		this.decidedAsks.add(record.askedId);
+	}
+}
+
 function validateOperationResult(entriesById: ReadonlyMap<string, Entry>, record: OperationStartedRecord): void {
 	switch (record.intent.kind) {
 		case "run":
@@ -316,6 +359,7 @@ export function validateRecordLog(input: RecordLogSlice): void {
 
 	const entriesById = new Map(input.entries.map((entry) => [entry.id, entry]));
 	validateDeferredHandles(entriesById.values());
+	const approvals = new ApprovalPairing();
 	const starts = new Map<string, OperationStartedRecord>();
 	const finishedAt = new Map<string, number>();
 	const abortedAt = new Map<string, number>();
@@ -382,6 +426,18 @@ export function validateRecordLog(input: RecordLogSlice): void {
 			}
 			case "write_deferred":
 				validateExactProvisionedEntry(entriesById, record.target);
+				break;
+			case "approval_asked":
+				approvals.ask(record);
+				break;
+			case "approval_decided":
+				if (!APPROVAL_OUTCOMES.includes(record.outcome)) {
+					corrupt(
+						"invalid_approval_outcome",
+						`Approval decision ${record.id} has outcome ${JSON.stringify(record.outcome)}`,
+					);
+				}
+				approvals.decide(record);
 				break;
 			case "usage":
 				break;

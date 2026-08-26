@@ -1,43 +1,34 @@
 /**
  * Minimal SDK smoke test (route-1 foundation).
- * Verifies: createAgentSession instantiates, your two extensions load,
+ * Verifies: createAgentSession instantiates with the generic extensions root,
  * and a trivial prompt round-trips — all in a plain Node process.
  * Run from ravel-desktop:  npm run sdk-check
  */
 import {
-  createAgentSession,
-  DefaultResourceLoader,
-  SettingsManager,
+	createAgentSession,
+	DefaultResourceLoader,
+	SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { toRendererEvent } from "../electron/agent-bridge.js";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 const agentDir = join(homedir(), ".pi", "agent");
 const cwd = process.cwd();
-// Your two plugins are directories, each with its own index.ts entry point.
-const RAVEL_EXT = resolve(fileURLToPath(new URL("../../../.pi/extensions", import.meta.url)));
-const pluginEntries = [
-	join(RAVEL_EXT, "journal-workflow", "index.ts"),
-	join(RAVEL_EXT, "exploration-scout", "index.ts"),
-];
 
 async function main() {
-  const projected = toRendererEvent({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "offline" } });
-  if (!projected.some((event) => event?.assistantMessageEvent?.type === "text_delta")) throw new Error("offline event projection failed");
-  console.log("[sdk-check] offline event projection: PASS");
-  if (process.env.RAVEL_LIVE_PROVIDER ?? process.env.OMEGA_LIVE_PROVIDER !== "1") {
-    console.log("[sdk-check] live prompt: SKIPPED (set RAVEL_LIVE_PROVIDER=1 to require provider/network smoke)");
-    return;
-  }
+	const projected = toRendererEvent({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "offline" } });
+	if (!projected.some((event) => event?.assistantMessageEvent?.type === "text_delta")) throw new Error("offline event projection failed");
+	console.log("[sdk-check] offline event projection: PASS");
+	if (process.env.RAVEL_LIVE_PROVIDER !== "1") {
+		console.log("[sdk-check] live prompt: SKIPPED (set RAVEL_LIVE_PROVIDER=1 to require provider/network smoke)");
+		return;
+	}
 	console.log("[sdk-check] agentDir =", agentDir);
-	console.log("[sdk-check] plugin entries =", pluginEntries);
 
 	const resourceLoader = new DefaultResourceLoader({
 		cwd,
 		agentDir,
-		additionalExtensionPaths: pluginEntries,
 		settingsManager: SettingsManager.create(cwd, agentDir),
 	});
 	await resourceLoader.reload();
@@ -50,18 +41,12 @@ async function main() {
 	});
 
 	const extNames = extensionsResult.extensions.map((e) => {
-	const segs = e.path.split(/[\\/]/).filter(Boolean);
-	return segs.at(-2) && segs.at(-1) === "index.ts" ? segs.at(-2) : segs.at(-1);
-}).filter(Boolean);
-const errors = extensionsResult.errors.map((e) => `${e.path}: ${e.error}`);
-console.log("[sdk-check] loaded extensions:", extNames.length ? extNames.join(", ") : "(none)");
+		const segs = e.path.split(/[\\/]/).filter(Boolean);
+		return segs.at(-2) && segs.at(-1) === "index.ts" ? segs.at(-2) : segs.at(-1);
+	}).filter(Boolean);
+	const errors = extensionsResult.errors.map((e) => `${e.path}: ${e.error}`);
+	console.log("[sdk-check] loaded extensions:", extNames.length ? extNames.join(", ") : "(none)");
 	console.log("[sdk-check] extension errors:", errors.length ? errors.join(" | ") : "(none)");
-
-	const loaded = JSON.stringify(extNames).toLowerCase();
-	const hasJournal = loaded.includes("journal-workflow");
-	const hasScout = loaded.includes("exploration-scout");
-	console.log(`[sdk-check] journal-workflow loaded: ${hasJournal ? "YES" : "NO"}`);
-	console.log(`[sdk-check] exploration-scout loaded: ${hasScout ? "YES" : "NO"}`);
 
 	try {
 		let gotDelta = false;
@@ -72,27 +57,13 @@ console.log("[sdk-check] loaded extensions:", extNames.length ? extNames.join(",
 		});
 		await session.prompt("Reply with exactly: ok");
 		console.log(`[sdk-check] prompt round-trip streamed text: ${gotDelta ? "YES" : "NO"}`);
-			if (!gotDelta) throw new Error("prompt round-trip produced no text_delta");
-		} catch (err) {
-			console.error("[sdk-check] prompt round-trip failed:", err?.message ?? String(err));
-			throw err;
-		}
+		if (!gotDelta) throw new Error("prompt round-trip produced no text_delta");
+	} catch (err) {
+		console.error("[sdk-check] prompt round-trip failed:", err?.message ?? String(err));
+		throw err;
+	}
 
-
-	// Proof the plugins actually WIRED (not merely loaded): journal-workflow writes
-	// to <agentDir>/journals on session events. Check it has content after the run.
-	const journalsDir = join(agentDir, "journals");
-	const { readdirSync } = await import("node:fs");
-	let journalWrote = false;
-	try {
-		const projects = readdirSync(journalsDir);
-		for (const p of projects) {
-			const tasks = readdirSync(join(journalsDir, p));
-			if (tasks.length > 0) journalWrote = true;
-		}
-	} catch { /* no journals dir yet */ }
-	console.log(`[sdk-check] journal-workflow WIRED (journals written): ${journalWrote ? "YES" : "NO"}`);
-	if (!hasJournal || !hasScout || errors.length > 0 || !journalWrote) throw new Error("SDK smoke assertions failed");
+	if (errors.length > 0) throw new Error("SDK smoke assertions failed");
 	session.dispose();
 	process.exit(0);
 }

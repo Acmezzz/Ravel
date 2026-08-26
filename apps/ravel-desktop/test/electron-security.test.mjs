@@ -98,19 +98,6 @@ test("message_start keeps IDs and strips raw sensitive event fields (thinking)",
   });
 });
 
-test("state-reader never exposes rawOutput as a DTO field and does not import extension source", async () => {
-  const source = await read("../electron/state-reader.js");
-  // The renderer-facing DTO must not carry the scout rawOutput field.
-  // (Mentions in documentation comments are allowed; only code-level exposure is forbidden.)
-  assert.doesNotMatch(source, /rawOutput\s*[:=]/, "rawOutput is not assigned/exposed as a field");
-  // It must not import the upstream extension source (read-only re-implementation).
-  assert.doesNotMatch(
-    source,
-    /import\s+[^;]*from\s+["'][^"']*(journal-workflow|exploration-scout)/,
-    "does not import upstream extension source",
-  );
-});
-
 test("workspace picker and registry IPC stay behind senderAllowed", async () => {
   const source = await read("../electron/main.js");
   for (const channel of ["omega:listWorkspaces", "omega:chooseWorkspace"]) {
@@ -124,7 +111,6 @@ test("workspace picker and registry IPC stay behind senderAllowed", async () => 
 test("new IPC handlers stay behind senderAllowed and return an IpcResult envelope", async () => {
   const source = await read("../electron/main.js");
   for (const channel of [
-    "omega:queryExtensionState",
     "omega:listSessions",
     "omega:newSession",
     "omega:loadSession",
@@ -176,7 +162,6 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
   assert.match(source, /typeof callback !== "function"/);
   assert.doesNotMatch(source, /exposeInMainWorld\([^,]+,\s*ipcRenderer/);
   for (const method of [
-    "queryExtensionState",
     "listSessions",
     "newSession",
     "loadSession",

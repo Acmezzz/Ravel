@@ -16,9 +16,10 @@ import {
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
-import { existsSync, lstatSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, realpathSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { FACT_CUSTOM_TYPE } from "./session-facts.js";
 
 export const AGENT_DIR = join(homedir(), ".pi", "agent");
 const DEV_EXTENSIONS_ROOT = resolve(fileURLToPath(new URL("../../../.pi/extensions", import.meta.url)));
@@ -40,11 +41,23 @@ function extensionsRootOf(value) {
   return root;
 }
 
-function additionalExtensionPaths(omegaExtensions) {
-  return [
-    join(omegaExtensions, "journal-workflow", "index.ts"),
-    join(omegaExtensions, "exploration-scout", "index.ts"),
-  ];
+/**
+ * Generic discovery over the extensions root: every subdirectory with an
+ * index.ts plus every top-level .ts module. No hardcoded extension names.
+ */
+function genericExtensionPaths(omegaExtensions) {
+  const paths = [];
+  for (const entry of readdirSync(omegaExtensions, { withFileTypes: true })) {
+    if (entry.name.startsWith(".") || entry.name === "README.md") continue;
+    const fullPath = join(omegaExtensions, entry.name);
+    if (entry.isDirectory()) {
+      const indexPath = join(fullPath, "index.ts");
+      if (existsSync(indexPath)) paths.push(indexPath);
+    } else if (entry.isFile() && entry.name.endsWith(".ts")) {
+      paths.push(fullPath);
+    }
+  }
+  return paths.sort();
 }
 
 /**
@@ -54,7 +67,8 @@ function additionalExtensionPaths(omegaExtensions) {
 export async function createRuntime({ cwd, extensionsRoot, projectTrusted = true }) {
   const omegaExtensions = extensionsRootOf(extensionsRoot);
   const trusted = projectTrusted === true;
-  const extraPaths = trusted ? additionalExtensionPaths(omegaExtensions) : [];
+  // Untrusted projects stay dormant: no additional extensions are loaded.
+  const extraPaths = trusted ? genericExtensionPaths(omegaExtensions) : [];
   let sharedModelRuntime;
 
   const createRuntimeFactory = async ({ cwd: nextCwd, agentDir, sessionManager, sessionStartEvent }) => {
@@ -322,25 +336,35 @@ function messageTimestamp(message) {
  * Build the full transcript from session branch entries (authoritative: has
  * entry ids for forking) with tool results paired by toolCallId. Includes
  * thinking text and raw tool args/results — full fidelity, size-capped.
+ *
+ * Also projects durable facts (operation/approval records) and compaction
+ * markers so the human timeline can address turns and boundaries without
+ * becoming a second authority.
  */
 export function sanitizeTranscript(messagesOrSession) {
   const outMessages = [];
   const toolCards = [];
+  const markers = [];
+  const operations = [];
+  const approvals = [];
   const resultByToolCallId = new Map();
 
-  let entries = null;
+  let items = null;
   const maybeSession = messagesOrSession;
   if (maybeSession && typeof maybeSession === "object" && typeof maybeSession.sessionManager?.getBranch === "function") {
-    entries = maybeSession.sessionManager.getBranch().filter((entry) => entry.type === "message");
+    const branch = maybeSession.sessionManager.getBranch();
+    projectFacts(branch, { markers, operations, approvals });
+    items = branch.filter((entry) => entry.type === "message");
   }
-  const items =
+  const entries = items;
+  const list =
     entries ??
     (Array.isArray(messagesOrSession)
       ? messagesOrSession.map((message, index) => ({ id: String(message?.id ?? `entry-${index}`), timestamp: messageTimestamp(message), message }))
       : []);
 
   // First pass: collect tool results keyed by toolCallId.
-  for (const entry of items) {
+  for (const entry of list) {
     const message = entry.message;
     if (!message || message.role !== "toolResult") continue;
     const toolCallId = textValue(message.toolCallId);
@@ -351,7 +375,7 @@ export function sanitizeTranscript(messagesOrSession) {
     });
   }
 
-  for (const entry of items) {
+  for (const entry of list) {
     const message = entry.message;
     if (!message || typeof message !== "object") continue;
     if (message.role === "user") {
@@ -401,7 +425,91 @@ export function sanitizeTranscript(messagesOrSession) {
       }
     }
   }
-  return { messages: outMessages, toolCards };
+
+  // Project each durable decision onto its tool card by toolCallId.
+  const outcomeByToolCallId = new Map();
+  for (const approval of approvals) {
+    if (approval.outcome) outcomeByToolCallId.set(approval.toolCallId, approval.outcome);
+  }
+  for (const card of toolCards) {
+    const outcome = outcomeByToolCallId.get(card.toolCallId);
+    if (outcome) card.approval = outcome;
+  }
+
+  return { messages: outMessages, toolCards, markers, operations, approvals };
+}
+
+/** Walk branch entries once, projecting compaction boundaries and facts. */
+function projectFacts(branch, { markers, operations, approvals }) {
+  let lastMessageEntryId = null;
+  for (const entry of branch) {
+    if (entry.type === "message") {
+      lastMessageEntryId = entry.id;
+      continue;
+    }
+    if (entry.type === "compaction") {
+      markers.push({
+        kind: "compaction",
+        entryId: entry.id,
+        afterEntryId: lastMessageEntryId,
+        ts: isoTimestamp(entry.timestamp),
+      });
+      continue;
+    }
+    if (entry.type !== "custom" || entry.customType !== FACT_CUSTOM_TYPE || !entry.data) continue;
+    const fact = entry.data;
+    switch (fact.type) {
+      case "operation_started":
+        operations.push({ id: fact.id, kind: fact.intent?.kind ?? "run", status: "open", startedAt: isoTimestamp(fact.timestamp) });
+        break;
+      case "operation_finished": {
+        const operation = operations.find((item) => item.id === fact.runId);
+        if (operation) {
+          operation.status = fact.outcome;
+          operation.finishedAt = isoTimestamp(fact.timestamp);
+        } else {
+          operations.push({ id: fact.runId, kind: "run", status: fact.outcome, startedAt: null, finishedAt: isoTimestamp(fact.timestamp) });
+        }
+        break;
+      }
+      case "approval_asked":
+        approvals.push({
+          askedId: fact.id,
+          runId: fact.runId,
+          toolCallId: fact.toolCallId,
+          outcome: null,
+          askedAt: isoTimestamp(fact.timestamp),
+          policyProfile: fact.policyProfile ?? null,
+        });
+        break;
+      case "approval_decided": {
+        const approval = approvals.find((item) => item.askedId === fact.askedId);
+        if (approval) {
+          approval.outcome = fact.outcome;
+          approval.reasonCode = fact.reasonCode ?? null;
+          if (fact.uiRequestId) approval.uiRequestId = fact.uiRequestId;
+        } else {
+          approvals.push({
+            askedId: null,
+            runId: fact.runId,
+            toolCallId: fact.toolCallId,
+            outcome: fact.outcome,
+            reasonCode: fact.reasonCode ?? null,
+            askedAt: null,
+            decidedAt: isoTimestamp(fact.timestamp),
+          });
+        }
+        break;
+      }
+    }
+  }
+}
+
+function isoTimestamp(value) {
+  if (typeof value === "number") return new Date(value).toISOString();
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && !Number.isNaN(Date.parse(value))) return value;
+  return undefined;
 }
 
 function rememberSessionPath(id, filePath) {
@@ -534,6 +642,9 @@ export function sessionRecordOf(runtime) {
     status: "active",
     messages: snap.messages ?? [],
     toolCards: snap.toolCards ?? [],
+    markers: snap.markers ?? [],
+    operations: snap.operations ?? [],
+    approvals: snap.approvals ?? [],
   };
 }
 

@@ -378,17 +378,6 @@ contextBridge.exposeInMainWorld("omega", {
   setSkillCommandsEnabled: (req) => ipcRenderer.invoke("omega:setSkillCommandsEnabled", {
     enabled: req?.enabled !== false,
   }),
-  queryExtensionState: (req) => {
-    const scope = typeof req?.scope === "string" ? req.scope : "all";
-    if (!["all", "workflow", "scout"].includes(scope)) {
-      return Promise.resolve({ ok: false, code: "invalid_args", message: "scope must be all|workflow|scout" });
-    }
-    return ipcRenderer.invoke("omega:queryExtensionState", {
-      scope,
-      projectKey: safeString(req?.projectKey, 512),
-      taskId: safeString(req?.taskId, 512),
-    });
-  },
 
   // ----- sessions -----
   listSessions: (req) => ipcRenderer.invoke("omega:listSessions", {

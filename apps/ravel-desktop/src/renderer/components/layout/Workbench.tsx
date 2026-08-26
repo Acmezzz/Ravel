@@ -3,8 +3,6 @@ import Box from "@mui/material/Box";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import ExploreIcon from "@mui/icons-material/Explore";
 import DifferenceIcon from "@mui/icons-material/Difference";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
@@ -251,28 +249,6 @@ export function Workbench(): React.ReactElement {
             <Tooltip title="展开右栏" placement="left">
               <IconButton size="small" aria-label="展开右侧面板" aria-expanded={false} aria-controls="omega-right-drawer" onClick={toggleRightPanel} sx={{ color: "var(--omega-text-dim)", minWidth: 36, minHeight: 36 }}>
                 <KeyboardArrowLeftIcon sx={{ fontSize: "1.25rem" }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="工作流">
-              <IconButton
-                size="small"
-                aria-label="打开工作流面板"
-                aria-pressed={rightTab === "workflow"}
-                onClick={() => setRightTab("workflow")}
-                sx={{ color: rightTab === "workflow" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "workflow" ? "var(--omega-selected)" : "transparent" }}
-              >
-                <AssessmentIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="探索 Scout">
-              <IconButton
-                size="small"
-                aria-label="打开 Scout 探索面板"
-                aria-pressed={rightTab === "scout"}
-                onClick={() => setRightTab("scout")}
-                sx={{ color: rightTab === "scout" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "scout" ? "var(--omega-selected)" : "transparent" }}
-              >
-                <ExploreIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="变更 Diff">

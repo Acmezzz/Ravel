@@ -7,5 +7,5 @@ test("Git review refreshes on focus and handles stale snapshots explicitly", asy
   assert.match(source, /setInterval/);
   assert.match(source, /window\.addEventListener\("focus"/);
   assert.match(source, /stale_diff_snapshot/);
-  assert.match(source, /请重新选择/);
+  assert.match(source, /diff\.error\.staleStage/);
 });

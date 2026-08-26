@@ -47,10 +47,12 @@ test("skill frontmatter can toggle disable-model-invocation in place", () => {
   assert.match(updated, /name: demo/);
 });
 
-test("untrusted runtimes do not pass additional Ravel extension paths", async () => {
+test("runtime loads extensions generically, gated on project trust", async () => {
   const source = await readFile(new URL("../electron/agent-bridge.js", import.meta.url), "utf8");
-  assert.match(source, /const trusted = projectTrusted === true/);
-  assert.match(source, /trusted \? additionalExtensionPaths\(omegaExtensions\) : \[\]/);
+  assert.doesNotMatch(source, /journal-workflow|exploration-scout/);
+  assert.match(source, /genericExtensionPaths\(omegaExtensions\)/);
+  assert.match(source, /trusted \? genericExtensionPaths\(omegaExtensions\) : \[\]/);
+  assert.match(source, /projectTrusted: trusted/);
 });
 
 test("resource bundle marks untrusted project items dormant", () => {

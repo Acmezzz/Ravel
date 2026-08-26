@@ -8,7 +8,6 @@ import type {
   WorkspaceInfo,
   ProjectTrustChoice,
   ProjectTrustInfo,
-  ExtensionStateBundle,
   SessionListPage,
   SessionRecord,
   SessionMessage,
@@ -119,11 +118,6 @@ export interface RavelBridge {
   setPermissionProfile(req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>>;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
-  queryExtensionState(req: {
-    scope?: "all" | "workflow" | "scout";
-    projectKey?: string;
-    taskId?: string;
-  }): Promise<IpcResult<ExtensionStateBundle>>;
   listSessions(req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>>;
   readSessionMessages(req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>>;
   newSession(req: {
@@ -259,11 +253,6 @@ export const ipc = {
     ok(await window.omega?.setProviderApiKey?.(req)),
   removeProviderApiKey: async (req: { providerId: string }): Promise<IpcResult<AuthStatus>> =>
     ok(await window.omega?.removeProviderApiKey?.(req)),
-  queryExtensionState: async (req: {
-    scope?: "all" | "workflow" | "scout";
-    projectKey?: string;
-    taskId?: string;
-  }): Promise<IpcResult<ExtensionStateBundle>> => ok(await window.omega?.queryExtensionState?.(req)),
   listSessions: async (req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>> =>
     ok(await window.omega?.listSessions?.(req)),
   readSessionMessages: async (req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>> =>

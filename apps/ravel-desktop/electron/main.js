@@ -25,7 +25,6 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { forgetSessionPath, piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
-import * as stateReader from "./state-reader.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
@@ -1190,7 +1189,14 @@ ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
   if (req?.keybindings && typeof req.keybindings === "object") {
     const normalized = sanitizeKeybindings(req.keybindings);
     if (normalized.conflicts.length > 0) return errorResult("invalid_args", `快捷键冲突：${normalized.conflicts.map((item) => item.binding).join(", ")}`);
-    patch.keybindings = { commandPalette: normalized.commandPalette, newSession: normalized.newSession, abort: normalized.abort };
+    patch.keybindings = {
+      commandPalette: normalized.commandPalette,
+      newSession: normalized.newSession,
+      abort: normalized.abort,
+      zoomIn: normalized.zoomIn,
+      zoomOut: normalized.zoomOut,
+      zoomReset: normalized.zoomReset,
+    };
   }
   if (typeof req?.permissionProfile === "string" && PERMISSION_PROFILES.includes(req.permissionProfile)) patch.permissionProfile = sanitizePermissionProfile(req.permissionProfile);
   if (typeof req?.lastSessionId === "string" || req?.lastSessionId === null) patch.lastSessionId = req.lastSessionId;
@@ -1469,21 +1475,6 @@ ipcMain.handle("omega:bash", async (event, req) => {
     return okResult({ output: result.data.output, exitCode: result.data.exitCode, cancelled: result.data.cancelled });
   }
   return result;
-});
-
-ipcMain.handle("omega:queryExtensionState", (event, req) => {
-  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
-  try {
-    const bundle = stateReader.readExtensionState({
-      scope: req?.scope ?? "all",
-      projectKey: req?.projectKey,
-      taskId: req?.taskId,
-      cwd: activeCwd ?? undefined,
-    });
-    return okResult(bundle);
-  } catch (error) {
-    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
-  }
 });
 
 ipcMain.handle("omega:readSessionMessages", async (event, req) => {

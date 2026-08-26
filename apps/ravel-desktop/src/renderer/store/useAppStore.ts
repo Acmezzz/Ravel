@@ -14,7 +14,6 @@ import type {
   SessionRecord,
   SessionMessage,
   SessionTree,
-  ExtensionStateBundle,
   AgentPermissionState,
   AgentPlan,
   AgentStateSnapshot,
@@ -29,6 +28,9 @@ import type {
   ExtensionUIRequest,
   ExtensionUIStatus,
   ExtensionUIWidget,
+  ApprovalOutcome,
+  TimelineOperation,
+  TranscriptMarker,
 } from "../types/dto";
 import type { ThemeMode } from "../theme/palettes";
 import { applyModeWithTransition } from "../theme/palettes";
@@ -52,6 +54,7 @@ export interface ToolCardState {
   resultText?: string;
   isError?: boolean;
   afterMessageId?: string;
+  approval?: ApprovalOutcome;
 }
 
 export interface QueuedMessages {
@@ -78,7 +81,7 @@ export interface LayoutState {
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   focusMode: boolean;
-  rightTab: "workflow" | "scout" | "diff" | "worktree";
+  rightTab: "diff" | "worktree";
   commandPaletteOpen: boolean;
   treeOpen: boolean;
   leftTab: "sessions" | "files";
@@ -112,13 +115,17 @@ export interface AppState {
   activeSessionId: string | null;
   messages: SessionMessage[];
   toolCards: ToolCardState[];
+  /** Compaction boundaries projected from the authoritative transcript. */
+  markers: TranscriptMarker[];
+  /** Durable run operations (turns) projected from session facts. */
+  operations: TimelineOperation[];
   queuedMessages: QueuedMessages;
   /** Pending optimistic bubbles keyed by their client prompt identity. */
   pendingOptimistic: PendingOptimisticMessage[];
   /** Legacy latest key retained for recovery compatibility; new code uses pendingOptimistic. */
   optimisticKey: string | null;
-  /** Assistant message id of the in-flight streaming run (deltas target it). */
-  streamingAssistantId: string | null;
+  /** Streaming assistant bubble ids keyed by `${sessionId}:${epoch}:${runId}` bucket. */
+  streamingBuckets: Record<string, string>;
   /** Epoch of the last agent_start — lets late prompt failures skip rollback. */
   lastAgentStartAt: number;
 
@@ -140,8 +147,6 @@ export interface AppState {
   workerError: string | null;
   canRetryWorker: boolean;
 
-  extensionState: ExtensionStateBundle;
-  extensionLoading: boolean;
   gitSnapshot: GitSnapshot | null;
   sessionTree: SessionTree | null;
   workspaceEpoch: number;
@@ -182,9 +187,10 @@ export interface AppState {
   dropLastIfOptimistic: (key: string) => void;
   /** Remove all unconfirmed optimistic bubbles after a worker recovery boundary. */
   dropAllOptimistic: () => void;
-  setStreamingAssistantId: (id: string | null) => void;
-  /** Ensure a streaming assistant bubble exists for this run; returns its id. */
-  ensureStreamingAssistant: () => string;
+  setStreamingBucket: (bucket: string, id: string) => void;
+  clearStreamingBuckets: () => void;
+  /** Ensure a streaming assistant bubble exists for this run bucket; returns its id. */
+  ensureStreamingAssistant: (bucket: string) => string;
 
   upsertToolCard: (summary: ToolExecutionSummaryEvent) => void;
   appendBashTail: (delta: string) => void;
@@ -200,8 +206,6 @@ export interface AppState {
   setCompacting: (compacting: boolean) => void;
   setRetrying: (retrying: boolean) => void;
 
-  setExtensionState: (bundle: ExtensionStateBundle) => void;
-  setExtensionLoading: (loading: boolean) => void;
   setGitSnapshot: (snapshot: GitSnapshot | null) => void;
   setSessionTree: (tree: SessionTree | null) => void;
   bumpWorkspaceEpoch: () => void;
@@ -263,10 +267,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeSessionId: null,
   messages: [],
   toolCards: [],
+  markers: [],
+  operations: [],
   queuedMessages: { steering: [], followUp: [] },
   pendingOptimistic: [],
   optimisticKey: null,
-  streamingAssistantId: null,
+  streamingBuckets: {},
   lastAgentStartAt: 0,
 
   agent: null,
@@ -287,8 +293,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   workerError: null,
   canRetryWorker: false,
 
-  extensionState: {},
-  extensionLoading: false,
   gitSnapshot: null,
   sessionTree: null,
   workspaceEpoch: 0,
@@ -301,7 +305,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     leftPanelOpen: true,
     rightPanelOpen: true,
     focusMode: false,
-    rightTab: "workflow",
+    rightTab: "diff",
     commandPaletteOpen: false,
     treeOpen: false,
     leftTab: "sessions",
@@ -366,11 +370,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         isError: card.isError,
         status: card.status === "error" ? "error" : "done",
         afterMessageId: card.afterMessageId,
+        approval: card.approval,
       })),
+      markers: [...(record.markers ?? [])],
+      operations: [...(record.operations ?? [])],
       queuedMessages: { steering: [], followUp: [] },
       pendingOptimistic: [],
       optimisticKey: null,
-      streamingAssistantId: null,
+      streamingBuckets: {},
       thinkingActive: false,
       compacting: false,
       retrying: false,
@@ -381,10 +388,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       messages: [],
       toolCards: [],
+      markers: [],
+      operations: [],
       queuedMessages: { steering: [], followUp: [] },
       pendingOptimistic: [],
       optimisticKey: null,
-      streamingAssistantId: null,
+      streamingBuckets: {},
       thinkingActive: false,
       compacting: false,
       retrying: false,
@@ -416,15 +425,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   consumeOptimisticWith: (delivered, key, clientMessageId) =>
     set((state) => {
+      // Optimistic bubbles are reconciled ONLY by their prompt identity
+      // (clientMessageId, or the composer's key as a legacy fallback). Text
+      // matching and single-pending guesses misattribute concurrent prompts,
+      // so a bubble without an identity match stays pending until recovery.
       const pendingIndex = clientMessageId
         ? state.pendingOptimistic.findIndex((item) => item.clientMessageId === clientMessageId)
         : key
           ? state.pendingOptimistic.findIndex((item) => item.key === key)
-        : state.pendingOptimistic.findIndex((item) => item.text === delivered.text) >= 0
-          ? state.pendingOptimistic.findIndex((item) => item.text === delivered.text)
-          : state.pendingOptimistic.length === 1
-            ? 0
-            : -1;
+          : -1;
       const pending = pendingIndex >= 0 ? state.pendingOptimistic[pendingIndex] : undefined;
       const nextPending = pending
         ? state.pendingOptimistic.filter((_, index) => index !== pendingIndex)
@@ -448,7 +457,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         return { pendingOptimistic: nextPending, optimisticKey: nextKey };
       }
       if (delivered.role === "user") {
-        const duplicateIndex = state.messages.findLastIndex((message) => message.role === "user");
+        let duplicateIndex = -1;
+        for (let index = state.messages.length - 1; index >= 0; index -= 1) {
+          if (state.messages[index]?.role === "user") {
+            duplicateIndex = index;
+            break;
+          }
+        }
         const duplicate = duplicateIndex >= 0 ? state.messages[duplicateIndex] : undefined;
         if (duplicate?.text === delivered.text) {
           const messages = [...state.messages];
@@ -475,22 +490,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       pendingOptimistic: [],
       optimisticKey: null,
     })),
-  setStreamingAssistantId: (streamingAssistantId) => set({ streamingAssistantId }),
-  ensureStreamingAssistant: () => {
+  setStreamingBucket: (bucket, id) =>
+    set((state) => ({ streamingBuckets: { ...state.streamingBuckets, [bucket]: id } })),
+  clearStreamingBuckets: () => set({ streamingBuckets: {} }),
+  ensureStreamingAssistant: (bucket) => {
     const state = get();
-    if (state.streamingAssistantId) {
-      const exists = state.messages.some((message) => message.id === state.streamingAssistantId);
-      if (exists) return state.streamingAssistantId;
-    }
+    const existing = state.streamingBuckets[bucket];
+    if (existing && state.messages.some((message) => message.id === existing)) return existing;
     const message: SessionMessage = {
       role: "assistant",
-      id: `streaming-${Date.now()}`,
+      id: `streaming-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       text: "",
       ts: new Date().toISOString(),
     };
     set((current) => ({
       messages: [...current.messages, message],
-      streamingAssistantId: message.id,
+      streamingBuckets: { ...current.streamingBuckets, [bucket]: message.id },
     }));
     return message.id;
   },
@@ -564,8 +579,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCompacting: (compacting) => set({ compacting }),
   setRetrying: (retrying) => set({ retrying }),
 
-  setExtensionState: (extensionState) => set({ extensionState }),
-  setExtensionLoading: (extensionLoading) => set({ extensionLoading }),
   setGitSnapshot: (gitSnapshot) => set({ gitSnapshot }),
   setSessionTree: (sessionTree) => set({ sessionTree }),
   bumpWorkspaceEpoch: () => set((state) => ({ workspaceEpoch: state.workspaceEpoch + 1 })),

@@ -47,7 +47,6 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:getSystemPrompt",
   "omega:exportHtml",
   "omega:bash",
-  "omega:queryExtensionState",
   "omega:listDir",
   "omega:readFile",
   "omega:readFilePage",

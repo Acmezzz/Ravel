@@ -45,6 +45,30 @@ test("permission guard accepts AgentSession toolName/input events", async () => 
   await assert.rejects(() => guard({ type: "tool_call", toolName: "bash", input: { command: "pwd" } }), /Read-only/);
 });
 
+test("unknown tools are fail-closed instead of silently allowed", async () => {
+  // Restrictive profiles cannot prove an unregistered tool's side-effect scope.
+  const workspaceGuard = createPermissionGuard({ profile: "workspace-only", cwd: "/workspace" });
+  await assert.rejects(
+    () => workspaceGuard({ toolCall: { name: "fetch_url" }, args: {} }),
+    /fail-closed|未识别的工具/,
+  );
+  // Under ask-before-command the same tool goes through the durable approval
+  // flow, and a denial still blocks it.
+  const asks = [];
+  const askGuard = createPermissionGuard({
+    profile: "ask-before-command",
+    cwd: "/workspace",
+    confirm: async () => false,
+    facts: { runId: () => "op-1", appendAsked: (r) => asks.push(r), appendDecided: () => {} },
+  });
+  await assert.rejects(() => askGuard({ toolCall: { name: "fetch_url", id: "call-u1" }, args: {} }), /拒绝/);
+  assert.equal(asks.length, 1);
+  assert.equal(asks[0].policyProfile, "ask-before-command");
+  // Known read-only tools never trigger an approval prompt.
+  const quietGuard = createPermissionGuard({ profile: "ask-before-command", cwd: "/workspace" });
+  await assert.doesNotReject(() => quietGuard({ toolCall: { name: "grep" }, args: { pattern: "x" } }));
+});
+
 test("operation policy denies read-only and confirms ask-before-command", async () => {
   await assert.rejects(
     () => assertOperationAllowed({ profile: "read-only", cwd: "/workspace", operation: "git.commit", input: { message: "save" } }),
