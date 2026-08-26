@@ -4,6 +4,8 @@
 
 本文只记录已经拍板的产品不变量，以及下一刀要做的事。核心设计先落纸面，不在本文范围内实现 Graph/Flow 画布、凝练层、内容切分器。实现范围仅限切片 0 和切片 1。
 
+铬件换栈、派生索引（`node:sqlite`）与画布落地顺序见 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。冲突时以本文不变量为准。
+
 对标过 Codex Desktop、Claude Desktop / Cowork / Code、Hermes Desktop，以及 `D:\project\agent\omega\example\` 下五个项目。借鉴的是不变量和编码工作台表面，不是换架构。
 
 ## 1. 产品定位
@@ -267,7 +269,7 @@ approval_decided
 - 切片 1b：`sanitizeTranscript` 投影 operations/approvals/markers（压缩边界锚定前一条消息）；渲染层 `operation-timeline.ts` + `tool-diff.ts` 纯函数，MessageList 渲染轮次行与压缩标记，edit 工具卡用 oldText/newText 计算真实行级 diff 并显示审批结论 chip。
 - 切片 1c：worker 流事件 meta 强类型校验（sessionId/runId/generation/runtimeEpoch/sequence/clientMessageId），乐观气泡只按 clientMessageId/key 对账，文本猜测与单 pending 回退已删除。
 
-体检整改（2026-08-26，依据 `docs/ravel-harness-health-check-2026-08-26.md`）：
+体检整改（2026-08-26）：
 
 - 决策可解释性：`approval_asked` 携带 `policyProfile`；`approval_decided` 携带闭集 `reasonCode`（user-allowed/user-denied/ui-cancelled/timeout/no-answerer）与 `uiRequestId`。字段在共享 schema 中可选、写入端必填，旧记录保持可读。投影 `ApprovalFact` 透出 reasonCode/policyProfile。
 - 恢复终态化：worker init/switch/recreate 时把无 finished 记录的 open operation 补写为 `failed`（error.code=`worker_recovered_unfinished`），时间轴不再有永久悬挂节点；不自动重跑。
@@ -280,4 +282,4 @@ approval_decided
 - 物理持久化与执行的权威是 Pi `AgentSessionRuntime`（v3 JSONL 单写路径）；
 - 桌面侧唯一合法的事实写入器是 `apps/ravel-desktop/electron/session-facts.js`（customType=`ravel_record`）。任何其他模块不得调用 `appendCustomEntry` 写事实——该约束由 `test/session-facts.test.mjs` 的静态断言守护。读取/投影（agent-bridge.js）只读不写。
 
-尚未做：跨 epoch replay gap 的更严格基线、C4 checkpoint、Graph 画布/凝练层/片段索引。
+尚未做：跨 epoch replay 更严格基线、skill content hash 物化、checkpoint 写入 facts、Histos 派生索引与画布（顺序见 `ravel-histos-refactor-plan.md`）。C4 shadow-git checkpoint 本身已落地。

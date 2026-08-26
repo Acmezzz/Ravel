@@ -27,6 +27,9 @@ packages/ai/src/providers/.model-generation-*/
 # Package specific
 apps/omega-desktop/release/
 apps/ravel-desktop/release/
+apps/ravel-desktop/release2/
+apps/ravel-desktop/release-fresh/
+ui/
 .npm/
 coverage/
 .nyc_output/

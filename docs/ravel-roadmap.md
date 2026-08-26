@@ -102,7 +102,7 @@ npm run --workspace @ravel/desktop electron:smoke
 状态：已完成（2026-08-25）。
 
 - `apps/ravel-desktop/docs/system_design.md` 与 `implementation-status.md` 已更新为 Ravel 身份与路径。
-- 带日期的审查报告（code-review / deep-review / frontend-backend-optimization 等）作为审计证据保留原始路径不动。
+- 带日期的一次性审查报告已删除；活文档为 `system_design.md`、`implementation-status.md`、仓库根 `docs/ravel-core-design-and-next-slices.md` 与 `docs/ravel-histos-refactor-plan.md`。
 
 以下内容继续保留为兼容标识：
 

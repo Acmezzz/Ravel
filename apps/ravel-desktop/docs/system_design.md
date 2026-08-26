@@ -4,7 +4,7 @@
 > 输入：PRD（产品经理 许清楚）、用户 4 项决策、现有 `apps/ravel-desktop` 代码与 `.pi/extensions` 状态文件 schema
 > 目标：记录当前实现基线、受控 DTO/IPC 边界与后续演进约束
 > 安全红线：**渲染进程不拥有文件系统、Git、凭据或 Pi SDK 权限；默认事件使用有界 DTO，完整工具详情必须经受控 IPC 按需读取。**
-> 维护说明：本文早期 V1 任务分解中的自定义 JSON persistence、旧 vanilla renderer 与部分扩展 IPC 已完成迁移或删除；当前优化路线见 [`frontend-backend-optimization-2026-08-24.md`](./frontend-backend-optimization-2026-08-24.md)。
+> 维护说明：本文早期 V1 任务分解中的自定义 JSON persistence、旧 vanilla renderer 与部分扩展 IPC 已完成迁移或删除。后续铬件换栈与 Histos 落地顺序见仓库根 [`docs/ravel-histos-refactor-plan.md`](../../../docs/ravel-histos-refactor-plan.md)。
 > 2026-08-26 切片 0：`journal-workflow` / `exploration-scout` 两个内置插件及其 `WorkflowPanel` / `ScoutPanel` / `state-reader.js` / `omega:queryExtensionState` 链路已整体删除；右栏只保留 Diff / Worktree，默认 Diff。本文涉及 workflow*/scout* DTO、Scout 模式与扩展状态拉取的章节仅作历史记录，不再反映现状。
 
 ---
@@ -462,7 +462,7 @@ export interface ToolExecutionSummaryEvent {
 - **读取边界**：`electron/session-reader.js` 以授权 workspace 和受控 session path 读取 JSONL，并提供摘要、树和分页消息；Renderer 不直接访问 JSONL。
 - **实时边界**：Worker runtime 负责当前 Agent turn 和事件流；Renderer 的 optimistic/transient state 必须在 worker ready、replay 或 idle transcript reconcile 时与 JSONL 权威源对账。
 - **生命周期**：new/load/switch/fork 等操作由 Main/Worker runtime 和 SessionManager 协同完成；切换或 replacement 必须绑定 generation/runtime epoch，旧事件和旧 prompt 不得写入新 runtime。
-- **后续演进**：bounded replay、session detail pagination、runtime recovery 和 renderer projection 见 [`frontend-backend-optimization-2026-08-24.md`](./frontend-backend-optimization-2026-08-24.md)。
+- **后续演进**：铬件换栈、派生索引与画布见仓库根 [`docs/ravel-histos-refactor-plan.md`](../../../docs/ravel-histos-refactor-plan.md)。
 
 ---
 

@@ -1,7 +1,7 @@
 # 设计：动态视图、@session 引用、MCP 管理
 
 更新日期：2026-08-26
-状态：**已实现**（2026-08-26，`npm run check` 全绿、桌面 node:test 204 通过、packages/agent codec+reducer 210 通过）。前置阅读：`ravel-core-design-and-next-slices.md`（不变量）、`ravel-gooeypi-frontend-study.md`（交互借鉴）。
+状态：**已实现**（2026-08-26，`npm run check` 全绿、桌面 node:test 204 通过、packages/agent codec+reducer 210 通过）。前置阅读：`ravel-core-design-and-next-slices.md`（不变量）。交互排布借鉴已消化进 Workbench / ActivityList，不再另存学习报告。
 
 三者的共同判据：每个功能要么新增带冻结 id 的事实对象，要么是对既有事实的派生投影；不新增第二权威、不新增看板式假面板。
 

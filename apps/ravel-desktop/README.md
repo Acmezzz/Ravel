@@ -46,4 +46,4 @@ npm run release:gate    # 离线发布门禁
 
 - 改 `packages/coding-agent` 后需先在仓库根 `npm run build`，桌面端用的是 `dist/`。
 - 打包用 `electron-builder` unpacked `dir`（Windows 不用 NSIS）。开发扩展从 monorepo `.pi/extensions` 加载；打包后从 `extraResources/ravel-runtime/.pi/extensions` 加载。
-- 详细设计见 `docs/system_design.md`，审查与修复清单见 `docs/code-review-2026-08-24.md`。
+- 详细设计见 `docs/system_design.md`。后续铬件与 Histos 落地顺序见仓库根 `docs/ravel-histos-refactor-plan.md`。

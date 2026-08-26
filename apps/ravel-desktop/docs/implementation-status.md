@@ -3,7 +3,7 @@
 > 更新日期：2026-08-25
 > 当前分支：`main`
 > 最近提交：Ravel 仓库迁移与 P0/P1 发布准备
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate、packaged launch smoke、userData 迁移真实启动验收。历史审查修复见 `docs/code-review-2026-08-24.md`；前后端优化基线见 `docs/frontend-backend-optimization-2026-08-24.md`。
+> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate、packaged launch smoke、userData 迁移真实启动验收。后续铬件与 Histos 落地顺序见仓库根 `docs/ravel-histos-refactor-plan.md`。
 >
 > Ravel 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
 
