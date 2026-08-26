@@ -28,6 +28,14 @@ interface Attachment extends PromptImage {
   name: string;
 }
 
+/** A pending @session reference resolved through the composer mention menu. */
+interface PendingReference {
+  targetSessionId: string;
+  targetTitle: string;
+}
+
+type AtItem = { kind: "session"; sessionId: string; title: string } | { kind: "file"; path: string };
+
 function readImageFile(file: File): Promise<PromptImage> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -84,9 +92,11 @@ export function Composer(): React.ReactElement {
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
   const [historyOpen, setHistoryOpen] = React.useState(false);
   const [historyIndex, setHistoryIndex] = React.useState(0);
-  const [atItems, setAtItems] = React.useState<string[]>([]);
+  const [atItems, setAtItems] = React.useState<AtItem[]>([]);
   const [atOpen, setAtOpen] = React.useState(false);
   const [atIndex, setAtIndex] = React.useState(0);
+  /** Accepted @session mentions for the current draft, keyed by session id. */
+  const [pendingReferences, setPendingReferences] = React.useState<PendingReference[]>([]);
   const atTokenRef = React.useRef("");
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
   const fileRef = React.useRef<HTMLInputElement | null>(null);
@@ -122,6 +132,7 @@ export function Composer(): React.ReactElement {
     textSessionRef.current = activeSessionId;
     const draft = getDraft(activeSessionId);
     setText(draft?.value ?? "");
+    setPendingReferences([]);
     setAttachments(
       (draft?.images ?? []).map((image: DraftImage, index) => ({
         ...image,
@@ -249,9 +260,13 @@ export function Composer(): React.ReactElement {
       const sentAt = Date.now();
       const images = attachments.map(({ mimeType, data }) => ({ mimeType, data }));
       const payload = value || "（请查看图片）";
+      // Mentions accepted through the @ menu travel as structured references;
+      // the worker appends the routing block and records the durable edge.
+      const references = pendingReferences.length > 0 ? pendingReferences : undefined;
       setText("");
       setHistoryOpen(false);
       setAttachments([]);
+      setPendingReferences([]);
       clearDraft(textSessionRef.current);
       setComposerError(null);
       setConnection("running");
@@ -276,7 +291,7 @@ export function Composer(): React.ReactElement {
       // for the entire run. Errors are handled below.
       void (async () => {
         try {
-          const res = await ipc.prompt(payload, behavior ?? (running ? "followUp" : undefined), images.length > 0 ? images : undefined, clientMessageId);
+          const res = await ipc.prompt(payload, behavior ?? (running ? "followUp" : undefined), images.length > 0 ? images : undefined, clientMessageId, references);
           if (!res.ok) {
             const agentStarted = useAppStore.getState().lastAgentStartAt >= sentAt;
             useAppStore.getState().dropLastIfOptimistic(key);
@@ -306,7 +321,7 @@ export function Composer(): React.ReactElement {
         }
       })();
     },
-    [text, attachments, running, shuttingDown, setConnection, setComposerError, runBash],
+    [text, attachments, pendingReferences, running, shuttingDown, setConnection, setComposerError, runBash],
   );
 
   const abort = React.useCallback(async () => {
@@ -336,7 +351,9 @@ export function Composer(): React.ReactElement {
     requestAnimationFrame(() => taRef.current?.focus());
   }, []);
 
-  // `@` file completion: query the main-process index with a small debounce.
+  // `@` completion: session mentions (from the store) merged with file index
+  // results, sessions first. Single menu state machine — one listbox serves
+  // both kinds so they can never stack.
   const detectAtToken = React.useCallback((value: string, caret: number) => {
     const before = value.slice(0, caret);
     const match = /(?:^|\s)@([\w./\\-]*)$/.exec(before);
@@ -351,25 +368,61 @@ export function Composer(): React.ReactElement {
     const requestId = ++atRequestRef.current;
     atTokenRef.current = token;
     setAtOpen(true);
-    setAtItems([]);
     setAtIndex(0);
+    const lowerToken = token.toLowerCase();
+    const activeWorkspace = useAppStore.getState().agent?.cwd;
+    const activeSessionId = useAppStore.getState().activeSessionId;
+    const sessionItems: AtItem[] = useAppStore
+      .getState()
+      .sessions.filter(
+        (session) =>
+          !session.parentSessionId &&
+          session.id !== activeSessionId &&
+          (!activeWorkspace || session.workspace === activeWorkspace) &&
+          (lowerToken === "" || session.title.toLowerCase().includes(lowerToken)),
+      )
+      .slice(0, 6)
+      .map((session) => ({ kind: "session" as const, sessionId: session.id, title: session.title }));
+    if (sessionItems.length > 0) {
+      setAtItems(sessionItems);
+    } else {
+      setAtItems([]);
+    }
     window.clearTimeout(atTimerRef.current);
     atTimerRef.current = window.setTimeout(() => {
       void ipc.fileIndex({ query: token }).then((res) => {
         if (requestId !== atRequestRef.current || atTokenRef.current !== token) return;
-        if (res.ok) {
-          setAtItems(res.data);
-          if (res.data.length === 0) setAtOpen(false);
-        }
+        const fileItems: AtItem[] = res.ok ? res.data.slice(0, 8).map((path) => ({ kind: "file" as const, path })) : [];
+        // Re-read sessions: a title typed while files were loading may now win.
+        const latestSessions: AtItem[] = useAppStore
+          .getState()
+          .sessions.filter(
+            (session) =>
+              !session.parentSessionId &&
+              session.id !== useAppStore.getState().activeSessionId &&
+              (lowerToken === "" || session.title.toLowerCase().includes(lowerToken)),
+          )
+          .slice(0, 6)
+          .map((session) => ({ kind: "session" as const, sessionId: session.id, title: session.title }));
+        const combined = [...latestSessions, ...fileItems];
+        setAtItems(combined);
+        if (combined.length === 0) setAtOpen(false);
       });
     }, 150);
   }, []);
 
   React.useEffect(() => () => window.clearTimeout(atTimerRef.current), []);
 
-  const applyAt = React.useCallback((path: string) => {
+  const applyAt = React.useCallback((item: AtItem) => {
     const ta = taRef.current;
     setAtOpen(false);
+    if (item.kind === "session") {
+      setPendingReferences((prev) =>
+        prev.some((ref) => ref.targetSessionId === item.sessionId) || prev.some((ref) => ref.targetTitle === item.title)
+          ? prev
+          : [...prev, { targetSessionId: item.sessionId, targetTitle: item.title }],
+      );
+    }
     setText((prev) => {
       if (!ta) return prev;
       const caret = ta.selectionStart ?? prev.length;
@@ -377,7 +430,8 @@ export function Composer(): React.ReactElement {
       const token = atTokenRef.current;
       const atPos = before.lastIndexOf(`@${token}`);
       if (atPos === -1) return prev;
-      return `${prev.slice(0, atPos)}@${path} ${prev.slice(caret)}`;
+      const replacement = item.kind === "session" ? `@${item.title}` : item.path;
+      return `${prev.slice(0, atPos)}${replacement} ${prev.slice(caret)}`;
     });
     requestAnimationFrame(() => taRef.current?.focus());
   }, []);
@@ -537,28 +591,45 @@ export function Composer(): React.ReactElement {
           <Typography className="overline-label" sx={{ px: 1, py: 0.5 }}>
             {t("composer.atTitle")}
           </Typography>
-          {atItems.map((path, index) => (
+          {atItems.map((item, index) => (
             <Box
               id={`omega-at-option-${index}`}
               role="option"
               aria-selected={index === atIndex}
-              key={path}
+              key={item.kind === "session" ? `session-${item.sessionId}` : `file-${item.path}`}
               onMouseDown={(e) => {
                 e.preventDefault();
-                applyAt(path);
+                applyAt(item);
               }}
               sx={{
                 px: 1.25,
                 py: 0.5,
                 borderRadius: "8px",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
                 background: index === atIndex ? "var(--omega-selected)" : "transparent",
                 "&:hover": { background: "var(--omega-hover-fill)" },
               }}
             >
-              <Typography sx={{ fontSize: "0.75rem", fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-text)" }} noWrap>
-                {path}
-              </Typography>
+              {item.kind === "session" ? (
+                <>
+                  <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-accent)", flex: "0 0 auto", textTransform: "uppercase" }}>
+                    @
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text)", minWidth: 0 }} noWrap>
+                    {item.title}
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", marginLeft: "auto", flex: "0 0 auto" }}>
+                    {t("composer.atSessionDetail")}
+                  </Typography>
+                </>
+              ) : (
+                <Typography sx={{ fontSize: "0.75rem", fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-text)" }} noWrap>
+                  {item.path}
+                </Typography>
+              )}
             </Box>
           ))}
         </Paper>

@@ -826,6 +826,62 @@ describe("JSONL v4 persistence", () => {
 	});
 });
 
+describe("JSONL session_reference records", () => {
+	it("persists a cross-session reference edge and preserves it across reopen", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		const session = await repository.create({ id: "references", cwd: root });
+		const reference = await session.appendRecord({
+			type: "session_reference",
+			id: "ref-1",
+			lane: "main",
+			sourceEntryId: "entry-user-1",
+			clientMessageId: "prompt-1",
+			targetSessionId: "target-session-uuid",
+			targetTitle: "重构认证模块",
+		});
+		expect(reference.seq).toBeGreaterThan(0);
+
+		const reopened = await repository.open(await session.getMetadata());
+		const records = await reopened.findRecords({ lane: "main", order: "oldestFirst" });
+		expect(records.map((record) => record.type)).toEqual(["session_reference"]);
+		expect(records[0]).toMatchObject({
+			sourceEntryId: "entry-user-1",
+			clientMessageId: "prompt-1",
+			targetSessionId: "target-session-uuid",
+			targetTitle: "重构认证模块",
+		});
+	});
+
+	it("rejects a reference with a missing anchor field on open", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		await repository.create({ id: "bad-reference", cwd: root });
+		const metadata = (await repository.list({ cwd: root }))[0]!;
+		const lines = readFileSync(metadata.path, "utf8").split("\n").filter(Boolean);
+		const mutations = [
+			{ kind: "lane", seq: 1, lane: "main", leafId: null },
+			{
+				kind: "record",
+				seq: 2,
+				type: "session_reference",
+				id: "ref-bad",
+				lane: "main",
+				timestamp: 2,
+				sourceEntryId: "entry-1",
+				clientMessageId: "prompt-1",
+				targetTitle: "缺少目标 id",
+			},
+		];
+		writeFileSync(
+			metadata.path,
+			`${[...lines.slice(0, 1), ...mutations.map((m) => JSON.stringify(m))].join("\n")}\n`,
+		);
+
+		await expect(repository.open(metadata)).rejects.toMatchObject({ code: "invalid_entry" });
+	});
+});
+
 describe("JSONL approval records", () => {
 	it("persists an approval ask/decide pair and preserves it across reopen", async () => {
 		const root = createTempDir();

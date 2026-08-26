@@ -488,6 +488,22 @@ test("streaming deltas are attributed per session/epoch/run bucket", async () =>
   assert.match(store, /clearStreamingBuckets: \(\) => set\(\{ streamingBuckets: \{\} \}\)/);
 });
 
+test("message redelivery is idempotent and lazy tool detail renders after fetch", async () => {
+  const store = await read("../src/renderer/store/useAppStore.ts");
+  // Worker-recovery replay must not duplicate bubbles: same id wins in place.
+  assert.match(store, /const index = state\.messages\.findIndex\(\(item\) => item\.id === message\.id\)/);
+  const card = await read("../src/renderer/components/chat/ToolCard.tsx");
+  // Lazy getToolDetail results render even when the summary carried no text.
+  assert.match(card, /\(detail\?\.resultText \?\? card\.resultText\) \?/);
+  assert.match(card, /\(detail\?\.argsJson \?\? card\.argsJson\) \?/);
+});
+
+test("workspace switching cannot wedge the menu on IPC failure", async () => {
+  const switcher = await read("../src/renderer/components/layout/ProjectSwitcher.tsx");
+  assert.match(switcher, /\.catch\(\(\) => \[\]\)/);
+  assert.match(switcher, /finally \{\s*setBusy\(false\);\s*\}/);
+});
+
 test("composer supports @ file completion and ! bash passthrough", async () => {
   const source = await read("../src/renderer/components/chat/Composer.tsx");
   assert.match(source, /detectAtToken/);

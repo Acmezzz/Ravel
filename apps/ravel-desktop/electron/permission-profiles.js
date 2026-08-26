@@ -222,7 +222,7 @@ export async function assertOperationAllowed({ profile, cwd, confirm, operation,
   }
 }
 
-export function createPermissionGuard({ profile, cwd, confirm, facts }) {
+export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot }) {
 	const mode = sanitizePermissionProfile(profile);
 	return async (event) => {
 		const { toolCall, toolCallId, args } = permissionEventOf(event);
@@ -278,6 +278,15 @@ export function createPermissionGuard({ profile, cwd, confirm, facts }) {
 							? "本次审批已取消，未执行工具"
 							: "无法获得审批（超时或界面不可用），已按 fail-closed 阻止本次执行",
 				);
+			}
+			// Approved mutation: take a best-effort shadow snapshot first. A failed
+			// snapshot never blocks approved work.
+			if (typeof snapshot === "function") {
+				try {
+					await snapshot({ toolName });
+				} catch (error) {
+					console.error("pre-execution checkpoint failed", error);
+				}
 			}
 		}
 	};

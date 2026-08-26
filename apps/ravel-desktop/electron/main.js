@@ -22,15 +22,23 @@ import {
 import { existsSync, mkdirSync, unlinkSync, writeFileSync, watch } from "node:fs";
 import { appendFile, mkdir, readFile, rename, stat, writeFile as writeFileAsync } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { forgetSessionPath, piSessionsRoot, THINKING_LEVELS, resolveSessionPath } from "./agent-bridge.js";
+import {
+  hasExtensionNamed,
+  forgetSessionPath,
+  piSessionsRoot,
+  THINKING_LEVELS,
+  resolveSessionPath,
+} from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
 import { projectTrust } from "./project-trust.js";
 import { canonicalInside, realRoot } from "./path-security.js";
-import { appendSessionInfo, readSessionMessages, readSessionSummaries } from "./session-reader.js";
+import { appendSessionInfo, readSessionActivity, readSessionMessages, readSessionSummaries } from "./session-reader.js";
+import { createActivityTracker, isBlockingUiMethod } from "./activity-service.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";
 import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-protocol.js";
@@ -38,12 +46,25 @@ import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.
 import { migrateOmegaUserData } from "./data-migration.js";
 import { DEEP_LINK_PROTOCOL, parseDeepLink, shouldRegisterProtocol } from "./deep-links.js";
 import { WorkerHost } from "./worker-host.js";
+import { sanitizeSearchQuery, searchWorkspace } from "./search-service.js";
+import { createCheckpoint, listCheckpoints, pruneCheckpoints, restoreCheckpoint } from "./checkpoint-service.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { DEFAULT_PERMISSION_PROFILE, PERMISSION_PROFILES, sanitizePermissionProfile, createPermissionGuard, assertOperationAllowed } from "./permission-profiles.js";
 import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionNameRequest, sessionRequest, workspaceRequest } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
+import {
+  listMcpRows,
+  loadMcpBundle,
+  mutateMcpFile,
+  removeMcpServer,
+  setMcpServerEnabled,
+  upsertMcpServer,
+  validateMcpArgs,
+  validateMcpCommand,
+  validateMcpName,
+} from "./mcp-service.js";
 import * as fileTransfer from "./file-transfer-service.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
@@ -66,6 +87,22 @@ let shuttingDown = false;
 let quitRequested = false;
 let activeCwd = null;
 let agentReady = false;
+
+// 动态视图: live cross-session rows + debounced push to the renderer.
+const activityTracker = createActivityTracker();
+let activityPushTimer = null;
+function pushActivityChanged() {
+  if (activityPushTimer) return;
+  activityPushTimer = setTimeout(() => {
+    activityPushTimer = null;
+    try {
+      if (win && !win.isDestroyed()) win.webContents.send("activity:changed", { items: activityTracker.rows() });
+    } catch {
+      /* best effort */
+    }
+  }, 150);
+  activityPushTimer.unref?.();
+}
 let workspaceRegistry;
 let closeDecision = null;
 let closeHandling = false;
@@ -348,6 +385,7 @@ function forgetSessionEvents(sessionId) {
     /* best effort */
   }
   forgetSessionPath(sessionId);
+  activityTracker.forget(sessionId);
 }
 
 function persistWindowBounds() {
@@ -418,6 +456,7 @@ function bindHost(host) {
     }
     if (event?.type === "auto_retry_start") persistSessionRecovery(sessionId, { state: "retrying", running: true, retryAttempt: event.attempt, retryMaxAttempts: event.maxAttempts, retryDelayMs: event.delayMs, error: event.errorMessage ?? null });
     if (event?.type === "auto_retry_end") persistSessionRecovery(sessionId, { state: event.status === "done" ? "ready" : "error", running: false, retryAttempt: event.attempt, error: event.finalError ?? null });
+    if (sessionId && activityTracker.applyEvent(sessionId, event)) pushActivityChanged();
     if (meta?.sequence && sessionId) {
       const bucket = recentEventsBySession.get(sessionId) ?? [];
       const payload = { event, meta };
@@ -440,6 +479,13 @@ function bindHost(host) {
   };
   host.onExtensionUIRequest = (request) => {
     if (!isExtensionUIRequest(request)) return;
+    if (isBlockingUiMethod(request.method)) {
+      const askSessionId = typeof request.sessionId === "string" && request.sessionId ? request.sessionId : host.sessionId;
+      if (askSessionId && typeof request.id === "string") {
+        activityTracker.applyAsk(askSessionId, request.id, Number(request.timeout));
+        pushActivityChanged();
+      }
+    }
     if (!win || win.isDestroyed()) return;
     win.webContents.send("extension-ui:request", request);
   };
@@ -450,6 +496,7 @@ function bindHost(host) {
     }
     if (state === "dead" || state === "restarting" || state === "stopping") {
       workerPool.markRunning(host.sessionId, false);
+      if (activityTracker.applyTransport(host.sessionId, state)) pushActivityChanged();
     }
     persistSessionRecovery(host.sessionId, { state, running: Boolean(workerPool.get(host.sessionId)?.running), error: typeof extra.error === "string" ? extra.error : null });
     sendTransportState(state, { ...extra, sessionId: host.sessionId, foreground });
@@ -1059,7 +1106,7 @@ function normalizePromptImages(images) {
   });
 }
 
-ipcMain.handle("agent:prompt", async (event, text, behavior, images, clientMessageId) => {
+ipcMain.handle("agent:prompt", async (event, text, behavior, images, clientMessageId, references) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (typeof text !== "string" || !text.trim()) return errorResult("invalid_prompt", "Prompt must be a non-empty string");
   if (text.length > MAX_PROMPT_CHARS) return errorResult("prompt_too_large", `Prompt exceeds ${MAX_PROMPT_CHARS} characters`);
@@ -1069,6 +1116,12 @@ ipcMain.handle("agent:prompt", async (event, text, behavior, images, clientMessa
   if (clientMessageId !== undefined && (typeof clientMessageId !== "string" || clientMessageId.length < 1 || clientMessageId.length > 128)) {
     return errorResult("invalid_args", "clientMessageId must be a bounded string");
   }
+  let normalizedReferences;
+  try {
+    normalizedReferences = normalizePromptReferences(references);
+  } catch (error) {
+    return errorResult("invalid_args", error instanceof Error ? error.message : String(error));
+  }
   if (bootstrapError) return errorResult("bootstrap_failed", "Agent initialization failed");
   let imageContents;
   try {
@@ -1076,8 +1129,25 @@ ipcMain.handle("agent:prompt", async (event, text, behavior, images, clientMessa
   } catch (error) {
     return errorResult("invalid_args", error instanceof Error ? error.message : String(error));
   }
-  return rpc("prompt", { text: text.trim(), behavior, images: imageContents, clientMessageId: clientMessageId?.slice(0, 128) }, "prompt_failed");
+  return rpc("prompt", { text: text.trim(), behavior, images: imageContents, clientMessageId: clientMessageId?.slice(0, 128), references: normalizedReferences }, "prompt_failed");
 });
+
+/** Bounded @session reference payload; ids/titles are display-safe strings. */
+function normalizePromptReferences(references) {
+  if (references === undefined || references === null) return undefined;
+  if (!Array.isArray(references) || references.length > 16) {
+    throw new Error("references must be an array of at most 16 entries");
+  }
+  return references.map((ref) => {
+    if (!ref || typeof ref !== "object" || typeof ref.targetSessionId !== "string" || !ref.targetSessionId.trim() || ref.targetSessionId.length > 128) {
+      throw new Error("reference targetSessionId must be a short string");
+    }
+    if (typeof ref.targetTitle !== "string" || !ref.targetTitle.trim() || ref.targetTitle.length > 256) {
+      throw new Error("reference targetTitle must be a short string");
+    }
+    return { targetSessionId: ref.targetSessionId.trim().slice(0, 128), targetTitle: ref.targetTitle.trim().slice(0, 256) };
+  });
+}
 
 ipcMain.handle("agent:abort", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
@@ -1331,6 +1401,53 @@ ipcMain.handle("omega:getToolDetail", (event, req) => {
   return rpc("getToolDetail", { toolCallId: req.toolCallId.slice(0, 256) }, "read_failed");
 });
 
+ipcMain.handle("omega:telemetry", (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  return rpc("telemetry", {}, "telemetry_failed");
+});
+
+ipcMain.handle("omega:projectSearch", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const query = sanitizeSearchQuery(req?.query);
+  if (!query) return errorResult("invalid_args", "query is required");
+  const cwd = activeCwd ?? rootOf();
+  if (!cwd) return errorResult("unavailable", "No active workspace");
+  return searchWorkspace(cwd, query).then(
+    (data) => okResult(data),
+    (error) => errorResult("search_failed", error instanceof Error ? error.message : String(error)),
+  );
+});
+
+ipcMain.handle("omega:checkpointList", (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const cwd = activeCwd ?? rootOf();
+  if (!cwd) return errorResult("unavailable", "No active workspace");
+  return listCheckpoints(cwd).then(okResult, (error) => errorResult("read_failed", error instanceof Error ? error.message : String(error)));
+});
+
+ipcMain.handle("omega:checkpointCreate", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const cwd = activeCwd ?? rootOf();
+  if (!cwd) return errorResult("unavailable", "No active workspace");
+  const label = typeof req?.label === "string" && req.label.trim() ? req.label.trim().slice(0, 200) : "手动快照";
+  void pruneCheckpoints(cwd).catch(() => {});
+  return createCheckpoint(cwd, label).then(
+    (data) => okResult(data),
+    (error) => errorResult("checkpoint_failed", error instanceof Error ? error.message : String(error)),
+  );
+});
+
+ipcMain.handle("omega:checkpointRestore", (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const cwd = activeCwd ?? rootOf();
+  if (!cwd) return errorResult("unavailable", "No active workspace");
+  if (typeof req?.id !== "string" || !/^[0-9a-f]{40}$/.test(req.id)) return errorResult("invalid_args", "id is required");
+  return restoreCheckpoint(cwd, req.id).then(
+    (data) => okResult(data),
+    (error) => errorResult("restore_failed", error instanceof Error ? error.message : String(error)),
+  );
+});
+
 ipcMain.handle("omega:getThinking", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.entryId !== "string" || !req.entryId.trim()) {
@@ -1427,15 +1544,96 @@ ipcMain.handle("omega:setSkillCommandsEnabled", (event, req) => {
   return rpc("setSkillCommandsEnabled", { enabled: req?.enabled !== false }, "write_failed");
 });
 
+// ----- MCP server definitions (Ravel-owned mcp.json, stdio only) -----
+
+const MCP_USER_FILE = join(homedir(), ".ravel", "mcp.json");
+const MCP_BRIDGE_EXTENSION = "ravel-mcp-bridge";
+
+function mcpProjectFile() {
+  return activeCwd ? join(activeCwd, ".ravel", "mcp.json") : null;
+}
+
+ipcMain.handle("omega:mcpList", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
+    return okResult({
+      items: listMcpRows(bundle.user, bundle.project),
+      bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION),
+    });
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+function assertMcpProjectScopeAllowed() {
+  if (!activeCwd) throw errorLike("invalid_args", "当前没有活动工作区，无法写入项目级 MCP 定义");
+  if (!projectTrust.isTrusted(activeCwd)) throw errorLike("trust_required", "项目未信任，无法写入项目级 MCP 定义");
+}
+
+function errorLike(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+ipcMain.handle("omega:mcpAdd", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const name = validateMcpName(req?.name);
+    const command = validateMcpCommand(req?.command);
+    const args = validateMcpArgs(req?.args);
+    if (req?.project === true) assertMcpProjectScopeAllowed();
+    mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) =>
+      upsertMcpServer(config, { name, command, args, enabled: true }),
+    );
+    const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
+    return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:mcpSetEnabled", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const name = validateMcpName(req?.name);
+    if (req?.project === true) assertMcpProjectScopeAllowed();
+    mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) =>
+      setMcpServerEnabled(config, name, req?.enabled !== false),
+    );
+    const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
+    return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:mcpRemove", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const name = validateMcpName(req?.name);
+    if (req?.project === true) assertMcpProjectScopeAllowed();
+    // Removal only deletes the definition key; nothing else in the file moves.
+    mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) => removeMcpServer(config, name));
+    const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
+    return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
 ipcMain.handle("omega:extensionUiResponse", (event, response) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!isExtensionUIResponse(response)) return errorResult("invalid_args", "Invalid extension UI response");
+  if (activityTracker.applyDecide(response.id)) pushActivityChanged();
   return rpc("extensionUiResponse", response, "write_failed");
 });
 
 ipcMain.handle("omega:extensionUiCancel", (event, response) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!isExtensionUIResponse({ ...response, cancelled: true })) return errorResult("invalid_args", "Invalid extension UI cancellation");
+  if (typeof response?.id === "string" && activityTracker.applyDecide(response.id)) pushActivityChanged();
   return rpc("extensionUiCancel", response, "write_failed");
 });
 
@@ -1502,6 +1700,41 @@ ipcMain.handle("omega:listSessions", async (event, req) => {
     });
     const workspaceMap = new Map((workspaceRegistry?.list() ?? []).map((item) => [resolve(item.realRoot), item]));
     return okResult({ ...page, items: page.items.map((item) => { const workspace = workspaceMap.get(resolve(item.workspace)); return workspace ? { ...item, workspaceId: workspace.workspaceId, workspaceLabel: workspace.displayPath } : item; }) });
+  } catch (error) {
+    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:activitySnapshot", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const allowedWorkspaces = (workspaceRegistry?.list() ?? []).map((item) => item.realRoot);
+    const page = await readSessionSummaries(piSessionsRoot(), { allowedWorkspaces, offset: 0, limit: 500 });
+    const liveRows = new Map(activityTracker.rows().map((row) => [row.sessionId, row]));
+    const items = [];
+    for (const summary of page.items) {
+      const live = liveRows.get(summary.id);
+      if (live) {
+        items.push({ ...live, title: summary.title, workspace: summary.workspace });
+        continue;
+      }
+      // Restart reconciliation: no live worker state, derive from durable facts.
+      const sessionPath = await resolveSessionPath(summary.id);
+      const derived = sessionPath ? await readSessionActivity(sessionPath) : null;
+      if (derived) {
+        items.push({
+          sessionId: summary.id,
+          status: derived.status,
+          pendingApprovals: derived.pendingApprovals,
+          lastError: derived.lastError,
+          lastOutcome: derived.lastOutcome,
+          updatedAt: derived.updatedAt,
+          title: summary.title,
+          workspace: summary.workspace,
+        });
+      }
+    }
+    return okResult({ items, total: items.length, nextOffset: null });
   } catch (error) {
     return errorResult("read_failed", error instanceof Error ? error.message : String(error));
   }

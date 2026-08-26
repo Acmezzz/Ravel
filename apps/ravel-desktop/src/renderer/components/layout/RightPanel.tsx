@@ -9,6 +9,8 @@ import { useAppStore } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
 import { DiffViewer } from "../panels/DiffViewer";
 import { WorktreePanel } from "../panels/WorktreePanel";
+import { TelemetryPanel } from "../panels/TelemetryPanel";
+import { SnapshotsPanel } from "../panels/SnapshotsPanel";
 
 export function RightPanel(): React.ReactElement {
   const t = useT();
@@ -38,6 +40,8 @@ export function RightPanel(): React.ReactElement {
         >
           <Tab label={t("nav.tab.diff")} value="diff" />
           <Tab label={t("nav.tab.worktree")} value="worktree" />
+          <Tab label={t("nav.tab.telemetry")} value="telemetry" />
+          <Tab label={t("nav.tab.snapshots")} value="snapshots" />
         </Tabs>
         <Tooltip title={t("nav.collapseRight")}>
           <IconButton size="small" aria-label={t("nav.collapseRight")} onClick={() => useAppStore.getState().toggleRightPanel()} sx={{ color: "var(--omega-text-muted)", mr: 0.25, minWidth: 32, minHeight: 32, p: 0.5 }}>
@@ -59,6 +63,8 @@ export function RightPanel(): React.ReactElement {
       >
         {rightTab === "diff" ? <DiffViewer /> : null}
         {rightTab === "worktree" ? <WorktreePanel /> : null}
+        {rightTab === "telemetry" ? <TelemetryPanel /> : null}
+        {rightTab === "snapshots" ? <SnapshotsPanel /> : null}
       </Box>
     </Box>
   );

@@ -10,7 +10,8 @@ import { Markdown } from "../common/Markdown";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
-import type { SessionMessage } from "../../types/dto";
+import { openSessionInStore } from "../../lib/open-session";
+import type { SessionMessage, SessionReferenceFact } from "../../types/dto";
 
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -37,6 +38,69 @@ export interface MessageBubbleProps {
   message: SessionMessage;
   /** True only for the last assistant message during the active thinking run. */
   streamingRun: boolean;
+}
+
+/**
+ * Render user text with @Title mention chips resolved through the durable
+ * session_reference edges of this transcript. Longest title wins so nested
+ * names cannot shadow each other.
+ */
+function UserTextWithReferences({ text, refs }: { text: string; refs: SessionReferenceFact[] }): React.ReactElement {
+  const [navigating, setNavigating] = React.useState(false);
+  const handleOpen = React.useCallback(async (sessionId: string) => {
+    setNavigating(true);
+    try {
+      await openSessionInStore(sessionId);
+    } finally {
+      setNavigating(false);
+    }
+  }, []);
+  if (refs.length === 0 || !text.includes("@")) return <>{text}</>;
+  const ordered = [...refs].sort((a, b) => b.targetTitle.length - a.targetTitle.length);
+  const byTitle = new Map(ordered.map((ref) => [ref.targetTitle, ref]));
+  const pattern = new RegExp(`@(${ordered.map((ref) => ref.targetTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
+  const parts = text.split(pattern);
+  return (
+    <>
+      {parts.map((part, index) =>
+        index % 2 === 1 && part ? (
+          <Box
+            key={`${part}-${index}`}
+            component="button"
+            type="button"
+            disabled={navigating}
+            onClick={() => {
+              const ref = byTitle.get(part);
+              if (ref) void handleOpen(ref.targetSessionId);
+            }}
+            title={byTitle.get(part)?.targetSessionId}
+            sx={{
+              display: "inline-flex",
+              alignItems: "baseline",
+              border: "none",
+              cursor: "pointer",
+              font: "inherit",
+              padding: 0,
+              background: "rgba(255,255,255,0.18)",
+              borderRadius: "6px",
+              px: 0.5,
+              mx: "1px",
+              color: "inherit",
+              textDecoration: "underline",
+              textDecorationStyle: "dotted",
+              textUnderlineOffset: 3,
+              "&:hover": { background: "rgba(255,255,255,0.30)" },
+              "&:disabled": { opacity: 0.7 },
+            }}
+          >
+            @{part}
+          </Box>
+        ) : (
+          <React.Fragment key={`t-${index}`}>{part}</React.Fragment>
+        ),
+      )}
+    </>
+  );
 }
 
 function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): React.ReactElement {
@@ -78,6 +142,11 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
   }, [message.entryId, forking, setActiveSession, loadTranscript, setAgent, setComposerPrefill]);
 
   const canFork = Boolean(isUser && message.entryId) && connection !== "running";
+  const references = useAppStore((s) => s.references);
+  const userRefs = React.useMemo(
+    () => (isUser && message.entryId ? references.filter((ref) => ref.sourceEntryId === message.entryId) : []),
+    [isUser, message.entryId, references],
+  );
   const showThinking = !isUser && !isError && (Boolean(message.thinking) || message.thinkingDeferred);
   const isStreamingTarget = streamingRun;
 
@@ -126,7 +195,9 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
           }}
         >
           {isUser ? (
-            <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>{message.text}</Typography>
+            <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>
+              <UserTextWithReferences text={message.text} refs={userRefs} />
+            </Typography>
           ) : isError ? (
             <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>{message.text}</Typography>
           ) : (

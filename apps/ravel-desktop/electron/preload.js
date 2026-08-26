@@ -62,10 +62,17 @@ function isPlainObject(value) {
 contextBridge.exposeInMainWorld("omega", {
   ...windowApi,
   // ----- legacy contract (unchanged) -----
-  prompt: (text, behavior, images, clientMessageId) => {
+  prompt: (text, behavior, images, clientMessageId, references) => {
     if (typeof text !== "string" || !text.trim()) return Promise.resolve({ ok: false, code: "invalid_prompt", message: "Prompt must be a non-empty string" });
     if (clientMessageId !== undefined && (typeof clientMessageId !== "string" || clientMessageId.length < 1 || clientMessageId.length > 128)) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "clientMessageId must be a bounded string" });
+    }
+    if (references !== undefined) {
+      const valid =
+        Array.isArray(references) &&
+        references.length <= 16 &&
+        references.every((ref) => ref && typeof ref === "object" && typeof ref.targetSessionId === "string" && ref.targetSessionId.length >= 1 && ref.targetSessionId.length <= 128 && typeof ref.targetTitle === "string" && ref.targetTitle.length >= 1 && ref.targetTitle.length <= 256);
+      if (!valid) return Promise.resolve({ ok: false, code: "invalid_args", message: "references must be <=16 {targetSessionId,targetTitle} entries" });
     }
     if (text.length > MAX_PROMPT_CHARS) return Promise.resolve({ ok: false, code: "prompt_too_large", message: `Prompt exceeds ${MAX_PROMPT_CHARS} characters` });
     if (behavior !== undefined && behavior !== "steer" && behavior !== "followUp") {
@@ -76,7 +83,7 @@ contextBridge.exposeInMainWorld("omega", {
         return Promise.resolve({ ok: false, code: "invalid_args", message: `images must be 1-${MAX_PROMPT_IMAGES} {mimeType,data} entries` });
       }
     }
-    return ipcRenderer.invoke("agent:prompt", text, behavior, images, clientMessageId?.slice(0, 128));
+    return ipcRenderer.invoke("agent:prompt", text, behavior, images, clientMessageId?.slice(0, 128), references);
   },
   abort: () => ipcRenderer.invoke("agent:abort"),
   onTransport: (callback) => {
@@ -110,6 +117,14 @@ contextBridge.exposeInMainWorld("omega", {
     };
     ipcRenderer.on("extension-ui:request", handler);
     return () => ipcRenderer.removeListener("extension-ui:request", handler);
+  },
+  onActivityChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const handler = (_event, data) => {
+      try { callback(data); } catch (error) { console.error("omega activity callback failed", error); }
+    };
+    ipcRenderer.on("activity:changed", handler);
+    return () => ipcRenderer.removeListener("activity:changed", handler);
   },
   extensionUiResponse: (response) => {
     if (!isPlainObject(response) || typeof response.id !== "string" || typeof response.sessionId !== "string" || !Number.isInteger(response.generation)) {
@@ -331,6 +346,20 @@ contextBridge.exposeInMainWorld("omega", {
     if (!req || typeof req.toolCallId !== "string" || !req.toolCallId.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "toolCallId is required" });
     return ipcRenderer.invoke("omega:getToolDetail", { toolCallId: req.toolCallId.slice(0, 256) });
   },
+  telemetry: () => ipcRenderer.invoke("omega:telemetry"),
+  projectSearch: (req) => {
+    if (!req || typeof req.query !== "string" || !req.query.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "query is required" });
+    return ipcRenderer.invoke("omega:projectSearch", { query: req.query.slice(0, 256) });
+  },
+  checkpointList: () => ipcRenderer.invoke("omega:checkpointList"),
+  checkpointCreate: (req) => {
+    const label = req && typeof req.label === "string" ? req.label.trim().slice(0, 200) : "";
+    return ipcRenderer.invoke("omega:checkpointCreate", { label });
+  },
+  checkpointRestore: (req) => {
+    if (!req || typeof req.id !== "string" || !/^[0-9a-f]{40}$/.test(req.id)) return Promise.resolve({ ok: false, code: "invalid_args", message: "id is required" });
+    return ipcRenderer.invoke("omega:checkpointRestore", { id: req.id });
+  },
   getThinking: (req) => {
     if (!req || typeof req.entryId !== "string" || !req.entryId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "entryId is required" });
@@ -378,12 +407,31 @@ contextBridge.exposeInMainWorld("omega", {
   setSkillCommandsEnabled: (req) => ipcRenderer.invoke("omega:setSkillCommandsEnabled", {
     enabled: req?.enabled !== false,
   }),
+  mcpList: () => ipcRenderer.invoke("omega:mcpList", {}),
+  mcpAdd: (req) => {
+    if (!isPlainObject(req)) return Promise.resolve({ ok: false, code: "invalid_args", message: "req is required" });
+    return ipcRenderer.invoke("omega:mcpAdd", {
+      name: safeString(req.name, 128)?.trim(),
+      command: safeString(req.command, 4096),
+      args: Array.isArray(req.args) ? req.args.slice(0, 64).map((arg) => safeString(arg, 4096) ?? "") : [],
+      project: req.project === true,
+    });
+  },
+  mcpSetEnabled: (req) => {
+    if (!isPlainObject(req) || typeof req.name !== "string") return Promise.resolve({ ok: false, code: "invalid_args", message: "name is required" });
+    return ipcRenderer.invoke("omega:mcpSetEnabled", { name: req.name.slice(0, 128), enabled: req.enabled !== false, project: req.project === true });
+  },
+  mcpRemove: (req) => {
+    if (!isPlainObject(req) || typeof req.name !== "string") return Promise.resolve({ ok: false, code: "invalid_args", message: "name is required" });
+    return ipcRenderer.invoke("omega:mcpRemove", { name: req.name.slice(0, 128), project: req.project === true });
+  },
 
   // ----- sessions -----
   listSessions: (req) => ipcRenderer.invoke("omega:listSessions", {
     offset: Number.isInteger(req?.offset) ? req.offset : 0,
     limit: Number.isInteger(req?.limit) ? req.limit : 100,
   }),
+  activitySnapshot: () => ipcRenderer.invoke("omega:activitySnapshot", {}),
   readSessionMessages: (req) => {
     if (!req || typeof req.sessionId !== "string" || !req.sessionId.trim()) return Promise.resolve({ ok: false, code: "invalid_args", message: "sessionId is required" });
     return ipcRenderer.invoke("omega:readSessionMessages", { sessionId: req.sessionId.slice(0, 128), offset: Number.isInteger(req.offset) ? req.offset : 0, limit: Number.isInteger(req.limit) ? req.limit : 100 });

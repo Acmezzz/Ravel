@@ -14,6 +14,7 @@ export const IPC_CHANNELS = Object.freeze({
   setProviderApiKey: "omega:setProviderApiKey",
   removeProviderApiKey: "omega:removeProviderApiKey",
   listSessions: "omega:listSessions",
+  activitySnapshot: "omega:activitySnapshot",
   readSessionMessages: "omega:readSessionMessages",
   newSession: "omega:newSession",
   loadSession: "omega:loadSession",
@@ -35,6 +36,11 @@ export const IPC_CHANNELS = Object.freeze({
   navigateTree: "omega:navigateTree",
   getThinking: "omega:getThinking",
   getToolDetail: "omega:getToolDetail",
+  telemetry: "omega:telemetry",
+  projectSearch: "omega:projectSearch",
+  checkpointList: "omega:checkpointList",
+  checkpointCreate: "omega:checkpointCreate",
+  checkpointRestore: "omega:checkpointRestore",
   listResources: "omega:listResources",
   reloadResources: "omega:reloadResources",
   installLocalResource: "omega:installLocalResource",
@@ -42,6 +48,10 @@ export const IPC_CHANNELS = Object.freeze({
   setResourceEnabled: "omega:setResourceEnabled",
   setSkillModelInvocation: "omega:setSkillModelInvocation",
   setSkillCommandsEnabled: "omega:setSkillCommandsEnabled",
+  mcpList: "omega:mcpList",
+  mcpAdd: "omega:mcpAdd",
+  mcpSetEnabled: "omega:mcpSetEnabled",
+  mcpRemove: "omega:mcpRemove",
   getSystemPrompt: "omega:getSystemPrompt",
   exportHtml: "omega:exportHtml",
   bash: "omega:bash",
@@ -79,6 +89,7 @@ export const IPC_CHANNELS = Object.freeze({
   windowMaximizedChanged: "window:maximizedChanged",
   fileChanged: "file:changed",
   extensionUiRequest: "extension-ui:request",
+  activityChanged: "activity:changed",
 });
 
 export { INVOKE_CHANNELS, PUSH_CHANNELS };

@@ -10,6 +10,7 @@ import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
 import { matchesKeybinding } from "./lib/keybindings";
 import { streamBucketOf } from "./lib/stream-bucket";
+import type { ActivityRow } from "./types/dto";
 import type { EventMeta, SafeEvent } from "./types/events";
 
 async function applyDesktopSettings(): Promise<void> {
@@ -71,6 +72,8 @@ async function refreshControlPlane(): Promise<boolean> {
   if (commandsRes.ok) store.setCommands(commandsRes.data);
   if (authRes.ok) store.setAuth(authRes.data);
   if (sessionsRes.ok) store.applySessionPage(sessionsRes.data);
+  const activityRes = await ipc.activitySnapshot();
+  if (activityRes.ok) store.applyActivityRows(activityRes.data.items);
   if (stateRes.ok) {
     store.setConnection(stateRes.data.isStreaming ? "running" : "ready");
   }
@@ -302,6 +305,10 @@ export function App(): React.ReactElement {
     };
 
     const offEvent = window.omega.onEvent(handleEvent);
+    const offActivity = ipc.onActivityChanged((data: unknown) => {
+      const items = data && typeof data === "object" && "items" in data ? (data as { items?: unknown }).items : null;
+      if (Array.isArray(items)) useAppStore.getState().applyActivityRows(items as ActivityRow[]);
+    });
     const offStatus = window.omega.onStatus((data: unknown) => {
       const payload = data as { message?: string };
       if (payload?.message) setBootstrapError(payload.message);
@@ -387,6 +394,7 @@ export function App(): React.ReactElement {
     return () => {
       cancelled = true;
       offEvent();
+      offActivity();
       offStatus();
       offTransport();
     };

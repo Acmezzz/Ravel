@@ -1,6 +1,7 @@
 import { appendFileSync, createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
+import { deriveActivityFromFacts } from "./session-facts.js";
 
 const MAX_FILES = 2000;
 const MAX_LINE_CHARS = 512 * 1024;
@@ -114,6 +115,42 @@ async function readSummary(file) {
 }
 
 const treeIndexCache = new Map();
+
+/**
+ * Fact-derived 动态 row for one session JSONL (restart reconciliation path).
+ * Scans ravel_record custom entries only; cached by mtime+size so repeated
+ * snapshots are cheap. Returns null when the session carries no facts.
+ */
+const activityCache = new Map();
+export async function readSessionActivity(file) {
+	let stats;
+	try {
+		stats = statSync(file);
+	} catch {
+		return null;
+	}
+	const key = resolve(file);
+	const stamp = `${stats.mtimeMs}:${stats.size}`;
+	const cached = activityCache.get(key);
+	if (cached?.stamp === stamp) return cached.activity;
+	const facts = [];
+	try {
+		const rl = createInterface({ input: createReadStream(file, { encoding: "utf8" }), crlfDelay: Infinity });
+		for await (const rawLine of rl) {
+			if (rawLine.length > MAX_LINE_CHARS) continue;
+			if (!rawLine.includes("ravel_record")) continue;
+			try {
+				const entry = JSON.parse(rawLine);
+				if (entry?.type === "custom" && entry.customType === "ravel_record" && entry.data?.type) facts.push(entry.data);
+			} catch { /* skip malformed lines */ }
+		}
+	} catch {
+		return null;
+	}
+	const activity = deriveActivityFromFacts(facts);
+	rememberCache(activityCache, key, { stamp, activity });
+	return activity;
+}
 
 function treeIndexOf(summaries) {
   const byParent = new Map();

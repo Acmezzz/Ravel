@@ -26,6 +26,7 @@ const RECORD_TYPES = new Set<LaneRecord["type"]>([
 	"usage",
 	"approval_asked",
 	"approval_decided",
+	"session_reference",
 ]);
 const OPERATION_KINDS = new Set(["run", "compaction", "navigation"]);
 
@@ -185,6 +186,12 @@ function parseRecordMutation(
 		if (value.reasonCode !== undefined && !APPROVAL_REASON_CODES.includes(value.reasonCode as never)) {
 			throw new JsonlDecodeError("schema", `has invalid approval reason code ${JSON.stringify(value.reasonCode)}`);
 		}
+	}
+	if (type === "session_reference") {
+		requireString(value.sourceEntryId, "sourceEntryId");
+		requireString(value.clientMessageId, "clientMessageId");
+		requireString(value.targetSessionId, "targetSessionId");
+		requireString(value.targetTitle, "targetTitle");
 	}
 	const { kind: _kind, ...recordFields } = value;
 	return {

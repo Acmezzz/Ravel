@@ -31,6 +31,9 @@ import type {
   ApprovalOutcome,
   TimelineOperation,
   TranscriptMarker,
+  ApprovalFact,
+  ActivityRow,
+  SessionReferenceFact,
 } from "../types/dto";
 import type { ThemeMode } from "../theme/palettes";
 import { applyModeWithTransition } from "../theme/palettes";
@@ -81,10 +84,10 @@ export interface LayoutState {
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   focusMode: boolean;
-  rightTab: "diff" | "worktree";
+  rightTab: "diff" | "worktree" | "telemetry" | "snapshots";
   commandPaletteOpen: boolean;
   treeOpen: boolean;
-  leftTab: "sessions" | "files";
+  leftTab: "sessions" | "files" | "search" | "activity";
   modelCenterOpen: boolean;
   settingsOpen: boolean;
   resourceCenterOpen: boolean;
@@ -112,13 +115,19 @@ export interface AppState {
   sessionTotal: number;
   sessionNextOffset: number | null;
   sessionActivity: Record<string, SessionActivity>;
+  /** 动态视图 rows keyed by sessionId (live tracker + fact-derived merges). */
+  activityRows: Record<string, ActivityRow>;
+  applyActivityRows: (rows: ActivityRow[]) => void;
   activeSessionId: string | null;
   messages: SessionMessage[];
   toolCards: ToolCardState[];
   /** Compaction boundaries projected from the authoritative transcript. */
   markers: TranscriptMarker[];
+  approvals: ApprovalFact[];
   /** Durable run operations (turns) projected from session facts. */
   operations: TimelineOperation[];
+  /** Projected @session reference edges for the loaded transcript. */
+  references: SessionReferenceFact[];
   queuedMessages: QueuedMessages;
   /** Pending optimistic bubbles keyed by their client prompt identity. */
   pendingOptimistic: PendingOptimisticMessage[];
@@ -264,11 +273,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessionTotal: 0,
   sessionNextOffset: null,
   sessionActivity: {},
+  activityRows: {},
+  applyActivityRows: (rows) =>
+    set((state) => {
+      if (rows.length === 0) return {};
+      const next = { ...state.activityRows };
+      for (const row of rows) next[row.sessionId] = row;
+      return { activityRows: next };
+    }),
   activeSessionId: null,
   messages: [],
   toolCards: [],
   markers: [],
+  approvals: [],
   operations: [],
+  references: [],
   queuedMessages: { steering: [], followUp: [] },
   pendingOptimistic: [],
   optimisticKey: null,
@@ -373,7 +392,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         approval: card.approval,
       })),
       markers: [...(record.markers ?? [])],
+      approvals: [...(record.approvals ?? [])],
       operations: [...(record.operations ?? [])],
+      references: [...(record.references ?? [])],
       queuedMessages: { steering: [], followUp: [] },
       pendingOptimistic: [],
       optimisticKey: null,
@@ -389,7 +410,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       messages: [],
       toolCards: [],
       markers: [],
+      approvals: [],
       operations: [],
+      references: [],
       queuedMessages: { steering: [], followUp: [] },
       pendingOptimistic: [],
       optimisticKey: null,
@@ -402,7 +425,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   appendMessage: (message) =>
-    set((state) => ({ messages: [...state.messages, message] })),
+    set((state) => {
+      // Redelivery (worker-recovery replay, double push) must not create a
+      // duplicate bubble: same id means the authoritative copy wins in place.
+      const index = state.messages.findIndex((item) => item.id === message.id);
+      if (index < 0) return { messages: [...state.messages, message] };
+      const messages = [...state.messages];
+      messages[index] = { ...messages[index], ...message };
+      return { messages };
+    }),
   prependMessages: (messages) =>
     set((state) => {
       const known = new Set(state.messages.map((message) => message.id));

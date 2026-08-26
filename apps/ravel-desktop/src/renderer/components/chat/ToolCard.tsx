@@ -253,7 +253,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
               </Box>
             ))
           ) : null}
-          {card.argsJson ? (
+          {(detail?.argsJson ?? card.argsJson) ? (
             <Box>
               <Typography className="overline-label" sx={{ mb: 0.5 }}>
                 {t("toolcard.args")}
@@ -280,7 +280,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
               </Box>
             </Box>
           ) : null}
-          {card.resultText ? (
+          {(detail?.resultText ?? card.resultText) ? (
             <Box>
               <Typography className="overline-label" sx={{ mb: 0.5 }}>
                 {t(card.isError ? "toolcard.resultError" : "toolcard.result")}

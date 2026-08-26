@@ -12,7 +12,11 @@ import { createHash, randomUUID } from "node:crypto";
 
 export const FACT_CUSTOM_TYPE = "ravel_record";
 
-const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided"]);
+const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference"]);
+
+/** Delimiters for the model-visible block that resolves @session mentions. */
+export const SESSION_REFERENCE_BEGIN = "===== BEGIN RAVEL SESSION REFERENCES =====";
+export const SESSION_REFERENCE_END = "===== END RAVEL SESSION REFERENCES =====";
 
 export const APPROVAL_OUTCOMES = Object.freeze(["allowed-once", "rejected", "cancelled", "unavailable"]);
 export const APPROVAL_REASON_CODES = Object.freeze(["user-allowed", "user-denied", "ui-cancelled", "timeout", "no-answerer"]);
@@ -97,7 +101,10 @@ export function appendFact(sessionManager, record) {
 			}
 			break;
 		}
-	}
+		case "session_reference":
+			for (const field of ["sourceEntryId", "clientMessageId", "targetSessionId", "targetTitle"]) requireString(record, field);
+			break;
+		}
 	return sessionManager.appendCustomEntry(FACT_CUSTOM_TYPE, record);
 }
 
@@ -180,4 +187,106 @@ export function closeStaleOperations(sessionManager) {
 		closed += 1;
 	}
 	return closed;
+}
+
+/**
+ * Derive the 动态 view row from durable facts alone — the restart path when no
+ * live worker state exists for a session. Same semantics as the live tracker:
+ * waiting beats running, an open run is running, the last terminal outcome
+ * decides failed/done.
+ */
+export function deriveActivityFromFacts(facts) {
+	if (!Array.isArray(facts) || facts.length === 0) return null;
+	const finishedRunIds = new Set(facts.filter((fact) => fact.type === "operation_finished").map((fact) => fact.runId));
+	const decidedAskIds = new Set(facts.filter((fact) => fact.type === "approval_decided").map((fact) => fact.askedId));
+	const openRun = facts.find((fact) => fact.type === "operation_started" && fact.intent?.kind === "run" && !finishedRunIds.has(fact.id));
+	const pendingAsks = facts.filter((fact) => fact.type === "approval_asked" && !decidedAskIds.has(fact.id));
+	const finishRecords = facts.filter((fact) => fact.type === "operation_finished" && typeof fact.timestamp === "number");
+	const lastFinish = finishRecords.length > 0 ? finishRecords.reduce((a, b) => (a.timestamp > b.timestamp ? a : b)) : null;
+	if (!openRun && pendingAsks.length === 0 && !lastFinish) return null;
+	const status = pendingAsks.length > 0 ? "waiting" : openRun ? "running" : lastFinish && lastFinish.outcome !== "completed" ? "failed" : "done";
+	return {
+		status,
+		pendingApprovals: pendingAsks.length,
+		lastError: lastFinish?.error?.message ?? null,
+		lastOutcome: lastFinish?.outcome ?? null,
+		updatedAt: new Date(lastFinish?.timestamp ?? Date.now()).toISOString(),
+	};
+}
+
+/** Model-visible routing block that resolves @Title mentions to session UUIDs. */
+export function buildSessionReferenceBlock(references) {
+	if (!Array.isArray(references) || references.length === 0) return "";
+	const lines = references.map((ref) => `- "@${ref.targetTitle}": session ${ref.targetSessionId}`);
+	return `\n${SESSION_REFERENCE_BEGIN}\n${lines.join("\n")}\n${SESSION_REFERENCE_END}`;
+}
+
+/** Split a prompt into the user-visible text and the appended reference block. */
+export function stripSessionReferenceBlock(text) {
+	if (typeof text !== "string") return { text: "", block: "" };
+	const begin = text.indexOf(SESSION_REFERENCE_BEGIN);
+	if (begin < 0) return { text, block: "" };
+	const end = text.indexOf(SESSION_REFERENCE_END, begin);
+	if (end < 0) return { text, block: "" };
+	const block = text.slice(begin, end + SESSION_REFERENCE_END.length);
+	let visible = text.slice(0, begin) + text.slice(end + SESSION_REFERENCE_END.length);
+	visible = visible.replace(/\n+$/, "");
+	return { text: visible, block };
+}
+
+/**
+ * Resolve which persisted user entry carried this prompt. Prefers the entry
+ * chained from the captured leaf (exact); falls back to the newest user entry
+ * whose text matches the prompt body. Returns null when neither matches.
+ */
+export function resolveSourceEntryId(entries, { leafBefore, promptText }) {
+	if (leafBefore) {
+		const chained = entries.find((entry) => entry.type === "message" && entry.message?.role === "user" && entry.parentId === leafBefore);
+		if (chained) return chained.id;
+	}
+	const visible = stripSessionReferenceBlock(promptText).text;
+	const normalized = visible.replace(/\s+/g, " ").trim();
+	if (normalized) {
+		for (let index = entries.length - 1; index >= 0; index -= 1) {
+			const entry = entries[index];
+			if (entry.type !== "message" || entry.message?.role !== "user") continue;
+			const parts = Array.isArray(entry.message.content)
+				? entry.message.content.map((part) => (part && typeof part === "object" && typeof part.text === "string" ? part.text : "")).join("")
+				: typeof entry.message.content === "string"
+					? entry.message.content
+					: "";
+			if (parts.replace(/\s+/g, " ").trim() === normalized) return entry.id;
+		}
+	}
+	return null;
+}
+
+/**
+ * Append one session_reference fact per mention once the prompt entry exists.
+ * Best effort like every fact write; idempotent per clientMessageId.
+ */
+export function appendSessionReferenceFacts(sessionManager, { clientMessageId, references }) {
+	if (!Array.isArray(references) || references.length === 0) return [];
+	const existing = new Set(
+		readFacts(sessionManager)
+			.filter((fact) => fact.type === "session_reference")
+			.map((fact) => `${fact.clientMessageId}:${fact.targetSessionId}`),
+	);
+	const appended = [];
+	for (const ref of references) {
+		const key = `${clientMessageId}:${ref.targetSessionId}`;
+		if (existing.has(key)) continue;
+		appendFact(sessionManager, {
+			type: "session_reference",
+			id: `ref-${randomUUID()}`,
+			lane: "main",
+			sourceEntryId: ref.sourceEntryId,
+			clientMessageId,
+			targetSessionId: ref.targetSessionId,
+			targetTitle: ref.targetTitle,
+			timestamp: Date.now(),
+		});
+		appended.push(ref);
+	}
+	return appended;
 }

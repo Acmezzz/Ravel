@@ -12,7 +12,7 @@ import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
-import type { ConfiguredPackageInfo, ExtensionResource, PromptResource, ResourceBundle, SkillResource } from "../../types/dto";
+import type { ConfiguredPackageInfo, ExtensionResource, McpBundle, McpServerRow, PromptResource, ResourceBundle, SkillResource } from "../../types/dto";
 
 function scopeLabel(scope?: string): string {
   if (scope === "project") return "项目";
@@ -82,6 +82,13 @@ export function ResourceCenter(): React.ReactElement {
   const setOpen = useAppStore((s) => s.setResourceCenterOpen);
   const workspaceEpoch = useAppStore((s) => s.workspaceEpoch);
   const [bundle, setBundle] = React.useState<ResourceBundle | null>(null);
+  const [mcpBundle, setMcpBundle] = React.useState<McpBundle | null>(null);
+  const [mcpFormOpen, setMcpFormOpen] = React.useState(false);
+  const [mcpName, setMcpName] = React.useState("");
+  const [mcpCommand, setMcpCommand] = React.useState("");
+  const [mcpArgs, setMcpArgs] = React.useState("");
+  const [mcpScopeProject, setMcpScopeProject] = React.useState(false);
+  const [removingMcp, setRemovingMcp] = React.useState<McpServerRow | null>(null);
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [status, setStatus] = React.useState<string | null>(null);
@@ -91,6 +98,25 @@ export function ResourceCenter(): React.ReactElement {
     const res = await ipc.listResources();
     if (res.ok) setBundle(res.data);
     else setError(res.message);
+    const mcpRes = await ipc.mcpList();
+    if (mcpRes.ok) setMcpBundle(mcpRes.data);
+  }, []);
+
+  const applyMcp = React.useCallback(async (work: () => Promise<{ ok: boolean; data?: McpBundle; message?: string }>, okText: string) => {
+    setBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await work();
+      if (!res.ok) {
+        setError(res.message ?? "操作失败");
+        return;
+      }
+      if (res.data) setMcpBundle(res.data);
+      setStatus(okText);
+    } finally {
+      setBusy(false);
+    }
   }, []);
 
   React.useEffect(() => {
@@ -98,6 +124,8 @@ export function ResourceCenter(): React.ReactElement {
       setQuery("");
       setStatus(null);
       setError(null);
+      setMcpFormOpen(false);
+      setRemovingMcp(null);
       return;
     }
     void load();
@@ -126,6 +154,7 @@ export function ResourceCenter(): React.ReactElement {
   const skills = (bundle?.skills ?? []).filter((item) => match(`${item.name} ${item.description} ${item.filePath}`));
   const prompts = (bundle?.prompts ?? []).filter((item) => match(`${item.name} ${item.description} ${item.filePath}`));
   const packages = (bundle?.packages ?? []).filter((item) => match(`${item.source} ${item.installedPath ?? ""}`));
+  const mcpServers = (mcpBundle?.items ?? []).filter((item) => match(`${item.name} ${item.command}`));
 
   return (
     <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md">
@@ -345,12 +374,135 @@ export function ResourceCenter(): React.ReactElement {
             </Box>
           ))
         )}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+          <Typography className="overline-label">MCP 服务器（stdio）</Typography>
+          <Button
+            size="small"
+            disabled={busy}
+            onClick={() => {
+              setMcpName("");
+              setMcpCommand("");
+              setMcpArgs("");
+              setMcpScopeProject(false);
+              setMcpFormOpen(true);
+            }}
+            sx={{ textTransform: "none" }}
+          >
+            添加
+          </Button>
+        </Box>
+        {mcpBundle && !mcpBundle.bridgeLoaded ? (
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-warning)" }}>
+            执行桥（ravel-mcp-bridge 扩展）未加载：定义可以保存，但工具不会出现在会话中，启用状态不会生效。
+          </Typography>
+        ) : null}
+        {mcpServers.length === 0 ? (
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>还没有本地 stdio MCP 定义。</Typography>
+        ) : (
+          mcpServers.map((server) => (
+            <ResourceRow
+              key={`${server.scope}:${server.name}`}
+              title={server.name}
+              subtitle={[server.command, ...server.args].join(" ")}
+              chips={[scopeLabel(server.scope)]}
+              enabled={server.enabled}
+              busy={busy}
+              onToggle={(enabled) =>
+                void applyMcp(() => ipc.mcpSetEnabled({ name: server.name, enabled, project: server.scope === "project" }), enabled ? "已启用 MCP 服务器" : "已禁用 MCP 服务器")
+              }
+              extra={
+                <Button size="small" disabled={busy} onClick={() => setRemovingMcp(server)} sx={{ textTransform: "none", alignSelf: "flex-start" }}>
+                  移除
+                </Button>
+              }
+            />
+          ))
+        )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button variant="contained" onClick={() => setOpen(false)} sx={{ textTransform: "none" }}>
           完成
         </Button>
       </DialogActions>
+
+      {/* MCP 添加表单：仅 stdio 本地定义；网络传输明确不提供入口。 */}
+      <Dialog open={mcpFormOpen} onClose={() => setMcpFormOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 700 }}>添加 MCP 服务器</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.25, pt: 1 }}>
+          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>
+            仅支持本机 stdio 服务器。只添加你信任的服务器——它的工具将以 untrusted 权限档进入审批流程。
+          </Typography>
+          <TextField size="small" label="名称" value={mcpName} onChange={(e) => setMcpName(e.target.value)} placeholder="github-context" />
+          <TextField size="small" label="可执行命令" value={mcpCommand} onChange={(e) => setMcpCommand(e.target.value)} placeholder="npx -y @modelcontextprotocol/server-git" />
+          <TextField
+            size="small"
+            label="参数（每行一个）"
+            value={mcpArgs}
+            onChange={(e) => setMcpArgs(e.target.value)}
+            multiline
+            minRows={2}
+          />
+          <TextField
+            size="small"
+            select
+            label="范围"
+            value={mcpScopeProject ? "project" : "user"}
+            onChange={(e) => setMcpScopeProject(e.target.value === "project")}
+            SelectProps={{ native: true }}
+          >
+            <option value="user">用户（~/.ravel/mcp.json）</option>
+            <option value="project">项目（&lt;workspace&gt;/.ravel/mcp.json，需已信任）</option>
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMcpFormOpen(false)} sx={{ textTransform: "none" }}>取消</Button>
+          <Button
+            variant="contained"
+            disabled={busy || !mcpName.trim() || !mcpCommand.trim()}
+            onClick={() =>
+              void applyMcp(
+                () =>
+                  ipc.mcpAdd({
+                    name: mcpName,
+                    command: mcpCommand,
+                    args: mcpArgs.split("\n").map((line) => line.trim()).filter(Boolean),
+                    project: mcpScopeProject,
+                  }),
+                "已保存 MCP 定义",
+              ).then(() => setMcpFormOpen(false))
+            }
+            sx={{ textTransform: "none" }}
+          >
+            保存
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 移除确认：仅删除该定义键，不影响其他内容。 */}
+      <Dialog open={removingMcp !== null} onClose={() => setRemovingMcp(null)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: 700 }}>移除 {removingMcp?.name}？</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)" }}>
+            仅从 mcp.json 中删除这一个定义键，不改动文件中的其他内容。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemovingMcp(null)} sx={{ textTransform: "none" }}>取消</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={busy}
+            onClick={() => {
+              const target = removingMcp;
+              setRemovingMcp(null);
+              if (target) void applyMcp(() => ipc.mcpRemove({ name: target.name, project: target.scope === "project" }), "已移除");
+            }}
+            sx={{ textTransform: "none" }}
+          >
+            移除
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }

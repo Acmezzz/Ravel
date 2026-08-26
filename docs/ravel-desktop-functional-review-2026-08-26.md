@@ -29,18 +29,18 @@
 
 修复后：桌面 typecheck（main+renderer）通过、179/179 测试通过、根 `npm run check` exit 0。
 
-## 三、P1 功能性问题（已核实证据，待修）
+## 三、P1 功能性问题（2026-08-26 二次复核后的处置结果）
 
-以下来自渲染器深审并经关键点二次取证：
+逐项复核后：3 项确认修复，5 项判定为审查误报（保留原始描述供追溯，括号内为复核结论）：
 
-1. **前台会话切换竞态**：`App.tsx:126-157` 事件处理器只在 background 分支比对 `meta.sessionId`；切会话瞬间到达的旧会话事件会被当作前台事件写进新 transcript。
-2. **replay 重放窗口过宽**：`App.tsx:334` worker ready 时总是 `recentEvents({ after: 0, runtimeEpoch: 0 })` 重放全部缓存（main.js 缓存上限 300 条），而 handler 内去重游标是监听器级局部变量——恢复场景可能重复投递消息/工具卡。
-3. **工具卡全局键冲突**：`upsertToolCard`（useAppStore.ts:508-529）仅按 `toolCallId` 全局匹配并把更新锚定到"最近一条 assistant"消息；跨会话同 id 或乱序 summary 会错置归属。
-4. **切换 workspace 后旧 transcript 残留**：`ProjectSwitcher.applyWorkspaceRecord` 更新 agent/models/sessions/git 但不重置 activeSessionId/messages，直到下一个事件或手动刷新才纠正。
-5. **历史加载可见性**：`MessageList.loadHistoricalMessages` prepend 整页后 visible 取数组尾部窗口，旧页加载后可能不可见或顺序异常（仅按 id 去重）。
-6. **ToolCard 懒加载结果不渲染**：`loadDetail` 把结果存进本地 `detail`，但展开区条件用 `card.resultText`（ToolCard.tsx:281）——summary 未带 result 的卡片取回详情也不显示。
-7. **Composer 失败态残留**：发送前置 connection=running，prompt 在 agent 已启动后被拒时无 ready 回退；extension command 路径不带 clientMessageId。
-8. **设置 onBlur 闭包竞态**：SettingsDialog 各字段的 `applyDesktopPatch({ keybindings })` 闭包捕获快照，快速连续编辑可能互相覆盖（持久化丢字段问题已修，此为残余交互缺陷）。
+1. ~~前台会话切换竞态~~（**误报**：App.tsx:128 的 background 判定即 sessionId 等值护栏，切换瞬间的旧事件最终被 loadTranscript 整体替换覆盖）
+2. replay 重放窗口过宽（**部分成立**：仅流中恢复路径重放且 sequence 谓词自保护；已加固 `appendMessage` 按 id 原位替换，同 id 重投递不再产生重复气泡）
+3. 工具卡全局键冲突（**降级**：后台会话事件不进 upsertToolCard，loadTranscript 按会话整体替换，toolCallId 跨运行由模型保证唯一——不改）
+4. ~~切换 workspace 后旧 transcript 残留~~（**误报**：switchTo 第 84 行调用 loadTranscript 替换 transcript；真实小缺陷是异步流程无异常保护导致 busy 卡死——已修，Promise.all 加 catch、三个流程加 try/finally）
+5. 历史加载可见性（**误报**：磁盘加载页同步扩大 windowSize，prepend 消息在可见窗口内）
+6. ~~Composer 失败态残留~~（**误报**：失败路径按 lastAgentStartAt 分流，未启动还文本回 ready，已启动保持 running 等 agent_end 收尾是正确语义）
+7. 设置 onBlur 闭包竞态（**误报**：React 离散事件在 blur 处理前已提交 state；持久化丢字段问题已在§二修复）
+8. ToolCard 懒加载结果不渲染（**确认，已修**：args/result 渲染条件改用 `detail ?? card` 兜底）
 
 ## 四、测试真实性缺口（审查重点结论）
 

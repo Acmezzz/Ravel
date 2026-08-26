@@ -111,6 +111,39 @@ export interface SessionListPage {
   treeIndex?: Record<string, string[]>;
 }
 
+/** One cross-session row of the 动态 view (live or fact-derived). */
+export interface ActivityRow {
+  sessionId: string;
+  status: "running" | "waiting" | "failed" | "done";
+  pendingApprovals: number;
+  lastError: string | null;
+  lastOutcome: string | null;
+  updatedAt: string;
+  title?: string;
+  workspace?: string;
+}
+
+export interface ActivitySnapshotPage {
+  items: ActivityRow[];
+  total: number;
+  nextOffset: null;
+}
+
+/** One local stdio MCP server definition row (user or project scope). */
+export interface McpServerRow {
+  name: string;
+  command: string;
+  args: string[];
+  scope: "user" | "project";
+  enabled: boolean;
+}
+
+export interface McpBundle {
+  items: McpServerRow[];
+  /** False when the ravel-mcp-bridge execution extension is not discoverable. */
+  bridgeLoaded: boolean;
+}
+
 export type ApprovalOutcome = "allowed-once" | "rejected" | "cancelled" | "unavailable";
 
 export interface TimelineOperation {
@@ -119,6 +152,60 @@ export interface TimelineOperation {
   status: "open" | "completed" | "aborted" | "failed" | "declined";
   startedAt?: string;
   finishedAt?: string;
+}
+
+/** Per-turn token/cache economics for the telemetry panel (newest first). */
+export interface TelemetryTurn {
+  id: string;
+  ts: string | null;
+  model: string;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  reasoning: number;
+  cost: number;
+  promptTokens: number;
+  cacheHitRate: number | null;
+  missedTokens: number;
+  tokensPerSecond: number | null;
+}
+
+export interface TelemetryTotals {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  reasoning: number;
+  cost: number;
+  prompt: number;
+  wasteTokens: number;
+  missCount: number;
+  hitRate: number | null;
+}
+
+export interface TelemetrySnapshot {
+  totals: TelemetryTotals;
+  turns: TelemetryTurn[];
+}
+
+export interface SearchMatch {
+  path: string;
+  line: number;
+  text: string;
+}
+
+export interface SearchResultBundle {
+  engine: "rg" | "git-grep" | null;
+  results: SearchMatch[];
+  truncated: boolean;
+}
+
+/** One shadow-git checkpoint on the workspace chain (newest first). */
+export interface CheckpointInfo {
+  id: string;
+  ts: number;
+  label: string;
 }
 
 export interface ApprovalFact {
@@ -140,6 +227,14 @@ export interface TranscriptMarker {
   entryId: string;
   afterEntryId: string | null;
   ts?: string;
+}
+
+/** Projected cross-session edge (@session mention) anchored to a user entry. */
+export interface SessionReferenceFact {
+  sourceEntryId: string;
+  clientMessageId: string;
+  targetSessionId: string;
+  targetTitle: string;
 }
 
 export interface SessionMessage {
@@ -171,6 +266,7 @@ export interface SessionRecord extends SessionSummary {
   markers?: TranscriptMarker[];
   operations?: TimelineOperation[];
   approvals?: ApprovalFact[];
+  references?: SessionReferenceFact[];
 }
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";

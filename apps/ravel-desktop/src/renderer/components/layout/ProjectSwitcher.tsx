@@ -39,19 +39,19 @@ async function applyWorkspaceRecord(generation: number): Promise<void> {
     ipc.listCommands(),
     ipc.listSessions(),
     ipc.gitSnapshot(),
-  ]);
+  ]).catch(() => []);
   if (generation !== workspaceLoadGeneration) return;
-  if (state.ok) {
+  if (state?.ok) {
     store.setAgent(state.data);
     if (state.data.queuedMessages) {
       store.setQueuedMessages({ steering: state.data.queuedMessages.steering, followUp: state.data.queuedMessages.followUp });
     }
     if (state.data.tree) store.setSessionTree(state.data.tree);
   }
-  if (models.ok) store.setModels(models.data);
-  if (commands.ok) store.setCommands(commands.data);
-  if (sessions.ok) store.applySessionPage(sessions.data);
-  store.setGitSnapshot(git.ok ? git.data : null);
+  if (models?.ok) store.setModels(models.data);
+  if (commands?.ok) store.setCommands(commands.data);
+  if (sessions?.ok) store.applySessionPage(sessions.data);
+  store.setGitSnapshot(git?.ok ? git.data : null);
   store.closeViewer();
   store.bumpWorkspaceEpoch();
 }
@@ -78,64 +78,78 @@ export function ProjectSwitcher(): React.ReactElement {
   const switchTo = React.useCallback(async (root: string) => {
     setBusy(true);
     setError(null);
-    const result = await ipc.switchWorkspace({ workspace: root });
-    if (result.ok) {
-      const generation = ++workspaceLoadGeneration;
-      useAppStore.getState().loadTranscript(result.data);
-      await applyWorkspaceRecord(generation);
-      setAnchor(null);
-      await refresh();
-    } else if (result.code === "trust_required") {
-      const trust = await ipc.inspectProjectTrust({ workspace: root });
-      setPendingTrust({ workspace: root, trust: trust.ok ? trust.data : null });
-    } else {
-      setError(result.message);
+    try {
+      const result = await ipc.switchWorkspace({ workspace: root });
+      if (result.ok) {
+        const generation = ++workspaceLoadGeneration;
+        useAppStore.getState().loadTranscript(result.data);
+        await applyWorkspaceRecord(generation);
+        setAnchor(null);
+        await refresh();
+      } else if (result.code === "trust_required") {
+        const trust = await ipc.inspectProjectTrust({ workspace: root });
+        setPendingTrust({ workspace: root, trust: trust.ok ? trust.data : null });
+      } else {
+        setError(result.message);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }, [refresh]);
 
   const choose = React.useCallback(async () => {
     setBusy(true);
     setError(null);
-    const result = await ipc.chooseWorkspace();
-    if (result.ok) {
-      setWorkspaces(result.data.workspaces);
-      let trust = result.data.trust;
-      if (!trust) {
-        const inspected = await ipc.inspectProjectTrust({ workspace: result.data.root });
-        trust = inspected.ok ? inspected.data : undefined;
-      }
-      if (trust?.requiresTrust && trust.decision === "undecided") {
-        setPendingTrust({ workspace: result.data.root, trust });
-        setBusy(false);
+    try {
+      const result = await ipc.chooseWorkspace();
+      if (result.ok) {
+        setWorkspaces(result.data.workspaces);
+        let trust = result.data.trust;
+        if (!trust) {
+          const inspected = await ipc.inspectProjectTrust({ workspace: result.data.root });
+          trust = inspected.ok ? inspected.data : undefined;
+        }
+        if (trust?.requiresTrust && trust.decision === "undecided") {
+          setPendingTrust({ workspace: result.data.root, trust });
+          setBusy(false);
+          return;
+        }
+        await switchTo(result.data.root);
         return;
       }
-      await switchTo(result.data.root);
-    } else if (result.code !== "cancelled") {
-      setError(result.message);
+      if (result.code !== "cancelled") setError(result.message);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }, [switchTo]);
 
   const decideTrust = React.useCallback(async (decision: ProjectTrustChoice) => {
     if (!pendingTrust) return;
     setBusy(true);
-    const result = await ipc.decideProjectTrust({ workspace: pendingTrust.workspace, decision });
-    if (!result.ok) {
-      setError(result.message);
+    try {
+      const result = await ipc.decideProjectTrust({ workspace: pendingTrust.workspace, decision });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setWorkspaces(result.data.workspaces);
+      setPendingTrust(null);
+      if (result.data.reloaded) {
+        const generation = ++workspaceLoadGeneration;
+        await applyWorkspaceRecord(generation);
+        setAnchor(null);
+      } else {
+        await switchTo(pendingTrust.workspace);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
       setBusy(false);
-      return;
     }
-    setWorkspaces(result.data.workspaces);
-    setPendingTrust(null);
-    if (result.data.reloaded) {
-      const generation = ++workspaceLoadGeneration;
-      await applyWorkspaceRecord(generation);
-      setAnchor(null);
-    } else {
-      await switchTo(pendingTrust.workspace);
-    }
-    setBusy(false);
   }, [pendingTrust, switchTo]);
 
   const removeWorkspace = React.useCallback(async (workspace: WorkspaceInfo, event: React.MouseEvent) => {

@@ -16,6 +16,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:setProviderApiKey",
   "omega:removeProviderApiKey",
   "omega:listSessions",
+  "omega:activitySnapshot",
   "omega:readSessionMessages",
   "omega:newSession",
   "omega:loadSession",
@@ -37,6 +38,11 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:navigateTree",
   "omega:getThinking",
   "omega:getToolDetail",
+  "omega:telemetry",
+  "omega:projectSearch",
+  "omega:checkpointList",
+  "omega:checkpointCreate",
+  "omega:checkpointRestore",
   "omega:listResources",
   "omega:reloadResources",
   "omega:installLocalResource",
@@ -44,6 +50,10 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:setResourceEnabled",
   "omega:setSkillModelInvocation",
   "omega:setSkillCommandsEnabled",
+  "omega:mcpList",
+  "omega:mcpAdd",
+  "omega:mcpSetEnabled",
+  "omega:mcpRemove",
   "omega:getSystemPrompt",
   "omega:exportHtml",
   "omega:bash",
@@ -84,6 +94,7 @@ export const PUSH_CHANNELS = Object.freeze([
   "window:maximizedChanged",
   "file:changed",
   "extension-ui:request",
+  "activity:changed",
 ]);
 
 export function extractHandleChannels(source) {

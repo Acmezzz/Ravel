@@ -19,7 +19,8 @@ import { homedir } from "node:os";
 import { existsSync, lstatSync, readdirSync, realpathSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FACT_CUSTOM_TYPE } from "./session-facts.js";
+import { FACT_CUSTOM_TYPE, stripSessionReferenceBlock } from "./session-facts.js";
+import { computeTelemetry } from "./telemetry.js";
 
 export const AGENT_DIR = join(homedir(), ".pi", "agent");
 const DEV_EXTENSIONS_ROOT = resolve(fileURLToPath(new URL("../../../.pi/extensions", import.meta.url)));
@@ -347,13 +348,14 @@ export function sanitizeTranscript(messagesOrSession) {
   const markers = [];
   const operations = [];
   const approvals = [];
+  const references = [];
   const resultByToolCallId = new Map();
 
   let items = null;
   const maybeSession = messagesOrSession;
   if (maybeSession && typeof maybeSession === "object" && typeof maybeSession.sessionManager?.getBranch === "function") {
     const branch = maybeSession.sessionManager.getBranch();
-    projectFacts(branch, { markers, operations, approvals });
+    projectFacts(branch, { markers, operations, approvals, references });
     items = branch.filter((entry) => entry.type === "message");
   }
   const entries = items;
@@ -379,10 +381,14 @@ export function sanitizeTranscript(messagesOrSession) {
     const message = entry.message;
     if (!message || typeof message !== "object") continue;
     if (message.role === "user") {
+      // The delimited reference block is model-facing routing metadata; the
+      // human transcript shows the original words with chips projected from
+      // the durable session_reference facts instead.
+      const { text: visibleText } = stripSessionReferenceBlock(cap(textFromContent(message.content)) ?? "");
       outMessages.push({
         role: "user",
         id: textValue(message.id) ?? `user-${outMessages.length}`,
-        text: cap(textFromContent(message.content)),
+        text: visibleText,
         ts: messageTimestamp(message),
         entryId: entry.id,
       });
@@ -436,11 +442,11 @@ export function sanitizeTranscript(messagesOrSession) {
     if (outcome) card.approval = outcome;
   }
 
-  return { messages: outMessages, toolCards, markers, operations, approvals };
+  return { messages: outMessages, toolCards, markers, operations, approvals, references };
 }
 
 /** Walk branch entries once, projecting compaction boundaries and facts. */
-function projectFacts(branch, { markers, operations, approvals }) {
+function projectFacts(branch, { markers, operations, approvals, references }) {
   let lastMessageEntryId = null;
   for (const entry of branch) {
     if (entry.type === "message") {
@@ -501,6 +507,16 @@ function projectFacts(branch, { markers, operations, approvals }) {
         }
         break;
       }
+      case "session_reference":
+        if (!references.some((item) => item.clientMessageId === fact.clientMessageId && item.targetSessionId === fact.targetSessionId)) {
+          references.push({
+            sourceEntryId: fact.sourceEntryId,
+            clientMessageId: fact.clientMessageId,
+            targetSessionId: fact.targetSessionId,
+            targetTitle: fact.targetTitle,
+          });
+        }
+        break;
     }
   }
 }
@@ -537,6 +553,20 @@ export function getToolDetail(runtime, toolCallId) {
     if (message.role === "toolResult" && textValue(message.toolCallId) === toolCallId) result = { resultText: cap(textFromContent(message.content)), isError: message.isError === true };
   }
   return { toolCallId, ...(call ?? {}), ...(result ?? {}) };
+}
+
+/** Token/cache/cost telemetry computed from the authoritative branch. */
+export function telemetryOf(runtime) {
+  return computeTelemetry(runtime.session.sessionManager.getBranch());
+}
+
+/** True when an extension directory with this name is discoverable (e.g. ravel-mcp-bridge). */
+export function hasExtensionNamed(name) {
+  try {
+    return genericExtensionPaths(extensionsRootOf()).some((path) => path.includes(name));
+  } catch {
+    return false;
+  }
 }
 
 export async function resolveSessionPath(sessionId) {
@@ -645,6 +675,7 @@ export function sessionRecordOf(runtime) {
     markers: snap.markers ?? [],
     operations: snap.operations ?? [],
     approvals: snap.approvals ?? [],
+    references: snap.references ?? [],
   };
 }
 

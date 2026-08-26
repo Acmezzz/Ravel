@@ -30,7 +30,15 @@ import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
 import { validateCustomProvider } from "./custom-providers.js";
-import { appendFact, closeStaleApprovals, closeStaleOperations } from "./session-facts.js";
+import {
+  appendFact,
+  appendSessionReferenceFacts,
+  buildSessionReferenceBlock,
+  closeStaleApprovals,
+  closeStaleOperations,
+  resolveSourceEntryId,
+} from "./session-facts.js";
+import { createCheckpoint } from "./checkpoint-service.js";
 
 /** @type {import("./agent-bridge.js").ReturnType<typeof bridge.createRuntime> | null} */
 let runtime = null;
@@ -154,6 +162,14 @@ async function bindSession(session) {
         runId: () => activeRunId ?? "",
         appendAsked: (asked) => appendFact(session.sessionManager, asked),
         appendDecided: (decided) => appendFact(session.sessionManager, decided),
+      },
+      // Shadow snapshot before every approved mutation (C4-lite). Best effort.
+      snapshot: async ({ toolName }) => {
+        try {
+          await createCheckpoint(runtime.cwd, `auto ${toolName}`);
+        } catch (error) {
+          console.error("auto checkpoint failed", error);
+        }
       },
     }),
   });
@@ -321,7 +337,53 @@ function autoTitleFor(text) {
   }
 }
 
-async function prompt({ text, behavior, images, clientMessageId, generation: requestGeneration }) {
+/**
+ * Best-effort @session reference facts: resolve the persisted user entry that
+ * carried this prompt, then append one typed edge per mention. Retried briefly
+ * because a steering prompt's entry can land a moment after session.prompt
+ * resolves; failures never block the run.
+ */
+function recordReferenceFacts(sessionManager, { leafBefore, promptText, clientMessageId, references }) {
+  let attempts = 0;
+  const tryOnce = () => {
+    attempts += 1;
+    try {
+      const sourceEntryId = resolveSourceEntryId(sessionManager.getEntries(), { leafBefore, promptText });
+      if (!sourceEntryId) return false;
+      appendSessionReferenceFacts(sessionManager, {
+        clientMessageId,
+        references: references.map((ref) => ({ ...ref, sourceEntryId })),
+      });
+      return true;
+    } catch (error) {
+      console.error("session_reference fact failed", error);
+      return true;
+    }
+  };
+  if (tryOnce()) return;
+  const timer = setInterval(() => {
+    if (tryOnce() || attempts >= 10) clearInterval(timer);
+  }, 300);
+  timer.unref?.();
+}
+
+/** Bounded reference payload; invalid entries are dropped, not rejected. */
+function sanitizeReferences(references) {
+  if (!Array.isArray(references)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const ref of references) {
+    if (!ref || typeof ref !== "object") continue;
+    const targetSessionId = typeof ref.targetSessionId === "string" ? ref.targetSessionId.trim().slice(0, 128) : "";
+    const targetTitle = typeof ref.targetTitle === "string" ? ref.targetTitle.trim().slice(0, 256) : "";
+    if (!targetSessionId || !targetTitle || seen.has(targetSessionId)) continue;
+    seen.add(targetSessionId);
+    out.push({ targetSessionId, targetTitle });
+  }
+  return out.slice(0, 16);
+}
+
+async function prompt({ text, behavior, images, clientMessageId, generation: requestGeneration, references }) {
   if (disposed || requestGeneration !== generation) {
     const error = new Error("stale worker generation");
     error.code = "stale_generation";
@@ -331,6 +393,17 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
   const promptEpoch = runtimeEpoch;
   const options = { streamingBehavior: behavior ?? "followUp" };
   if (images) options.images = images;
+  const refs = sanitizeReferences(references);
+  const trackedClientMessageId = typeof clientMessageId === "string" ? clientMessageId : null;
+  // The model-visible prompt carries the delimited routing block; the JSONL
+  // user entry therefore holds exactly what the model saw, and the renderer
+  // strips it for display.
+  const referenceBlock = buildSessionReferenceBlock(refs);
+  const fullText = referenceBlock ? `${text}${referenceBlock}` : text;
+  let leafBefore = null;
+  if (refs.length > 0 && typeof session.sessionManager?.getLeafId === "function") {
+    leafBefore = session.sessionManager.getLeafId();
+  }
   const runPrompt = async () => {
     if (disposed || requestGeneration !== generation || promptEpoch !== runtimeEpoch) {
       const error = new Error("stale worker runtime");
@@ -344,10 +417,9 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
       operationId = `op-${randomUUID()}`;
       beginOperationFact(session, operationId, text);
     }
-    const trackedClientMessageId = typeof clientMessageId === "string" ? clientMessageId : null;
     if (trackedClientMessageId) activeClientMessageIds.add(trackedClientMessageId);
     try {
-      await session.prompt(text, options);
+      await session.prompt(fullText, options);
       autoTitleFor(text);
       if (operationId) {
         endOperationFact(session, operationId, "completed");
@@ -362,6 +434,9 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
       throw error;
     } finally {
       if (trackedClientMessageId) activeClientMessageIds.delete(trackedClientMessageId);
+      if (refs.length > 0 && trackedClientMessageId) {
+        recordReferenceFacts(session.sessionManager, { leafBefore, promptText: fullText, clientMessageId: trackedClientMessageId, references: refs });
+      }
     }
   };
   if (session.isStreaming) {
@@ -619,6 +694,7 @@ const methods = {
   },
   getThinking: ({ entryId }) => ({ text: bridge.getThinking(runtime, entryId) }),
   getToolDetail: ({ toolCallId }) => bridge.getToolDetail(runtime, toolCallId),
+  telemetry: () => bridge.telemetryOf(runtime),
   getSystemPrompt: () => ({ systemPrompt: runtime.session.systemPrompt ?? "" }),
   bash: ({ command, excludeFromContext }) =>
     runtime.session.executeBash(command, undefined, {

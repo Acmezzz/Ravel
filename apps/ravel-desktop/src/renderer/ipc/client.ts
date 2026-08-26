@@ -9,6 +9,8 @@ import type {
   ProjectTrustChoice,
   ProjectTrustInfo,
   SessionListPage,
+  ActivitySnapshotPage,
+  McpBundle,
   SessionRecord,
   SessionMessage,
   ChangeApprovalResult,
@@ -32,10 +34,20 @@ import type {
   ResourceBundle,
   ExtensionUIRequest,
   ExtensionUIResponse,
+  TelemetrySnapshot,
+  SearchResultBundle,
+  CheckpointInfo,
 } from "../types/dto";
 
+/** A structured @session mention resolved by the composer mention menu. */
+export interface PromptSessionReference {
+  targetSessionId: string;
+  targetTitle: string;
+}
+
 export interface RavelBridge {
-  prompt(text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string): Promise<IpcResult<void>>;
+  /** A structured @session mention resolved by the composer menu. */
+  prompt(text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string, references?: PromptSessionReference[]): Promise<IpcResult<void>>;
   abort(): Promise<IpcResult<void>>;
   updateSettings(req: {
     steeringMode?: "all" | "one-at-a-time";
@@ -68,6 +80,11 @@ export interface RavelBridge {
   removeWorktree(req: { path: string; force?: boolean }): Promise<IpcResult<GitWorktreeList>>;
   getThinking(req: { entryId: string }): Promise<IpcResult<{ text: string | null }>>;
   getToolDetail(req: { toolCallId: string }): Promise<IpcResult<{ toolCallId: string; toolName?: string; argsJson?: string; resultText?: string; isError?: boolean }>>;
+  telemetry(): Promise<IpcResult<TelemetrySnapshot>>;
+  projectSearch(req: { query: string }): Promise<IpcResult<SearchResultBundle>>;
+  checkpointList(): Promise<IpcResult<CheckpointInfo[]>>;
+  checkpointCreate(req?: { label?: string }): Promise<IpcResult<CheckpointInfo>>;
+  checkpointRestore(req: { id: string }): Promise<IpcResult<{ restored: string; safety: string }>>;
   getSystemPrompt(): Promise<IpcResult<{ systemPrompt: string }>>;
   exportHtml(): Promise<IpcResult<{ path: string }>>;
   listResources(): Promise<IpcResult<ResourceBundle>>;
@@ -119,6 +136,12 @@ export interface RavelBridge {
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
   listSessions(req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>>;
+  activitySnapshot(): Promise<IpcResult<ActivitySnapshotPage>>;
+  onActivityChanged(callback: (data: unknown) => void): () => void;
+  mcpList(): Promise<IpcResult<McpBundle>>;
+  mcpAdd(req: { name: string; command: string; args?: string[]; project?: boolean }): Promise<IpcResult<McpBundle>>;
+  mcpSetEnabled(req: { name: string; enabled: boolean; project?: boolean }): Promise<IpcResult<McpBundle>>;
+  mcpRemove(req: { name: string; project?: boolean }): Promise<IpcResult<McpBundle>>;
   readSessionMessages(req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>>;
   newSession(req: {
     projectKey?: string;
@@ -147,8 +170,8 @@ function ok<T>(value: IpcResult<T> | undefined): IpcResult<T> {
 }
 
 export const ipc = {
-  prompt: async (text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string): Promise<IpcResult<void>> =>
-    ok(await window.omega?.prompt?.(text, behavior, images, clientMessageId)),
+  prompt: async (text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string, references?: PromptSessionReference[]): Promise<IpcResult<void>> =>
+    ok(await window.omega?.prompt?.(text, behavior, images, clientMessageId, references)),
   abort: async (): Promise<IpcResult<void>> => ok(await window.omega?.abort?.()),
   updateSettings: async (req: {
     steeringMode?: "all" | "one-at-a-time";
@@ -189,6 +212,11 @@ export const ipc = {
   getThinking: async (req: { entryId: string }): Promise<IpcResult<{ text: string | null }>> =>
     ok(await window.omega?.getThinking?.(req)),
   getToolDetail: async (req: { toolCallId: string }): Promise<IpcResult<{ toolCallId: string; toolName?: string; argsJson?: string; resultText?: string; isError?: boolean }>> => ok(await window.omega?.getToolDetail?.(req)),
+  telemetry: async (): Promise<IpcResult<TelemetrySnapshot>> => ok(await window.omega?.telemetry?.()),
+  projectSearch: async (req: { query: string }): Promise<IpcResult<SearchResultBundle>> => ok(await window.omega?.projectSearch?.(req)),
+  checkpointList: async (): Promise<IpcResult<CheckpointInfo[]>> => ok(await window.omega?.checkpointList?.()),
+  checkpointCreate: async (req?: { label?: string }): Promise<IpcResult<CheckpointInfo>> => ok(await window.omega?.checkpointCreate?.(req)),
+  checkpointRestore: async (req: { id: string }): Promise<IpcResult<{ restored: string; safety: string }>> => ok(await window.omega?.checkpointRestore?.(req)),
   getSystemPrompt: async (): Promise<IpcResult<{ systemPrompt: string }>> => ok(await window.omega?.getSystemPrompt?.()),
   exportHtml: async (): Promise<IpcResult<{ path: string }>> => ok(await window.omega?.exportHtml?.()),
   listResources: async (): Promise<IpcResult<ResourceBundle>> => ok(await window.omega?.listResources?.()),
@@ -255,6 +283,16 @@ export const ipc = {
     ok(await window.omega?.removeProviderApiKey?.(req)),
   listSessions: async (req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>> =>
     ok(await window.omega?.listSessions?.(req)),
+  activitySnapshot: async (): Promise<IpcResult<ActivitySnapshotPage>> => ok(await window.omega?.activitySnapshot?.()),
+  onActivityChanged: (callback: (data: unknown) => void): (() => void) =>
+    window.omega?.onActivityChanged?.(callback) ?? (() => {}),
+  mcpList: async (): Promise<IpcResult<McpBundle>> => ok(await window.omega?.mcpList?.()),
+  mcpAdd: async (req: { name: string; command: string; args?: string[]; project?: boolean }): Promise<IpcResult<McpBundle>> =>
+    ok(await window.omega?.mcpAdd?.(req)),
+  mcpSetEnabled: async (req: { name: string; enabled: boolean; project?: boolean }): Promise<IpcResult<McpBundle>> =>
+    ok(await window.omega?.mcpSetEnabled?.(req)),
+  mcpRemove: async (req: { name: string; project?: boolean }): Promise<IpcResult<McpBundle>> =>
+    ok(await window.omega?.mcpRemove?.(req)),
   readSessionMessages: async (req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>> =>
     ok(await window.omega?.readSessionMessages?.(req)),
   newSession: async (req: {

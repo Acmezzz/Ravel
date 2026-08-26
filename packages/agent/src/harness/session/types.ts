@@ -230,6 +230,21 @@ export interface ApprovalDecidedRecord extends RecordBase {
 	uiRequestId?: string;
 }
 
+/**
+ * A typed cross-session edge: one user prompt in this session referenced
+ * another top-level session. Appended by the desktop after the prompt entry
+ * persists (post-hoc, like compaction facts). `sourceEntryId` anchors the edge
+ * to the user entry containing the mention; `targetSessionId` is the frozen
+ * session id. Titles are display caches — the id is the identity.
+ */
+export interface SessionReferenceRecord extends RecordBase {
+	type: "session_reference";
+	sourceEntryId: string;
+	clientMessageId: string;
+	targetSessionId: string;
+	targetTitle: string;
+}
+
 export type UsageRecord = RecordBase & { type: "usage"; usage: Usage } & (
 		| {
 				cause: "assistant" | "compaction" | "branch_summary" | "deferred_fetch";
@@ -254,7 +269,8 @@ export type LaneRecord =
 	| WriteDeferredRecord
 	| UsageRecord
 	| ApprovalAskedRecord
-	| ApprovalDecidedRecord;
+	| ApprovalDecidedRecord
+	| SessionReferenceRecord;
 export type NewRecord<TRecord extends LaneRecord = LaneRecord> = TRecord extends LaneRecord
 	? Omit<TRecord, "seq" | "timestamp">
 	: never;
