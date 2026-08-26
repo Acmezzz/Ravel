@@ -9,8 +9,6 @@ import Chip from "@mui/material/Chip";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Button from "@mui/material/Button";
-import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
-import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import StopIcon from "@mui/icons-material/Stop";
 import CompressIcon from "@mui/icons-material/Compress";
@@ -23,7 +21,6 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import SettingsBrightnessIcon from "@mui/icons-material/SettingsBrightness";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import { useAppStore, type ConnectionState, type ShutdownPhase } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
@@ -263,11 +260,7 @@ export function Header(): React.ReactElement {
   const connection = useAppStore((s) => s.connection);
   const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const bootstrapError = useAppStore((s) => s.bootstrapError);
-  const rightOpen = useAppStore((s) => s.layout.rightPanelOpen);
-  const leftOpen = useAppStore((s) => s.layout.leftPanelOpen);
   const focusMode = useAppStore((s) => s.layout.focusMode);
-  const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
-  const toggleLeftPanel = useAppStore((s) => s.toggleLeftPanel);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
   const setTreeOpen = useAppStore((s) => s.setTreeOpen);
   const agent = useAppStore((s) => s.agent);
@@ -350,11 +343,12 @@ export function Header(): React.ReactElement {
         borderBottom: "1px solid var(--omega-border)",
       }}
     >
-      <Toolbar
+        <Toolbar
         sx={{
           gap: 1,
-          px: 1.5,
+          px: 1.25,
           minHeight: 54,
+
           flexWrap: { xs: "wrap", md: "nowrap" },
           overflow: { xs: "auto", md: "hidden" },
         }}
@@ -393,7 +387,8 @@ export function Header(): React.ReactElement {
 
         <Divider />
 
-        {/* model cluster */}
+        {/* model controls */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flex: "0 1 auto", minWidth: 0 }}>
         <Box
           {...(shuttingDown ? {} : clickableRole)}
           onClick={(e) => {
@@ -404,7 +399,7 @@ export function Header(): React.ReactElement {
             alignItems: "center",
             gap: 0.5,
             px: 1.25,
-            height: 30,
+            height: 34,
             flex: "0 1 auto",
             minWidth: 0,
             maxWidth: 220,
@@ -438,7 +433,7 @@ export function Header(): React.ReactElement {
             fontSize: "0.65625rem",
             height: 24,
             flex: "0 0 auto",
-            display: { xs: "none", lg: "inline-flex" },
+            display: "inline-flex",
             border: "1px solid var(--omega-border)",
             background: "var(--omega-bg-soft)",
             color: "var(--omega-text-muted)",
@@ -455,6 +450,8 @@ export function Header(): React.ReactElement {
             </MenuItem>
           ))}
         </Menu>
+
+        </Box>
 
         {/* data cluster */}
         <Tooltip title={`上下文 ${usageLabel}`}>
@@ -526,18 +523,8 @@ export function Header(): React.ReactElement {
 
         {/* utility cluster */}
         <Tooltip title={focusMode ? "退出专注模式" : "专注模式"}>
-          <IconButton size="small" aria-label={focusMode ? "退出专注模式" : "进入专注模式"} onClick={toggleFocusMode} sx={{ ...iconBtnSx, minWidth: 32, minHeight: 32, color: focusMode ? "var(--omega-accent)" : iconBtnSx.color }}>
-            <CenterFocusStrongIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={leftOpen ? "收起左栏" : "展开左栏"}>
-          <IconButton size="small" aria-label={leftOpen ? "收起左侧导航" : "展开左侧导航"} aria-expanded={leftOpen} aria-controls="omega-left-drawer" onClick={toggleLeftPanel} sx={{ ...iconBtnSx, minWidth: 32, minHeight: 32 }}>
-            <MenuOpenIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={rightOpen ? "收起右栏" : "展开右栏"}>
-          <IconButton size="small" aria-label={rightOpen ? "收起右侧面板" : "展开右侧面板"} aria-expanded={rightOpen} aria-controls="omega-right-drawer" onClick={toggleRightPanel} sx={{ ...iconBtnSx, minWidth: 32, minHeight: 32 }}>
-            {rightOpen ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
+          <IconButton size="small" aria-label={focusMode ? "退出专注模式" : "进入专注模式"} onClick={toggleFocusMode} sx={{ ...iconBtnSx, minWidth: 36, minHeight: 36, color: focusMode ? "var(--omega-accent)" : iconBtnSx.color }}>
+            <CenterFocusStrongIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title="更多工作台操作">
@@ -547,20 +534,8 @@ export function Header(): React.ReactElement {
         </Tooltip>
         <Menu anchorEl={utilityAnchor} open={Boolean(utilityAnchor)} onClose={() => setUtilityAnchor(null)}>
           <MenuItem onClick={() => { setUtilityAnchor(null); setModelCenterOpen(true); }} disabled={shuttingDown}><HubOutlinedIcon fontSize="small" sx={{ mr: 1 }} />模型中心</MenuItem>
-          <MenuItem onClick={() => { setUtilityAnchor(null); useAppStore.getState().setResourceCenterOpen(true); }} disabled={shuttingDown}><ExtensionOutlinedIcon fontSize="small" sx={{ mr: 1 }} />资源中心</MenuItem>
+          <MenuItem aria-label="打开资源中心" onClick={() => { setUtilityAnchor(null); useAppStore.getState().setResourceCenterOpen(true); }} disabled={shuttingDown}><ExtensionOutlinedIcon fontSize="small" sx={{ mr: 1 }} />资源中心</MenuItem>
           <MenuItem onClick={(e) => { setUtilityAnchor(null); setThemeMode(nextTheme, { x: e.clientX, y: e.clientY }); }}><ThemeIcon fontSize="small" sx={{ mr: 1 }} />{t("menu.theme")}：{t(THEME_KEY[themeMode])}</MenuItem>
-          <Divider />
-          <Box className="overline-label" sx={{ px: 1.5, py: 0.5 }}>{t("menu.thinkingGroup")}</Box>
-          {(agent?.supportsThinking === false ? [] : thinkingLevels).map((level) => (
-            <MenuItem
-              key={level}
-              selected={agent?.thinkingLevel === level}
-              disabled={shuttingDown}
-              onClick={() => void handleSetThinking(level)}
-            >
-              {t(THINKING_KEY[level])}
-            </MenuItem>
-          ))}
           <Divider />
           <MenuItem onClick={() => { setUtilityAnchor(null); if (!running) setTreeOpen(true); }} disabled={running}><AccountTreeIcon fontSize="small" sx={{ mr: 1 }} />会话分支树</MenuItem>
           <MenuItem onClick={() => { setUtilityAnchor(null); setInfoOpen(true); }}><InfoOutlinedIcon fontSize="small" sx={{ mr: 1 }} />会话信息 / 导出</MenuItem>

@@ -25,6 +25,7 @@ export function TrustCenter(): React.ReactElement {
   const [items, setItems] = React.useState<WorkspaceInfo[]>([]);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [pendingChoice, setPendingChoice] = React.useState<Record<string, ProjectTrustChoice | "">>({});
 
   const refresh = React.useCallback(async () => {
     const result = await ipc.listWorkspaces();
@@ -37,6 +38,7 @@ export function TrustCenter(): React.ReactElement {
   const decide = async (workspace: WorkspaceInfo, decision: ProjectTrustChoice) => {
     setBusy(workspace.realRoot);
     setError(null);
+    setPendingChoice((current) => ({ ...current, [workspace.realRoot]: decision }));
     const result = await ipc.decideProjectTrust({ workspace: workspace.realRoot, decision });
     if (result.ok) setItems(result.data.workspaces);
     else setError(result.message);
@@ -53,7 +55,19 @@ export function TrustCenter(): React.ReactElement {
           <Box sx={{ minWidth: 0, flex: 1 }}><Typography sx={{ fontSize: "0.8125rem", fontWeight: 600 }} noWrap>{workspace.displayPath}</Typography><Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)" }} noWrap>{workspace.resourcesDormant ? "项目资源休眠" : "项目资源可用"}</Typography></Box>
           {inherited ? <Chip size="small" label="继承父目录信任" sx={{ height: 19, fontSize: "0.65625rem" }} /> : null}
           <Chip size="small" label={workspace.trust === "trusted" ? "trusted" : workspace.trust === "untrusted" ? "untrusted" : "undecided"} color={workspace.trust === "trusted" ? "success" : "default"} sx={{ height: 19, fontSize: "0.65625rem" }} />
-          <TextField select size="small" value="" disabled={busy === workspace.realRoot} onChange={(event) => { const value = event.target.value as ProjectTrustChoice; if (value) void decide(workspace, value); }} sx={{ minWidth: 120 }}><MenuItem value="">设置…</MenuItem>{choices.map((choice) => <MenuItem key={choice.value} value={choice.value}>{choice.label}</MenuItem>)}</TextField>
+          <TextField
+            select
+            size="small"
+            value={pendingChoice[workspace.realRoot] ?? (workspace.trust === "trusted" ? "always" : workspace.trust === "untrusted" ? "never" : "")}
+            disabled={busy === workspace.realRoot}
+            onChange={(event) => {
+              const value = event.target.value as ProjectTrustChoice;
+              if (value) void decide(workspace, value);
+            }}
+            sx={{ minWidth: 150 }}
+          >
+            {choices.map((choice) => <MenuItem key={choice.value} value={choice.value}>{choice.label}</MenuItem>)}
+          </TextField>
         </Box>;
       })}
       {items.length === 0 ? <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>还没有已授权工作区。</Typography> : null}

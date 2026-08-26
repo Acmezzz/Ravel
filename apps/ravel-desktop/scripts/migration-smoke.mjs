@@ -43,7 +43,7 @@ function hashTree(root) {
 }
 
 /** Launch the packaged app once and wait for a clean exit. */
-function launch(userDataDir, attempt) {
+function launch(userDataDir) {
   return new Promise((resolveLaunch) => {
     let stdout = "";
     let settled = false;
@@ -69,7 +69,6 @@ function launch(userDataDir, attempt) {
       clearTimeout(timer);
       resolveLaunch({ code, timedOut: false, stdout });
     });
-    void attempt;
   });
 }
 
@@ -91,7 +90,7 @@ function main() {
   void (async () => {
     try {
       // First launch performs the migration.
-      const first = await launch(userDataDir, 1);
+      const first = await launch(userDataDir);
       check("first launch exits cleanly", first.code === 0 && !first.timedOut, first.timedOut ? "timed out" : `exit ${first.code}`);
       check("worker became ready on first launch", first.stdout.includes("[main] agent worker ready"));
 
@@ -118,7 +117,7 @@ function main() {
       check("legacy omega tree untouched after first run", hashesEqual(legacyBefore, legacyAfterFirst));
 
       // Second launch must not re-migrate.
-      const second = await launch(userDataDir, 2);
+      const second = await launch(userDataDir);
       check("second launch exits cleanly", second.code === 0 && !second.timedOut, second.timedOut ? "timed out" : `exit ${second.code}`);
       const legacyAfterSecond = hashTree(legacyRoot);
       check("legacy omega tree untouched after second run", hashesEqual(legacyBefore, legacyAfterSecond));

@@ -27,6 +27,7 @@ import {
   setDisableModelInvocationFrontmatter,
 } from "./resource-center.js";
 import { isExtensionUIResponse } from "./extension-ui-protocol.js";
+import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
 import { validateCustomProvider } from "./custom-providers.js";
 
@@ -671,6 +672,10 @@ process.parentPort.on("message", async (event) => {
     return;
   }
   if (message.type === "req") {
+    if (!isWorkerRequest(message)) {
+      post({ type: "resp", id: typeof message.id === "string" ? message.id : "invalid", error: "invalid worker request", code: "invalid_request" });
+      return;
+    }
     const requestEpoch = message.args?.runtimeEpoch;
     if (message.generation !== generation || (requestEpoch !== undefined && requestEpoch !== runtimeEpoch) || !METHOD_NAMES.has(message.method) || (disposed && message.method !== "dispose")) {
       post({ type: "resp", id: message.id, error: "stale or unsupported worker request", code: requestEpoch !== undefined && requestEpoch !== runtimeEpoch ? "stale_runtime" : "stale_generation" });

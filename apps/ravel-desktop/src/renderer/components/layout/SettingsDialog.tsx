@@ -179,9 +179,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>{t("settings.title")}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 700, px: 3, pt: 2.5, pb: 1.5 }}>{t("settings.title")}</DialogTitle>
 
-      <Box sx={{ px: 3, borderBottom: "1px solid var(--omega-border)" }}>
+      <Box sx={{ px: 1.5, borderBottom: "1px solid var(--omega-border)" }}>
         <Tabs
           value={activeTab}
           onChange={(_e, v) => setActiveTab(v)}
@@ -193,9 +193,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         </Tabs>
       </Box>
 
-      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2, pb: 2, minHeight: 340 }}>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, pt: 2.5, pb: 2.5, minHeight: 340 }}>
         {activeTab === "agent" && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
             <TextField
               select
               fullWidth
@@ -264,7 +264,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         )}
 
         {activeTab === "desktop" && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
             <Box>
               <SectionTitle title={t("settings.section.permission")} />
               <TextField
@@ -302,7 +302,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
 
             <Box>
               <SectionTitle title={t("settings.section.keybindings")} />
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.25 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" }, gap: 1.5 }}>
                 <TextField
                   size="small"
                   label={t("settings.kb.commandPalette")}
@@ -350,7 +350,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
 
             <Box>
               <SectionTitle title={t("settings.section.runtime")} />
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.25 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" }, gap: 1.5 }}>
                 <TextField
                   select
                   size="small"
@@ -424,9 +424,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
         )}
 
         {activeTab === "resources" && (
-          <Box sx={{ display: "flex", flexDirection: "column" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {agent?.projectTrusted === false ? (
-              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-warning)", mb: 1.5 }}>
+              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-warning)" }}>
                 {t("settings.untrustedProject")}
               </Typography>
             ) : null}
@@ -442,10 +442,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
                   helperText={resourceQuery.trim() ? t("settings.resourceFiltered") : undefined}
                 />
                 <ResourceGroup
-                  title={t("settings.group.extensions", {
-                    matched: resources.extensions.filter((extension) => matchesResource([extension.name, extension.path])).length,
-                    total: resources.extensions.length,
-                  })}
+                  title={`扩展（${resources.extensions.filter((extension) => matchesResource([extension.name, extension.path])).length}/${resources.extensions.length}）`}
                 >
                   {resources.extensions.length === 0 ? (
                     <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>{t("settings.extensionsEmpty")}</Typography>

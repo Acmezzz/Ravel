@@ -8,6 +8,8 @@ import ExploreIcon from "@mui/icons-material/Explore";
 import DifferenceIcon from "@mui/icons-material/Difference";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
+import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import Backdrop from "@mui/material/Backdrop";
 import FocusTrap from "@mui/material/Unstable_TrapFocus";
 import { useAppStore } from "../../store/useAppStore";
@@ -124,7 +126,7 @@ export function Workbench(): React.ReactElement {
   const compactLeftOpen = leftOpen && !focusMode && compactViewport;
   const compactRightOpen = rightOpen && !focusMode && compactViewport && !compactLeftOpen;
   const effectiveRightOpen = rightOpen && !focusMode && !compactViewport;
-  const leftCol = effectiveLeftOpen ? `${widths.left}px` : "0px";
+  const leftCol = focusMode ? "0px" : effectiveLeftOpen ? `${widths.left}px` : `${RIGHT_COLLAPSED_RAIL_PX}px`;
   const rightCol = focusMode ? "0px" : effectiveRightOpen ? `${widths.right}px` : `${RIGHT_COLLAPSED_RAIL_PX}px`;
 
   React.useEffect(() => {
@@ -177,8 +179,16 @@ export function Workbench(): React.ReactElement {
       <Box sx={{ gridColumn: "1 / -1" }}>
         <Header />
       </Box>
-      <Box id={effectiveLeftOpen ? "omega-left-drawer" : undefined} sx={{ minHeight: 0, overflow: "hidden", display: "flex", position: "relative" }}>
-        {effectiveLeftOpen ? <LeftNav /> : null}
+      <Box id={effectiveLeftOpen ? "omega-left-drawer" : "omega-left-rail"} sx={{ minHeight: 0, overflow: "hidden", display: "flex", position: "relative" }}>
+        {effectiveLeftOpen ? <LeftNav /> : (
+          <Box sx={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, pt: 1.5, background: "var(--omega-bg-rail)", height: "100%" }}>
+            <Tooltip title="展开左栏" placement="right">
+              <IconButton size="small" aria-label="展开左侧导航" aria-expanded={false} aria-controls="omega-left-drawer" onClick={() => useAppStore.getState().toggleLeftPanel()} sx={{ color: "var(--omega-text-dim)", minWidth: 36, minHeight: 36 }}>
+                <MenuOpenIcon sx={{ fontSize: "1.25rem" }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
         {effectiveLeftOpen ? <Box
           onPointerDown={startDrag("left")}
           sx={{
@@ -238,6 +248,11 @@ export function Workbench(): React.ReactElement {
               height: "100%",
             }}
           >
+            <Tooltip title="展开右栏" placement="left">
+              <IconButton size="small" aria-label="展开右侧面板" aria-expanded={false} aria-controls="omega-right-drawer" onClick={toggleRightPanel} sx={{ color: "var(--omega-text-dim)", minWidth: 36, minHeight: 36 }}>
+                <KeyboardArrowLeftIcon sx={{ fontSize: "1.25rem" }} />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="工作流">
               <IconButton
                 size="small"

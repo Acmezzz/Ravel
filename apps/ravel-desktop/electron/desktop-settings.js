@@ -6,6 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { DEFAULT_KEYBINDINGS, sanitizeKeybindings } from "./keybindings.js";
+import { DEFAULT_PERMISSION_PROFILE } from "./permission-profiles.js";
 
 export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   themeMode: "system",
@@ -15,7 +16,7 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   lastSessionId: null,
   lastWorkspace: null,
   rightPanelOpen: true,
-  permissionProfile: "trusted",
+  permissionProfile: DEFAULT_PERMISSION_PROFILE,
   sessionRecovery: {},
   keybindings: DEFAULT_KEYBINDINGS,
   customProviders: {},

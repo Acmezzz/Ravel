@@ -197,7 +197,7 @@ export function CommandPalette(): React.ReactElement {
         />
         {error ? <Box role="alert" sx={{ color: "var(--omega-danger)", fontSize: "0.75rem", mt: 0.75 }}>{error}</Box> : null}
       </Box>
-      <List id="omega-command-list" role="listbox" aria-label={t("palette.listAria")} sx={{ px: 1.25, pb: 1.25, pt: 0, maxHeight: 420 }}>
+      <List id="omega-command-list" role="listbox" aria-label={t("palette.listAria")} sx={{ px: 1.25, pb: 1.25, pt: 0, maxHeight: 420, overflowY: "auto" }}>
         {items.map((item, index) =>
           item.kind === "ui" ? (
               <ListItemButton

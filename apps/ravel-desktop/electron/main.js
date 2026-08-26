@@ -42,7 +42,7 @@ import { WorkerHost } from "./worker-host.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
-import { PERMISSION_PROFILES, sanitizePermissionProfile, createPermissionGuard } from "./permission-profiles.js";
+import { DEFAULT_PERMISSION_PROFILE, PERMISSION_PROFILES, sanitizePermissionProfile, createPermissionGuard, assertOperationAllowed } from "./permission-profiles.js";
 import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionNameRequest, sessionRequest, workspaceRequest } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
 import * as fileTransfer from "./file-transfer-service.js";
@@ -409,7 +409,7 @@ function bindHost(host) {
         workerPool.markRunning(sessionId, true);
         persistSessionRecovery(sessionId, { state: "running", running: true, error: null });
       }
-    if (event?.type === "agent_end" || event?.type === "turn_end" || event?.type === "agent_settled") {
+    if (event?.type === "agent_settled") {
       workerPool.markRunning(sessionId, false);
       persistSessionRecovery(sessionId, { state: "ready", running: false, error: null });
     }
@@ -448,6 +448,9 @@ function bindHost(host) {
     const foreground = host === worker;
     if (foreground) {
       agentReady = state === "ready";
+    }
+    if (state === "dead" || state === "restarting" || state === "stopping") {
+      workerPool.markRunning(host.sessionId, false);
     }
     persistSessionRecovery(host.sessionId, { state, running: Boolean(workerPool.get(host.sessionId)?.running), error: typeof extra.error === "string" ? extra.error : null });
     sendTransportState(state, { ...extra, sessionId: host.sessionId, foreground });
@@ -633,7 +636,7 @@ async function confirmPermission(title, message) {
 }
 
 async function assertBashAllowed(command) {
-  const profile = desktopSettings?.get()?.permissionProfile ?? "trusted";
+  const profile = desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE;
   const guard = createPermissionGuard({
     profile,
     cwd: activeCwd ?? rootOf(),
@@ -780,7 +783,7 @@ async function createWindow() {
   win.show();
   if ((process.env.RAVEL_AUTOTEST ?? process.env.OMEGA_AUTOTEST) === "1" && worker) {
     setTimeout(() => {
-      rpc("prompt", { text: "Reply with exactly: hello from omega-desktop" })
+      rpc("prompt", { text: "Reply with exactly: hello from ravel-desktop" })
         .then(() => process.stdout.write("[main] autotest prompt: ok\n"))
         .then(() => rpc("sessionRecord"))
         .then((record) => {
@@ -1246,6 +1249,11 @@ ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
 ipcMain.handle("omega:setProviderApiKey", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) return errorResult("invalid_args", "providerId is required");
+  try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "provider.key.write", input: { providerId: req.providerId } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   if (typeof req.apiKey !== "string" || !req.apiKey.trim()) return errorResult("invalid_args", "apiKey is required");
   const providerId = req.providerId.trim().slice(0, 128);
   const apiKey = req.apiKey.trim().slice(0, 8192);
@@ -1268,6 +1276,11 @@ ipcMain.handle("omega:setProviderApiKey", async (event, req) => {
 ipcMain.handle("omega:removeProviderApiKey", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) return errorResult("invalid_args", "providerId is required");
+  try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "provider.key.remove", input: { providerId: req.providerId } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   const providerId = req.providerId.trim().slice(0, 128);
   try {
     credentialStore?.remove(providerId);
@@ -1333,6 +1346,11 @@ ipcMain.handle("omega:reloadResources", (event) => {
 ipcMain.handle("omega:installLocalResource", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "resource.install", input: { source: req?.source } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
+  try {
     let source = typeof req?.source === "string" ? req.source.trim() : "";
     let pickedByDialog = false;
     if (!source && win) {
@@ -1354,8 +1372,13 @@ ipcMain.handle("omega:installLocalResource", async (event, req) => {
   }
 });
 
-ipcMain.handle("omega:removeLocalResource", (event, req) => {
+ipcMain.handle("omega:removeLocalResource", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "resource.remove", input: { source: req?.source } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   try {
     const source = assertLocalSource(req?.source);
     if (!isUnderAuthorizedRoot(source)) return errorResult("forbidden", "只能移除已授权根目录内的本地资源");
@@ -1365,8 +1388,13 @@ ipcMain.handle("omega:removeLocalResource", (event, req) => {
   }
 });
 
-ipcMain.handle("omega:setResourceEnabled", (event, req) => {
+ipcMain.handle("omega:setResourceEnabled", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "resource.enable", input: { path: req?.path, baseDir: req?.baseDir } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   if (!req || typeof req.kind !== "string" || typeof req.path !== "string" || !req.path.trim()) {
     return errorResult("invalid_args", "kind and path are required");
   }
@@ -1502,6 +1530,11 @@ ipcMain.handle("omega:deleteSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = sessionRequest(req);
   if (!normalized) return errorResult("invalid_args", "sessionId is required");
+  try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "session.delete", input: { sessionId: normalized.sessionId } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   try {
     const target = normalized.sessionId;
     if (workerPool.get(target)?.running) return errorResult("session_busy", "生成中无法删除会话，请先停止或等待完成");
@@ -1681,9 +1714,14 @@ ipcMain.handle("omega:addWorktree", async (event, req) => {
   }
 });
 
-ipcMain.handle("omega:removeWorktree", (event, req) => {
+ipcMain.handle("omega:removeWorktree", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.path !== "string" || !req.path.trim()) return errorResult("invalid_args", "path is required");
+  try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "worktree.remove", input: { path: req.path } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   try {
     return okResult(diffService.removeWorktree(activeCwd ?? rootOf(), { path: req.path, force: req.force === true }));
   } catch (error) {
@@ -1722,10 +1760,15 @@ ipcMain.handle("omega:gitUnstage", (event, req) => {
   }
 });
 
-ipcMain.handle("omega:gitCommit", (event, req) => {
+ipcMain.handle("omega:gitCommit", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = gitCommitRequest(req);
   if (!normalized) return errorResult("invalid_args", "message is required");
+  try {
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "git.commit", input: { message: normalized.message } });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   const message = normalized.message;
   try {
     return okResult(diffService.commitIndexed(activeCwd ?? rootOf(), message));
@@ -1734,13 +1777,14 @@ ipcMain.handle("omega:gitCommit", (event, req) => {
   }
 });
 
-ipcMain.handle("omega:approveChange", (event, req) => {
+ipcMain.handle("omega:approveChange", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || (req.action !== "accept" && req.action !== "reject")) {
     return errorResult("invalid_args", "action must be 'accept' or 'reject'");
   }
   try {
     const cwd = activeCwd ?? rootOf();
+    await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd, confirm: confirmPermission, operation: "change.approve", input: { action: req.action, snapshotToken: req.snapshotToken } });
     if (req.action === "reject" && (typeof req.snapshotToken !== "string" || !req.snapshotToken)) {
       return errorResult("invalid_args", "snapshotToken is required");
     }

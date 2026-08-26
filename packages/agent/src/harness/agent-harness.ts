@@ -12,12 +12,15 @@ import type {
 } from "@earendil-works/pi-ai";
 import type { AgentMessage, AgentTool, QueueMode, ThinkingLevel } from "../types.ts";
 import type { CompactionSettings } from "./compaction/compaction.ts";
+import { type LaneReductionResult, reduceLaneState } from "./reducer.ts";
 import { type Result as ResultValue, TaggedError } from "./result.ts";
 import type {
 	BranchSummaryEntry,
 	CompactionEntry,
 	Entry,
 	JsonValue,
+	LaneRecord,
+	OperationStartedRecord,
 	ProvisionedEntry,
 	Session,
 	SessionTree,
@@ -79,6 +82,47 @@ export class HarnessNotImplemented extends Error {
 		this.name = "HarnessNotImplemented";
 		this.operation = operation;
 	}
+}
+
+function messagesFromProvisioned(entries: readonly ProvisionedEntry[]): AgentMessage[] {
+	return entries
+		.filter((entry): entry is Extract<ProvisionedEntry, { type: "message" }> => entry.type === "message")
+		.map((entry) => structuredClone(entry.message));
+}
+
+function referencedEntryIds(records: readonly LaneRecord[]): string[] {
+	const ids = new Set<string>();
+	for (const record of records) {
+		switch (record.type) {
+			case "operation_started":
+				if (record.intent.kind === "run") {
+					for (const target of record.intent.initialMessages) ids.add(target.id);
+				} else if (record.intent.kind === "compaction") {
+					ids.add(record.intent.resultEntryId);
+				} else if (record.intent.summaryEntryId) {
+					ids.add(record.intent.summaryEntryId);
+				}
+				break;
+			case "step_attempt":
+				ids.add(record.resultEntryId);
+				break;
+			case "tool_started":
+				ids.add(record.assistantEntryId);
+				ids.add(record.resultEntryId);
+				break;
+			case "queue_enqueued":
+			case "write_deferred":
+				ids.add(record.target.id);
+				break;
+			case "queue_cancelled":
+				ids.add(record.entryId);
+				break;
+			case "usage":
+				if (record.entryId) ids.add(record.entryId);
+				break;
+		}
+	}
+	return [...ids];
 }
 
 export interface OperationError {
@@ -308,6 +352,7 @@ export class AgentHarness implements AgentLane {
 	readonly hooks: Hooks;
 	readonly events: Events;
 	private readonly durableSession: Session;
+	private readonly models: Models;
 	private model: Model<Api>;
 	private thinkingLevel: ThinkingLevel;
 	private activeToolNames: string[];
@@ -318,6 +363,9 @@ export class AgentHarness implements AgentLane {
 	private compactionSettings: CompactionSettings;
 	private steeringMode: QueueMode;
 	private followUpMode: QueueMode;
+	private readonly recoveryByLane = new Map<string, LaneReductionResult>();
+	private readonly suspendedByLane = new Map<string, SuspendedOperation>();
+	private resumeInFlight = false;
 	private closed = false;
 
 	private constructor(options: AgentHarnessOptions) {
@@ -325,6 +373,7 @@ export class AgentHarness implements AgentLane {
 		this.session = options.session;
 		this.hooks = new UnavailableRegistry("hooks.on", () => this.closed);
 		this.events = new UnavailableRegistry("events.on", () => this.closed);
+		this.models = options.models;
 		this.model = options.model;
 		this.thinkingLevel = options.thinkingLevel ?? "off";
 		this.activeToolNames = [...(options.activeToolNames ?? options.tools?.map((tool) => tool.name) ?? [])];
@@ -347,13 +396,135 @@ export class AgentHarness implements AgentLane {
 	static async create(
 		options: AgentHarnessOptions,
 	): Promise<{ harness: AgentHarness; suspended: SuspendedOperation[] }> {
-		const [record] = await options.session.findRecords({ limit: 1 });
-		if (record !== undefined) throw new HarnessNotImplemented("create.restore");
-		return { harness: new AgentHarness(options), suspended: [] };
+		const harness = new AgentHarness(options);
+		const suspended: SuspendedOperation[] = [];
+		for (const { lane } of await options.session.getLanes()) {
+			const openOperations = await options.session.findOpenOperations(lane, { limit: 2 });
+			const records = await options.session.findRecords({ lane, order: "oldestFirst" });
+			const leafId = await options.session.view(lane).getLeafId();
+			const started = openOperations[0];
+			const ownEntries = await harness.collectOwnEntries(options.session, lane, started, leafId);
+			const referencedEntries = await harness.collectReferencedEntries(options.session, records, ownEntries);
+			const configurationEntries = await harness.collectConfigurationEntries(
+				options.session,
+				lane,
+				started,
+				leafId,
+				ownEntries,
+			);
+			const reduction = reduceLaneState({
+				lane,
+				openOperations,
+				records,
+				entries: referencedEntries,
+				leafId,
+				ownEntries,
+				configurationEntries,
+				defaults: {
+					model: { provider: options.model.provider, modelId: options.model.id },
+					thinkingLevel: options.thinkingLevel ?? "off",
+					activeToolNames: [...(options.activeToolNames ?? options.tools?.map((tool) => tool.name) ?? [])],
+				},
+			});
+			harness.recoveryByLane.set(lane, reduction);
+			const operation = reduction.laneState.operation;
+			if (!operation || !started) continue;
+			const missing = harness.missingIdentities(reduction.effectiveConfiguration.activeToolNames, [
+				reduction.effectiveConfiguration.model,
+			]);
+			const item: SuspendedOperation = {
+				lane,
+				kind: operation.kind,
+				id: operation.id,
+				startedAt: started.timestamp,
+				reason: operation.deferred ? "deferred" : "crash",
+				...(operation.intent.kind === "run" ? { prompt: structuredClone(operation.intent.originalPrompt) } : {}),
+				...(operation.deferred ? { deferred: structuredClone(operation.deferred) } : {}),
+				...(operation.aborting
+					? {
+							aborting: {
+								steer: messagesFromProvisioned(operation.pendingSteer),
+								followUp: messagesFromProvisioned(operation.pendingFollowUp),
+							},
+						}
+					: {}),
+				missing,
+			};
+			harness.suspendedByLane.set(lane, item);
+			suspended.push(item);
+		}
+		return { harness, suspended };
 	}
 
 	private unavailable<T>(operation: string): Promise<T> {
 		return Promise.reject(this.closed ? new HarnessClosed() : new HarnessNotImplemented(operation));
+	}
+
+	private async collectOwnEntries(
+		session: Session,
+		lane: string,
+		started: OperationStartedRecord | undefined,
+		leafId: string | null,
+	): Promise<Entry[]> {
+		if (!started || leafId === null) return [];
+		const branch = await session.view(lane).findEntriesOnBranch({ start: leafId, order: "oldestFirst" });
+		if (started.sourceLeafId === null) {
+			return branch.filter((entry) => entry.seq > started.seq);
+		}
+		const anchor = branch.findIndex((entry) => entry.id === started.sourceLeafId);
+		return anchor === -1 ? branch.filter((entry) => entry.seq > started.seq) : branch.slice(anchor + 1);
+	}
+
+	private async collectReferencedEntries(
+		session: Session,
+		records: readonly LaneRecord[],
+		ownEntries: readonly Entry[],
+	): Promise<Entry[]> {
+		const known = new Set(ownEntries.map((entry) => entry.id));
+		const entries = [...ownEntries];
+		for (const id of referencedEntryIds(records)) {
+			if (known.has(id)) continue;
+			const entry = await session.getEntry(id);
+			if (!entry) continue;
+			known.add(entry.id);
+			entries.push(entry);
+		}
+		return entries.sort((left, right) => left.seq - right.seq);
+	}
+
+	private async collectConfigurationEntries(
+		session: Session,
+		lane: string,
+		started: OperationStartedRecord | undefined,
+		leafId: string | null,
+		ownEntries: readonly Entry[],
+	): Promise<Entry[]> {
+		const ownIds = new Set(ownEntries.map((entry) => entry.id));
+		const start = started?.sourceLeafId ?? leafId;
+		if (start === null) return [];
+		const entries = await session.view(lane).findEntriesOnBranch({ start, order: "oldestFirst" });
+		return entries.filter((entry) => !ownIds.has(entry.id));
+	}
+
+	private missingIdentities(
+		activeToolNames: readonly string[],
+		models: readonly { provider: string; modelId: string }[],
+	): { tools: string[]; models: string[] } {
+		const availableTools = new Set(this.tools.map((tool) => tool.name));
+		return {
+			tools: [...new Set(activeToolNames.filter((name) => !availableTools.has(name)))],
+			models: [
+				...new Set(
+					models
+						.filter(
+							(model) =>
+								!(this.model.provider === model.provider && this.model.id === model.modelId) &&
+								this.models.getModel(model.provider, model.modelId) === undefined,
+						)
+						.map((model) => `${model.provider}/${model.modelId}`),
+				),
+			],
+		};
 	}
 
 	async getLeafId(): Promise<string | null> {
@@ -378,7 +549,40 @@ export class AgentHarness implements AgentLane {
 		return this.unavailable("navigateTree");
 	}
 	async resume(): Promise<ResumeResult> {
-		return this.unavailable("resume");
+		if (this.closed) throw new HarnessClosed();
+		if (this.resumeInFlight) {
+			throw new LaneBusy({
+				lane: this.name,
+				operationId: this.suspendedByLane.get(this.name)?.id ?? "unknown",
+				operationKind: this.suspendedByLane.get(this.name)?.kind ?? "run",
+				message: `Lane ${this.name} is already resuming`,
+			});
+		}
+		const suspended = this.suspendedByLane.get(this.name);
+		if (!suspended) {
+			throw new NothingToResume({ lane: this.name, message: `Lane ${this.name} has no suspended operation` });
+		}
+		const reduction = this.recoveryByLane.get(this.name);
+		if (!reduction?.laneState.operation) {
+			throw new NothingToResume({ lane: this.name, message: `Lane ${this.name} has no recoverable operation` });
+		}
+		const missing = this.missingIdentities(reduction.effectiveConfiguration.activeToolNames, [
+			reduction.effectiveConfiguration.model,
+		]);
+		if (missing.tools.length > 0 || missing.models.length > 0) {
+			throw new MissingIdentities({
+				lane: this.name,
+				tools: missing.tools,
+				models: missing.models,
+				message: "恢复操作缺少可用的工具或模型身份",
+			});
+		}
+		this.resumeInFlight = true;
+		try {
+			return await this.unavailable("resume.execute");
+		} finally {
+			this.resumeInFlight = false;
+		}
 	}
 	async abort(): Promise<AbortResult> {
 		return this.unavailable("abort");

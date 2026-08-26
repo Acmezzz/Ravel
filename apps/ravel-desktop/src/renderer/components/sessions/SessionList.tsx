@@ -324,9 +324,9 @@ export function SessionList(): React.ReactElement {
                 >
                   <ListItemText
                     primary={
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, width: "100%" }}>
                         {unread ? <Box className="pulse-dot" sx={{ width: 6, height: 6, borderRadius: "50%", background: "var(--omega-accent)", boxShadow: "0 0 6px var(--omega-accent)", flex: "0 0 auto" }} /> : null}
-                        <Typography sx={{ fontSize: "0.8125rem", fontWeight: active || unread ? 600 : 500, letterSpacing: "0.002em", color: "var(--omega-text)", minWidth: 0 }} noWrap>
+                        <Typography sx={{ flex: 1, minWidth: 0, fontSize: "0.8125rem", fontWeight: active || unread ? 600 : 500, letterSpacing: "0.002em", color: "var(--omega-text)" }} noWrap>
                           {nested ? `↳ ${session.title}` : session.title}
                         </Typography>
                         {status ? (

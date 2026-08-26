@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   assertLocalSource,
   buildResourceBundle,
@@ -44,6 +45,12 @@ test("skill frontmatter can toggle disable-model-invocation in place", () => {
   const updated = setDisableModelInvocationFrontmatter("---\nname: demo\ndisable-model-invocation: true\n---\nbody", false);
   assert.match(updated, /disable-model-invocation: false/);
   assert.match(updated, /name: demo/);
+});
+
+test("untrusted runtimes do not pass additional Ravel extension paths", async () => {
+  const source = await readFile(new URL("../electron/agent-bridge.js", import.meta.url), "utf8");
+  assert.match(source, /const trusted = projectTrusted === true/);
+  assert.match(source, /trusted \? additionalExtensionPaths\(omegaExtensions\) : \[\]/);
 });
 
 test("resource bundle marks untrusted project items dormant", () => {

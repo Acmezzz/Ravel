@@ -18,7 +18,7 @@
 - 保留 `omega://`、`OMEGA_*` 和 `window.omega` 等兼容入口，同时增加 Ravel 入口。
 - 增加 `UPSTREAM.md` 和第三方声明，保留 Pi/Mario Zechner 的版权与 MIT 许可。
 - 完成 Ravel GitHub 仓库迁移并推送到 `origin/main`。
-- 当前桌面测试通过：156/156（含 deep link 新增测试）。
+- 当前桌面测试通过：157/157（含 deep link 新增测试）。
 - 当前 renderer typecheck、Electron Node syntax check 和根目录 `npm run check` 已通过。
 
 P0/P1 发布准备（2026-08-25 完成）：

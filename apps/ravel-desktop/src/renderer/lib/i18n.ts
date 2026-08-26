@@ -203,9 +203,8 @@ const messages = {
     "nav.tab.scout": "探索",
     "nav.tab.diff": "改动",
     "nav.tab.worktree": "工作树",
-    "nav.refreshExtensionTooltip": "刷新扩展状态",
-    "nav.refreshExtensionAria": "刷新扩展状态",
-    "nav.refreshingExtension": "正在刷新扩展状态…",
+    "nav.collapseLeft": "收起左栏",
+    "nav.collapseRight": "收起右栏",
 
     "diff.status.added": "新增",
     "diff.status.modified": "修改",
@@ -416,9 +415,8 @@ const messages = {
     "nav.tab.scout": "Scout",
     "nav.tab.diff": "Changes",
     "nav.tab.worktree": "Worktrees",
-    "nav.refreshExtensionTooltip": "Refresh extension status",
-    "nav.refreshExtensionAria": "Refresh extension status",
-    "nav.refreshingExtension": "Refreshing extension status…",
+    "nav.collapseLeft": "Collapse left panel",
+    "nav.collapseRight": "Collapse right panel",
 
     "diff.status.added": "Added",
     "diff.status.modified": "Modified",

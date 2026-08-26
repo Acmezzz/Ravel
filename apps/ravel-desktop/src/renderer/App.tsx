@@ -76,32 +76,6 @@ async function refreshControlPlane(): Promise<boolean> {
   return stateRes.ok;
 }
 
-async function refreshTranscriptWhenIdle(): Promise<void> {
-  const res = await ipc.getState();
-  if (!res.ok || res.data.isStreaming) return;
-  const store = useAppStore.getState();
-  store.setAgent(res.data);
-  if (res.data.messages) {
-    store.loadTranscript({
-      id: res.data.sessionId,
-      title: res.data.sessionName || "未命名会话",
-      workspace: res.data.cwd,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      status: "active",
-      messages: res.data.messages,
-      toolCards: res.data.toolCards,
-    });
-  }
-  if (res.data.queuedMessages) {
-    store.setQueuedMessages({
-      steering: res.data.queuedMessages.steering,
-      followUp: res.data.queuedMessages.followUp,
-    });
-  }
-  if (res.data.tree) store.setSessionTree(res.data.tree);
-}
-
 async function startNewSession(): Promise<void> {
   const record = await ipc.newSession({});
   if (!record.ok) return;
@@ -275,7 +249,9 @@ export function App(): React.ReactElement {
         case "compaction_end":
           store.setCompacting(false);
           if (activeSessionId) store.markSessionActivity(activeSessionId, { compacting: false });
-          void refreshTranscriptWhenIdle();
+          void ipc.getState().then((res) => {
+            if (res.ok) store.setAgent(res.data);
+          });
           break;
         case "queue_update":
           store.setQueuedMessages({ steering: event.steering, followUp: event.followUp });

@@ -1,3 +1,4 @@
+import { uuidv7 } from "@earendil-works/pi-ai";
 import { type SessionMutation, SessionState } from "../state.ts";
 import {
 	type BranchBounds,
@@ -19,6 +20,29 @@ import {
 import { encodeHeader, encodeMutation, metadataFromHeader, parseHeader, parseMutation } from "./codec.ts";
 import { fileResult, invalidFile, JsonlDecodeError } from "./errors.ts";
 import type { JsonlSessionMetadata, JsonlSessionRepoFileSystem, JsonlV4Header } from "./types.ts";
+
+function fileNameFromPath(path: string): string {
+	const index = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+	return index === -1 ? path : path.slice(index + 1);
+}
+
+async function quarantineFile(fs: JsonlSessionRepoFileSystem, path: string): Promise<string> {
+	const directory = fileResult(await fs.joinPath([path, ".."]), `Failed to resolve parent of ${path}`);
+	const quarantineDirectory = fileResult(
+		await fs.joinPath([directory, ".quarantine", `${Date.now()}-${uuidv7()}`]),
+		`Failed to resolve quarantine directory for ${path}`,
+	);
+	fileResult(
+		await fs.createDir(quarantineDirectory, { recursive: true }),
+		`Failed to create quarantine directory ${quarantineDirectory}`,
+	);
+	const target = fileResult(
+		await fs.joinPath([quarantineDirectory, fileNameFromPath(path)]),
+		`Failed to resolve quarantine target for ${path}`,
+	);
+	fileResult(await fs.renameFile(path, target), `Failed to quarantine corrupt session ${path}`);
+	return target;
+}
 
 /**
  * Build a complete sibling temporary file, then atomically rename it over the destination.
@@ -90,14 +114,47 @@ export class JsonlSessionStorage implements SessionStorage<JsonlSessionMetadata>
 					});
 					return storage;
 				}
-				throw invalidFile(path, index + 1, mutationResult.error);
+				const original = invalidFile(path, index + 1, mutationResult.error);
+				try {
+					const quarantinedPath = await quarantineFile(fs, path);
+					throw new SessionError(
+						"invalid_entry",
+						`${original.message}; quarantined at ${quarantinedPath}`,
+						original,
+					);
+				} catch (quarantineError) {
+					if (quarantineError instanceof SessionError && quarantineError.message.includes("quarantined at"))
+						throw quarantineError;
+					throw new SessionError(
+						"storage",
+						`${original.message}; quarantine failed`,
+						quarantineError instanceof Error ? quarantineError : original,
+					);
+				}
 			}
 			try {
 				storage.applyMutation(mutationResult.value);
 			} catch (error) {
 				if (error instanceof SessionError && error.code === "invalid_entry") {
-					throw invalidFile(path, index + 1, error);
+					const original = invalidFile(path, index + 1, error);
+					try {
+						const quarantinedPath = await quarantineFile(fs, path);
+						throw new SessionError(
+							"invalid_entry",
+							`${original.message}; quarantined at ${quarantinedPath}`,
+							original,
+						);
+					} catch (quarantineError) {
+						if (quarantineError instanceof SessionError && quarantineError.message.includes("quarantined at"))
+							throw quarantineError;
+						throw new SessionError(
+							"storage",
+							`${original.message}; quarantine failed`,
+							quarantineError instanceof Error ? quarantineError : original,
+						);
+					}
 				}
+
 				throw error;
 			}
 		}

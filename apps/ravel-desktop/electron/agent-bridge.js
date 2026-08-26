@@ -53,9 +53,9 @@ function additionalExtensionPaths(omegaExtensions) {
  */
 export async function createRuntime({ cwd, extensionsRoot, projectTrusted = true }) {
   const omegaExtensions = extensionsRootOf(extensionsRoot);
-  const extraPaths = additionalExtensionPaths(omegaExtensions);
+  const trusted = projectTrusted === true;
+  const extraPaths = trusted ? additionalExtensionPaths(omegaExtensions) : [];
   let sharedModelRuntime;
-  const trusted = projectTrusted !== false;
 
   const createRuntimeFactory = async ({ cwd: nextCwd, agentDir, sessionManager, sessionStartEvent }) => {
     const services = await createAgentSessionServices({

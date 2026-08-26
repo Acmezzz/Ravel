@@ -74,10 +74,10 @@ export function TitleBar(): React.ReactElement {
             fontWeight: 700,
           }}
         >
-          Ω
-        </Box>
+            ∞
+          </Box>
         <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-soft)" }}>
-          OMEGA DESKTOP
+          RAVEL DESKTOP
         </Typography>
       </Box>
       {workspaceLabel ? (

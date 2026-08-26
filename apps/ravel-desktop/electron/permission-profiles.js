@@ -8,8 +8,20 @@ export const PERMISSION_PROFILES = Object.freeze([
   "ask-before-command",
 ]);
 
+export const DEFAULT_PERMISSION_PROFILE = "workspace-only";
 const MUTATING_TOOLS = new Set(["bash", "edit", "write"]);
-const PATH_KEYS = ["path", "filePath", "file", "directory"];
+const OPERATION_POLICIES = Object.freeze({
+  "git.commit": { workspaceBound: true, confirmation: true },
+  "worktree.remove": { workspaceBound: true, confirmation: true },
+  "change.approve": { workspaceBound: true, confirmation: true },
+  "resource.install": { workspaceBound: true, confirmation: true },
+  "resource.remove": { workspaceBound: true, confirmation: true },
+  "resource.enable": { workspaceBound: true, confirmation: true },
+  "session.delete": { workspaceBound: false, confirmation: true },
+  "provider.key.write": { workspaceBound: false, confirmation: true },
+  "provider.key.remove": { workspaceBound: false, confirmation: true },
+});
+const PATH_KEYS = ["path", "filePath", "file", "directory", "source"];
 
 function normalizePath(value) {
   return typeof value === "string" ? value.replace(/\\/g, "/") : "";
@@ -41,7 +53,7 @@ function pathsFromInput(input) {
 }
 
 export function sanitizePermissionProfile(value) {
-  return PERMISSION_PROFILES.includes(value) ? value : "trusted";
+  return PERMISSION_PROFILES.includes(value) ? value : DEFAULT_PERMISSION_PROFILE;
 }
 
 export function permissionProfileLabel(profile) {
@@ -64,6 +76,41 @@ export function permissionEventOf(event) {
     toolCall: { name: event?.toolName ?? "" },
     args: event?.input && typeof event.input === "object" ? event.input : {},
   };
+}
+
+export async function assertOperationAllowed({ profile, cwd, confirm, operation, input = {} }) {
+  const policy = OPERATION_POLICIES[operation];
+  if (!policy) {
+    const error = new Error(`未知副作用操作：${operation}`);
+    error.code = "permission_denied";
+    throw error;
+  }
+  const mode = sanitizePermissionProfile(profile);
+  if (mode === "read-only") {
+    const error = new Error(`权限 profile 为 Read-only，已阻止 ${operation}`);
+    error.code = "permission_denied";
+    throw error;
+  }
+  if (policy.workspaceBound && mode === "workspace-only") {
+    for (const path of pathsFromInput(input)) {
+      if (!isInsideWorkspace(path, cwd)) {
+        const error = new Error(`路径超出授权 workspace，已阻止 ${operation}`);
+        error.code = "workspace_unauthorized";
+        throw error;
+      }
+    }
+  }
+  if (policy.confirmation && mode === "ask-before-command") {
+    const allowed = await confirm?.(
+      "允许执行高副作用操作？",
+      `${operation} 将修改工作区或账户状态。\\n\\n${JSON.stringify(input).slice(0, 4_000)}`,
+    );
+    if (!allowed) {
+      const error = new Error("用户拒绝了本次操作");
+      error.code = "permission_denied";
+      throw error;
+    }
+  }
 }
 
 export function createPermissionGuard({ profile, cwd, confirm }) {

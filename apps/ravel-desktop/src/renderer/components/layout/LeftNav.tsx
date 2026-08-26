@@ -3,7 +3,10 @@ import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import { useAppStore } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
 import { SessionList } from "../sessions/SessionList";
@@ -15,6 +18,7 @@ export function LeftNav(): React.ReactElement {
   const [newOpen, setNewOpen] = React.useState(false);
   const leftTab = useAppStore((s) => s.layout.leftTab);
   const setLayout = useAppStore((s) => s.setLayout);
+  const toggleLeftPanel = useAppStore((s) => s.toggleLeftPanel);
 
   return (
     <Box
@@ -33,7 +37,7 @@ export function LeftNav(): React.ReactElement {
         <Tabs
           value={leftTab}
           onChange={(_e, value) => setLayout({ leftTab: value })}
-          sx={{ minHeight: 32, "& .MuiTab-root": { minHeight: 32, minWidth: 48, fontSize: "0.75rem", px: 1, py: 0.25 } }}
+          sx={{ flex: 1, minWidth: 0, minHeight: 32, "& .MuiTabs-flexContainer": { minWidth: 0 }, "& .MuiTab-root": { minHeight: 32, minWidth: 40, fontSize: "0.75rem", px: 0.5, py: 0.25 } }}
         >
           <Tab label={t("nav.tab.sessions")} value="sessions" />
           <Tab label={t("nav.tab.files")} value="files" />
@@ -43,13 +47,16 @@ export function LeftNav(): React.ReactElement {
             size="small"
             startIcon={<AddIcon sx={{ fontSize: "0.9375rem" }} />}
             onClick={() => setNewOpen(true)}
+            aria-label={t("nav.newSession")}
+            title={t("nav.newSession")}
             sx={{
               textTransform: "none",
               borderRadius: "999px",
               flex: "0 0 auto",
               fontWeight: 600,
               fontSize: "0.75rem",
-              px: 1.25,
+              px: 0.75,
+              minWidth: 0,
               height: 28,
               color: "var(--omega-accent)",
               background: "var(--omega-accent-soft)",
@@ -61,6 +68,11 @@ export function LeftNav(): React.ReactElement {
             {t("nav.newSession")}
           </Button>
         ) : null}
+        <Tooltip title={t("nav.collapseLeft")}>
+          <IconButton size="small" aria-label={t("nav.collapseLeft")} onClick={toggleLeftPanel} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto" }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
       <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", px: 0.75, pb: 1.5, pt: 0.5 }}>
         {leftTab === "sessions" ? <SessionList /> : <FileTree />}

@@ -100,7 +100,7 @@ Electron Node syntax check: 通过
 Renderer TypeScript check: 通过
 Vite renderer build: 通过
 Offline SDK event projection smoke: 通过
-Desktop/security tests: 156/156 通过
+Desktop/security tests: 157/157 通过
 Release gate: 通过（离线配置门禁）
 Packaged launch smoke: 真实启动、Worker 握手、DOM probe、autotest record 和退出码均通过
 Migration smoke: 合成旧目录两次真实启动验收全部通过

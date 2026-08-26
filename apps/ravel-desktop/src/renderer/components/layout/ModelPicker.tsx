@@ -5,6 +5,9 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import CheckIcon from "@mui/icons-material/Check";
+import Divider from "@mui/material/Divider";
+import Button from "@mui/material/Button";
+import HubOutlinedIcon from "@mui/icons-material/HubOutlined";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { clickableRole } from "../../lib/a11y";
@@ -31,6 +34,7 @@ function groupByProvider(models: ModelInfo[]): Array<{ provider: string; models:
 export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactElement {
   const models = useAppStore((s) => s.models);
   const setAgent = useAppStore((s) => s.setAgent);
+  const setModelCenterOpen = useAppStore((s) => s.setModelCenterOpen);
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [pending, setPending] = React.useState<string | null>(null);
@@ -160,6 +164,15 @@ export function ModelPicker({ anchor, onClose }: ModelPickerProps): React.ReactE
           ))
         )}
       </Box>
+      <Divider />
+      <Button
+        size="small"
+        startIcon={<HubOutlinedIcon sx={{ fontSize: "1rem" }} />}
+        onClick={() => { onClose(); setModelCenterOpen(true); }}
+        sx={{ justifyContent: "flex-start", textTransform: "none", px: 1.5, py: 0.75, color: "var(--omega-accent-strong)" }}
+      >
+        前往模型中心
+      </Button>
     </Popover>
   );
 }

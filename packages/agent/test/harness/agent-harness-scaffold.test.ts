@@ -6,6 +6,7 @@ import {
 	HarnessClosed,
 	HarnessNotImplemented,
 	type HarnessTool,
+	NothingToResume,
 	type Resources,
 } from "../../src/harness/agent-harness.ts";
 import {
@@ -53,32 +54,32 @@ const usage: Usage = {
 	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 };
 
-describe("AgentHarness v2 scaffold", () => {
-	it("opens only record-free sessions before restore is implemented", async () => {
-		const session = createSession();
+describe("AgentHarness recovery", () => {
+	it("restores an open operation into a suspended projection", async () => {
+		const session = createSession("recorded");
+		await session.appendRecord(operationStarted("run"));
 		const { harness, suspended } = await AgentHarness.create({
 			session,
 			models: createModels(),
 			model: getModel("google", "gemini-2.5-flash"),
 		});
 
-		expect(suspended).toEqual([]);
 		expect(harness.name).toBe("main");
-		expect(harness.session).toBe(session);
+		expect(suspended).toHaveLength(1);
+		expect(suspended[0]).toMatchObject({
+			lane: "main",
+			kind: "run",
+			id: "run",
+			reason: "crash",
+			missing: { tools: [], models: [] },
+		});
+		expect(suspended[0].prompt).toEqual([]);
+	});
+
+	it("keeps an empty session idle and resume fail-closed", async () => {
+		const harness = await createHarness();
 		expect(await harness.getLeafId()).toBeNull();
-		expect(await harness.session.getLeafId()).toBeNull();
-
-		await expect(harness.close()).resolves.toBeUndefined();
-
-		const recorded = createSession("recorded");
-		await recorded.appendRecord(operationStarted("run"));
-		await expect(
-			AgentHarness.create({
-				session: recorded,
-				models: createModels(),
-				model: getModel("google", "gemini-2.5-flash"),
-			}),
-		).rejects.toMatchObject({ name: "HarnessNotImplemented", operation: "create.restore" });
+		await expect(harness.resume()).rejects.toBeInstanceOf(NothingToResume);
 	});
 
 	it("keeps scaffold-safe configuration as defensive copies", async () => {
@@ -177,6 +178,10 @@ describe("AgentHarness v2 scaffold", () => {
 		];
 
 		for (const [operation, invoke] of unfinished) {
+			if (operation === "resume") {
+				await expect(Promise.resolve().then(invoke), operation).rejects.toBeInstanceOf(NothingToResume);
+				continue;
+			}
 			await expect(Promise.resolve().then(invoke), operation).rejects.toMatchObject({
 				name: "HarnessNotImplemented",
 				operation,

@@ -447,6 +447,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (delivered.id && state.messages.some((message) => message.id === delivered.id)) {
         return { pendingOptimistic: nextPending, optimisticKey: nextKey };
       }
+      if (delivered.role === "user") {
+        const duplicateIndex = state.messages.findLastIndex((message) => message.role === "user");
+        const duplicate = duplicateIndex >= 0 ? state.messages[duplicateIndex] : undefined;
+        if (duplicate?.text === delivered.text) {
+          const messages = [...state.messages];
+          messages[duplicateIndex] = { ...messages[duplicateIndex], ...delivered };
+          return { messages, pendingOptimistic: nextPending, optimisticKey: nextKey };
+        }
+      }
       return { messages: [...state.messages, delivered], pendingOptimistic: nextPending, optimisticKey: nextKey };
     }),
   dropLastIfOptimistic: (key) =>

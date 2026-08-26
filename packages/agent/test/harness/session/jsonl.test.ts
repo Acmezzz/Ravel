@@ -486,16 +486,24 @@ describe("JSONL v4 persistence", () => {
 		expect((await reopened.getEntry(appendedId))?.seq).toBe(2);
 	});
 
-	it("rejects a complete invalid final mutation without modifying the file", async () => {
+	it("quarantines a complete invalid final mutation", async () => {
 		const root = createTempDir();
 		const metadata = writeRawSession(root, "invalid-final-mutation", [{ kind: "unknown", seq: 1 }]);
 		const corrupted = readFileSync(metadata.path, "utf8");
 
-		await expect(createRepository(root).open(metadata)).rejects.toMatchObject({ code: "invalid_entry" });
-		expect(readFileSync(metadata.path, "utf8")).toBe(corrupted);
+		await expect(createRepository(root).open(metadata)).rejects.toMatchObject({
+			code: "invalid_entry",
+			message: expect.stringContaining("quarantined at"),
+		});
+		expect(existsSync(metadata.path)).toBe(false);
+		const quarantineFiles = readdirSync(join(dirname(metadata.path), ".quarantine"), { recursive: true }).filter(
+			(entry) => String(entry).endsWith(".jsonl"),
+		);
+		expect(quarantineFiles).toHaveLength(1);
+		expect(readFileSync(join(root, ".quarantine", String(quarantineFiles[0])), "utf8")).toBe(corrupted);
 	});
 
-	it("rejects a malformed middle line without modifying the file", async () => {
+	it("quarantines a malformed middle line", async () => {
 		const root = createTempDir();
 		const repository = createRepository(root);
 		const session = await repository.create({ id: "session", cwd: root });
@@ -507,8 +515,16 @@ describe("JSONL v4 persistence", () => {
 		writeFileSync(metadata.path, corrupted);
 
 		const reopenedRepository = createRepository(root);
-		await expect(reopenedRepository.open(metadata)).rejects.toMatchObject({ code: "invalid_entry" });
-		expect(readFileSync(metadata.path, "utf8")).toBe(corrupted);
+		await expect(reopenedRepository.open(metadata)).rejects.toMatchObject({
+			code: "invalid_entry",
+			message: expect.stringContaining("quarantined at"),
+		});
+		expect(existsSync(metadata.path)).toBe(false);
+		expect(
+			readdirSync(join(dirname(metadata.path), ".quarantine"), { recursive: true }).some((entry) =>
+				String(entry).endsWith(".jsonl"),
+			),
+		).toBe(true);
 	});
 
 	it("rejects an imported entry that references a missing parent", async () => {
@@ -537,8 +553,11 @@ describe("JSONL v4 persistence", () => {
 		const repository = createRepository(root);
 		await expect(repository.open(metadata)).rejects.toMatchObject({
 			code: "invalid_entry",
-			message: `Invalid JSONL v4 session ${path}: line 2 Invalid session mutation: references missing parent missing`,
+			message: expect.stringContaining(
+				`Invalid JSONL v4 session ${path}: line 2 Invalid session mutation: references missing parent missing`,
+			),
 		});
+		expect(existsSync(path)).toBe(false);
 	});
 
 	it("rejects a lane-bound entry that does not chain to the lane leaf", async () => {
@@ -697,7 +716,7 @@ describe("JSONL v4 persistence", () => {
 		});
 	});
 
-	it("rejects a complete malformed interior mutation without modifying the file", async () => {
+	it("quarantines a complete malformed interior mutation", async () => {
 		const root = createTempDir();
 		const metadata = writeRawSession(root, "malformed-interior", [
 			{
@@ -711,10 +730,52 @@ describe("JSONL v4 persistence", () => {
 			},
 			{ kind: "fact", fact: "name", name: "after", seq: 2 },
 		]);
-		const corrupted = readFileSync(metadata.path, "utf8");
 
-		await expect(createRepository(root).open(metadata)).rejects.toMatchObject({ code: "invalid_entry" });
-		expect(readFileSync(metadata.path, "utf8")).toBe(corrupted);
+		await expect(createRepository(root).open(metadata)).rejects.toMatchObject({
+			code: "invalid_entry",
+			message: expect.stringContaining("quarantined at"),
+		});
+		expect(existsSync(metadata.path)).toBe(false);
+		expect(
+			readdirSync(join(dirname(metadata.path), ".quarantine"), { recursive: true }).some((entry) =>
+				String(entry).endsWith(".jsonl"),
+			),
+		).toBe(true);
+	});
+
+	it("does not list quarantined session files", async () => {
+		const root = createTempDir();
+		const repository = createRepository(root);
+		const session = await repository.create({ id: "listed", cwd: root });
+		const metadata = await session.getMetadata();
+		const corrupted = writeRawSession(dirname(metadata.path), "quarantined-list", [{ kind: "unknown", seq: 1 }]);
+
+		await expect(repository.open(corrupted)).rejects.toMatchObject({
+			code: "invalid_entry",
+			message: expect.stringContaining("quarantined at"),
+		});
+
+		const listed = await repository.list({ cwd: root });
+		expect(listed.map((item) => item.id)).toEqual(["listed"]);
+		expect(listed.every((item) => !item.path.includes(".quarantine"))).toBe(true);
+		expect(existsSync(corrupted.path)).toBe(false);
+	});
+
+	it("preserves the session when quarantine rename fails", async () => {
+		const root = createTempDir();
+		const metadata = writeRawSession(root, "quarantine-rename-failure", [{ kind: "unknown", seq: 1 }]);
+		const original = readFileSync(metadata.path, "utf8");
+		const env = new NodeExecutionEnv({ cwd: root });
+		vi.spyOn(env, "renameFile").mockResolvedValueOnce({
+			ok: false,
+			error: new FileError("unknown", "injected quarantine rename failure"),
+		});
+
+		await expect(new JsonlSessionRepo({ fs: env, sessionsRoot: root }).open(metadata)).rejects.toMatchObject({
+			code: "storage",
+			message: expect.stringContaining("quarantine failed"),
+		});
+		expect(readFileSync(metadata.path, "utf8")).toBe(original);
 	});
 
 	it("preserves the session when staging torn-tail repair fails", async () => {

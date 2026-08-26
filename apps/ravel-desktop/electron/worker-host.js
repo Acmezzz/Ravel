@@ -6,6 +6,7 @@ import { utilityProcess } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isWorkerEvent, isWorkerResponse } from "./worker-protocol.js";
+import { DEFAULT_PERMISSION_PROFILE } from "./permission-profiles.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_RPC_TIMEOUT = 120_000;
@@ -26,7 +27,7 @@ export class WorkerHost {
     this.extensionsRoot = null;
     this.sessionId = null;
     this.projectTrusted = true;
-    this.permissionProfile = "trusted";
+    this.permissionProfile = DEFAULT_PERMISSION_PROFILE;
     this.runtimeCredentials = {};
     this.customProviders = {};
     this.activating = false;

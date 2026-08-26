@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createPermissionGuard, permissionProfileLabel, sanitizePermissionProfile } from "../electron/permission-profiles.js";
+import { assertOperationAllowed, createPermissionGuard, permissionProfileLabel, sanitizePermissionProfile } from "../electron/permission-profiles.js";
 
 test("permission profiles sanitize and expose desktop labels", () => {
   assert.equal(sanitizePermissionProfile("read-only"), "read-only");
-  assert.equal(sanitizePermissionProfile("unknown"), "trusted");
+  assert.equal(sanitizePermissionProfile("unknown"), "workspace-only");
   assert.match(permissionProfileLabel("workspace-only"), /Workspace-only/);
 });
 
@@ -43,4 +43,18 @@ test("ask-before-command delegates the decision to the desktop UI", async () => 
 test("permission guard accepts AgentSession toolName/input events", async () => {
   const guard = createPermissionGuard({ profile: "read-only", cwd: "/workspace" });
   await assert.rejects(() => guard({ type: "tool_call", toolName: "bash", input: { command: "pwd" } }), /Read-only/);
+});
+
+test("operation policy denies read-only and confirms ask-before-command", async () => {
+  await assert.rejects(
+    () => assertOperationAllowed({ profile: "read-only", cwd: "/workspace", operation: "git.commit", input: { message: "save" } }),
+    /Read-only/,
+  );
+  await assert.rejects(
+    () => assertOperationAllowed({ profile: "ask-before-command", cwd: "/workspace", operation: "git.commit", input: { message: "save" }, confirm: async () => false }),
+    /拒绝/,
+  );
+  await assert.doesNotReject(
+    () => assertOperationAllowed({ profile: "ask-before-command", cwd: "/workspace", operation: "git.commit", input: { message: "save" }, confirm: async () => true }),
+  );
 });

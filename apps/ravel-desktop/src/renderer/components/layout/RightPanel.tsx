@@ -3,12 +3,10 @@ import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import IconButton from "@mui/material/IconButton";
-import Button from "@mui/material/Button";
 import Tooltip from "@mui/material/Tooltip";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import CloseIcon from "@mui/icons-material/Close";
 import { useAppStore } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
-import { ipc } from "../../ipc/client";
 import { WorkflowPanel } from "../panels/WorkflowPanel";
 import { ScoutPanel } from "../panels/ScoutPanel";
 import { DiffViewer } from "../panels/DiffViewer";
@@ -18,24 +16,6 @@ export function RightPanel(): React.ReactElement {
   const t = useT();
   const rightTab = useAppStore((s) => s.layout.rightTab);
   const setRightTab = useAppStore((s) => s.setRightTab);
-  const setExtensionState = useAppStore((s) => s.setExtensionState);
-  const setExtensionLoading = useAppStore((s) => s.setExtensionLoading);
-  const extensionLoading = useAppStore((s) => s.extensionLoading);
-  const [extensionError, setExtensionError] = React.useState<string | null>(null);
-
-  const refresh = React.useCallback(async () => {
-    setExtensionLoading(true);
-    setExtensionError(null);
-    try {
-      const res = await ipc.queryExtensionState({ scope: "all" });
-      if (res.ok) setExtensionState(res.data);
-      else setExtensionError(res.message);
-    } catch (reason) {
-      setExtensionError(reason instanceof Error ? reason.message : String(reason));
-    } finally {
-      setExtensionLoading(false);
-    }
-  }, [setExtensionState, setExtensionLoading]);
 
   return (
     <Box
@@ -55,23 +35,20 @@ export function RightPanel(): React.ReactElement {
           value={rightTab}
           onChange={(_e, v) => setRightTab(v)}
           variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
-          sx={{ flexGrow: 1, minWidth: 0, minHeight: 44, "& .MuiTab-root": { minHeight: 44, minWidth: 0, px: 1.25, fontSize: "0.8125rem" } }}
+          scrollButtons={false}
+          sx={{ flexGrow: 1, minWidth: 0, minHeight: 40, "& .MuiTab-root": { minHeight: 40, minWidth: 0, px: 0.75, fontSize: "0.75rem" } }}
         >
           <Tab label={t("nav.tab.workflow")} value="workflow" />
           <Tab label={t("nav.tab.scout")} value="scout" />
           <Tab label={t("nav.tab.diff")} value="diff" />
           <Tab label={t("nav.tab.worktree")} value="worktree" />
         </Tabs>
-        <Tooltip title={t("nav.refreshExtensionTooltip")}>
-          <IconButton size="small" aria-label={t("nav.refreshExtensionAria")} onClick={() => void refresh()} sx={{ color: "var(--omega-text-muted)", mr: 1, minWidth: 40, minHeight: 40 }} disabled={extensionLoading}>
-            <RefreshIcon fontSize="small" />
+        <Tooltip title={t("nav.collapseRight")}>
+          <IconButton size="small" aria-label={t("nav.collapseRight")} onClick={() => useAppStore.getState().toggleRightPanel()} sx={{ color: "var(--omega-text-muted)", mr: 0.25, minWidth: 32, minHeight: 32, p: 0.5 }}>
+            <CloseIcon sx={{ fontSize: "0.9375rem" }} />
           </IconButton>
         </Tooltip>
       </Box>
-      {extensionLoading ? <Box role="status" aria-live="polite" sx={{ px: 1.25, py: 0.5, fontSize: "0.65625rem", color: "var(--omega-text-muted)" }}>{t("nav.refreshingExtension")}</Box> : null}
-      {extensionError ? <Box role="alert" sx={{ px: 1.25, py: 0.5, display: "flex", alignItems: "center", gap: 1, fontSize: "0.65625rem", color: "var(--omega-danger)" }}>{extensionError}<Button size="small" onClick={() => void refresh()} sx={{ textTransform: "none" }}>{t("common.retry")}</Button></Box> : null}
       <Box
         sx={{
           flexGrow: 1,
@@ -79,7 +56,7 @@ export function RightPanel(): React.ReactElement {
           minWidth: 0,
           overflowX: "hidden",
           overflowY: rightTab === "diff" ? "hidden" : "auto",
-          p: 1.25,
+          p: 0.5,
           display: "flex",
           flexDirection: "column",
         }}
