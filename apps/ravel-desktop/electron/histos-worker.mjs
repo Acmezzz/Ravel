@@ -49,8 +49,8 @@ async function invoke(method, args) {
   }
   const current = requireEngine();
   if (method === "getGraph") return current.getGraph(args?.query ?? args);
-  if (method === "getNode") return current.getNode(args?.nodeId ?? args?.id ?? args, args?.query);
-  if (method === "getArtifact") return current.getArtifact(args?.sha256 ?? args?.hash ?? args, args?.query);
+  if (method === "getNode") return current.getNode(args);
+  if (method === "getArtifact") return current.getArtifact(args);
   if (method === "rebuild") return current.rebuild(args ?? {});
   if (method === "freezeContext") return current.freezeContext(args ?? {});
   if (method === "applySessionFacts") return current.applySessionFacts(args ?? {});
