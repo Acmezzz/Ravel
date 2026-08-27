@@ -205,12 +205,12 @@ test("SettingsDialog keeps IPC, i18n, and validation contracts", async () => {
   assert.match(css, /\.omega-success-text/);
 });
 
-test("R2 has not mixed Vite 8, sqlite, or React Flow into the chrome slice", async () => {
+test("R2 chrome stays isolated from runtime storage and upgrade gates", async () => {
   const pkg = await read("../package.json");
   const settings = await read("../src/renderer/components/layout/SettingsDialog.tsx");
   assert.doesNotMatch(pkg, /"vite":\s*"8\./);
-  assert.doesNotMatch(pkg, /@xyflow\/react/);
-  assert.doesNotMatch(pkg, /elkjs/);
+  assert.match(pkg, /@xyflow\/react/);
+  assert.match(pkg, /elkjs/);
   assert.doesNotMatch(pkg, /better-sqlite3/);
   assert.doesNotMatch(settings, /node:sqlite/);
   assert.doesNotMatch(settings, /FactAddress/);
