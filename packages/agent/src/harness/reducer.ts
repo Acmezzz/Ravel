@@ -36,7 +36,8 @@ export type RecordLogCorruptionReason =
 	| "approval_decision_without_ask"
 	| "approval_identity_mismatch"
 	| "duplicate_approval_decision"
-	| "invalid_approval_outcome";
+	| "invalid_approval_outcome"
+	| "invalid_context_attachment";
 
 export class RecordLogCorruption extends Error {
 	readonly reason: RecordLogCorruptionReason;
@@ -438,6 +439,14 @@ export function validateRecordLog(input: RecordLogSlice): void {
 					);
 				}
 				approvals.decide(record);
+				break;
+			case "context_attached":
+				if (!record.targetSessionId || !/^[0-9a-f]{64}$/.test(record.contextSha)) {
+					corrupt(
+						"invalid_context_attachment",
+						`Context attachment ${record.id} has invalid target or context SHA`,
+					);
+				}
 				break;
 			case "usage":
 				break;

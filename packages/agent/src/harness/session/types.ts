@@ -245,6 +245,12 @@ export interface SessionReferenceRecord extends RecordBase {
 	targetTitle: string;
 }
 
+export interface ContextAttachedRecord extends RecordBase {
+	type: "context_attached";
+	targetSessionId: string;
+	contextSha: string;
+}
+
 export type UsageRecord = RecordBase & { type: "usage"; usage: Usage } & (
 		| {
 				cause: "assistant" | "compaction" | "branch_summary" | "deferred_fetch";
@@ -270,7 +276,8 @@ export type LaneRecord =
 	| UsageRecord
 	| ApprovalAskedRecord
 	| ApprovalDecidedRecord
-	| SessionReferenceRecord;
+	| SessionReferenceRecord
+	| ContextAttachedRecord;
 export type NewRecord<TRecord extends LaneRecord = LaneRecord> = TRecord extends LaneRecord
 	? Omit<TRecord, "seq" | "timestamp">
 	: never;

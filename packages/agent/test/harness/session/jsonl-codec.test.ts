@@ -130,6 +130,51 @@ describe("JSONL v4 codec", () => {
 			});
 		});
 
+		it("round trips a context attachment record", () => {
+			expectMutationRoundTrip({
+				kind: "record",
+				record: {
+					type: "context_attached",
+					id: "context-1",
+					seq: 1,
+					lane: "main",
+					timestamp: 100,
+					targetSessionId: "target-session",
+					contextSha: "a".repeat(64),
+				},
+			});
+		});
+
+		it.each([
+			{
+				name: "a context attachment without a target session",
+				mutation: {
+					kind: "record",
+					type: "context_attached",
+					id: "context",
+					lane: "main",
+					seq: 1,
+					timestamp: 1,
+					contextSha: "a".repeat(64),
+				},
+			},
+			{
+				name: "a context attachment with an invalid SHA",
+				mutation: {
+					kind: "record",
+					type: "context_attached",
+					id: "context",
+					lane: "main",
+					seq: 1,
+					timestamp: 1,
+					targetSessionId: "target",
+					contextSha: "bad",
+				},
+			},
+		])("rejects $name", ({ mutation }) => {
+			expect(parseMutation(JSON.stringify(mutation))).toMatchObject({ ok: false });
+		});
+
 		it("round trips a lane line", () => {
 			expectMutationRoundTrip({ kind: "lane", seq: 1, lane: "thread", leafId: "entry-1" });
 		});

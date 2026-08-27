@@ -1173,6 +1173,32 @@ describe("approval pairing", () => {
 		expect(validateRecordLog(recoverySlice(records))).toBeUndefined();
 	});
 
+	it("accepts a context attachment outside operation recovery", () => {
+		const record: LaneRecord = {
+			type: "context_attached",
+			id: "context-1",
+			lane: "main",
+			seq: 1,
+			timestamp: 1,
+			targetSessionId: "target-session",
+			contextSha: "a".repeat(64),
+		};
+		expect(validateRecordLog(recoverySlice([record]))).toBeUndefined();
+	});
+
+	it("rejects a malformed context attachment", () => {
+		const record: LaneRecord = {
+			type: "context_attached",
+			id: "context-bad",
+			lane: "main",
+			seq: 1,
+			timestamp: 1,
+			targetSessionId: "target-session",
+			contextSha: "bad",
+		};
+		expectCorruption(recoverySlice([record]), "invalid_context_attachment");
+	});
+
 	it("accepts every closed-vocabulary outcome", () => {
 		for (const outcome of ["allowed-once", "rejected", "cancelled", "unavailable"] as const) {
 			const records = [runStarted(1), approvalAsked(2), approvalDecided(3, { outcome })];

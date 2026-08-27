@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
-import { appendFact, argsDigestOf, closeStaleApprovals, closeStaleOperations, pendingApprovalAsks, pendingOperations, readFacts, unfinishedFinishFor, unavailableDecisionFor } from "../electron/session-facts.js";
+import { appendContextAttachedFact, appendFact, argsDigestOf, closeStaleApprovals, closeStaleOperations, pendingApprovalAsks, pendingOperations, readFacts, unfinishedFinishFor, unavailableDecisionFor } from "../electron/session-facts.js";
 import { createPermissionGuard } from "../electron/permission-profiles.js";
 
 function fakeSessionManager() {
@@ -81,6 +81,17 @@ test("appendFact validates the shared record shape before writing", () => {
     appendFact(sm, { type: "approval_decided", id: "d3", lane: "main", runId: "r", toolCallId: "c", askedId: "a", outcome: "rejected" }),
   );
   assert.equal(sm.appended.length, 2);
+});
+
+test("context_attached facts require a content-addressed context artifact", () => {
+  const sm = fakeSessionManager();
+  const contextSha = "a".repeat(64);
+  assert.doesNotThrow(() => appendContextAttachedFact(sm, { targetSessionId: "target-session", contextSha }));
+  assert.deepEqual(readFacts(sm).map((fact) => fact.type), ["context_attached"]);
+  assert.equal(readFacts(sm)[0].contextSha, contextSha);
+  assert.throws(() => appendContextAttachedFact(sm, { targetSessionId: "target-session", contextSha: "bad" }));
+  assert.throws(() => appendContextAttachedFact(sm, { targetSessionId: "", contextSha }));
+  assert.equal(sm.appended.length, 1);
 });
 
 test("readFacts returns persisted approval and operation records oldest first", () => {

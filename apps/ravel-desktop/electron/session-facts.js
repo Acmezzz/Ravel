@@ -12,7 +12,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 export const FACT_CUSTOM_TYPE = "ravel_record";
 
-const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference"]);
+const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached"]);
 
 /** Delimiters for the model-visible block that resolves @session mentions. */
 export const SESSION_REFERENCE_BEGIN = "===== BEGIN RAVEL SESSION REFERENCES =====";
@@ -109,9 +109,15 @@ export function appendFact(sessionManager, record) {
 			}
 			break;
 		}
-		case "session_reference":
-			for (const field of ["sourceEntryId", "clientMessageId", "targetSessionId", "targetTitle"]) requireString(record, field);
-			break;
+			case "session_reference":
+				for (const field of ["sourceEntryId", "clientMessageId", "targetSessionId", "targetTitle"]) requireString(record, field);
+				break;
+			case "context_attached": {
+				requireString(record, "targetSessionId");
+				const contextSha = requireString(record, "contextSha");
+				if (!/^[0-9a-f]{64}$/.test(contextSha)) throw new Error("Invalid context_attached fact: contextSha must be a SHA-256 hex string");
+				break;
+			}
 		}
 	return sessionManager.appendCustomEntry(FACT_CUSTOM_TYPE, record);
 }
@@ -298,6 +304,18 @@ export function appendSessionReferenceFacts(sessionManager, { clientMessageId, r
 		}
 		return appended;
 	}
+
+export function appendContextAttachedFact(sessionManager, { targetSessionId, contextSha, lane = "main" } = {}) {
+	const record = {
+		type: "context_attached",
+		id: `context-${randomUUID()}`,
+		lane,
+		targetSessionId,
+		contextSha,
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
+}
 
 /**
  * Address a shadow-git checkpoint from the session log. Git is the authority

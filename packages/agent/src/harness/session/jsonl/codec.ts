@@ -27,6 +27,7 @@ const RECORD_TYPES = new Set<LaneRecord["type"]>([
 	"approval_asked",
 	"approval_decided",
 	"session_reference",
+	"context_attached",
 ]);
 const OPERATION_KINDS = new Set(["run", "compaction", "navigation"]);
 
@@ -192,6 +193,13 @@ function parseRecordMutation(
 		requireString(value.clientMessageId, "clientMessageId");
 		requireString(value.targetSessionId, "targetSessionId");
 		requireString(value.targetTitle, "targetTitle");
+	}
+	if (type === "context_attached") {
+		requireString(value.targetSessionId, "targetSessionId");
+		const contextSha = requireString(value.contextSha, "contextSha");
+		if (!/^[0-9a-f]{64}$/.test(contextSha)) {
+			throw new JsonlDecodeError("schema", "has invalid contextSha");
+		}
 	}
 	const { kind: _kind, ...recordFields } = value;
 	return {
