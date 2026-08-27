@@ -129,7 +129,7 @@ function validateNode(node, label) {
   validateHashOrId(nodeRevisionId, `${label}.nodeRevisionId`);
   if (node.kind !== undefined) boundedString(node.kind, `${label}.kind`, 64);
   if (node.title !== undefined) boundedString(node.title, `${label}.title`, MAX_TITLE_LENGTH, { allowEmpty: true });
-  if (node.artifactSha !== undefined) validateSha256(node.artifactSha, `${label}.artifactSha`);
+  if (node.artifactSha !== undefined && node.artifactSha !== null) validateSha256(node.artifactSha, `${label}.artifactSha`);
   return { ...node, nodeRevisionId };
 }
 
@@ -140,7 +140,7 @@ function validateEdge(edge, label) {
   validateHashOrId(edge.srcNodeId, `${label}.srcNodeId`);
   validateHashOrId(edge.dstNodeId, `${label}.dstNodeId`);
   if (edge.kind !== undefined) boundedString(edge.kind, `${label}.kind`, 64);
-  if (edge.artifactSha !== undefined) validateSha256(edge.artifactSha, `${label}.artifactSha`);
+  if (edge.artifactSha !== undefined && edge.artifactSha !== null) validateSha256(edge.artifactSha, `${label}.artifactSha`);
   return { ...edge, edgeRevisionId: edge.edgeRevisionId ?? edge.revisionId };
 }
 
