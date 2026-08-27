@@ -1,6 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import ts from "typescript";
 
 const ignoredDirectories = new Set([".git", "coverage", "dist", "node_modules", "ui"]);
 const files = [];
@@ -24,10 +23,23 @@ function isRelativeJavaScriptSpecifier(specifier) {
 	return /^\.\.?\//.test(specifier) && /\.js(?:[?#].*)?$/.test(specifier);
 }
 
-function getImportTypeSpecifier(node) {
-	if (!ts.isLiteralTypeNode(node.argument)) return undefined;
-	if (!ts.isStringLiteralLike(node.argument.literal)) return undefined;
-	return node.argument.literal;
+// Matches module specifiers in `import ... from "..."`, bare side-effect
+// `import "..."`, `export ... from "..."` (including multiline lists where
+// `from` sits on its own line), and dynamic `import("...")` calls.
+const specifierPattern = /(?:\bimport\s*\(\s*|\bfrom\s+|\bimport\s+)("|')([^"']+)\1/g;
+
+// Index of a trailing `//` line comment outside of quoted strings, or -1.
+function lineCommentStart(line) {
+	let quote = null;
+	for (let i = 0; i < line.length; i++) {
+		const ch = line[i];
+		if (quote) {
+			if (ch === "\\") i++;
+			else if (ch === quote) quote = null;
+		} else if (ch === '"' || ch === "'") quote = ch;
+		else if (ch === "/" && line[i + 1] === "/") return i;
+	}
+	return -1;
 }
 
 const failures = [];
@@ -35,36 +47,20 @@ const failures = [];
 collectTypescriptFiles(".");
 
 for (const file of files.sort()) {
-	const sourceText = readFileSync(file, "utf8");
-	const sourceFile = ts.createSourceFile(file, sourceText, ts.ScriptTarget.Latest, true);
-
-	function checkSpecifier(node) {
-		if (!isRelativeJavaScriptSpecifier(node.text)) return;
-		const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-		failures.push(`${file}:${line + 1}:${character + 1}: ${node.text}`);
-	}
-
-	function visit(node) {
-		if (ts.isImportDeclaration(node) && ts.isStringLiteralLike(node.moduleSpecifier)) {
-			checkSpecifier(node.moduleSpecifier);
-		} else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)) {
-			checkSpecifier(node.moduleSpecifier);
-		} else if (
-			ts.isCallExpression(node) &&
-			node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-			node.arguments[0] &&
-			ts.isStringLiteralLike(node.arguments[0])
-		) {
-			checkSpecifier(node.arguments[0]);
-		} else if (ts.isImportTypeNode(node)) {
-			const specifier = getImportTypeSpecifier(node);
-			if (specifier) checkSpecifier(specifier);
+	const lines = readFileSync(file, "utf8").split(/\r?\n/);
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		const trimmed = line.trimStart();
+		if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) continue;
+		const commentStart = lineCommentStart(line);
+		for (const match of line.matchAll(specifierPattern)) {
+			if (commentStart >= 0 && (match.index ?? 0) >= commentStart) break;
+			const specifier = match[2];
+			if (!isRelativeJavaScriptSpecifier(specifier)) continue;
+			const column = (match.index ?? 0) + match[0].indexOf(specifier) + 1;
+			failures.push(`${file}:${i + 1}:${column}: ${specifier}`);
 		}
-
-		ts.forEachChild(node, visit);
 	}
-
-	visit(sourceFile);
 }
 
 if (failures.length > 0) {
