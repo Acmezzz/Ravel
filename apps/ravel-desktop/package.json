@@ -17,7 +17,7 @@
     "sdk-check": "node scripts/sdk-check.mjs",
     "release:gate": "node scripts/release-gate.mjs",
     "electron:smoke": "node scripts/electron-smoke.mjs",
-    "rebuild:native": "electron-rebuild -v 43.4.1 -w node-pty --force",
+    "rebuild:native": "electron-rebuild -v 44.0.0 -w node-pty --force",
     "migration:smoke": "node scripts/migration-smoke.mjs",
     "package:dir": "electron-builder --dir",
     "package": "electron-builder"
@@ -50,7 +50,7 @@
     "@vitejs/plugin-react": "6.1.0",
     "autoprefixer": "10.4.20",
     "babel-plugin-react-compiler": "1.0.0",
-    "electron": "43.4.1",
+    "electron": "44.0.0",
     "electron-builder": "26.15.3",
     "postcss": "8.5.6",
     "tailwindcss": "4.3.3",
