@@ -1432,7 +1432,16 @@ ipcMain.handle("omega:checkpointCreate", (event, req) => {
   const label = typeof req?.label === "string" && req.label.trim() ? req.label.trim().slice(0, 200) : "手动快照";
   void pruneCheckpoints(cwd).catch(() => {});
   return createCheckpoint(cwd, label).then(
-    (data) => okResult(data),
+    async (data) => {
+      if (worker && worker.cwd === cwd) {
+        try {
+          await worker.call("recordCheckpoint", { checkpointId: data.id, label: data.label });
+        } catch (error) {
+          console.error("checkpoint fact failed", error);
+        }
+      }
+      return okResult(data);
+    },
     (error) => errorResult("checkpoint_failed", error instanceof Error ? error.message : String(error)),
   );
 });
@@ -1443,7 +1452,18 @@ ipcMain.handle("omega:checkpointRestore", (event, req) => {
   if (!cwd) return errorResult("unavailable", "No active workspace");
   if (typeof req?.id !== "string" || !/^[0-9a-f]{40}$/.test(req.id)) return errorResult("invalid_args", "id is required");
   return restoreCheckpoint(cwd, req.id).then(
-    (data) => okResult(data),
+    async (data) => {
+      if (worker && worker.cwd === cwd) {
+        for (const checkpointId of [data.safety, data.restored]) {
+          try {
+            await worker.call("recordCheckpoint", { checkpointId, label: `restore ${checkpointId.slice(0, 8)}` });
+          } catch (error) {
+            console.error("checkpoint fact failed", error);
+          }
+        }
+      }
+      return okResult(data);
+    },
     (error) => errorResult("restore_failed", error instanceof Error ? error.message : String(error)),
   );
 });

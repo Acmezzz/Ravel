@@ -1,10 +1,5 @@
 import * as React from "react";
-import Dialog from "@mui/material/Dialog";
-import TextField from "@mui/material/TextField";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import Box from "@mui/material/Box";
+import { Dialog, DialogContent, DialogContentArea, DialogTitle } from "../../ui/Dialog";
 import { useAppStore } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
 import { ipc } from "../../ipc/client";
@@ -148,7 +143,7 @@ export function CommandPalette(): React.ReactElement {
         useAppStore.getState().setConnection("ready");
       }
     },
-    [setOpen, setConnection, setAgent],
+    [setOpen, setConnection, setAgent, t],
   );
 
   const runItem = React.useCallback(
@@ -164,91 +159,71 @@ export function CommandPalette(): React.ReactElement {
   );
 
   return (
-    <Dialog
-      open={open}
-      onClose={() => setOpen(false)}
-      fullWidth
-      maxWidth="sm"
-      PaperProps={{
-        sx: {
-          overflow: "hidden",
-          animation: "omega-rise .18s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
-        },
-      }}
-    >
-      <Box sx={{ px: 2, pt: 2, pb: 1 }}>
-        <TextField
-          autoFocus
-          fullWidth
-          size="small"
-          label={t("palette.search")}
-          placeholder={t("palette.searchPlaceholder")}
-          value={query}
-          aria-controls="omega-command-list"
-          aria-activedescendant={items[activeIndex] ? `omega-command-${activeIndex}` : undefined}
-          onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((index) => Math.min(Math.max(items.length - 1, 0), index + 1)); }
-            else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((index) => Math.max(0, index - 1)); }
-            else if (e.key === "Home") { e.preventDefault(); setActiveIndex(0); }
-            else if (e.key === "End") { e.preventDefault(); setActiveIndex(Math.max(items.length - 1, 0)); }
-            else if (e.key === "Enter" && items[activeIndex]) { e.preventDefault(); runItem(items[activeIndex]); }
-          }}
-        />
-        {error ? <Box role="alert" sx={{ color: "var(--omega-danger)", fontSize: "0.75rem", mt: 0.75 }}>{error}</Box> : null}
-      </Box>
-      <List id="omega-command-list" role="listbox" aria-label={t("palette.listAria")} sx={{ px: 1.25, pb: 1.25, pt: 0, maxHeight: 420, overflowY: "auto" }}>
-        {items.map((item, index) =>
-          item.kind === "ui" ? (
-              <ListItemButton
-              id={`omega-command-${index}`}
-              role="option"
-              aria-selected={index === activeIndex}
-              selected={index === activeIndex}
-              key={item.id}
-              onClick={() => runItem(item)}
-              sx={{
-                borderRadius: "9px",
-                mb: 0.25,
-                border: "1px solid transparent",
-                "&:hover": { borderColor: "var(--omega-border)" },
-                ...(index === activeIndex ? { background: "var(--omega-selected)", borderColor: "var(--omega-accent-line)" } : null),
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="omega-dialog-command-palette">
+        <DialogTitle>{t("palette.search")}</DialogTitle>
+        <DialogContentArea className="omega-model-picker-search">
+          <label className="omega-field" htmlFor="omega-command-search">
+            <span className="omega-field-label">{t("palette.search")}</span>
+            <input
+              id="omega-command-search"
+              className="omega-input"
+              autoFocus
+              placeholder={t("palette.searchPlaceholder")}
+              value={query}
+              aria-controls="omega-command-list"
+              aria-activedescendant={items[activeIndex] ? `omega-command-${activeIndex}` : undefined}
+              onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown") { event.preventDefault(); setActiveIndex((index) => Math.min(Math.max(items.length - 1, 0), index + 1)); }
+                else if (event.key === "ArrowUp") { event.preventDefault(); setActiveIndex((index) => Math.max(0, index - 1)); }
+                else if (event.key === "Home") { event.preventDefault(); setActiveIndex(0); }
+                else if (event.key === "End") { event.preventDefault(); setActiveIndex(Math.max(items.length - 1, 0)); }
+                else if (event.key === "Enter" && items[activeIndex]) { event.preventDefault(); runItem(items[activeIndex]); }
               }}
-            >
-              <ListItemText
-                primary={<span style={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600 }}>{item.title}</span>}
-                secondary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>{item.description}</span>}
-              />
-              {index === activeIndex ? <kbd className="kbd">↵</kbd> : null}
-            </ListItemButton>
-          ) : (
-            <ListItemButton
-              id={`omega-command-${index}`}
-              role="option"
-              aria-selected={index === activeIndex}
-              selected={index === activeIndex}
-              key={`${item.command.source}:${item.command.name}`}
-              onClick={() => runItem(item)}
-              sx={{
-                borderRadius: "9px",
-                mb: 0.25,
-                border: "1px solid transparent",
-                "&:hover": { borderColor: "var(--omega-border)" },
-                ...(index === activeIndex ? { background: "var(--omega-selected)", borderColor: "var(--omega-accent-line)" } : null),
-              }}
-            >
-              <ListItemText
-                primary={<span style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-accent)" }}>{commandLabel(item.command)}</span>}
-                secondary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>{item.command.description || item.command.source}</span>}
-              />
-              {index === activeIndex ? <kbd className="kbd">↵</kbd> : null}
-            </ListItemButton>
-          ),
-        )}
-        {items.length === 0 ? (
-          <ListItemText primary={<span style={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", padding: "8px" }}>{t("palette.noMatch")}</span>} />
-        ) : null}
-      </List>
+            />
+          </label>
+          {error ? <p role="alert" className="omega-error-text">{error}</p> : null}
+        </DialogContentArea>
+        <div id="omega-command-list" role="listbox" aria-label={t("palette.listAria")} className="omega-model-list omega-command-list">
+          {items.map((item, index) =>
+            item.kind === "ui" ? (
+              <button
+                type="button"
+                id={`omega-command-${index}`}
+                role="option"
+                aria-selected={index === activeIndex}
+                key={item.id}
+                onClick={() => runItem(item)}
+                className="omega-menu-item omega-model-option omega-command-option"
+              >
+                <span className="omega-model-copy">
+                  <span>{item.title}</span>
+                  <small>{item.description}</small>
+                </span>
+                {index === activeIndex ? <kbd className="kbd">↵</kbd> : null}
+              </button>
+            ) : (
+              <button
+                type="button"
+                id={`omega-command-${index}`}
+                role="option"
+                aria-selected={index === activeIndex}
+                key={`${item.command.source}:${item.command.name}`}
+                onClick={() => runItem(item)}
+                className="omega-menu-item omega-model-option omega-command-option"
+              >
+                <span className="omega-model-copy">
+                  <span className="omega-command-label">{commandLabel(item.command)}</span>
+                  <small>{item.command.description || item.command.source}</small>
+                </span>
+                {index === activeIndex ? <kbd className="kbd">↵</kbd> : null}
+              </button>
+            ),
+          )}
+          {items.length === 0 ? <p className="omega-muted-text">{t("palette.noMatch")}</p> : null}
+        </div>
+      </DialogContent>
     </Dialog>
   );
 }

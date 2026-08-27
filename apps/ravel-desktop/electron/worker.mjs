@@ -31,6 +31,7 @@ import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
 import { validateCustomProvider } from "./custom-providers.js";
 import {
+  appendCheckpointFacts,
   appendFact,
   appendSessionReferenceFacts,
   buildSessionReferenceBlock,
@@ -166,7 +167,12 @@ async function bindSession(session) {
       // Shadow snapshot before every approved mutation (C4-lite). Best effort.
       snapshot: async ({ toolName }) => {
         try {
-          await createCheckpoint(runtime.cwd, `auto ${toolName}`);
+          const created = await createCheckpoint(runtime.cwd, `auto ${toolName}`);
+          try {
+            appendCheckpointFacts(session.sessionManager, { checkpointId: created.id, label: created.label });
+          } catch (error) {
+            console.error("checkpoint fact failed", error);
+          }
         } catch (error) {
           console.error("auto checkpoint failed", error);
         }
@@ -544,6 +550,15 @@ const methods = {
   },
   prompt,
   abort: () => runtime.session.abort(),
+  recordCheckpoint: async ({ checkpointId, label, outcome, error }) => {
+    try {
+      const operationId = appendCheckpointFacts(runtime.session.sessionManager, { checkpointId, label, outcome, error });
+      return { operationId };
+    } catch (factError) {
+      console.error("checkpoint fact failed", factError);
+      return { operationId: null };
+    }
+  },
   getState: () => bridge.snapshotOf(runtime),
   listModels: () => bridge.listModels(runtime),
   configureCustomProvider: async (input) => {

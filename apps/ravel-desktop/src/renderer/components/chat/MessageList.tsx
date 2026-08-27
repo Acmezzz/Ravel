@@ -1,7 +1,6 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
+import { Button } from "../../ui/Button";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { MessageBubble } from "./MessageBubble";
@@ -27,55 +26,12 @@ function rememberScroll(sessionId: string, snapshot: { scrollTop: number; atBott
 
 function OperationRow({ operation, index }: { operation: TimelineOperation; index: number | null }): React.ReactElement {
   const t = useT();
-  return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1, my: 2 }} data-operation-id={operation.id}>
-      <Typography className="overline-label" sx={{ color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
-        {t("timeline.turn", { n: index ?? "-" })}
-      </Typography>
-      <Box sx={{ height: 1, flex: 1, background: "var(--omega-border)" }} />
-      {operation.status === "open" ? (
-        <Box component="span" className="pulse-dot" sx={{ width: 6, height: 6, borderRadius: "50%", background: "var(--omega-accent)" }} />
-      ) : null}
-      <Typography
-        className="overline-label"
-        sx={{
-          color:
-            operation.status === "failed"
-              ? "var(--omega-danger)"
-              : operation.status === "open"
-                ? "var(--omega-accent)"
-                : "var(--omega-text-dim)",
-          flex: "0 0 auto",
-        }}
-      >
-        {t(`timeline.status.${operation.status}` as MessageKey)}
-      </Typography>
-    </Box>
-  );
+  return <div className="omega-operation-row" data-operation-id={operation.id}><span className="overline-label">{t("timeline.turn", { n: index ?? "-" })}</span><span className="omega-operation-rule" />{operation.status === "open" ? <span className="pulse-dot omega-operation-dot" /> : null}<span className={`overline-label omega-operation-status omega-operation-${operation.status}`}>{t(`timeline.status.${operation.status}` as MessageKey)}</span></div>;
 }
 
 function CompactionMarkerRow(): React.ReactElement {
   const t = useT();
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.75,
-        my: 1.5,
-        px: 1,
-        py: 0.5,
-        borderRadius: "9px",
-        border: "1px dashed var(--omega-border)",
-        color: "var(--omega-text-dim)",
-      }}
-    >
-      <span style={{ fontSize: "0.8125rem", color: "var(--omega-accent)" }}>∞</span>
-      <Typography className="overline-label" sx={{ color: "var(--omega-text-dim)" }}>
-        {t("marker.compaction")}
-      </Typography>
-    </Box>
-  );
+  return <div className="omega-compaction-marker"><span className="omega-compaction-mark">∞</span><span className="overline-label">{t("marker.compaction")}</span></div>;
 }
 
 export function MessageList(): React.ReactElement {
@@ -207,98 +163,76 @@ export function MessageList(): React.ReactElement {
   }, [bashTail]);
 
   const runningBash = connection === "running" && bashTail.length > 0;
+  let turnOrdinal = 0;
+  const indexedRows = rows.map((row) => {
+    if (row.kind !== "operation-start" || row.operation.kind !== "run") return { row, index: null };
+    turnOrdinal += 1;
+    return { row, index: turnOrdinal };
+  });
+  const virtualizer = useVirtualizer({
+    count: indexedRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) => (indexedRows[index]?.row.kind === "operation-start" ? 42 : 96),
+    overscan: 8,
+    getItemKey: (index) => {
+      const row = indexedRows[index]?.row;
+      return row?.kind === "operation-start" ? `op-${row.operation.id}` : row?.message.id ?? index;
+    },
+  });
 
   return (
-    <Box
+    <div
       ref={scrollRef}
+      className="omega-message-list"
       onScroll={() => {
         const el = scrollRef.current;
         if (!el) return;
         stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
       }}
-      sx={{ height: "100%", overflowY: "auto", px: { xs: 2, sm: 4 }, py: 3 }}
     >
-      <Box className="message-reading-column" sx={{ maxWidth: 840, mx: "auto", width: "100%" }}>
+      <div className="message-reading-column">
         {hiddenCount > 0 || canLoadHistorical ? (
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mb: 2 }}>
-            {hiddenCount > 0 ? <Button size="small" variant="outlined" onClick={() => setWindowSize((prev) => prev + WINDOW_SIZE)} sx={{ textTransform: "none", borderRadius: "999px" }}>加载更早消息（剩余 {hiddenCount} 条）</Button> : null}
-            {canLoadHistorical ? <Button size="small" variant="text" onClick={() => void loadHistoricalMessages()} disabled={historyLoading} sx={{ textTransform: "none" }}>{historyLoading ? "读取历史中…" : "从磁盘读取更早消息"}</Button> : null}
-          </Box>
+          <div className="omega-history-actions">
+            {hiddenCount > 0 ? <Button size="sm" variant="outline" onClick={() => setWindowSize((prev) => prev + WINDOW_SIZE)}>加载更早消息（剩余 {hiddenCount} 条）</Button> : null}
+            {canLoadHistorical ? <Button size="sm" variant="quiet" onClick={() => void loadHistoricalMessages()} disabled={historyLoading}>{historyLoading ? "读取历史中…" : "从磁盘读取更早消息"}</Button> : null}
+          </div>
         ) : null}
-        {(() => {
-          let turnOrdinal = 0;
-          return rows.map((row) => {
-            if (row.kind === "operation-start") {
-              if (row.operation.kind !== "run") {
-                return <OperationRow key={`op-${row.operation.id}`} operation={row.operation} index={null} />;
-              }
-              turnOrdinal += 1;
-              return <OperationRow key={`op-${row.operation.id}`} operation={row.operation} index={turnOrdinal} />;
-            }
-            const message = row.message;
-            const anchoredMarkers = message.entryId ? markersByAnchor.get(message.entryId) : undefined;
+        <div className="omega-virtual-list" style={{ height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const item = indexedRows[virtualItem.index];
+            if (!item) return null;
+            const row = item.row;
             return (
-              <React.Fragment key={message.id}>
-                <MessageBubble message={message} streamingRun={thinkingActive && message.id === lastAssistantId} />
-                {row.cards.map((card) => (
-                  <ToolCard key={card.toolCallId} card={card} />
-                ))}
-                {(anchoredMarkers ?? []).map((marker) => (
-                  <CompactionMarkerRow key={marker.entryId} />
-                ))}
-              </React.Fragment>
+              <div
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                className="omega-virtual-item"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                {row.kind === "operation-start" ? (
+                  <OperationRow operation={row.operation} index={item.index} />
+                ) : (() => {
+                  const message = row.message;
+                  const anchoredMarkers = message.entryId ? markersByAnchor.get(message.entryId) : undefined;
+                  return (
+                    <>
+                      <MessageBubble message={message} streamingRun={thinkingActive && message.id === lastAssistantId} />
+                      {row.cards.map((card) => <ToolCard key={card.toolCallId} card={card} />)}
+                      {(anchoredMarkers ?? []).map((marker) => <CompactionMarkerRow key={marker.entryId} />)}
+                    </>
+                  );
+                })()}
+              </div>
             );
-          });
-        })()}
-        {looseCards.map((card) => (
-          <ToolCard key={card.toolCallId} card={card} />
-        ))}
-        {runningBash ? (
-          <Box
-            sx={{
-              mb: 2,
-              borderRadius: "12px",
-              border: "1px solid var(--omega-border)",
-              background: "var(--omega-bg-code)",
-              boxShadow: "var(--omega-inset-highlight)",
-              overflow: "hidden",
-            }}
-          >
-            <Typography className="overline-label" sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.5, py: 0.75 }}>
-              <Box component="span" className="pulse-dot" sx={{ width: 6, height: 6, borderRadius: "50%", background: "var(--omega-accent)", boxShadow: "0 0 6px var(--omega-accent)" }} />
-              BASH 实时输出
-            </Typography>
-            <Box
-              ref={bashRef}
-              component="pre"
-              sx={{
-                m: 0,
-                px: 1.5,
-                pb: 1,
-                maxHeight: 160,
-                overflowY: "auto",
-                fontSize: "0.75rem",
-                lineHeight: 1.55,
-                fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
-                color: "var(--omega-text-muted)",
-                whiteSpace: "pre-wrap",
-                overflowWrap: "anywhere",
-              }}
-            >
-              {bashTail}
-            </Box>
-          </Box>
-        ) : null}
-        {thinkingActive ? (
-          <Typography className="thinking-shimmer" sx={{ fontSize: "0.75rem", mb: 2, fontWeight: 600 }}>
-            思考中…
-          </Typography>
-        ) : null}
-        {compacting ? (
-          <Typography sx={{ color: "var(--omega-warning)", fontSize: "0.75rem", mb: 2 }}>正在压缩上下文…</Typography>
-        ) : null}
+          })}
+        </div>
+        {looseCards.map((card) => <ToolCard key={card.toolCallId} card={card} />)}
+        {runningBash ? <section className="omega-bash-tail"><div className="overline-label omega-bash-title"><span className="pulse-dot omega-operation-dot" />BASH 实时输出</div><pre ref={bashRef}>{bashTail}</pre></section> : null}
+        {thinkingActive ? <p className="thinking-shimmer omega-list-status">思考中…</p> : null}
+        {compacting ? <p className="omega-list-status omega-list-status-warning">正在压缩上下文…</p> : null}
         <div ref={bottomRef} />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

@@ -1,17 +1,6 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
-import Paper from "@mui/material/Paper";
-import TextareaAutosize from "@mui/material/TextareaAutosize";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
-import SendIcon from "@mui/icons-material/Send";
-import StopIcon from "@mui/icons-material/Stop";
-import BoltIcon from "@mui/icons-material/Bolt";
-import ReplayIcon from "@mui/icons-material/Replay";
-import KeyboardCommandKeyIcon from "@mui/icons-material/KeyboardCommandKey";
-import AttachFileIcon from "@mui/icons-material/AttachFile";
+import { IconButton } from "../../ui/Button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { userMessageKey } from "../../lib/prompt-recovery";
@@ -60,29 +49,66 @@ function truncate(text: string, max = 120): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+function CommandIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
+      <path d="M5.5 2.5a2 2 0 0 0-2 2v1.25H5.5V4.5a.5.5 0 0 1 1 0v1.25h3V4.5a.5.5 0 0 1 1 0v1.25H12.5V4.5a2 2 0 0 0-2-2h-.25a2 2 0 0 0-1.75 1 2 2 0 0 0-1.75-1H5.5Zm0 11a2 2 0 0 1-2-2v-1.25H5.5v1.25a.5.5 0 0 0 1 0v-1.25h3v1.25a.5.5 0 0 0 1 0v-1.25H12.5v1.25a2 2 0 0 1-2 2h-.25a2 2 0 0 1-1.75-1 2 2 0 0 1-1.75 1H5.5ZM3.5 7.25h9v1.5h-9v-1.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function AttachFile(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
+      <path d="M13.2 8.4 7.05 14.55a3.2 3.2 0 0 1-4.53-4.53l7.07-7.07a2.1 2.1 0 1 1 2.97 2.97L5.4 13a1 1 0 1 1-1.41-1.41l6.36-6.37" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ReplayIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
+      <path d="M3.2 8A4.8 4.8 0 1 0 8 3.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M3.2 3.2v3.2H6.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function BoltIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
+      <path d="M9.2 2.2 3.8 9.1h3.5L6.8 13.8l5.4-6.9H8.7L9.2 2.2Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function StopIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
+      <rect x="4" y="4" width="8" height="8" rx="1.2" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SendIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
+      <path d="M2.4 8 13.6 2.8 10.4 13.2 7.6 8.8 2.4 8Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M7.6 8.8 13.6 2.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string }): React.ReactElement {
   const t = useT();
   const isSteer = kind === "steer";
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1, py: 0.25, minWidth: 0 }}>
-      <Chip
-        size="small"
-        label={isSteer ? t("composer.queueSteer") : t("composer.queueFollowUp")}
-        sx={{
-          flex: "0 0 auto",
-          height: 18,
-          fontSize: "0.65625rem",
-          fontFamily: "ui-monospace, Consolas, monospace",
-          borderRadius: 999,
-          border: isSteer ? "1px solid var(--omega-accent)" : "1px solid var(--omega-border)",
-          color: isSteer ? "var(--omega-accent)" : "var(--omega-text-muted)",
-          background: "transparent",
-        }}
-      />
-      <Typography title={text} sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", minWidth: 0 }} noWrap>
-        {truncate(text)}
-      </Typography>
-    </Box>
+    <div className="omega-composer-queue-row">
+      <span className={isSteer ? "omega-chip omega-chip-steer" : "omega-chip omega-chip-queue"}>
+        {isSteer ? t("composer.queueSteer") : t("composer.queueFollowUp")}
+      </span>
+      <span title={text} className="omega-composer-queue-text">{truncate(text)}</span>
+    </div>
   );
 }
 
@@ -207,6 +233,10 @@ export function Composer(): React.ReactElement {
     [addFiles],
   );
 
+  const onDelete = React.useCallback((key: string) => {
+    setAttachments((prev) => prev.filter((item) => item.key !== key));
+  }, []);
+
   const runBash = React.useCallback(
     (rawValue: string) => {
       if (shuttingDown) return;
@@ -321,7 +351,7 @@ export function Composer(): React.ReactElement {
         }
       })();
     },
-    [text, attachments, pendingReferences, running, shuttingDown, setConnection, setComposerError, runBash],
+    [text, attachments, pendingReferences, running, shuttingDown, setConnection, setComposerError, runBash, t],
   );
 
   const abort = React.useCallback(async () => {
@@ -514,210 +544,112 @@ export function Composer(): React.ReactElement {
   const queued = [...queuedMessages.steering, ...queuedMessages.followUp];
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        mx: 2,
-        mb: 2,
-        position: "relative",
-      }}
-    >
-      {historyOpen && inputHistory.length > 0 ? (        <Paper id="omega-history-list" role="listbox" aria-label="输入历史"
-          elevation={0}
-          sx={{
-            position: "absolute",
-            bottom: "calc(100% + 6px)",
-            left: 0,
-            right: 0,
-            maxHeight: 260,
-            overflowY: "auto",
-            border: "1px solid var(--omega-border-strong)",
-            borderRadius: "12px",
-            background: "var(--omega-bg-overlay)",
-            boxShadow: "var(--omega-shadow-lg), var(--omega-inset-highlight)",
-            p: 0.75,
-            zIndex: 20,
-          }}
-        >
-          <Typography className="overline-label" sx={{ px: 1, py: 0.5 }}>
-            {t("composer.historyTitle")}
-          </Typography>
+    <div className="omega-composer">
+      {historyOpen && inputHistory.length > 0 ? (
+        <div id="omega-history-list" role="listbox" aria-label="输入历史" className="omega-composer-suggest">
+          <div className="overline-label">{t("composer.historyTitle")}</div>
           {inputHistory.map((entry, index) => (
-            <Box
+            <div
               id={`omega-history-option-${index}`}
               role="option"
+              tabIndex={0}
               aria-selected={index === historyIndex}
               key={`${entry}-${index}`}
+              className="omega-composer-option"
               onMouseDown={(e) => {
                 e.preventDefault();
                 applyHistory(entry);
               }}
-              sx={{
-                px: 1.25,
-                py: 0.6,
-                borderRadius: "8px",
-                cursor: "pointer",
-                background: index === historyIndex ? "var(--omega-selected)" : "transparent",
-                "&:hover": { background: "var(--omega-hover-fill)" },
-              }}
             >
-              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {entry}
-              </Typography>
-            </Box>
+              <span className="omega-composer-option-text">{entry}</span>
+            </div>
           ))}
-        </Paper>
+        </div>
       ) : null}
 
       {atOpen && atItems.length > 0 ? (
-        <Paper id="omega-at-list" role="listbox" aria-label="文件补全结果"
-          elevation={0}
-          sx={{
-            position: "absolute",
-            bottom: "calc(100% + 6px)",
-            left: 0,
-            right: 0,
-            maxHeight: 220,
-            overflowY: "auto",
-            border: "1px solid var(--omega-border-strong)",
-            borderRadius: "12px",
-            background: "var(--omega-bg-overlay)",
-            boxShadow: "var(--omega-shadow-lg), var(--omega-inset-highlight)",
-            p: 0.75,
-            zIndex: 20,
-          }}
-        >
-          <Typography className="overline-label" sx={{ px: 1, py: 0.5 }}>
-            {t("composer.atTitle")}
-          </Typography>
+        <div id="omega-at-list" role="listbox" aria-label="文件补全结果" className="omega-composer-suggest omega-composer-suggest-at">
+          <div className="overline-label">{t("composer.atTitle")}</div>
           {atItems.map((item, index) => (
-            <Box
+            <div
               id={`omega-at-option-${index}`}
               role="option"
+              tabIndex={0}
               aria-selected={index === atIndex}
               key={item.kind === "session" ? `session-${item.sessionId}` : `file-${item.path}`}
+              className="omega-composer-option omega-composer-option-at"
               onMouseDown={(e) => {
                 e.preventDefault();
                 applyAt(item);
               }}
-              sx={{
-                px: 1.25,
-                py: 0.5,
-                borderRadius: "8px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 0.75,
-                background: index === atIndex ? "var(--omega-selected)" : "transparent",
-                "&:hover": { background: "var(--omega-hover-fill)" },
-              }}
             >
               {item.kind === "session" ? (
                 <>
-                  <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-accent)", flex: "0 0 auto", textTransform: "uppercase" }}>
-                    @
-                  </Typography>
-                  <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text)", minWidth: 0 }} noWrap>
-                    {item.title}
-                  </Typography>
-                  <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", marginLeft: "auto", flex: "0 0 auto" }}>
-                    {t("composer.atSessionDetail")}
-                  </Typography>
+                  <span className="omega-composer-at-mark">@</span>
+                  <span className="omega-composer-at-title">{item.title}</span>
+                  <span className="omega-composer-at-detail">{t("composer.atSessionDetail")}</span>
                 </>
               ) : (
-                <Typography sx={{ fontSize: "0.75rem", fontFamily: "ui-monospace, Consolas, monospace", color: "var(--omega-text)" }} noWrap>
-                  {item.path}
-                </Typography>
+                <span className="omega-composer-at-path">{item.path}</span>
               )}
-            </Box>
+            </div>
           ))}
-        </Paper>
+        </div>
       ) : null}
 
       {composerError ? (
-        <Typography id="omega-composer-error" role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", px: 1, pb: 0.75 }}>{composerError}</Typography>
+        <p id="omega-composer-error" role="alert" className="omega-error-text omega-composer-error">{composerError}</p>
       ) : null}
 
       {queued.length > 0 ? (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            px: 1,
-            pb: 0.75,
-            border: "1px solid var(--omega-border)",
-            borderRadius: "12px",
-            mb: 0.75,
-            background: "var(--omega-bg-soft)",
-          }}
-        >
-          <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700, color: "var(--omega-text-muted)", flex: "0 0 auto", pr: 1 }}>
-            队列 · {queued.length}
-          </Typography>
-          <Box sx={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+        <div className="omega-composer-queue">
+          <span className="omega-composer-queue-label">队列 · {queued.length}</span>
+          <div className="omega-composer-queue-list">
             {queuedMessages.steering.map((entry, index) => (
               <QueuedRow key={`s-${index}`} kind="steer" text={entry} />
             ))}
             {queuedMessages.followUp.map((entry, index) => (
               <QueuedRow key={`f-${index}`} kind="followUp" text={entry} />
             ))}
-          </Box>
-          <Tooltip title={t("composer.recallTooltip")}>
-            <IconButton size="small" aria-label={t("composer.recallAria")} onClick={() => void recallQueue()} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", "&:hover": { color: "var(--omega-accent)" } }}>
-              <ReplayIcon fontSize="small" />
-            </IconButton>
+          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton size="sm" label={t("composer.recallAria")} onClick={() => void recallQueue()} disabled={shuttingDown}>
+                <ReplayIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{t("composer.recallTooltip")}</TooltipContent>
           </Tooltip>
-        </Box>
+        </div>
       ) : null}
 
       {attachments.length > 0 ? (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, px: 1, pb: 0.75 }}>
+        <div className="omega-composer-chips">
           {attachments.map((attachment) => (
-            <Chip
-              key={attachment.key}
-              size="small"
-              label={attachment.name}
-              onDelete={() => setAttachments((prev) => prev.filter((item) => item.key !== attachment.key))}
-              sx={{ maxWidth: 220, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }}
-            />
+            <span key={attachment.key} className="omega-chip omega-chip-dismiss">
+              <span>{attachment.name}</span>
+              <button type="button" className="omega-chip-dismiss-btn" aria-label={`移除 ${attachment.name}`} onClick={() => onDelete(attachment.key)}>
+                ×
+              </button>
+            </span>
           ))}
-        </Box>
+        </div>
       ) : null}
 
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 0.5,
-          p: 1,
-          minWidth: 0,
-          border: "1px solid var(--omega-border)",
-          borderRadius: "16px",
-          background: "var(--omega-composer-bg)",
-          backdropFilter: "blur(18px) saturate(1.4)",
-          WebkitBackdropFilter: "blur(18px) saturate(1.4)",
-          boxShadow: "var(--omega-shadow-md), var(--omega-inset-highlight)",
-          transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-          "&:focus-within": {
-            borderColor: "var(--omega-accent-line)",
-            boxShadow: "var(--omega-shadow-md), 0 0 0 3px var(--omega-accent-soft), var(--omega-glow-accent)",
-          },
-        }}
-      >
+      <div className="omega-composer-shell">
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
           multiple
-          style={{ display: "none" }}
+          className="omega-file-input"
           onChange={(e) => {
             void addFiles(e.target.files);
             e.target.value = "";
           }}
         />
-        <TextareaAutosize
-          ref={taRef as never}
+        <textarea
+          ref={taRef}
           id="omega-composer-input"
           role="combobox"
           aria-autocomplete="list"
@@ -725,8 +657,10 @@ export function Composer(): React.ReactElement {
           aria-controls={atOpen ? "omega-at-list" : historyOpen ? "omega-history-list" : undefined}
           aria-activedescendant={atOpen && atItems[atIndex] ? `omega-at-option-${atIndex}` : historyOpen && inputHistory[historyIndex] ? `omega-history-option-${historyIndex}` : undefined}
           aria-describedby={composerError ? "omega-composer-error" : undefined}
+          rows={1}
           value={text}
           disabled={shuttingDown}
+          className="omega-composer-input"
           onChange={(e) => {
             setText(e.target.value);
             setHistoryOpen(false);
@@ -742,107 +676,72 @@ export function Composer(): React.ReactElement {
             lastCompositionEndAtRef.current = Date.now();
           }}
           placeholder={running ? t("composer.placeholderRunning") : t("composer.placeholder")}
-          minRows={1}
-          maxRows={8}
-          style={{
-            width: "100%",
-            minWidth: 0,
-            resize: "none",
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            color: "var(--omega-text)",
-            font: "inherit",
-            fontSize: "0.875rem",
-            lineHeight: 1.6,
-            padding: "6px 8px 2px",
-            boxSizing: "border-box",
-          }}
         />
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, minWidth: 0, px: 0.25 }}>
-          <Tooltip title={t("composer.commandPaletteTooltip")}>
-            <IconButton size="small" aria-label={t("composer.commandPaletteAria")} onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}>
-              <KeyboardCommandKeyIcon sx={{ fontSize: "1.125rem" }} />
-            </IconButton>
+        <div className="omega-composer-toolbar">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton size="lg" className="omega-composer-action" label={t("composer.commandPaletteAria")} onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown}>
+                <CommandIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{t("composer.commandPaletteTooltip")}</TooltipContent>
           </Tooltip>
-          <Tooltip title={t("composer.attachTooltip", { n: MAX_IMAGES })}>
-            <IconButton
-              size="small"
-              aria-label={t("composer.attachAria")}
-              onClick={() => fileRef.current?.click()}
-              disabled={shuttingDown || attachments.length >= MAX_IMAGES}
-              sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", minWidth: 40, minHeight: 40 }}
-            >
-              <AttachFileIcon sx={{ fontSize: "1.125rem" }} />
-            </IconButton>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                size="lg"
+                className="omega-composer-action"
+                label={t("composer.attachAria")}
+                onClick={() => fileRef.current?.click()}
+                disabled={shuttingDown || attachments.length >= MAX_IMAGES}
+              >
+                <AttachFile />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{t("composer.attachTooltip", { n: MAX_IMAGES })}</TooltipContent>
           </Tooltip>
-          <Box sx={{ flex: 1, minWidth: 0 }} />
+          <div className="omega-composer-toolbar-spacer" />
           {running ? (
             <>
-              <Tooltip title={t("composer.steerTooltip")}>
-                <IconButton
-                  aria-label={t("composer.steerAria")}
-                  onClick={() => send("steer")}
-                  disabled={shuttingDown || canSend}
-                  sx={{
-                    color: "var(--omega-warning)",
-                    background: "var(--omega-warning-soft)",
-                    borderRadius: "10px",
-                    width: 34,
-                    height: 34,
-                    flex: "0 0 auto",
-                    boxShadow: "var(--omega-inset-highlight)",
-                    "&:disabled": { opacity: 0.45 },
-                  }}
-                >
-                  <BoltIcon sx={{ fontSize: "1.125rem" }} />
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    className="omega-composer-steer"
+                    label={t("composer.steerAria")}
+                    onClick={() => send("steer")}
+                    disabled={shuttingDown || canSend}
+                  >
+                    <BoltIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{t("composer.steerTooltip")}</TooltipContent>
               </Tooltip>
-              <Tooltip title="彻底停止生成">
-                <IconButton
-                  aria-label={t("composer.stopAria")}
-                  onClick={() => void abort()}
-                  disabled={shuttingDown}
-                  sx={{
-                    color: "var(--omega-danger)",
-                    background: "var(--omega-danger-soft)",
-                    borderRadius: "10px",
-                    width: 34,
-                    height: 34,
-                    flex: "0 0 auto",
-                    boxShadow: "var(--omega-inset-highlight)",
-                  }}
-                >
-                  <StopIcon sx={{ fontSize: "1rem" }} />
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    className="omega-composer-stop"
+                    label={t("composer.stopAria")}
+                    onClick={() => void abort()}
+                    disabled={shuttingDown}
+                  >
+                    <StopIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>彻底停止生成</TooltipContent>
               </Tooltip>
             </>
           ) : (
             <IconButton
-              aria-label={t("composer.sendAria")}
+              className="omega-composer-send"
+              label={t("composer.sendAria")}
               onClick={() => send()}
               disabled={shuttingDown || canSend}
-              sx={{
-                color: "var(--omega-accent-foreground)",
-                background: "var(--omega-accent-gradient)",
-                borderRadius: "10px",
-                width: 40,
-                height: 40,
-                minWidth: 40,
-                minHeight: 40,
-                flex: "0 0 auto",
-                boxShadow: "0 2px 8px var(--omega-accent-soft), var(--omega-inset-highlight), var(--omega-glow-accent)",
-                transition: "transform 120ms var(--omega-ease-out), box-shadow 120ms var(--omega-ease-out), filter 120ms var(--omega-ease-out)",
-                "&:hover": { filter: "brightness(1.08)", transform: "translateY(-0.5px)", boxShadow: "0 4px 14px var(--omega-accent-soft), var(--omega-inset-highlight), 0 0 20px rgba(232, 180, 74, 0.40)" },
-                "&:active": { transform: "translateY(0.5px)" },
-                "&:disabled": { opacity: 0.4, background: "var(--omega-border-strong)", boxShadow: "none", color: "var(--omega-text-dim)" },
-              }}
             >
-              <SendIcon sx={{ fontSize: "1rem" }} />
+              <SendIcon />
             </IconButton>
           )}
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,14 +1,8 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
-import Badge from "@mui/material/Badge";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import AddIcon from "@mui/icons-material/Add";
-import CloseIcon from "@mui/icons-material/Close";
-import { useAppStore } from "../../store/useAppStore";
+import { Button, IconButton } from "../../ui/Button";
+import { Tabs, TabsList, TabsTrigger } from "../../ui/Tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
+import { useAppStore, type LayoutState } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
 import { attentionCount, readClearedMap } from "../../lib/activity-projection";
 import { SessionList } from "../sessions/SessionList";
@@ -16,6 +10,26 @@ import { ActivityList } from "../sessions/ActivityList";
 import { NewSessionDialog } from "../sessions/NewSessionDialog";
 import { FileTree } from "../files/FileTree";
 import { SearchPanel } from "../files/SearchPanel";
+
+function PlusIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-plus" aria-hidden="true">
+      <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CloseIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-close" aria-hidden="true">
+      <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function isLeftTab(value: string): value is LayoutState["leftTab"] {
+  return value === "sessions" || value === "files" || value === "search" || value === "activity";
+}
 
 export function LeftNav(): React.ReactElement {
   const t = useT();
@@ -33,72 +47,49 @@ export function LeftNav(): React.ReactElement {
   );
 
   return (
-    <Box
-      component="nav"
-      id="omega-left-nav"
-      aria-label={t("nav.sessionsFilesAria")}
-      sx={{
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--omega-bg-rail)",
-        overflow: "hidden",
-      }}
-    >
-      <Box sx={{ px: 1.25, pt: 1, pb: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.5 }}>
+    <nav id="omega-left-nav" className="omega-rail" aria-label={t("nav.sessionsFilesAria")}>
+      <div className="omega-rail-header">
         <Tabs
+          className="omega-rail-tabs"
           value={leftTab}
-          onChange={(_e, value) => setLayout({ leftTab: value })}
-          sx={{ flex: 1, minWidth: 0, minHeight: 32, "& .MuiTabs-flexContainer": { minWidth: 0 }, "& .MuiTab-root": { minHeight: 32, minWidth: 40, fontSize: "0.75rem", px: 0.5, py: 0.25 } }}
+          onValueChange={(value) => {
+            if (isLeftTab(value)) setLayout({ leftTab: value });
+          }}
         >
-          <Tab label={t("nav.tab.sessions")} value="sessions" />
-          <Tab
-            label={
-              <Badge color="error" variant="dot" invisible={attention === 0} sx={{ "& .MuiBadge-badge": { top: 4, right: -4 } }}>
-                {t("nav.tab.activity")}
-              </Badge>
-            }
-            value="activity"
-          />
-          <Tab label={t("nav.tab.files")} value="files" />
-          <Tab label={t("nav.tab.search")} value="search" />
+          <TabsList>
+            <TabsTrigger value="sessions">{t("nav.tab.sessions")}</TabsTrigger>
+            <TabsTrigger value="activity" className={attention > 0 ? "omega-attention-dot" : undefined}>
+              {t("nav.tab.activity")}
+            </TabsTrigger>
+            <TabsTrigger value="files">{t("nav.tab.files")}</TabsTrigger>
+            <TabsTrigger value="search">{t("nav.tab.search")}</TabsTrigger>
+          </TabsList>
         </Tabs>
         {leftTab === "sessions" ? (
           <Button
-            size="small"
-            startIcon={<AddIcon sx={{ fontSize: "0.9375rem" }} />}
+            size="sm"
+            className="omega-rail-new"
+            leading={<PlusIcon />}
             onClick={() => setNewOpen(true)}
             aria-label={t("nav.newSession")}
             title={t("nav.newSession")}
-            sx={{
-              textTransform: "none",
-              borderRadius: "999px",
-              flex: "0 0 auto",
-              fontWeight: 600,
-              fontSize: "0.75rem",
-              px: 0.75,
-              minWidth: 0,
-              height: 28,
-              color: "var(--omega-accent)",
-              background: "var(--omega-accent-soft)",
-              boxShadow: "var(--omega-inset-highlight)",
-              "&:hover": { background: "var(--omega-accent-soft)", transform: "translateY(-0.5px)", boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)" },
-              "&:active": { transform: "translateY(0.5px)", boxShadow: "var(--omega-inset-recessed)" },
-            }}
           >
             {t("nav.newSession")}
           </Button>
         ) : null}
-        <Tooltip title={t("nav.collapseLeft")}>
-          <IconButton size="small" aria-label={t("nav.collapseLeft")} onClick={toggleLeftPanel} sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto" }}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton size="sm" label={t("nav.collapseLeft")} onClick={toggleLeftPanel}>
+              <CloseIcon />
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>{t("nav.collapseLeft")}</TooltipContent>
         </Tooltip>
-      </Box>
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", px: 0.75, pb: 1.5, pt: 0.5 }}>
+      </div>
+      <div className={leftTab === "activity" || leftTab === "search" ? "omega-rail-body omega-rail-body-clip" : "omega-rail-body"}>
         {leftTab === "sessions" ? <SessionList /> : leftTab === "activity" ? <ActivityList /> : leftTab === "search" ? <SearchPanel /> : <FileTree />}
-      </Box>
+      </div>
       <NewSessionDialog open={newOpen} onClose={() => setNewOpen(false)} />
-    </Box>
+    </nav>
   );
 }

@@ -4,6 +4,7 @@
  * without npm/git network installs.
  */
 import { basename, relative, sep } from "node:path";
+import { contentHashOfFile } from "./content-hash.js";
 
 export const NETWORK_PREFIXES = Object.freeze(["npm:", "git:", "github:", "http:", "https:", "ssh:"]);
 export const RESOURCE_KINDS = Object.freeze(["extension", "skill", "prompt"]);
@@ -107,6 +108,7 @@ function mapResolved(kind, resources, loadedByPath, projectTrusted) {
       tools: Number(loaded?.tools) || 0,
       argumentHint: loaded?.argumentHint,
       disableModelInvocation: loaded?.disableModelInvocation === true,
+      contentHash: typeof loaded?.contentHash === "string" ? loaded.contentHash : "",
       dormant,
     };
   });
@@ -139,6 +141,7 @@ export function buildResourceBundle({
       name: skill.name,
       description: skill.description ?? "",
       disableModelInvocation: skill.disableModelInvocation === true,
+      contentHash: typeof skill.contentHash === "string" && skill.contentHash ? skill.contentHash : contentHashOfFile(skill.filePath),
     });
   }
   const promptByPath = new Map();
@@ -178,6 +181,7 @@ export function buildResourceBundle({
       source: item.source,
       baseDir: item.baseDir,
       disableModelInvocation: item.disableModelInvocation,
+      contentHash: item.contentHash || "",
       dormant: item.dormant,
     })),
     prompts: promptItems.map((item) => ({

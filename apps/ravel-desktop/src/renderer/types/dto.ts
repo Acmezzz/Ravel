@@ -423,6 +423,8 @@ export interface SkillResource {
   source?: string;
   baseDir?: string;
   disableModelInvocation?: boolean;
+  /** SHA-256 of the skill file; path/name stay stable across overwrites. */
+  contentHash?: string;
   dormant?: boolean;
 }
 

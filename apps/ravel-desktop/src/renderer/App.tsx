@@ -1,15 +1,16 @@
 import * as React from "react";
-import { ThemeProvider } from "./theme/ThemeProvider";
 import { Workbench } from "./components/layout/Workbench";
 import { CommandPalette } from "./components/layout/CommandPalette";
 import { TreeOverlay } from "./components/layout/TreeOverlay";
 import { FileViewer } from "./components/files/FileViewer";
 import { ExtensionUIHost } from "./components/layout/ExtensionUIHost";
 import { TrustCenter } from "./components/layout/TrustCenter";
+import { TooltipProvider } from "./ui/Tooltip";
 import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
 import { matchesKeybinding } from "./lib/keybindings";
 import { streamBucketOf } from "./lib/stream-bucket";
+import { appendStreamText, appendStreamThinking, getStreamLive, moveStreamLive, resetStreamLive, seedStreamLive } from "./lib/stream-live";
 import type { ActivityRow } from "./types/dto";
 import type { EventMeta, SafeEvent } from "./types/events";
 
@@ -179,6 +180,7 @@ export function App(): React.ReactElement {
               text: event.message.text ?? "",
               ts: new Date().toISOString(),
             });
+            seedStreamLive(id, { text: event.message.text ?? "" });
             store.setStreamingBucket(streamBucketOf(meta), id);
           }
           break;
@@ -204,22 +206,25 @@ export function App(): React.ReactElement {
             const finalId = event.message.id;
             const bucket = streamBucketOf(meta);
             const streamingId = useAppStore.getState().streamingBuckets[bucket];
+            const liveSnapshot = streamingId ? getStreamLive(streamingId) : null;
+            if (streamingId && finalId && finalId !== streamingId) moveStreamLive(streamingId, finalId);
             useAppStore.setState((state) => {
               const nextBuckets = { ...state.streamingBuckets };
               delete nextBuckets[bucket];
               return {
                 messages: state.messages.map((message) => {
                   if (finalId && message.id === finalId) {
-                    return { ...message, text: event.message.text ?? message.text };
+                    return { ...message, text: event.message.text ?? liveSnapshot?.text ?? message.text, thinking: liveSnapshot?.thinking || message.thinking };
                   }
                   if (streamingId && message.id === streamingId && (!finalId || finalId !== message.id)) {
-                    return { ...message, id: finalId ?? message.id, text: event.message.text ?? message.text };
+                    return { ...message, id: finalId ?? message.id, text: event.message.text ?? liveSnapshot?.text ?? message.text, thinking: liveSnapshot?.thinking || message.thinking };
                   }
                   return message;
                 }),
                 streamingBuckets: nextBuckets,
               };
             });
+            if (streamingId) resetStreamLive(finalId ?? streamingId);
           }
           break;
         }
@@ -228,15 +233,11 @@ export function App(): React.ReactElement {
           if (update.type === "text_delta") {
             const bucket = streamBucketOf(meta);
             const id = useAppStore.getState().streamingBuckets[bucket] ?? store.ensureStreamingAssistant(bucket);
-            store.appendDelta(id, update.delta);
+            appendStreamText(id, update.delta);
           } else if (update.type === "thinking_delta") {
             const bucket = streamBucketOf(meta);
             const id = useAppStore.getState().streamingBuckets[bucket] ?? store.ensureStreamingAssistant(bucket);
-            useAppStore.setState((state) => ({
-              messages: state.messages.map((message) =>
-                message.id === id ? { ...message, thinking: (message.thinking ?? "") + update.delta } : message,
-              ),
-            }));
+            appendStreamThinking(id, update.delta);
           }
           break;
         }
@@ -283,6 +284,7 @@ export function App(): React.ReactElement {
           setConnection("running");
           store.setComposerError(null);
           if (activeSessionId) store.markSessionActivity(activeSessionId, { running: true, failed: false });
+          resetStreamLive();
           useAppStore.setState({ bashTail: "", streamingBuckets: {}, lastAgentStartAt: Date.now() });
           break;
         case "agent_end":
@@ -456,13 +458,13 @@ export function App(): React.ReactElement {
   }, [keybindings]);
 
   return (
-    <ThemeProvider>
+    <TooltipProvider>
       <Workbench />
       <CommandPalette />
       <TreeOverlay />
       <FileViewer />
       <ExtensionUIHost />
       <TrustCenter />
-    </ThemeProvider>
+    </TooltipProvider>
   );
 }

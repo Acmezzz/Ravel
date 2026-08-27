@@ -67,15 +67,23 @@ export function appendFact(sessionManager, record) {
 			}
 			const intent = record.intent;
 			if (!intent || typeof intent !== "object") throw new Error("Invalid operation_started fact: intent missing");
-			if (intent.kind === "run") {
-				if (!Array.isArray(intent.originalPrompt) || !Array.isArray(intent.initialMessages)) {
-					throw new Error("Invalid operation_started fact: run intent arrays missing");
+				if (intent.kind === "run") {
+					if (!Array.isArray(intent.originalPrompt) || !Array.isArray(intent.initialMessages)) {
+						throw new Error("Invalid operation_started fact: run intent arrays missing");
+					}
+				} else if (intent.kind === "compaction") {
+					requireString(intent, "resultEntryId");
+				} else if (intent.kind === "navigation") {
+					if (intent.targetId !== null && typeof intent.targetId !== "string") {
+						throw new Error("Invalid operation_started fact: navigation targetId must be a string or null");
+					}
+					if (typeof intent.summarize !== "boolean") {
+						throw new Error("Invalid operation_started fact: navigation summarize must be a boolean");
+					}
+					requireOptionalString(intent, "label");
+				} else {
+					throw new Error(`Invalid operation_started fact: unsupported intent kind ${intent.kind}`);
 				}
-			} else if (intent.kind === "compaction") {
-				requireString(intent, "resultEntryId");
-			} else {
-				throw new Error(`Invalid operation_started fact: unsupported intent kind ${intent.kind}`);
-			}
 			break;
 		}
 		case "operation_finished": {
@@ -285,8 +293,47 @@ export function appendSessionReferenceFacts(sessionManager, { clientMessageId, r
 			targetSessionId: ref.targetSessionId,
 			targetTitle: ref.targetTitle,
 			timestamp: Date.now(),
-		});
-		appended.push(ref);
+			});
+			appended.push(ref);
+		}
+		return appended;
 	}
-	return appended;
+
+/**
+ * Address a shadow-git checkpoint from the session log. Git is the authority
+ * for the snapshot; this pair only records that it happened, keyed by
+ * operationId, with targetId = the 40-char commit SHA. Fact failure must
+ * never roll back or block the Git snapshot.
+ */
+export function appendCheckpointFacts(sessionManager, { checkpointId, label, outcome = "completed", error } = {}) {
+	if (typeof checkpointId !== "string" || !/^[0-9a-f]{40}$/.test(checkpointId)) {
+		throw new Error("Invalid checkpoint fact: checkpointId must be a 40-char commit SHA");
+	}
+	const operationId = `op-${randomUUID()}`;
+	const sourceLeafId = typeof sessionManager.getLeafId === "function" ? sessionManager.getLeafId() : null;
+	appendFact(sessionManager, {
+		type: "operation_started",
+		id: operationId,
+		lane: "main",
+		sourceLeafId: sourceLeafId ?? null,
+		intent: {
+			kind: "navigation",
+			targetId: checkpointId,
+			summarize: false,
+			label: String(label ?? "checkpoint").slice(0, 200),
+		},
+		timestamp: Date.now(),
+	});
+	appendFact(sessionManager, {
+		type: "operation_finished",
+		id: `finish-${operationId}`,
+		lane: "main",
+		runId: operationId,
+		outcome: OPERATION_OUTCOMES.has(outcome) ? outcome : "completed",
+		...(outcome === "failed" && error
+			? { error: { code: String(error.code ?? error.name ?? "checkpoint"), message: String(error.message ?? error).slice(0, 500) } }
+			: {}),
+		timestamp: Date.now(),
+	});
+	return operationId;
 }

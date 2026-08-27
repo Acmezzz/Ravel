@@ -1,12 +1,6 @@
 import * as React from "react";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
-import Button from "@mui/material/Button";
+import { Button } from "../../ui/Button";
+import { Dialog, DialogContent, DialogContentArea, DialogFooter, DialogTitle } from "../../ui/Dialog";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { clickableRole } from "../../lib/a11y";
@@ -33,6 +27,7 @@ export function TreeOverlay(): React.ReactElement {
   const [error, setError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<TreeNodeRow | null>(null);
   const [rewindTarget, setRewindTarget] = React.useState<TreeNodeRow | null>(null);
+  const [hoveredId, setHoveredId] = React.useState<string | null>(null);
   const treeRequestEpoch = React.useRef(0);
 
   React.useEffect(() => {
@@ -119,180 +114,187 @@ export function TreeOverlay(): React.ReactElement {
     return chain;
   }, [selected, tree]);
   const busy = Boolean(busyId) || connection === "running";
+  const requestRewind = React.useCallback(
+    (node: TreeNodeRow) => {
+      setSelected(node);
+      if (connection === "running") {
+        setError("生成中无法回退分支");
+        return;
+      }
+      setRewindTarget(node);
+    },
+    [connection],
+  );
 
   return (
     <>
-      <Dialog open={open} onClose={() => setTreeOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          会话分支
-          <Chip size="small" label={`${tree?.nodes.length ?? 0} 步`} sx={{ fontSize: "0.65625rem" }} />
-          <Box sx={{ flex: 1 }} />
-          <Button size="small" disabled={busy} onClick={() => void cloneCurrent()} sx={{ textTransform: "none" }}>
-            复制当前分支
-          </Button>
-        </DialogTitle>
-        {error ? (
-          <Box sx={{ px: 3, pb: 1 }}>
-            <Typography role="alert" sx={{ fontSize: "0.8125rem", color: "var(--omega-warning)" }}>{error}</Typography>
-          </Box>
-        ) : null}
-        <Box sx={{ px: 2.5, pb: 1.5, maxHeight: 380, overflowY: "auto" }}>
-          {!tree ? (
-            <Typography role="status" aria-live="polite" sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>加载中…</Typography>
-          ) : tree.nodes.length === 0 ? (
-            <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>当前会话还没有消息。</Typography>
-          ) : (
-            tree.nodes.map((node, index) => {
-              const onPath = activePath.has(node.id);
-              const isLeaf = node.id === tree.leafId;
-              const isSelected = selected?.id === node.id;
-              const branched = node.depth > 0 && tree.nodes[index - 1]?.depth !== undefined && node.depth > (tree.nodes[index - 1]?.depth ?? 0);
-              return (
-                  <Box
+      <Dialog open={open} onOpenChange={(next) => { if (!next) setTreeOpen(false); }}>
+        <DialogContent>
+          <DialogTitle style={{ display: "flex", alignItems: "center", gap: "0.5rem", paddingBottom: "0.5rem" }}>
+            会话分支
+            <span className="omega-chip">{`${tree?.nodes.length ?? 0} 步`}</span>
+            <span style={{ flex: 1 }} />
+            <Button size="sm" disabled={busy} onClick={() => void cloneCurrent()}>
+              复制当前分支
+            </Button>
+          </DialogTitle>
+          {error ? (
+            <p role="alert" className="omega-tree-error omega-warning-text" style={{ margin: "0 0 0.5rem", padding: "0 1.5rem" }}>
+              {error}
+            </p>
+          ) : null}
+          <div className="omega-tree-list" style={{ padding: "0 1.25rem 0.75rem", maxHeight: 380, overflowY: "auto" }}>
+            {!tree ? (
+              <p role="status" aria-live="polite" style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>加载中…</p>
+            ) : tree.nodes.length === 0 ? (
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>当前会话还没有消息。</p>
+            ) : (
+              tree.nodes.map((node, index) => {
+                const onPath = activePath.has(node.id);
+                const isLeaf = node.id === tree.leafId;
+                const isSelected = selected?.id === node.id;
+                const branched = node.depth > 0 && tree.nodes[index - 1]?.depth !== undefined && node.depth > (tree.nodes[index - 1]?.depth ?? 0);
+                return (
+                  <div
                     key={node.id}
                     {...clickableRole}
                     role="treeitem"
+                    tabIndex={0}
                     aria-selected={isSelected}
                     aria-level={node.depth + 1}
+                    className="omega-tree-row"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "18px 1fr",
+                      columnGap: "0.5rem",
+                      paddingTop: "2.8px",
+                      paddingBottom: "2.8px",
+                      cursor: "pointer",
+                    }}
                     onClick={() => setSelected(node)}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault();
-                    setSelected(node);
-                    if (connection === "running") {
-                      setError("生成中无法回退分支");
-                      return;
-                    }
-                    setRewindTarget(node);
-                  }}
-                  onDoubleClick={() => {
-                    if (connection === "running") {
-                      setError("生成中无法回退分支");
-                      return;
-                    }
-                    setRewindTarget(node);
-                  }}
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "18px 1fr",
-                    columnGap: 1,
-                    py: 0.35,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <Box
-                      sx={{
-                        width: "1px",
-                        flex: 1,
-                        background: index === 0 ? "transparent" : "var(--omega-border-strong)",
-                        minHeight: 4,
-                      }}
-                    />
-                    <Box
-                      sx={{
-                        width: 9,
-                        height: 9,
-                        borderRadius: 999,
-                        flex: "0 0 auto",
-                        border: isLeaf || isSelected ? "2px solid var(--omega-accent)" : "2px solid var(--omega-border-strong)",
-                        background: isLeaf ? "var(--omega-accent)" : onPath ? "var(--omega-text-muted)" : "var(--omega-bg-panel)",
-                      }}
-                    />
-                    <Box
-                      sx={{
-                        width: "1px",
-                        flex: 1,
-                        background: index === tree.nodes.length - 1 ? "transparent" : "var(--omega-border-strong)",
-                        minHeight: 4,
-                      }}
-                    />
-                  </Box>
-                  <Box
-                    sx={{
-                      minWidth: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.75,
-                      px: 1,
-                      py: 0.55,
-                      my: 0.15,
-                      borderRadius: "8px",
-                      border: isLeaf || isSelected ? "1px solid var(--omega-accent-line)" : "1px solid transparent",
-                      background: isLeaf ? "var(--omega-accent-soft)" : isSelected ? "var(--omega-hover-fill)" : "transparent",
-                      "&:hover": { background: isLeaf ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)" },
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      requestRewind(node);
+                    }}
+                    onDoubleClick={() => {
+                      if (connection === "running") {
+                        setError("生成中无法回退分支");
+                        return;
+                      }
+                      setRewindTarget(node);
                     }}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: "0.65625rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.04em",
-                        color: node.role === "user" ? "var(--omega-accent)" : "var(--omega-text-dim)",
-                        flex: "0 0 auto",
-                        width: 28,
+                    <div className="omega-tree-rail" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <span className="omega-tree-rail-line" style={{ width: "1px", flex: 1, minHeight: 4, background: index === 0 ? "transparent" : "var(--omega-border-strong)" }} />
+                      <span
+                        className="omega-tree-dot"
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: 999,
+                          flex: "0 0 auto",
+                          border: isLeaf || isSelected ? "2px solid var(--omega-accent)" : "2px solid var(--omega-border-strong)",
+                          background: isLeaf ? "var(--omega-accent)" : onPath ? "var(--omega-text-muted)" : "var(--omega-bg-panel)",
+                        }}
+                      />
+                      <span className="omega-tree-rail-line" style={{ width: "1px", flex: 1, minHeight: 4, background: index === tree.nodes.length - 1 ? "transparent" : "var(--omega-border-strong)" }} />
+                    </div>
+                    <div
+                      className="omega-tree-row-body"
+                      onMouseEnter={() => setHoveredId(node.id)}
+                      onMouseLeave={() => setHoveredId((current) => (current === node.id ? null : current))}
+                      style={{
+                        minWidth: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.55rem",
+                        paddingLeft: "0.5rem",
+                        paddingRight: "0.5rem",
+                        paddingTop: "0.35rem",
+                        paddingBottom: "0.35rem",
+                        marginTop: "1.2px",
+                        marginBottom: "1.2px",
+                        borderRadius: "8px",
+                        border: isLeaf || isSelected ? "1px solid var(--omega-accent-line)" : "1px solid transparent",
+                        background: isLeaf ? "var(--omega-accent-soft)" : isSelected || hoveredId === node.id ? "var(--omega-hover-fill)" : "transparent",
                       }}
                     >
-                      {ROLE_LABEL[node.role] ?? "?"}
-                    </Typography>
-                    {branched ? (
-                      <Chip size="small" label={`L${node.depth}`} sx={{ height: 16, fontSize: "0.65625rem", flex: "0 0 auto" }} />
-                    ) : null}
-                    <Typography sx={{ fontSize: "0.8125rem", color: onPath ? "var(--omega-text)" : "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap>
-                      {node.label || node.preview || "（无预览）"}
-                    </Typography>
-                    {isLeaf ? (
-                      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-accent-strong)", flex: "0 0 auto" }}>当前</Typography>
-                    ) : node.isLeaf ? (
-                      <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>支线</Typography>
-                    ) : null}
-                  </Box>
-                </Box>
-              );
-            })
-          )}
-        </Box>
-        <Box sx={{ px: 3, pb: 2, borderTop: "1px solid var(--omega-border)", pt: 1.25 }}>
-          <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", mb: 0.75 }}>
-            单击预览将继承的上下文；双击或确认后才会破坏性回退。
-          </Typography>
-          {selected ? (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4 }}>
-              <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text)" }}>
-                将继承 {inherited.length} 条消息到「{selected.label || selected.preview || selected.id}」
-              </Typography>
-              <Button
-                size="small"
-                disabled={busy || selected.id === tree?.leafId}
-                onClick={() => setRewindTarget(selected)}
-                sx={{ textTransform: "none", alignSelf: "flex-start" }}
-              >
-                回退到这里
-              </Button>
-            </Box>
-          ) : (
-            <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>选择一个节点查看 fork/rewind 预览。</Typography>
-          )}
-        </Box>
-      </Dialog>
-      <Dialog open={Boolean(rewindTarget)} onClose={() => setRewindTarget(null)} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ fontWeight: 700 }}>回退到此节点？</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)" }}>
-            这会把当前会话叶子改到「{rewindTarget?.label || rewindTarget?.preview || rewindTarget?.id}」，当前分支之后的消息将不再是活动叶子。生成中无法执行。
-          </Typography>
+                      <span
+                        className="omega-tree-role"
+                        style={{
+                          fontSize: "0.65625rem",
+                          fontWeight: 700,
+                          letterSpacing: "0.04em",
+                          color: node.role === "user" ? "var(--omega-accent)" : "var(--omega-text-dim)",
+                          flex: "0 0 auto",
+                          width: 28,
+                        }}
+                      >
+                        {ROLE_LABEL[node.role] ?? "?"}
+                      </span>
+                      {branched ? (
+                        <span className="omega-chip omega-tree-depth" style={{ height: 16, flex: "0 0 auto" }}>{`L${node.depth}`}</span>
+                      ) : null}
+                      <span
+                        className="omega-tree-label"
+                        style={{
+                          fontSize: "0.8125rem",
+                          color: onPath ? "var(--omega-text)" : "var(--omega-text-muted)",
+                          minWidth: 0,
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {node.label || node.preview || "（无预览）"}
+                      </span>
+                      {isLeaf ? (
+                        <span className="omega-tree-marker-current" style={{ fontSize: "0.65625rem", color: "var(--omega-accent-strong)", flex: "0 0 auto" }}>当前</span>
+                      ) : node.isLeaf ? (
+                        <span className="omega-tree-marker-tip" style={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>支线</span>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="omega-tree-preview" style={{ padding: "0.625rem 1.5rem 1rem", borderTop: "1px solid var(--omega-border)" }}>
+            <p style={{ margin: "0 0 0.45rem", fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>
+              单击预览将继承的上下文；双击或确认后才会破坏性回退。
+            </p>
+            {selected ? (
+              <div className="omega-tree-preview-detail" style={{ display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-start" }}>
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text)" }}>
+                  将继承 {inherited.length} 条消息到「{selected.label || selected.preview || selected.id}」
+                </p>
+                <Button size="sm" disabled={busy || selected.id === tree?.leafId} onClick={() => setRewindTarget(selected)}>
+                  回退到这里
+                </Button>
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>选择一个节点查看 fork/rewind 预览。</p>
+            )}
+          </div>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setRewindTarget(null)} sx={{ textTransform: "none" }}>取消</Button>
-          <Button
-            variant="contained"
-            disabled={busy}
-            onClick={() => rewindTarget && void rewind(rewindTarget.id)}
-            sx={{ textTransform: "none" }}
-          >
-            确认回退
-          </Button>
-        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(rewindTarget)} onOpenChange={(next) => { if (!next) setRewindTarget(null); }}>
+        <DialogContent className="omega-dialog-narrow">
+          <DialogTitle>回退到此节点？</DialogTitle>
+          <DialogContentArea>
+            <p className="omega-tree-confirm-text" style={{ margin: 0, fontSize: "0.8125rem", color: "var(--omega-text)" }}>
+              这会把当前会话叶子改到「{rewindTarget?.label || rewindTarget?.preview || rewindTarget?.id}」，当前分支之后的消息将不再是活动叶子。生成中无法执行。
+            </p>
+          </DialogContentArea>
+          <DialogFooter>
+            <Button onClick={() => setRewindTarget(null)}>取消</Button>
+            <Button variant="solid" disabled={busy} onClick={() => rewindTarget && void rewind(rewindTarget.id)}>
+              确认回退
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );

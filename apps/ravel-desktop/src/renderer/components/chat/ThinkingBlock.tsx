@@ -1,9 +1,4 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import EmojiObjectsIcon from "@mui/icons-material/EmojiObjectsOutlined";
 import { ipc } from "../../ipc/client";
 import { clickableRole } from "../../lib/a11y";
 
@@ -26,6 +21,23 @@ function cacheSet(key: string, value: string): void {
     if (oldest !== undefined) thinkingCache.delete(oldest);
   }
   thinkingCache.set(key, value);
+}
+
+function BulbIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-thinking-icon" aria-hidden="true">
+      <path d="M8 2.4A3.8 3.8 0 0 0 4.2 6.2c0 1.5.8 2.4 1.5 3.2.4.4.7.9.7 1.4v.2h3.2v-.2c0-.5.3-1 .7-1.4.7-.8 1.5-1.7 1.5-3.2A3.8 3.8 0 0 0 8 2.4Z" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M6.4 12.8h3.2M6.8 14h2.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ExpandIcon({ open }: { open: boolean }): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className={`omega-thinking-chevron${open ? " is-open" : ""}`} aria-hidden="true">
+      <path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 export interface ThinkingBlockProps {
@@ -80,65 +92,31 @@ export function ThinkingBlock({ text, streaming, deferred, entryId }: ThinkingBl
   if (!text && !streaming && !deferred) return null;
 
   return (
-    <Box sx={{ mb: 1.25, maxWidth: "100%" }}>
-      <Box
+    <div className="omega-thinking">
+      <div
         {...clickableRole}
         onClick={handleToggle}
-        className={streaming ? "shimmer-border" : undefined}
-        sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 0.75,
-          px: 1.25,
-          py: 0.4,
-          borderRadius: "999px",
-          border: `1px solid ${streaming ? "var(--omega-accent-line)" : "var(--omega-border)"}`,
-          background: "var(--omega-bg-soft)",
-          boxShadow: streaming ? "var(--omega-inset-recessed)" : "var(--omega-inset-highlight)",
-          cursor: "pointer",
-          userSelect: "none",
-          transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 140ms var(--omega-ease-out)",
-          "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
-        }}
+        className={`omega-thinking-toggle${streaming ? " shimmer-border is-streaming" : ""}`}
       >
-        <EmojiObjectsIcon className={streaming ? "pulse-dot" : undefined} sx={{ fontSize: "0.8125rem", color: "var(--omega-accent)" }} />
-        <Typography
-          className={streaming ? "thinking-shimmer" : undefined}
-          sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", fontWeight: 550, letterSpacing: "0.005em" }}
-        >
+        <span className={streaming ? "omega-thinking-mark pulse-dot" : "omega-thinking-mark"}>
+          <BulbIcon />
+        </span>
+        <span className={streaming ? "omega-thinking-label thinking-shimmer" : "omega-thinking-label"}>
           {streaming
             ? ["思考中", "推理中", "整理中", "斟酌中"][Math.floor(Date.now() / 1600) % 4]
             : deferred
               ? "思考（点击加载）"
               : "思考"}
-        </Typography>
-        {!streaming && !deferred ? (
-          <Typography className="mono-num" sx={{ fontSize: "0.65625rem", fontWeight: 650, color: "var(--omega-accent-strong)", borderLeft: "1px solid var(--omega-border-strong)", pl: 0.75 }}>
-            {elapsed || 1}s
-          </Typography>
-        ) : null}
-        {loading ? <CircularProgress size={10} sx={{ color: "var(--omega-accent)" }} /> : null}
-        <ExpandMoreIcon sx={{ fontSize: "0.875rem", color: "var(--omega-text-dim)", transform: open ? "rotate(180deg)" : "none", transition: "transform 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" }} />
-      </Box>
+        </span>
+        {!streaming && !deferred ? <span className="omega-thinking-elapsed mono-num">{elapsed || 1}s</span> : null}
+        {loading ? <span className="omega-spinner omega-thinking-spinner" aria-hidden="true" /> : null}
+        <ExpandIcon open={open} />
+      </div>
       {open && (loaded ?? "") ? (
-        <Box
-          className="rise-in"
-          sx={{
-            mt: 0.75,
-            p: 1.25,
-            borderRadius: "10px",
-            border: "1px solid var(--omega-border)",
-            background: "var(--omega-bg-code)",
-            boxShadow: "var(--omega-inset-recessed)",
-            maxHeight: 260,
-            overflowY: "auto",
-          }}
-        >
-          <Typography component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontSize: "0.75rem", lineHeight: 1.6, color: "var(--omega-text-muted)", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace" }}>
-            {loaded ?? (loading ? "加载中…" : "")}
-          </Typography>
-        </Box>
+        <div className="omega-thinking-body rise-in">
+          <pre className="omega-thinking-pre">{loaded ?? (loading ? "加载中…" : "")}</pre>
+        </div>
       ) : null}
-    </Box>
+    </div>
   );
 }

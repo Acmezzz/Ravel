@@ -1,15 +1,7 @@
 import * as React from "react";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import FolderOpenIcon from "@mui/icons-material/FolderOpenOutlined";
+import { Button, IconButton } from "../../ui/Button";
+import { Dialog, DialogContent, DialogTitle } from "../../ui/Dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { Markdown } from "../common/Markdown";
@@ -43,6 +35,25 @@ function numbered(content: string): Array<{ n: number; text: string }> {
   return lines.map((text, index) => ({ n: index + 1, text }));
 }
 
+function normalizePath(path: string): string {
+  return path.replace(/[\\/]+/g, "/").replace(/^\.\//, "").replace(/\/$/, "").toLowerCase();
+}
+
+function pathsMatch(leftPath: string, rightPath: string): boolean {
+  const left = normalizePath(leftPath);
+  const right = normalizePath(rightPath);
+  if (!left || !right) return false;
+  return left === right || left.endsWith(`/${right}`) || right.endsWith(`/${left}`);
+}
+
+function CopyIcon(): React.ReactElement {
+  return <svg viewBox="0 0 16 16" className="omega-file-viewer-icon" aria-hidden="true"><rect x="5" y="5" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M3 10V3.8c0-.5.3-.8.8-.8H10" fill="none" stroke="currentColor" strokeWidth="1.3" /></svg>;
+}
+
+function FolderIcon(): React.ReactElement {
+  return <svg viewBox="0 0 16 16" className="omega-file-viewer-icon" aria-hidden="true"><path d="M1.8 3.8h4l1.3 1.4h7.1v7.1H1.8Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>;
+}
+
 /** Read-only file viewer dialog (text, size-capped; binary guarded). */
 export function FileViewer(): React.ReactElement {
   const viewer = useAppStore((s) => s.viewer);
@@ -68,7 +79,9 @@ export function FileViewer(): React.ReactElement {
       if (watchEpoch !== pageRequestEpochRef.current || useAppStore.getState().viewer.path !== requestPath) return;
       if (result.ok) setWatching(result.data.watching);
     });
-    const off = ipc.onFileChanged((data) => { if (data.path === requestPath) void useAppStore.getState().openViewer(requestPath); });
+    const off = ipc.onFileChanged((data) => {
+      if (pathsMatch(data.path, requestPath) && useAppStore.getState().viewer.path === requestPath) void useAppStore.getState().openViewer(requestPath);
+    });
     return () => { off(); void ipc.unwatchFile({ path: requestPath }); setWatching(false); };
   }, [viewer.path]);
 
@@ -128,137 +141,66 @@ export function FileViewer(): React.ReactElement {
   }, [loadingMore, nextOffset, viewer.path]);
 
   return (
-    <Dialog open={viewer.open} onClose={closeViewer} fullWidth maxWidth="md">
-      <DialogTitle sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1, pr: 6 }}>
-        <Box sx={{ display: "flex", gap: 0.5, minWidth: 0, overflow: "auto" }}>
-          {tabs.map((tab) => <Typography key={tab} component="button" type="button" onClick={() => void useAppStore.getState().openViewer(tab)} sx={{ fontSize: "0.75rem", px: 0.75, py: 0.25, cursor: "pointer", whiteSpace: "nowrap", color: tab === viewer.path ? "var(--omega-accent)" : "var(--omega-text-muted)", border: "none", borderBottom: tab === viewer.path ? "2px solid var(--omega-accent)" : "2px solid transparent", background: "transparent" }}>{tab.split(/[\\/]/).pop()}</Typography>)}
-        </Box>
-        {viewer.file ? (
-          <Typography component="span" sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>
-            {formatSize(viewer.file.size)}
-            {viewer.file.truncated ? "（已截断）" : ""}
-          </Typography>
-        ) : null}
-        <Box sx={{ flex: 1 }} />
-        {isMarkdown(viewer.path) || isMermaid(viewer.path) || isMath(viewer.path) ? (
-          <Box sx={{ display: "flex", gap: 0.5 }}>
-            <Typography
-              component="button"
-              type="button"
-              onClick={() => setMode("source")}
-              sx={{ fontSize: "0.65625rem", cursor: "pointer", color: mode === "source" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
-            >
-              源码
-            </Typography>
-            <Typography
-              component="button"
-              type="button"
-              onClick={() => setMode("preview")}
-              sx={{ fontSize: "0.65625rem", cursor: "pointer", color: mode === "preview" ? "var(--omega-accent)" : "var(--omega-text-dim)", border: "none", background: "transparent", p: 0 }}
-            >
-              预览
-            </Typography>
-          </Box>
-        ) : null}
-        <Typography sx={{ fontSize: "0.65625rem", color: watching ? "var(--omega-accent)" : "var(--omega-text-dim)" }}>{watching ? "实时" : "静态"}</Typography>
-        <Tooltip title="使用系统默认应用打开">
-          <IconButton aria-label="使用系统默认应用打开" size="small" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }} sx={{ color: "var(--omega-text-dim)" }}><Typography sx={{ fontSize: "0.65625rem" }}>外部</Typography></IconButton>
-        </Tooltip>
-        <Tooltip title="在资源管理器中显示">
-          <IconButton aria-label="在资源管理器中显示" size="small" onClick={() => void reveal()} sx={{ color: "var(--omega-text-dim)" }}>
-            <FolderOpenIcon sx={{ fontSize: "1rem" }} />
-          </IconButton>
-        </Tooltip>
-      </DialogTitle>
-      <DialogContent sx={{ position: "relative", minHeight: 200 }}>
-        {viewer.loading ? (
-          <Box role="status" aria-live="polite" aria-busy="true" sx={{ display: "grid", placeItems: "center", py: 6 }}>
-            <CircularProgress size={22} sx={{ color: "var(--omega-accent)" }} />
-            <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}>正在加载文件…</Typography>
-          </Box>
-        ) : viewer.error ? (
-          <Box role="alert" sx={{ display: "grid", gap: 1 }}><Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-danger)" }}>{viewer.error}</Typography><Button size="small" onClick={() => { if (viewer.path) void useAppStore.getState().openViewer(viewer.path); }} sx={{ justifySelf: "start", textTransform: "none" }}>重试</Button></Box>
-        ) : isImage(viewer.file) ? (
-          <Box component="img" src={viewer.file?.dataUrl} alt={viewer.path ?? "image"} sx={{ display: "block", maxWidth: "100%", maxHeight: "64vh", mx: "auto", objectFit: "contain" }} />
-        ) : isAudio(viewer.file) ? (
-          <Box component="audio" controls src={viewer.file?.dataUrl} sx={{ width: "100%" }} />
-        ) : isPdf(viewer.file) ? (
-          <Box component="iframe" title={viewer.path ?? "PDF"} src={viewer.file?.dataUrl} sx={{ width: "100%", height: "64vh", border: 0 }} />
-        ) : viewer.file?.binary ? (
-          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-muted)" }}>该二进制文件暂不支持内嵌预览，可用资源管理器打开。</Typography>
-        ) : mode === "preview" && isMarkdown(viewer.path) ? (
-          <Box sx={{ maxHeight: "64vh", overflow: "auto" }}><Markdown>{viewer.file?.content ?? ""}</Markdown></Box>
-        ) : isDocx(viewer.file) ? (
-          <Box sx={{ maxHeight: "64vh", overflow: "auto", p: 1.5, border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}><Typography component="pre" sx={{ whiteSpace: "pre-wrap", fontSize: "0.8125rem", lineHeight: 1.7, m: 0 }}>{viewer.file?.content ?? ""}</Typography></Box>
-        ) : mode === "preview" && isMermaid(viewer.path) ? (
-          <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>Mermaid source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
-        ) : mode === "preview" && isMath(viewer.path) ? (
-          <Box component="pre" sx={{ p: 2, whiteSpace: "pre-wrap", border: "1px solid var(--omega-border)", background: "var(--omega-bg-code)" }}>LaTeX source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</Box>
-        ) : (
-          <Box
-            sx={{
-              m: 0,
-              p: 1,
-              borderRadius: "10px",
-              border: "1px solid var(--omega-border)",
-              background: "var(--omega-bg-code)",
-              fontSize: "0.75rem",
-              lineHeight: 1.6,
-              fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
-              color: "var(--omega-text-soft)",
-              overflow: "auto",
-              maxHeight: "64vh",
-            }}
-          >
-            {lines.map((line) => {
-              const active = selection && line.n >= Math.min(selection.start, selection.end) && line.n <= Math.max(selection.start, selection.end);
-              return (
-                <Box
-                  key={line.n}
-                  aria-selected={Boolean(active)}
-                  onClick={(e) => {
-                    if (e.shiftKey && selection) setSelection({ start: selection.start, end: line.n });
-                    else setSelection({ start: line.n, end: line.n });
-                  }}
-                  sx={{
-                    display: "flex",
-                    gap: 1,
-                    cursor: "text",
-                    background: active ? "var(--omega-accent-soft)" : "transparent",
-                    "&:hover": { background: active ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)" },
-                  }}
-                >
-                  <Typography component="span" sx={{ width: 36, flex: "0 0 auto", color: "var(--omega-text-dim)", userSelect: "none", textAlign: "right" }}>
-                    {line.n}
-                  </Typography>
-                  <Typography component="span" sx={{ whiteSpace: "pre", minWidth: 0 }}>
-                    {line.text || " "}
-                  </Typography>
-                </Box>
-              );
-            })}
-            {pageError ? <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", mt: 1 }}>{pageError}</Typography> : null}
-            {nextOffset !== null ? <Button size="small" onClick={() => void loadMore()} disabled={loadingMore} sx={{ mt: 1, textTransform: "none" }}>{loadingMore ? "加载中…" : "加载更多行"}</Button> : null}
-          </Box>
-        )}
-        {copyError ? <Typography role="alert" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: "0.75rem", color: "var(--omega-danger)" }}>{copyError}</Typography> : null}
-        {copied ? <Typography role="status" aria-live="polite" sx={{ position: "absolute", bottom: 12, left: 16, fontSize: "0.75rem", color: "var(--omega-accent)" }}>已复制文件内容</Typography> : null}
-        {viewer.file?.content ? (
-          <Box sx={{ position: "absolute", top: 8, right: 12, display: "flex", gap: 0.5 }}>
-            {selection ? (
-              <Tooltip title={`引用 @${viewer.path}:${Math.min(selection.start, selection.end)}-${Math.max(selection.start, selection.end)}`}>
-                <IconButton aria-label="引用选中的行" size="small" onClick={quoteSelection} sx={{ color: "var(--omega-accent)" }}>
-                  <Typography sx={{ fontSize: "0.65625rem", fontWeight: 700 }}>@</Typography>
-                </IconButton>
-              </Tooltip>
-            ) : null}
-            <Tooltip title={copied ? "已复制" : "复制内容"}>
-              <IconButton aria-label="复制文件内容" size="small" onClick={() => void copy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
-                <ContentCopyIcon sx={{ fontSize: "1rem" }} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ) : null}
+    <Dialog open={viewer.open} onOpenChange={(open) => { if (!open) closeViewer(); }}>
+      <DialogContent className="omega-file-viewer-dialog">
+        <DialogTitle className="omega-file-viewer-title">
+          <div className="omega-file-viewer-tabs">
+            {tabs.map((tab) => <button key={tab} className={`omega-file-viewer-tab${tab === viewer.path ? " is-active" : ""}`} type="button" onClick={() => void useAppStore.getState().openViewer(tab)}>{tab.split(/[\\/]/).pop()}</button>)}
+          </div>
+          {viewer.file ? <span className="omega-file-viewer-size">{formatSize(viewer.file.size)}{viewer.file.truncated ? "（已截断）" : ""}</span> : null}
+          <span className="omega-file-viewer-spacer" />
+          {isMarkdown(viewer.path) || isMermaid(viewer.path) || isMath(viewer.path) ? (
+            <div className="omega-file-viewer-mode-tabs">
+              <button className={mode === "source" ? "is-active" : ""} type="button" onClick={() => setMode("source")}>源码</button>
+              <button className={mode === "preview" ? "is-active" : ""} type="button" onClick={() => setMode("preview")}>预览</button>
+            </div>
+          ) : null}
+          <span className={`omega-file-viewer-watch${watching ? " is-watching" : ""}`}>{watching ? "实时" : "静态"}</span>
+          <Tooltip><TooltipTrigger asChild><IconButton label="使用系统默认应用打开" size="sm" className="omega-file-viewer-external" onClick={() => { if (viewer.path) void ipc.openFileDefault({ path: viewer.path }); }}>外部</IconButton></TooltipTrigger><TooltipContent>使用系统默认应用打开</TooltipContent></Tooltip>
+          <Tooltip><TooltipTrigger asChild><IconButton label="在资源管理器中显示" size="sm" className="omega-file-viewer-action" onClick={() => void reveal()}><FolderIcon /></IconButton></TooltipTrigger><TooltipContent>在资源管理器中显示</TooltipContent></Tooltip>
+        </DialogTitle>
+        <div className="omega-file-viewer-content">
+          {viewer.loading ? (
+            <div className="omega-file-viewer-loading" role="status" aria-live="polite" aria-busy="true"><span className="omega-file-viewer-spinner" aria-hidden="true" /><span>正在加载文件…</span></div>
+          ) : viewer.error ? (
+            <div className="omega-file-viewer-error" role="alert"><p>{viewer.error}</p><Button size="sm" onClick={() => { if (viewer.path) void useAppStore.getState().openViewer(viewer.path); }}>重试</Button></div>
+          ) : isImage(viewer.file) ? (
+            <img className="omega-file-viewer-image" src={viewer.file?.dataUrl} alt={viewer.path ?? "image"} />
+          ) : isAudio(viewer.file) ? (
+            // Workspace media has no caption source to attach.
+            // biome-ignore lint/a11y/useMediaCaption: arbitrary local files have no transcript
+            <audio className="omega-file-viewer-audio" controls src={viewer.file?.dataUrl} />
+          ) : isPdf(viewer.file) ? (
+            <iframe className="omega-file-viewer-pdf" title={viewer.path ?? "PDF"} src={viewer.file?.dataUrl} />
+          ) : viewer.file?.binary ? (
+            <p className="omega-file-viewer-muted">该二进制文件暂不支持内嵌预览，可用资源管理器打开。</p>
+          ) : mode === "preview" && isMarkdown(viewer.path) ? (
+            <div className="omega-file-viewer-markdown"><Markdown>{viewer.file?.content ?? ""}</Markdown></div>
+          ) : isDocx(viewer.file) ? (
+            <div className="omega-file-viewer-docx"><pre>{viewer.file?.content ?? ""}</pre></div>
+          ) : mode === "preview" && isMermaid(viewer.path) ? (
+            <pre className="omega-file-viewer-preview">Mermaid source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</pre>
+          ) : mode === "preview" && isMath(viewer.path) ? (
+            <pre className="omega-file-viewer-preview">LaTeX source（安全预览）{"\n\n"}{viewer.file?.content ?? ""}</pre>
+          ) : (
+            <div className="omega-file-viewer-source">
+              {lines.map((line) => {
+                const active = selection && line.n >= Math.min(selection.start, selection.end) && line.n <= Math.max(selection.start, selection.end);
+                return <div key={line.n} className={`omega-file-viewer-line${active ? " is-active" : ""}`} onClick={(event) => { if (event.shiftKey && selection) setSelection({ start: selection.start, end: line.n }); else setSelection({ start: line.n, end: line.n }); }}><span className="omega-file-viewer-line-number">{line.n}</span><span className="omega-file-viewer-line-text">{line.text || " "}</span></div>;
+              })}
+              {pageError ? <p className="omega-file-viewer-page-error" role="alert">{pageError}</p> : null}
+              {nextOffset !== null ? <Button size="sm" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? "加载中…" : "加载更多行"}</Button> : null}
+            </div>
+          )}
+          {copyError ? <p className="omega-file-viewer-copy-error" role="alert">{copyError}</p> : null}
+          {copied ? <p className="omega-file-viewer-copied" role="status" aria-live="polite">已复制文件内容</p> : null}
+          {viewer.file?.content ? (
+            <div className="omega-file-viewer-actions">
+              {selection ? <Tooltip><TooltipTrigger asChild><IconButton label="引用选中的行" size="sm" className="omega-file-viewer-quote" onClick={quoteSelection}>@</IconButton></TooltipTrigger><TooltipContent>{`引用 @${viewer.path}:${Math.min(selection.start, selection.end)}-${Math.max(selection.start, selection.end)}`}</TooltipContent></Tooltip> : null}
+              <Tooltip><TooltipTrigger asChild><IconButton label="复制文件内容" size="sm" className="omega-file-viewer-copy" onClick={() => void copy()}><CopyIcon /></IconButton></TooltipTrigger><TooltipContent>{copied ? "已复制" : "复制内容"}</TooltipContent></Tooltip>
+            </div>
+          ) : null}
+        </div>
       </DialogContent>
     </Dialog>
   );

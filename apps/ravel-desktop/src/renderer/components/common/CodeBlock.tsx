@@ -1,76 +1,20 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { IconButton } from "../../ui/Button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 
-export interface CodeBlockProps {
-  language?: string;
-  className?: string;
-  children: React.ReactNode;
-}
+export interface CodeBlockProps { language?: string; className?: string; children: React.ReactNode; }
 
-/**
- * Presentational code block. Highlighting is provided upstream by
- * `rehype-highlight` (which is highlight.js under the hood) — we only add the
- * language label and a copy button here, so no raw HTML is ever injected.
- */
+/** Presentational code block; highlighting is provided upstream by rehype-highlight. */
 export function CodeBlock({ language, className, children }: CodeBlockProps): React.ReactElement {
   const copy = React.useCallback(() => {
     const text = typeof children === "string" ? children : String(children ?? "");
     void navigator.clipboard?.writeText(text);
   }, [children]);
-
-  return (
-    <Box
-      sx={{
-        position: "relative",
-        my: 1,
-        "& .code-actions": { opacity: 0, transition: "opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" },
-        "&:hover .code-actions": { opacity: 1 },
-      }}
-    >
-      <Box className="code-actions" sx={{ position: "absolute", top: 6, right: 6, display: "flex", alignItems: "center", gap: 0.5, zIndex: 1 }}>
-        {language ? (
-          <Box
-            sx={{
-              fontSize: "0.65625rem",
-              fontWeight: 650,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "var(--omega-text-dim)",
-              background: "var(--omega-bg-elevated)",
-              border: "1px solid var(--omega-border)",
-              borderRadius: "5px",
-              px: 0.75,
-              py: "1px",
-            }}
-          >
-            {language}
-          </Box>
-        ) : null}
-        <Tooltip title="复制">
-          <IconButton
-            size="small"
-            aria-label="复制代码"
-            onClick={copy}
-            sx={{
-              color: "var(--omega-text-dim)",
-              background: "var(--omega-bg-elevated)",
-              border: "1px solid var(--omega-border)",
-              borderRadius: "6px",
-              width: 24,
-              height: 24,
-              "&:hover": { color: "var(--omega-accent)", borderColor: "var(--omega-accent-line)" },
-            }}
-          >
-            <ContentCopyIcon sx={{ fontSize: "0.8125rem" }} />
-          </IconButton>
-        </Tooltip>
-      </Box>
-      <pre>
-        <code className={className}>{children}</code>
-      </pre>
-    </Box>
-  );
+  return <div className="omega-code-block">
+    <div className="code-actions">
+      {language ? <span className="omega-code-language">{language}</span> : null}
+      <Tooltip><TooltipTrigger asChild><IconButton size="sm" label="复制代码" className="omega-code-copy" onClick={copy}><svg viewBox="0 0 16 16" className="omega-code-copy-icon" aria-hidden="true"><rect x="5" y="5" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M3 10V3.8c0-.5.3-.8.8-.8H10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg></IconButton></TooltipTrigger><TooltipContent>复制</TooltipContent></Tooltip>
+    </div>
+    <pre><code className={className}>{children}</code></pre>
+  </div>;
 }

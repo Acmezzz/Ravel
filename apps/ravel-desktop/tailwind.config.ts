@@ -1,53 +1,58 @@
 /**
- * Tailwind configuration. Colors are mirrored from `theme/palettes.ts` (dark
- * mode values) so utility classes stay close to CSS custom properties.
+ * Tailwind configuration. Color utilities point at CSS custom properties so
+ * they stay on the same token source as `theme/tokens.ts` / `global.css`.
  * See docs/system_design.md §5.
  */
 import type { Config } from "tailwindcss";
 
-const tokens = {
-  bgApp: "#0c0d10",
-  bgPanel: "#16181e",
-  bgElevated: "#20242d",
-  bgSoft: "#1b1e26",
-  border: "rgba(196, 188, 168, 0.10)",
-  borderStrong: "rgba(196, 188, 168, 0.20)",
-  text: "#f3f0ea",
-  muted: "#a8a295",
-  accent: "#e8b44a",
-  accentStrong: "#f0c56a",
-  success: "#52d495",
-  warning: "#e8b85e",
-  danger: "#f07584",
-};
-
+/** Legacy component config retained during the Tailwind 4 CSS-first migration. */
 export default {
-  content: ["./index.html", "./src/renderer/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      colors: tokens,
-      borderRadius: {
-        sm: "6px",
-        md: "10px",
-        lg: "14px",
-        xl: "20px",
-      },
-      spacing: {
-        1: "4px",
-        2: "8px",
-        3: "12px",
-        4: "16px",
-        5: "20px",
-        6: "24px",
-      },
-      boxShadow: {
-        panel: "0 6px 20px rgba(0,0,0,.42), 0 1px 4px rgba(0,0,0,.30)",
-        overlay: "0 20px 56px rgba(0,0,0,.55), 0 4px 16px rgba(0,0,0,.35)",
-      },
-      transitionTimingFunction: {
-        omega: "cubic-bezier(0.22, 1, 0.36, 1)",
-      },
-    },
-  },
-  plugins: [],
+	content: ["./index.html", "./src/renderer/**/*.{ts,tsx}"],
+	theme: {
+		extend: {
+			colors: {
+				bgApp: "var(--omega-bg)",
+				bgPanel: "var(--omega-bg-panel)",
+				bgElevated: "var(--omega-bg-elevated)",
+				bgSoft: "var(--omega-bg-soft)",
+				border: "var(--omega-border)",
+				borderStrong: "var(--omega-border-strong)",
+				text: "var(--omega-text)",
+				muted: "var(--omega-text-muted)",
+				accent: "var(--omega-accent)",
+				accentStrong: "var(--omega-accent-strong)",
+				success: "var(--omega-success)",
+				warning: "var(--omega-warning)",
+				danger: "var(--omega-danger)",
+			},
+			borderRadius: {
+				sm: "var(--omega-radius-sm)",
+				md: "var(--omega-radius-md)",
+				lg: "var(--omega-radius-lg)",
+				xl: "20px",
+				pill: "var(--omega-radius-pill)",
+			},
+			spacing: {
+				1: "4px",
+				2: "8px",
+				3: "12px",
+				4: "16px",
+				5: "20px",
+				6: "24px",
+			},
+			boxShadow: {
+				panel: "var(--omega-shadow-md)",
+				overlay: "var(--omega-shadow-lg)",
+			},
+			transitionTimingFunction: {
+				omega: "var(--omega-ease-out)",
+			},
+			transitionDuration: {
+				fast: "var(--omega-dur-fast)",
+				normal: "var(--omega-dur-normal)",
+				slow: "var(--omega-dur-slow)",
+			},
+		},
+	},
+	plugins: [],
 } satisfies Config;

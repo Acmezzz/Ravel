@@ -1,21 +1,11 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Chip from "@mui/material/Chip";
-import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
-import AddIcon from "@mui/icons-material/Add";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CloseIcon from "@mui/icons-material/Close";
-import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
+import { IconButton } from "../../ui/Button";
+import { Popover } from "../../ui/Popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/useAppStore";
 import type { ProjectTrustChoice, ProjectTrustInfo, WorkspaceInfo } from "../../types/dto";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
-import { clickableRole } from "../../lib/a11y";
 
 function labelFor(root: string): string {
   const parts = root.split(/[\\/]/).filter(Boolean);
@@ -27,6 +17,59 @@ function trustChip(workspace: WorkspaceInfo): string | null {
   if (workspace.trust === "undecided" && workspace.requiresTrust) return "待信任";
   if (workspace.active) return "当前";
   return null;
+}
+
+function FolderOpenIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" style={{ display: "block", width: "1rem", height: "1rem", flex: "0 0 auto", color: "var(--omega-accent)" }} aria-hidden="true">
+      <path
+        d="M2.6 12.6V4.8c0-.66.54-1.2 1.2-1.2h2.4l1.4 1.6h4.2c.66 0 1.2.54 1.2 1.2v1.1M4.9 7.3h9.9c.5 0 .87.47.74.96l-1.06 4a1.2 1.2 0 0 1-1.16.9H2.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AddIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" style={{ display: "block", width: "1.0625rem", height: "1.0625rem", flex: "0 0 auto", color: "var(--omega-accent)" }} aria-hidden="true">
+      <path d="M8 3.6v8.8M3.6 8h8.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ExpandMoreIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" style={{ display: "block", width: "0.9375rem", height: "0.9375rem", flex: "0 0 auto", marginLeft: "auto", color: "var(--omega-text-muted)" }} aria-hidden="true">
+      <path d="M4.2 6.4 8 10.2l3.8-3.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CloseIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" style={{ display: "block", width: "0.875rem", height: "0.875rem" }} aria-hidden="true">
+      <path d="m4.4 4.4 7.2 7.2m0-7.2-7.2 7.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ size }: { size: string }): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" style={{ display: "block", width: size, height: size, flex: "0 0 auto" }} aria-hidden="true">
+      <path
+        d="M8 2.4l4.6 1.8v3.4c0 3-1.9 5.1-4.6 6-2.7-.9-4.6-3-4.6-6V4.2L8 2.4Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 let workspaceLoadGeneration = 0;
@@ -55,6 +98,24 @@ async function applyWorkspaceRecord(generation: number): Promise<void> {
   store.closeViewer();
   store.bumpWorkspaceEpoch();
 }
+
+const TRIGGER_BASE_STYLE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  padding: "0 10px",
+  height: 30,
+  flex: "0 1 auto",
+  minWidth: 0,
+  maxWidth: 220,
+  borderRadius: "9px",
+  border: "1px solid var(--omega-border)",
+  background: "var(--omega-bg-soft)",
+  font: "inherit",
+  textAlign: "left",
+  transition:
+    "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+};
 
 export function ProjectSwitcher(): React.ReactElement {
   const agent = useAppStore((state) => state.agent);
@@ -169,108 +230,107 @@ export function ProjectSwitcher(): React.ReactElement {
 
   return (
     <>
-      <Box
-        {...(disabled ? {} : clickableRole)}
+      <button
+        type="button"
+        className={disabled ? "omega-switcher-trigger is-disabled" : "omega-switcher-trigger"}
+        style={{ ...TRIGGER_BASE_STYLE, ...(disabled ? { cursor: "default", opacity: 0.55 } : {}) }}
+        disabled={disabled}
         onClick={(event) => {
-          if (!disabled) {
-            setError(null);
-            setAnchor(event.currentTarget);
-            void refresh();
-          }
-        }}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 0.75,
-          px: 1.25,
-          height: 30,
-          flex: "0 1 auto",
-          minWidth: 0,
-          maxWidth: 220,
-          borderRadius: "9px",
-          border: "1px solid var(--omega-border)",
-          background: "var(--omega-bg-soft)",
-          cursor: disabled ? "default" : "pointer",
-          opacity: disabled ? 0.55 : 1,
-          transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-          "&:hover": { borderColor: "var(--omega-accent-line)", background: "var(--omega-accent-soft)" },
+          setError(null);
+          setAnchor(event.currentTarget);
+          void refresh();
         }}
       >
-        <FolderOpenOutlinedIcon sx={{ fontSize: "1rem", color: "var(--omega-accent)", flex: "0 0 auto" }} />
-        <Typography
-          sx={{
-            fontSize: "0.8125rem",
-            fontWeight: 600,
-            color: "var(--omega-text)",
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+        <FolderOpenIcon />
+        <span
           title={current}
+          style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}
         >
           {labelFor(current)}
-        </Typography>
+        </span>
         {dormant ? (
-          <Chip
-            size="small"
-            icon={<ShieldOutlinedIcon sx={{ fontSize: "0.75rem" }} />}
-            label="未信任"
-            sx={{
-              height: 18,
-              fontSize: "0.65625rem",
-              flex: "0 0 auto",
-              background: "var(--omega-warning-soft)",
-              color: "var(--omega-warning)",
-              border: "none",
-              "& .MuiChip-icon": { ml: 0.5, color: "var(--omega-warning)" },
-            }}
-          />
+          <span
+            className="omega-chip omega-chip-warning omega-switcher-chip"
+            style={{ flex: "0 0 auto", background: "var(--omega-warning-soft)", border: "none" }}
+          >
+            <ShieldIcon size="0.75rem" />
+            未信任
+          </span>
         ) : null}
-        <ExpandMoreIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-text-muted)", flex: "0 0 auto", ml: "auto" }} />
-      </Box>
+        <ExpandMoreIcon />
+      </button>
 
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
+      <Popover
+        open={Boolean(anchor)}
+        anchor={anchor}
+        onOpenChange={(next) => { if (!next) setAnchor(null); }}
+        ariaLabel="切换项目"
+        className="omega-header-menu"
+      >
         {workspaces.map((workspace) => {
           const chip = trustChip(workspace);
+          const isCurrent = workspace.realRoot === current;
           return (
-            <MenuItem key={workspace.workspaceId} selected={workspace.realRoot === current} disabled={busy} onClick={() => void switchTo(workspace.realRoot)}>
-              <Box sx={{ minWidth: 240, display: "flex", alignItems: "center", gap: 1 }}>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <Typography sx={{ fontSize: "0.8125rem", fontWeight: workspace.realRoot === current ? 600 : 400 }}>
-                      {labelFor(workspace.displayPath)}
-                    </Typography>
-                    {chip ? <Chip size="small" label={chip} sx={{ height: 18, fontSize: "0.65625rem" }} /> : null}
-                  </Box>
-                  <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", fontFamily: "ui-monospace, Consolas, monospace" }} noWrap>
+            <div key={workspace.workspaceId} className="omega-switcher-row" style={{ display: "flex", alignItems: "center", minWidth: 240 }}>
+              <button
+                type="button"
+                className="omega-menu-item"
+                aria-current={isCurrent ? "true" : undefined}
+                disabled={busy}
+                style={{ minWidth: 0, flex: 1, fontWeight: isCurrent ? 600 : undefined, ...(isCurrent ? { background: "var(--omega-accent-soft)", color: "var(--omega-accent-strong)" } : {}) }}
+                onClick={() => void switchTo(workspace.realRoot)}
+              >
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>{labelFor(workspace.displayPath)}</span>
+                    {chip ? <span className="omega-chip">{chip}</span> : null}
+                  </span>
+                  <span
+                    style={{
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: "0.65625rem",
+                      fontWeight: 400,
+                      color: "var(--omega-text-dim)",
+                      fontFamily: "ui-monospace, Consolas, monospace",
+                    }}
+                  >
                     {workspace.displayPath}
-                  </Typography>
-                </Box>
-                {workspace.realRoot !== current ? (
-                  <Tooltip title="从列表中移除">
+                  </span>
+                </span>
+              </button>
+              {!isCurrent ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <IconButton
-                      size="small"
-                      aria-label={`从列表中移除 ${labelFor(workspace.displayPath)}`}
+                      size="sm"
+                      label={`从列表中移除 ${labelFor(workspace.displayPath)}`}
                       onClick={(event) => void removeWorkspace(workspace, event)}
-                      sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-danger)" } }}
+                      style={{ color: "var(--omega-text-dim)", flex: "0 0 auto" }}
+                      onMouseEnter={(event) => { event.currentTarget.style.color = "var(--omega-danger)"; }}
+                      onMouseLeave={(event) => { event.currentTarget.style.color = "var(--omega-text-dim)"; }}
                     >
-                      <CloseIcon sx={{ fontSize: "0.875rem" }} />
+                      <CloseIcon />
                     </IconButton>
-                  </Tooltip>
-                ) : null}
-              </Box>
-            </MenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent>从列表中移除</TooltipContent>
+                </Tooltip>
+              ) : null}
+            </div>
           );
         })}
-        <MenuItem disabled={busy} onClick={() => void choose()}>
-          <AddIcon sx={{ fontSize: "1.0625rem", mr: 1, color: "var(--omega-accent)" }} /> 添加工作区…
-        </MenuItem>
-        <MenuItem disabled={busy} onClick={() => { setAnchor(null); useAppStore.getState().setTrustCenterOpen(true); }}>
-          <ShieldOutlinedIcon sx={{ fontSize: "1.0625rem", mr: 1, color: "var(--omega-accent)" }} /> 信任中心…
-        </MenuItem>
+        <button type="button" className="omega-menu-item" disabled={busy} onClick={() => void choose()}>
+          <AddIcon /> 添加工作区…
+        </button>
+        <button type="button" className="omega-menu-item" disabled={busy} onClick={() => { setAnchor(null); useAppStore.getState().setTrustCenterOpen(true); }}>
+          <ShieldIcon size="1.0625rem" /> 信任中心…
+        </button>
         {currentWorkspace?.requiresTrust ? (
-          <MenuItem
+          <button
+            type="button"
+            className="omega-menu-item"
             disabled={busy}
             onClick={() => {
               void ipc.inspectProjectTrust({ workspace: current }).then((result) => {
@@ -278,11 +338,13 @@ export function ProjectSwitcher(): React.ReactElement {
               });
             }}
           >
-            <ShieldOutlinedIcon sx={{ fontSize: "1.0625rem", mr: 1, color: "var(--omega-accent)" }} /> 项目信任…
-          </MenuItem>
+            <ShieldIcon size="1.0625rem" /> 项目信任…
+          </button>
         ) : null}
-        {error ? <Typography sx={{ px: 2, py: 0.75, maxWidth: 280, color: "var(--omega-danger)", fontSize: "0.65625rem" }}>{error}</Typography> : null}
-      </Menu>
+        {error ? (
+          <div role="alert" style={{ padding: "6px 16px", maxWidth: 280, color: "var(--omega-danger)", fontSize: "0.65625rem" }}>{error}</div>
+        ) : null}
+      </Popover>
 
       <ProjectTrustDialog
         open={pendingTrust !== null}

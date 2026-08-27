@@ -15,7 +15,13 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   root: ".",
   base: "./",
-  plugins: [react()],
+  plugins: [
+    react({
+      babel: {
+        plugins: [["babel-plugin-react-compiler", { target: "19" }]],
+      },
+    }),
+  ],
   build: {
     outDir: "dist",
     emptyOutDir: true,

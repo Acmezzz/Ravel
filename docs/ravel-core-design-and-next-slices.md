@@ -282,4 +282,6 @@ approval_decided
 - 物理持久化与执行的权威是 Pi `AgentSessionRuntime`（v3 JSONL 单写路径）；
 - 桌面侧唯一合法的事实写入器是 `apps/ravel-desktop/electron/session-facts.js`（customType=`ravel_record`）。任何其他模块不得调用 `appendCustomEntry` 写事实——该约束由 `test/session-facts.test.mjs` 的静态断言守护。读取/投影（agent-bridge.js）只读不写。
 
-尚未做：跨 epoch replay 更严格基线、skill content hash 物化、checkpoint 写入 facts、Histos 派生索引与画布（顺序见 `ravel-histos-refactor-plan.md`）。C4 shadow-git checkpoint 本身已落地。
+已补：skill content hash 经 `electron/content-hash.js` 物化，resource-center 对 skill 暴露 `contentHash`；checkpoint 经 `appendCheckpointFacts` 写成 `operation_started(kind=navigation, targetId=40-char SHA)` + `operation_finished`。C4 shadow-git checkpoint 本身已落地。
+
+尚未做：跨 epoch replay 更严格基线；Histos Engine / FactAddress / 工作区查找库 / 画布（顺序与契约见 `ravel-histos-refactor-plan.md`，R0/R1 已完成，R2 绞杀 MUI 进行中，R3 起才允许 sqlite）。

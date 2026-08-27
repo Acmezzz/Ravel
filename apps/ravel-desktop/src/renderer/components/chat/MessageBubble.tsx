@@ -1,15 +1,11 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import CheckIcon from "@mui/icons-material/Check";
-import CallSplitIcon from "@mui/icons-material/CallSplit";
+import { IconButton } from "../../ui/Button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { Markdown } from "../common/Markdown";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
+import { getStreamLive, getStreamLiveKey, subscribeStreamLive } from "../../lib/stream-live";
 import { openSessionInStore } from "../../lib/open-session";
 import type { SessionMessage, SessionReferenceFact } from "../../types/dto";
 
@@ -32,6 +28,34 @@ async function copyText(text: string): Promise<boolean> {
       return false;
     }
   }
+}
+
+function CopyIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
+      <rect x="5.5" y="5.5" width="7.5" height="8.5" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M10.5 5.5V4.2A1.2 1.2 0 0 0 9.3 3H4.2A1.2 1.2 0 0 0 3 4.2v7.1A1.2 1.2 0 0 0 4.2 12.5H5.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+function CheckIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
+      <path d="M3.4 8.3 6.4 11.4 12.6 4.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ForkIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
+      <circle cx="4.2" cy="3.4" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="11.8" cy="3.4" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="8" cy="12.6" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M4.2 4.9v1.4c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V4.9M8 8.3v2.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 export interface MessageBubbleProps {
@@ -64,37 +88,19 @@ function UserTextWithReferences({ text, refs }: { text: string; refs: SessionRef
     <>
       {parts.map((part, index) =>
         index % 2 === 1 && part ? (
-          <Box
+          <button
             key={`${part}-${index}`}
-            component="button"
             type="button"
+            className="omega-msg-mention"
             disabled={navigating}
             onClick={() => {
               const ref = byTitle.get(part);
               if (ref) void handleOpen(ref.targetSessionId);
             }}
             title={byTitle.get(part)?.targetSessionId}
-            sx={{
-              display: "inline-flex",
-              alignItems: "baseline",
-              border: "none",
-              cursor: "pointer",
-              font: "inherit",
-              padding: 0,
-              background: "rgba(255,255,255,0.18)",
-              borderRadius: "6px",
-              px: 0.5,
-              mx: "1px",
-              color: "inherit",
-              textDecoration: "underline",
-              textDecorationStyle: "dotted",
-              textUnderlineOffset: 3,
-              "&:hover": { background: "rgba(255,255,255,0.30)" },
-              "&:disabled": { opacity: 0.7 },
-            }}
           >
             @{part}
-          </Box>
+          </button>
         ) : (
           <React.Fragment key={`t-${index}`}>{part}</React.Fragment>
         ),
@@ -105,9 +111,20 @@ function UserTextWithReferences({ text, refs }: { text: string; refs: SessionRef
 
 function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): React.ReactElement {
   const [copied, setCopied] = React.useState(false);
+  const liveKey = React.useSyncExternalStore(
+    subscribeStreamLive,
+    () => getStreamLiveKey(message.id),
+    () => "",
+  );
+  const live = React.useMemo(() => {
+    if (!streamingRun && !liveKey) return null;
+    const snapshot = getStreamLive(message.id);
+    return { text: snapshot.text || message.text, thinking: snapshot.thinking || message.thinking || "" };
+  }, [message.id, message.text, message.thinking, streamingRun, liveKey]);
+  const renderedMessage = live ? { ...message, text: live.text, thinking: live.thinking || message.thinking } : message;
   const [forking, setForking] = React.useState(false);
   const isUser = message.role === "user";
-  const isError = message.role === "assistant" && message.text.startsWith("⚠️");
+  const isError = message.role === "assistant" && renderedMessage.text.startsWith("⚠️");
   const connection = useAppStore((s) => s.connection);
   const setComposerPrefill = useAppStore((s) => s.setComposerPrefill);
   const loadTranscript = useAppStore((s) => s.loadTranscript);
@@ -115,12 +132,12 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
   const setAgent = useAppStore((s) => s.setAgent);
 
   const handleCopy = React.useCallback(async () => {
-    const ok = await copyText(message.text);
+    const ok = await copyText(renderedMessage.text);
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     }
-  }, [message.text]);
+  }, [renderedMessage.text]);
 
   const handleFork = React.useCallback(async () => {
     if (!message.entryId || forking) return;
@@ -147,97 +164,56 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
     () => (isUser && message.entryId ? references.filter((ref) => ref.sourceEntryId === message.entryId) : []),
     [isUser, message.entryId, references],
   );
-  const showThinking = !isUser && !isError && (Boolean(message.thinking) || message.thinkingDeferred);
+  const showThinking = !isUser && !isError && (Boolean(renderedMessage.thinking) || message.thinkingDeferred);
   const isStreamingTarget = streamingRun;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        gap: 1.5,
-        mb: isUser ? 1.5 : 2.25,
-        width: "100%",
-        justifyContent: isUser ? "flex-end" : "flex-start",
-        animation: isUser ? "none" : "omega-rise .2s var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)) both",
-        "&:hover .msg-actions": { opacity: 1, transform: "translateY(0)" },
-      }}
-    >
-      <Box sx={{ minWidth: 0, width: isUser ? "auto" : "100%", maxWidth: isUser ? "min(85%, 720px)" : "100%" }}>
+    <div className={`omega-msg ${isUser ? "omega-msg-user" : "omega-msg-assistant"}`}>
+      <div className="omega-msg-col">
         {showThinking ? (
           <ThinkingBlock
-            text={message.thinking ?? ""}
-            streaming={isStreamingTarget && Boolean(message.thinking)}
+            text={renderedMessage.thinking ?? ""}
+            streaming={isStreamingTarget && Boolean(renderedMessage.thinking)}
             deferred={message.thinkingDeferred}
             entryId={message.entryId}
           />
         ) : null}
-        <Box
-          sx={{
-            minWidth: 0,
-            ...(isUser
-              ? {
-                  order: 2,
-                  color: "var(--omega-accent-foreground)",
-                  background: "var(--omega-accent-gradient)",
-                  border: "1px solid rgba(255, 255, 255, 0.28)",
-                  borderRadius: "16px 4px 16px 16px",
-                  px: 1.75,
-                  py: 1.1,
-                  whiteSpace: "pre-wrap",
-                  overflowWrap: "anywhere",
-                  // Double-edge treatment: bright inner rim + warm outer bloom.
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 12px var(--omega-accent-soft)",
-                }
-              : {
-                  color: isError ? "var(--omega-error-text)" : "var(--omega-text-soft)",
-                }),
-          }}
-        >
+        <div className={isUser ? "omega-msg-user-bubble" : isError ? "omega-msg-assistant-body omega-msg-error" : "omega-msg-assistant-body"}>
           {isUser ? (
-            <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>
-              <UserTextWithReferences text={message.text} refs={userRefs} />
-            </Typography>
+            <p className="omega-msg-user-text">
+              <UserTextWithReferences text={renderedMessage.text} refs={userRefs} />
+            </p>
           ) : isError ? (
-            <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>{message.text}</Typography>
+            <p className="omega-msg-error-text">{renderedMessage.text}</p>
           ) : (
-            <Markdown>{message.text}</Markdown>
+            <Markdown>{renderedMessage.text}</Markdown>
           )}
-          {isStreamingTarget ? (
-            <Box component="span" className="stream-caret" sx={{ color: "var(--omega-accent)" }} aria-hidden="true" />
-          ) : null}
-        </Box>
-        {!isError && message.text ? (
-          <Box
-            className="msg-actions"
-            sx={{
-              opacity: 0,
-              "@media (hover: none)": { opacity: 1, transform: "none" },
-              "&:focus-within": { opacity: 1, transform: "none" },
-              transform: "translateY(-2px)",
-              transition: "opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), transform 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-              mt: 0.25,
-              px: 0.25,
-              display: "flex",
-              justifyContent: isUser ? "flex-end" : "flex-start",
-            }}
-          >
-            <Tooltip title={copied ? "已复制" : "复制消息"}>
-              <IconButton size="small" aria-label="复制消息" onClick={() => void handleCopy()} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
-                {copied ? <CheckIcon sx={{ fontSize: "0.9375rem" }} /> : <ContentCopyIcon sx={{ fontSize: "0.9375rem" }} />}
-              </IconButton>
+          {isStreamingTarget ? <span className="stream-caret" aria-hidden="true" /> : null}
+        </div>
+        {!isError && renderedMessage.text ? (
+          <div className="msg-actions">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton size="sm" className="omega-msg-action" label="复制消息" onClick={() => void handleCopy()}>
+                  {copied ? <CheckIcon /> : <CopyIcon />}
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>{copied ? "已复制" : "复制消息"}</TooltipContent>
             </Tooltip>
             {canFork ? (
-              <Tooltip title={forking ? "创建中…" : "从此处 Fork 新会话"}>
-                <IconButton size="small" aria-label="从此处 Fork 新会话" onClick={() => void handleFork()} disabled={forking} sx={{ color: "var(--omega-text-dim)", "&:hover": { color: "var(--omega-accent)" } }}>
-                  <CallSplitIcon sx={{ fontSize: "0.9375rem" }} />
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton size="sm" className="omega-msg-action" label="从此处 Fork 新会话" onClick={() => void handleFork()} disabled={forking}>
+                    <ForkIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{forking ? "创建中…" : "从此处 Fork 新会话"}</TooltipContent>
               </Tooltip>
             ) : null}
-          </Box>
+          </div>
         ) : null}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }
 

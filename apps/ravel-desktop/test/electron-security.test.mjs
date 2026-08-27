@@ -225,7 +225,7 @@ test("IPC registry stays in sync with main handlers and preload invokes", async 
   }
 });
 
-test("index.html CSP carries the style nonce but no unsafe-inline / unsafe-eval", async () => {
+test("index.html CSP allows only external styles and no unsafe-inline / unsafe-eval", async () => {
   const html = await read("../index.html");
   assert.match(html, /Content-Security-Policy/);
   // Scope the unsafe-* checks to the actual CSP directive, not the whole document
@@ -233,7 +233,8 @@ test("index.html CSP carries the style nonce but no unsafe-inline / unsafe-eval"
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
   assert.ok(csp, "CSP meta tag is present");
   const cspContent = csp[1];
-  assert.match(cspContent, /style-src 'self' 'nonce-(?:ravel|omega)-static-2026'/);
+  assert.match(cspContent, /style-src 'self'(?:;|')/);
+  assert.doesNotMatch(cspContent, /nonce-/);
   assert.match(cspContent, /script-src 'self'/);
   assert.doesNotMatch(cspContent, /unsafe-inline/);
   assert.doesNotMatch(cspContent, /unsafe-eval/);

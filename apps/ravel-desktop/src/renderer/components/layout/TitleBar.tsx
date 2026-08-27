@@ -1,117 +1,20 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
-import RemoveIcon from "@mui/icons-material/Remove";
-import CropSquareIcon from "@mui/icons-material/CropSquare";
-import FilterNoneIcon from "@mui/icons-material/FilterNone";
-import CloseIcon from "@mui/icons-material/Close";
+import { IconButton } from "../../ui/Button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 
-/**
- * Custom frameless title bar. The strip is a drag region (double-click toggles
- * maximize); min/max/close are custom-drawn and go through the guarded
- * window:* IPC. F11 (handled in main) toggles fullscreen.
- */
+/** Custom frameless title bar; window controls remain guarded IPC calls. */
 const dragStyle = { WebkitAppRegion: "drag" } as React.CSSProperties;
 const noDragStyle = { WebkitAppRegion: "no-drag" } as React.CSSProperties;
 
-const controlSx = {
-  width: 42,
-  height: 30,
-  borderRadius: "7px",
-  color: "var(--omega-text-muted)",
-  transition: "background-color 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), transform 120ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-  "&:hover": { color: "var(--omega-text)", background: "var(--omega-hover-fill)" },
-  "&:active": { transform: "scale(0.92)" },
-} as const;
-
 export function TitleBar(): React.ReactElement {
-  const agent = useAppStore((s) => s.agent);
+  const agent = useAppStore((state) => state.agent);
   const [maximized, setMaximized] = React.useState(false);
-
-  React.useEffect(() => {
-    void ipc.isMaximized().then((res) => {
-      if (res.ok) setMaximized(res.data.maximized);
-    });
-    return ipc.onWindowStateChanged((data) => setMaximized(Boolean(data?.maximized)));
-  }, []);
-
-  const workspaceLabel = React.useMemo(() => {
-    const cwd = agent?.cwd;
-    if (!cwd) return "";
-    const parts = cwd.split(/[\\/]/).filter(Boolean);
-    return parts[parts.length - 1] ?? cwd;
-  }, [agent?.cwd]);
-
-  return (
-    <Box
-      style={dragStyle}
-      sx={{
-        gridColumn: "1 / -1",
-        height: 40,
-        display: "flex",
-        alignItems: "center",
-        gap: 1.25,
-        px: 1.5,
-        userSelect: "none",
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <Box
-          sx={{
-            width: 19,
-            height: 19,
-            display: "grid",
-            placeItems: "center",
-            borderRadius: "6px",
-            background: "var(--omega-accent-gradient)",
-            boxShadow: "0 1px 4px var(--omega-accent-soft)",
-            color: "var(--omega-accent-foreground)",
-            fontSize: "0.65625rem",
-            fontWeight: 700,
-          }}
-        >
-            ∞
-          </Box>
-        <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.09em", color: "var(--omega-text-soft)" }}>
-          RAVEL DESKTOP
-        </Typography>
-      </Box>
-      {workspaceLabel ? (
-        <>
-          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>·</Typography>
-          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }} noWrap>
-            {workspaceLabel}
-          </Typography>
-        </>
-      ) : null}
-      <Box sx={{ flex: 1 }} />
-      <Box style={noDragStyle} sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
-        <Tooltip title="最小化">
-          <IconButton size="small" aria-label="最小化窗口" disableRipple onClick={() => void ipc.minimize()} sx={controlSx}>
-            <RemoveIcon sx={{ fontSize: "1rem" }} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={maximized ? "还原" : "最大化"}>
-          <IconButton size="small" aria-label={maximized ? "向下还原窗口" : "最大化窗口"} disableRipple onClick={() => void ipc.toggleMaximize()} sx={controlSx}>
-            {maximized ? <FilterNoneIcon sx={{ fontSize: "0.8125rem" }} /> : <CropSquareIcon sx={{ fontSize: "0.8125rem" }} />}
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="关闭">
-          <IconButton
-            size="small"
-            aria-label="关闭窗口"
-            disableRipple
-            onClick={() => void ipc.closeWindow()}
-            sx={{ ...controlSx, "&:hover": { color: "#fff", background: "var(--omega-danger)" } }}
-          >
-            <CloseIcon sx={{ fontSize: "1rem" }} />
-          </IconButton>
-        </Tooltip>
-      </Box>
-    </Box>
-  );
+  React.useEffect(() => { void ipc.isMaximized().then((res) => { if (res.ok) setMaximized(res.data.maximized); }); return ipc.onWindowStateChanged((data) => setMaximized(Boolean(data?.maximized))); }, []);
+  const workspaceLabel = React.useMemo(() => { const cwd = agent?.cwd; if (!cwd) return ""; const parts = cwd.split(/[\\/]/).filter(Boolean); return parts[parts.length - 1] ?? cwd; }, [agent?.cwd]);
+  return <div className="omega-titlebar" style={dragStyle}>
+    <div className="omega-titlebar-brand"><span className="omega-titlebar-mark">∞</span><strong>RAVEL DESKTOP</strong></div>{workspaceLabel ? <><span className="omega-titlebar-separator">·</span><span className="omega-titlebar-workspace">{workspaceLabel}</span></> : null}<div className="omega-titlebar-spacer" />
+    <div className="omega-titlebar-controls" style={noDragStyle}><Tooltip><TooltipTrigger asChild><IconButton size="sm" label="最小化窗口" className="omega-titlebar-control" onClick={() => void ipc.minimize()}>−</IconButton></TooltipTrigger><TooltipContent>最小化</TooltipContent></Tooltip><Tooltip><TooltipTrigger asChild><IconButton size="sm" label={maximized ? "向下还原窗口" : "最大化窗口"} className="omega-titlebar-control" onClick={() => void ipc.toggleMaximize()}>{maximized ? "❐" : "□"}</IconButton></TooltipTrigger><TooltipContent>{maximized ? "还原" : "最大化"}</TooltipContent></Tooltip><Tooltip><TooltipTrigger asChild><IconButton size="sm" label="关闭窗口" className="omega-titlebar-control omega-titlebar-close" onClick={() => void ipc.closeWindow()}>×</IconButton></TooltipTrigger><TooltipContent>关闭</TooltipContent></Tooltip></div>
+  </div>;
 }

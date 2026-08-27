@@ -1,125 +1,34 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import FolderIcon from "@mui/icons-material/FolderOutlined";
-import FolderOpenIcon from "@mui/icons-material/FolderOpenOutlined";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFileOutlined";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
+import { Button, IconButton } from "../../ui/Button";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "../../ui/Dialog";
+import { TextField } from "../../ui/TextField";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { clickableRole } from "../../lib/a11y";
 import type { DirListing } from "../../types/dto";
 
-interface DirState {
-  loading: boolean;
-  error: string | null;
-  listing: DirListing | null;
-}
+interface DirState { loading: boolean; error: string | null; listing: DirListing | null; }
+function formatSize(size: number): string { if (size < 1024) return `${size} B`; if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`; return `${(size / 1024 / 1024).toFixed(1)} MB`; }
+function FolderIcon({ open = false }: { open?: boolean }): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-icon" aria-hidden="true"><path d={open ? "M1.8 4.8h4l1.3 1.4h7.1v6.1H1.8Z" : "M1.8 3.8h4l1.3 1.4h7.1v7.1H1.8Z"} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>; }
+function FileIcon(): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-icon" aria-hidden="true"><path d="M4.1 2.5h4.4l3.4 3.4v7.6H4.1a1.1 1.1 0 0 1-1.1-1.1V3.6a1.1 1.1 0 0 1 1.1-1.1Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M8.5 2.5v3.4h3.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>; }
+function Chevron({ open }: { open: boolean }): React.ReactElement { return <svg viewBox="0 0 16 16" className={`omega-file-chevron${open ? " is-open" : ""}`} aria-hidden="true"><path d="m5.2 6.2 2.8 2.8 2.8-2.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function RefreshIcon(): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-action-icon" aria-hidden="true"><path d="M13 5.8A5.2 5.2 0 1 0 13.1 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /><path d="M10.4 3.7h3v3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function UploadIcon(): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-action-icon" aria-hidden="true"><path d="M8 10.8V2.7M5.2 5.5 8 2.7l2.8 2.8M3 9.8v2.5c0 .6.5 1 1 1h8c.6 0 1-.4 1-1V9.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 
-function formatSize(size: number): string {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function TreeRow({
-  name,
-  rel,
-  isDir,
-  size,
-  depth,
-  expanded,
-  onToggleDir,
-  onOpenFile,
-  onReveal,
-}: {
-  name: string;
-  rel: string;
-  isDir: boolean;
-  size: number;
-  depth: number;
-  expanded: boolean;
-  onToggleDir: (rel: string) => void;
-  onOpenFile: (rel: string) => void;
-  onReveal: (rel: string) => void;
-}): React.ReactElement {
-  return (
-    <Box
-      {...clickableRole}
-      onClick={() => (isDir ? onToggleDir(rel) : onOpenFile(rel))}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        pl: 0.5 + depth * 1.25,
-        pr: 0.75,
-        py: 0.3,
-        minWidth: 0,
-        borderRadius: "7px",
-        cursor: "pointer",
-        border: "1px solid transparent",
-        transition: "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-        "&:hover": { background: "var(--omega-hover-fill)", borderColor: "var(--omega-border)" },
-      }}
-    >
-      {isDir ? (
-        <>
-          <IconButton size="small" aria-label={expanded ? `折叠 ${name}` : `展开 ${name}`} sx={{ p: 0, color: "var(--omega-text-dim)" }} onClick={(e) => { e.stopPropagation(); onToggleDir(rel); }}>
-            {expanded ? <ExpandMoreIcon sx={{ fontSize: "0.875rem" }} /> : <ChevronRightIcon sx={{ fontSize: "0.875rem" }} />}
-          </IconButton>
-          {expanded ? (
-            <FolderOpenIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-accent)" }} />
-          ) : (
-            <FolderIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-accent)" }} />
-          )}
-        </>
-      ) : (
-        <>
-          <Box sx={{ width: 22 }} />
-          <InsertDriveFileIcon sx={{ fontSize: "0.9375rem", color: "var(--omega-text-dim)" }} />
-        </>
-      )}
-      <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", minWidth: 0, flex: 1 }} noWrap title={rel}>
-        {name}
-      </Typography>
-      {!isDir && size > 0 ? (
-        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>{formatSize(size)}</Typography>
-      ) : null}
-      <Tooltip title="在资源管理器中显示">
-        <IconButton
-          size="small"
-          aria-label={`在资源管理器中显示 ${name}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onReveal(rel);
-          }}
-          sx={{ flex: "0 0 auto", p: 0.25, color: "var(--omega-text-dim)", opacity: 0, ".MuiBox-root:hover &": { opacity: 1 } }}
-        >
-          <FolderOpenIcon sx={{ fontSize: "0.8125rem" }} />
-        </IconButton>
-      </Tooltip>
-    </Box>
-  );
+function TreeRow({ name, rel, isDir, size, depth, expanded, onToggleDir, onOpenFile, onReveal }: { name: string; rel: string; isDir: boolean; size: number; depth: number; expanded: boolean; onToggleDir: (rel: string) => void; onOpenFile: (rel: string) => void; onReveal: (rel: string) => void }): React.ReactElement {
+  return <div {...clickableRole} className="omega-file-row" style={{ paddingLeft: `calc(0.5rem + ${depth * 1.25}rem)` }} onClick={() => (isDir ? onToggleDir(rel) : onOpenFile(rel))}>
+    {isDir ? <><IconButton size="sm" label={expanded ? `折叠 ${name}` : `展开 ${name}`} className="omega-file-chevron-button" onClick={(event) => { event.stopPropagation(); onToggleDir(rel); }}><Chevron open={expanded} /></IconButton><span className="omega-file-folder"><FolderIcon open={expanded} /></span></> : <><span className="omega-file-indent" /><span className="omega-file-document"><FileIcon /></span></>}
+    <span className="omega-file-name" title={rel}>{name}</span>{!isDir && size > 0 ? <span className="omega-file-size">{formatSize(size)}</span> : null}
+    <Tooltip><TooltipTrigger asChild><IconButton size="sm" label={`在资源管理器中显示 ${name}`} className="omega-file-reveal" onClick={(event) => { event.stopPropagation(); onReveal(rel); }}><FolderIcon /></IconButton></TooltipTrigger><TooltipContent>在资源管理器中显示</TooltipContent></Tooltip>
+  </div>;
 }
 
 /** Lazy-expanding workspace file tree (loads one directory per IPC call). */
 export function FileTree(): React.ReactElement {
-  const openViewer = useAppStore((s) => s.openViewer);
-  const workspaceEpoch = useAppStore((s) => s.workspaceEpoch);
-  const reveal = React.useCallback((rel: string) => {
-    void ipc.revealInFolder({ path: rel });
-  }, []);
+  const openViewer = useAppStore((state) => state.openViewer);
+  const workspaceEpoch = useAppStore((state) => state.workspaceEpoch);
+  const reveal = React.useCallback((rel: string) => { void ipc.revealInFolder({ path: rel }); }, []);
   const [dirs, setDirs] = React.useState<Map<string, DirState>>(() => new Map([["", { loading: true, error: null, listing: null }]]));
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([""]));
   const [upload, setUpload] = React.useState<{ selectionId: string; name: string } | null>(null);
@@ -130,168 +39,34 @@ export function FileTree(): React.ReactElement {
 
   const loadDir = React.useCallback(async (rel: string) => {
     const requestEpoch = requestEpochRef.current;
-    setDirs((prev) => new Map(prev).set(rel, { loading: true, error: null, listing: prev.get(rel)?.listing ?? null }));
+    setDirs((previous) => new Map(previous).set(rel, { loading: true, error: null, listing: previous.get(rel)?.listing ?? null }));
     try {
       const res = await ipc.listDir({ path: rel });
       if (requestEpoch !== requestEpochRef.current) return;
-      setDirs((prev) => {
-        const next = new Map(prev);
-        next.set(rel, res.ok ? { loading: false, error: null, listing: res.data } : { loading: false, error: res.message, listing: null });
-        return next;
-      });
+      setDirs((previous) => { const next = new Map(previous); next.set(rel, res.ok ? { loading: false, error: null, listing: res.data } : { loading: false, error: res.message, listing: null }); return next; });
     } catch (reason) {
       if (requestEpoch !== requestEpochRef.current) return;
-      setDirs((prev) => new Map(prev).set(rel, { loading: false, error: reason instanceof Error ? reason.message : String(reason), listing: null }));
+      setDirs((previous) => new Map(previous).set(rel, { loading: false, error: reason instanceof Error ? reason.message : String(reason), listing: null }));
     }
   }, []);
-
-  React.useEffect(() => {
-    requestEpochRef.current += 1;
-    setDirs(new Map([["", { loading: true, error: null, listing: null }]]));
-    setExpanded(new Set([""]));
-    void loadDir("");
-  }, [loadDir, workspaceEpoch]);
-
-  const toggleDir = React.useCallback(
-    (rel: string) => {
-      setExpanded((prev) => {
-        const next = new Set(prev);
-        if (next.has(rel)) next.delete(rel);
-        else {
-          next.add(rel);
-          if (!dirs.get(rel)?.listing) void loadDir(rel);
-        }
-        return next;
-      });
-    },
-    [dirs, loadDir],
-  );
-
-  const refreshAll = React.useCallback(() => {
-    requestEpochRef.current += 1;
-    setDirs(new Map([["", { loading: true, error: null, listing: null }]]));
-    setExpanded(new Set([""]));
-    void loadDir("");
-  }, [loadDir]);
-
+  React.useEffect(() => { requestEpochRef.current += 1; setDirs(new Map([["", { loading: true, error: null, listing: null }]])); setExpanded(new Set([""])); void loadDir(""); }, [loadDir, workspaceEpoch]);
+  const toggleDir = React.useCallback((rel: string) => setExpanded((previous) => { const next = new Set(previous); if (next.has(rel)) next.delete(rel); else { next.add(rel); if (!dirs.get(rel)?.listing) void loadDir(rel); } return next; }), [dirs, loadDir]);
+  const refreshAll = React.useCallback(() => { requestEpochRef.current += 1; setDirs(new Map([["", { loading: true, error: null, listing: null }]])); setExpanded(new Set([""])); void loadDir(""); }, [loadDir]);
   const rows: React.ReactNode[] = [];
   const renderDir = (rel: string, depth: number) => {
-    const state = dirs.get(rel);
-    const listing = state?.listing;
-    rows.push(
-      rel === "" ? null : (
-        <TreeRow
-          key={`d:${rel}`}
-          name={rel.split("/").pop() ?? rel}
-          rel={rel}
-          isDir
-          size={0}
-          depth={depth - 1}
-          expanded={expanded.has(rel)}
-          onToggleDir={toggleDir}
-          onOpenFile={() => undefined}
-          onReveal={reveal}
-        />
-      ),
-    );
-    if (state?.loading && !listing) {
-      rows.push(
-        <Typography key={`l:${rel}`} sx={{ fontSize: "0.75rem", color: "var(--omega-text-dim)", pl: 1 + depth * 1.25, py: 0.25 }}>
-          加载中…
-        </Typography>,
-      );
-      return;
-    }
-    if (state?.error) {
-      rows.push(
-        <Box key={`e:${rel}`} role="alert" sx={{ display: "flex", alignItems: "center", gap: 0.75, pl: 1 + depth * 1.25, py: 0.25 }}>
-          <Typography sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", minWidth: 0 }}>{state.error}</Typography>
-          <Button size="small" onClick={() => void loadDir(rel)} sx={{ minWidth: 0, p: 0, textTransform: "none", flex: "0 0 auto" }}>重试</Button>
-        </Box>,
-      );
-      return;
-    }
-    for (const entry of listing?.entries ?? []) {
-      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
-      if (entry.isDir) {
-        if (expanded.has(childRel)) renderDir(childRel, depth + 1);
-        else
-          rows.push(
-            <TreeRow
-              key={`d:${childRel}`}
-              name={entry.name}
-              rel={childRel}
-              isDir
-              size={0}
-              depth={depth}
-              expanded={false}
-              onToggleDir={toggleDir}
-              onOpenFile={() => undefined}
-              onReveal={reveal}
-            />,
-          );
-      } else {
-        rows.push(
-          <TreeRow
-            key={`f:${childRel}`}
-            name={entry.name}
-            rel={childRel}
-            isDir={false}
-            size={entry.size}
-            depth={depth}
-            expanded={false}
-            onToggleDir={() => undefined}
-            onOpenFile={(path) => void openViewer(path)}
-            onReveal={reveal}
-          />,
-        );
-      }
-    }
+    const state = dirs.get(rel); const listing = state?.listing;
+    if (rel !== "") rows.push(<TreeRow key={`d:${rel}`} name={rel.split("/").pop() ?? rel} rel={rel} isDir size={0} depth={depth - 1} expanded={expanded.has(rel)} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />);
+    if (state?.loading && !listing) { rows.push(<p key={`l:${rel}`} className="omega-file-loading" style={{ paddingLeft: `calc(1rem + ${depth * 1.25}rem)` }}>加载中…</p>); return; }
+    if (state?.error) { rows.push(<div key={`e:${rel}`} role="alert" className="omega-file-error" style={{ paddingLeft: `calc(1rem + ${depth * 1.25}rem)` }}><span>{state.error}</span><Button size="sm" variant="quiet" onClick={() => void loadDir(rel)}>重试</Button></div>); return; }
+    for (const entry of listing?.entries ?? []) { const childRel = rel ? `${rel}/${entry.name}` : entry.name; if (entry.isDir) { if (expanded.has(childRel)) renderDir(childRel, depth + 1); else rows.push(<TreeRow key={`d:${childRel}`} name={entry.name} rel={childRel} isDir size={0} depth={depth} expanded={false} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />); } else rows.push(<TreeRow key={`f:${childRel}`} name={entry.name} rel={childRel} isDir={false} size={entry.size} depth={depth} expanded={false} onToggleDir={() => undefined} onOpenFile={(path) => void openViewer(path)} onReveal={reveal} />); }
   };
   renderDir("", 0);
-
-  const chooseUpload = async () => {
-    setUploadError(null);
-    const result = await ipc.chooseFileForWorkspace();
-    if (result.ok) { setUpload(result.data); setTarget(result.data.name); }
-    else if (result.code !== "cancelled") setUploadError(result.message);
-  };
-  const uploadSelected = async (conflict: "cancel" | "overwrite" | "keep-both" = "cancel", expectedToken?: string) => {
-    if (!upload || !target.trim()) return;
-    setUploadError(null);
-    const result = await ipc.uploadFile({ selectionId: upload.selectionId, path: target.trim(), conflict, expectedToken });
-    if (result.ok && !result.data.conflict) { setUpload(null); setTarget(""); setConflictTarget(null); refreshAll(); }
-    else if (result.ok && result.data.target) setConflictTarget({ path: result.data.target.path, token: result.data.target.token });
-    else if (!result.ok) setUploadError(result.message);
-    else setUploadError("上传未完成，请重试");
-  };
-
-  return (
-    <Box sx={{ width: "100%" }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, px: 1, py: 0.5, minWidth: 0 }}>
-        <Typography sx={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", minWidth: 0, flex: 1 }} noWrap>工作区文件</Typography>
-        <Tooltip title="导入文件到工作区"><IconButton size="small" aria-label="导入文件到工作区" onClick={() => void chooseUpload()} sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32 }}><UploadFileIcon sx={{ fontSize: "0.875rem" }} /></IconButton></Tooltip>
-        <Tooltip title="刷新">
-          <IconButton size="small" aria-label="刷新文件树" onClick={refreshAll} sx={{ color: "var(--omega-text-dim)", minWidth: 32, minHeight: 32 }}>
-            <RefreshIcon sx={{ fontSize: "0.875rem" }} />
-          </IconButton>
-        </Tooltip>
-      </Box>
-      <Box sx={{ maxHeight: "100%", overflowY: "auto", pb: 1 }}>{rows}</Box>
-      <Dialog open={Boolean(upload)} onClose={() => setUpload(null)} fullWidth maxWidth="xs">
-        <DialogTitle>导入文件到工作区</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
-          <Typography sx={{ fontSize: "0.75rem" }}>源文件：{upload?.name}</Typography>
-          <TextField autoFocus size="small" label="目标相对路径" value={target} onChange={(event) => setTarget(event.target.value)} helperText="只能写入当前授权 workspace 内的相对路径。" />
-          {uploadError ? <Typography sx={{ color: "var(--omega-danger)", fontSize: "0.75rem" }}>{uploadError}</Typography> : null}
-        </DialogContent>
-        <DialogActions><Button onClick={() => setUpload(null)}>取消</Button><Button variant="contained" onClick={() => void uploadSelected()}>导入</Button></DialogActions>
-      </Dialog>
-      <Dialog open={Boolean(conflictTarget)} onClose={() => setConflictTarget(null)} fullWidth maxWidth="xs">
-        <DialogTitle>目标文件已存在</DialogTitle>
-        <DialogContent><Typography sx={{ fontSize: "0.75rem" }}>「{conflictTarget?.path}」已存在。选择覆盖，或保留为新文件。</Typography></DialogContent>
-        <DialogActions><Button onClick={() => setConflictTarget(null)}>取消</Button><Button onClick={() => void uploadSelected("keep-both", conflictTarget?.token ?? undefined)}>保留两份</Button><Button color="error" variant="contained" onClick={() => void uploadSelected("overwrite", conflictTarget?.token ?? undefined)}>覆盖</Button></DialogActions>
-      </Dialog>
-    </Box>
-  );
+  const chooseUpload = async () => { setUploadError(null); const result = await ipc.chooseFileForWorkspace(); if (result.ok) { setUpload(result.data); setTarget(result.data.name); } else if (result.code !== "cancelled") setUploadError(result.message); };
+  const uploadSelected = async (conflict: "cancel" | "overwrite" | "keep-both" = "cancel", expectedToken?: string) => { if (!upload || !target.trim()) return; setUploadError(null); const result = await ipc.uploadFile({ selectionId: upload.selectionId, path: target.trim(), conflict, expectedToken }); if (result.ok && !result.data.conflict) { setUpload(null); setTarget(""); setConflictTarget(null); refreshAll(); } else if (result.ok && result.data.target) setConflictTarget({ path: result.data.target.path, token: result.data.target.token }); else if (!result.ok) setUploadError(result.message); else setUploadError("上传未完成，请重试"); };
+  return <div className="omega-file-tree">
+    <div className="omega-file-toolbar"><span className="overline-label">工作区文件</span><Tooltip><TooltipTrigger asChild><IconButton size="sm" label="导入文件到工作区" onClick={() => void chooseUpload()}><UploadIcon /></IconButton></TooltipTrigger><TooltipContent>导入文件到工作区</TooltipContent></Tooltip><Tooltip><TooltipTrigger asChild><IconButton size="sm" label="刷新文件树" onClick={refreshAll}><RefreshIcon /></IconButton></TooltipTrigger><TooltipContent>刷新</TooltipContent></Tooltip></div>
+    <div className="omega-file-list">{rows}</div>
+    <Dialog open={Boolean(upload)} onOpenChange={(open) => { if (!open) setUpload(null); }}><DialogContent><DialogTitle>导入文件到工作区</DialogTitle><div className="omega-dialog-content-area"><p className="omega-dialog-copy">源文件：{upload?.name}</p><TextField autoFocus label="目标相对路径" value={target} onChange={(event) => setTarget(event.target.value)} hint="只能写入当前授权 workspace 内的相对路径。" error={uploadError ?? undefined} /></div><DialogFooter><Button variant="quiet" onClick={() => setUpload(null)}>取消</Button><Button variant="solid" onClick={() => void uploadSelected()}>导入</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={Boolean(conflictTarget)} onOpenChange={(open) => { if (!open) setConflictTarget(null); }}><DialogContent><DialogTitle>目标文件已存在</DialogTitle><div className="omega-dialog-content-area"><p className="omega-dialog-copy">「{conflictTarget?.path}」已存在。选择覆盖，或保留为新文件。</p></div><DialogFooter><Button variant="quiet" onClick={() => setConflictTarget(null)}>取消</Button><Button variant="outline" onClick={() => void uploadSelected("keep-both", conflictTarget?.token ?? undefined)}>保留两份</Button><Button variant="solid" className="omega-button-danger-solid" onClick={() => void uploadSelected("overwrite", conflictTarget?.token ?? undefined)}>覆盖</Button></DialogFooter></DialogContent></Dialog>
+  </div>;
 }

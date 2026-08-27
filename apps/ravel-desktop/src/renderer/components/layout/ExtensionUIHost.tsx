@@ -1,16 +1,7 @@
 import * as React from "react";
-import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import Snackbar from "@mui/material/Snackbar";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
+import { Button } from "../../ui/Button";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "../../ui/Dialog";
+import { TextField } from "../../ui/TextField";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/useAppStore";
 import type { ExtensionUIRequest, ExtensionUIResponse } from "../../types/dto";
@@ -127,44 +118,59 @@ export function ExtensionUIHost(): React.ReactElement {
   const isSelect = request?.method === "select";
   const isEditor = request?.method === "editor";
 
+  React.useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(null), 4500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
   return (
     <>
-      <Dialog open={Boolean(request)} onClose={() => void finish()} fullWidth maxWidth={isEditor ? "md" : "sm"}>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogContent dividers>
-          {request?.method === "confirm" && <Typography sx={{ whiteSpace: "pre-wrap" }}>{request.message}</Typography>}
-          {isSelect && (
-            <List disablePadding>
-              {request.options.map((option) => (
-                <ListItemButton key={option} onClick={() => void finish(responseFor(request, option))}>
-                  <ListItemText primary={option} />
-                </ListItemButton>
-              ))}
-            </List>
-          )}
-          {(request?.method === "input" || isEditor) && (
-            <TextField
-              autoFocus
-              fullWidth
-              multiline={isEditor}
-              minRows={isEditor ? 10 : 1}
-              label={request.method === "input" ? request.placeholder : undefined}
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (!isEditor && event.key === "Enter") { event.preventDefault(); submit(); }
-              }}
-            />
-          )}
+      <Dialog open={Boolean(request)} onOpenChange={(open) => { if (!open) void finish(); }}>
+        <DialogContent className={`extension-ui-host-dialog-content${isEditor ? " omega-dialog-wide" : ""}`}>
+          <DialogTitle className="extension-ui-host-dialog-title">{title}</DialogTitle>
+          <div className="extension-ui-host-content">
+            {request?.method === "confirm" && <p className="extension-ui-host-message">{request.message}</p>}
+            {isSelect && (
+              <TextField
+                autoFocus
+                select
+                className="extension-ui-host-select"
+                aria-label="选择选项"
+                value=""
+                onChange={(event) => void finish(responseFor(request, event.target.value))}
+              >
+                <option value="" disabled>请选择</option>
+                {request.options.map((option) => <option key={option} value={option}>{option}</option>)}
+              </TextField>
+            )}
+            {(request?.method === "input" || isEditor) && (
+              <TextField
+                autoFocus
+                className="extension-ui-host-input"
+                multiline={isEditor}
+                minRows={isEditor ? 10 : 1}
+                label={request.method === "input" ? request.placeholder : undefined}
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (!isEditor && event.key === "Enter") { event.preventDefault(); submit(); }
+                }}
+              />
+            )}
+          </div>
+          <DialogFooter className="extension-ui-host-footer">
+            <Button variant="quiet" onClick={() => void finish()}>取消</Button>
+            {!isSelect && <Button variant="solid" onClick={submit}>{isConfirm ? "确认" : "提交"}</Button>}
+          </DialogFooter>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => void finish()}>取消</Button>
-          {!isSelect && <Button variant="contained" onClick={submit}>{isConfirm ? "确认" : "提交"}</Button>}
-        </DialogActions>
       </Dialog>
-      <Snackbar open={Boolean(notice)} autoHideDuration={4500} onClose={() => setNotice(null)} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
-        {notice ? <Alert severity={notice.severity} onClose={() => setNotice(null)} variant="filled">{notice.message}</Alert> : undefined}
-      </Snackbar>
+      {notice ? (
+        <div className={`extension-ui-host-notice extension-ui-host-notice-${notice.severity}`} role={notice.severity === "error" ? "alert" : "status"} aria-live={notice.severity === "error" ? "assertive" : "polite"}>
+          <span>{notice.message}</span>
+          <Button variant="quiet" size="sm" aria-label="关闭通知" onClick={() => setNotice(null)}>关闭</Button>
+        </div>
+      ) : null}
     </>
   );
 }

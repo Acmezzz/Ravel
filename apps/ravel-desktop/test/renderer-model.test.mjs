@@ -14,8 +14,9 @@ const read = (rel) => readFile(new URL(rel, import.meta.url), "utf8");
   assert.match(info, /role="alert"/);
   assert.match(info, /重试/);
   assert.match(info, /requestEpoch/);
-  assert.match(workbench, /FocusTrap/);
+  assert.doesNotMatch(workbench, /FocusTrap/);
   assert.match(workbench, /querySelector<HTMLElement>/);
+  assert.match(workbench, /event\.key !== "Tab"/);
   assert.match(workbench, /previous\.focus\(\)/);
   assert.match(workbench, /omega-right-drawer/);
   assert.match(workbench, /aria-controls="omega-left-drawer"/);
@@ -279,13 +280,13 @@ test("frontend harness mutations expose recovery feedback and stable decision bo
   const app = await read("../src/renderer/App.tsx");
   assert.match(settings, /applyDesktopPatch/);
   assert.match(settings, /setPermissionProfile/);
-  assert.match(settings, /gridTemplateColumns: \{ xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" \}/);
+  assert.match(settings, /omega-settings-grid/);
   assert.match(settings, /setSaveState\("saving"\)/);
   assert.match(settings, /role="alert"/);
   assert.match(modelPicker, /role="listbox"/);
   assert.match(modelPicker, /aria-activedescendant/);
   assert.match(modelPicker, /role="alert"/);
-  assert.match(trust, /aria-busy=\{busy\}/);
+  assert.match(trust, /aria-busy=\{busy \|\| undefined\}/);
   assert.match(approval, /snapshotToken/);
   assert.match(approval, /role="alert"/);
   assert.match(app, /auto_retry_start/);
@@ -668,7 +669,8 @@ test("UX audit closes execution gaps and avoids misleading controls", async () =
   assert.match(composer, /composer\.queueSteer/);
   assert.doesNotMatch(viewer, /setDiffMode/);
   assert.doesNotMatch(viewer, /diffMode \?/);
-  assert.match(header, /aria-label=\{canRetryWorker \? "重试 Agent worker"/);
+  assert.match(header, /"aria-label": "重试 Agent worker"/);
+  assert.match(header, /aria-pressed=\{agent\?\.thinkingLevel === level\}/);
 });
 
 test("R3: thinking blocks defer loading and message list windows", async () => {

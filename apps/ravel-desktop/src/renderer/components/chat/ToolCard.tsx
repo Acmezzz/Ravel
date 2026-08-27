@@ -1,15 +1,4 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Accordion from "@mui/material/Accordion";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import AccordionDetails from "@mui/material/AccordionDetails";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import DescriptionIcon from "@mui/icons-material/Description";
-import SearchIcon from "@mui/icons-material/Search";
-import TerminalIcon from "@mui/icons-material/Terminal";
-import EditIcon from "@mui/icons-material/EditOutlined";
-import NoteAddIcon from "@mui/icons-material/NoteAddOutlined";
 import type { ToolCardState } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { useT, type MessageKey } from "../../lib/i18n";
@@ -37,13 +26,54 @@ const KIND_KEY: Record<string, MessageKey> = {
   other: "toolcard.kind.other",
 };
 
-const KIND_ICON: Record<string, React.ReactElement> = {
-  read: <DescriptionIcon sx={{ fontSize: "0.9375rem" }} />,
-  search: <SearchIcon sx={{ fontSize: "0.9375rem" }} />,
-  bash: <TerminalIcon sx={{ fontSize: "0.9375rem" }} />,
-  edit: <EditIcon sx={{ fontSize: "0.9375rem" }} />,
-  write: <NoteAddIcon sx={{ fontSize: "0.9375rem" }} />,
-};
+function KindIcon({ kind }: { kind: string }): React.ReactElement {
+  if (kind === "search") {
+    return (
+      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
+        <circle cx="7" cy="7" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M9.6 9.6 13 13" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (kind === "bash") {
+    return (
+      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
+        <rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M4.6 6.4 6.6 8 4.6 9.6M8.2 9.8h3.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (kind === "edit") {
+    return (
+      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
+        <path d="M10.4 3.4 12.6 5.6 6.2 12H4v-2.2l6.4-6.4Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M9.3 4.5 11.5 6.7" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+    );
+  }
+  if (kind === "write") {
+    return (
+      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
+        <path d="M5 3.2h4.2L12.8 7v5.8H5A1.2 1.2 0 0 1 3.8 11.6V4.4A1.2 1.2 0 0 1 5 3.2Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        <path d="M9.2 3.2V7h3.6M6.4 9.4h3.2M6.4 11.4h3.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
+      <path d="M5 3.2h4.2L12.8 7v5.8H5A1.2 1.2 0 0 1 3.8 11.6V4.4A1.2 1.2 0 0 1 5 3.2Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M9.2 3.2V7h3.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ExpandIcon({ open }: { open: boolean }): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className={`omega-toolcard-chevron${open ? " is-open" : ""}`} aria-hidden="true">
+      <path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 /** Extract +/- line stats from an edit/write diff-style result (best effort). */
 function diffStat(resultText?: string): { added: number; removed: number } | null {
@@ -70,41 +100,22 @@ function formatDuration(startedAt?: string, endedAt?: string): string | null {
 function DiffBlockView({ block }: { block: ToolDiffBlock }): React.ReactElement {
   const t = useT();
   return (
-    <Box
-      sx={{
-        borderRadius: "8px",
-        border: "1px solid var(--omega-border)",
-        background: "var(--omega-bg-code)",
-        overflow: "hidden",
-        maxHeight: 300,
-        overflowY: "auto",
-      }}
-    >
-      <Box component="pre" sx={{ m: 0, p: 1, fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", fontSize: "0.71875rem", lineHeight: 1.5 }}>
+    <div className="omega-diff-block">
+      <pre className="omega-diff-pre">
         {block.lines.map((line, index) => (
-          <Box
+          <span
             key={index}
-            sx={{
-              display: "block",
-              whiteSpace: "pre-wrap",
-              overflowWrap: "anywhere",
-              color: line.type === "add" ? "var(--omega-success)" : line.type === "del" ? "var(--omega-danger)" : "var(--omega-text-soft)",
-              background:
-                line.type === "add" ? "rgba(46, 160, 67, 0.12)" : line.type === "del" ? "rgba(248, 81, 73, 0.10)" : "transparent",
-              px: 0.5,
-            }}
+            className={`omega-diff-line ${line.type === "add" ? "omega-diff-add" : line.type === "del" ? "omega-diff-del" : "omega-diff-ctx"}`}
           >
             {line.type === "add" ? "+ " : line.type === "del" ? "- " : "  "}
             {line.content}
-          </Box>
+          </span>
         ))}
-      </Box>
+      </pre>
       {block.truncated ? (
-        <Typography sx={{ px: 1, py: 0.5, fontSize: "0.65625rem", color: "var(--omega-warning)", borderTop: "1px solid var(--omega-border)" }}>
-          {t("toolcard.diffTruncated", { n: block.lines.length })}
-        </Typography>
+        <p className="omega-diff-truncated">{t("toolcard.diffTruncated", { n: block.lines.length })}</p>
       ) : null}
-    </Box>
+    </div>
   );
 }
 
@@ -138,6 +149,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
   const rawStat = diffBlocks.length > 0 ? totalDiff : card.kind === "edit" || card.kind === "write" ? diffStat(detail?.resultText ?? card.resultText) : null;
   const stat = rawStat ? { added: "additions" in rawStat ? rawStat.additions : rawStat.added, removed: "deletions" in rawStat ? rawStat.deletions : rawStat.removed } : null;
   const duration = formatDuration(card.startedAt, card.endedAt);
+  const approvalColor = card.approval ? APPROVAL_COLOR[card.approval] ?? "var(--omega-text-muted)" : undefined;
 
   const loadDetail = React.useCallback(async () => {
     if (detail || !card.toolCallId) return;
@@ -145,175 +157,83 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
     if (result.ok) setDetail(result.data);
   }, [card.toolCallId, detail]);
 
+  const handleToggle = React.useCallback(() => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next) void loadDetail();
+  }, [expanded, loadDetail]);
+
   return (
-    <Accordion
-      disableGutters
-      elevation={0}
-      expanded={expanded}
-      onChange={(_event, next) => { setExpanded(next); if (next) void loadDetail(); }}
-      sx={{
-        background: "var(--omega-bg-soft)",
-        border: `1px solid ${card.isError ? "var(--omega-danger)" : "var(--omega-border)"}`,
-        borderRadius: "12px !important",
-        mb: 1,
-        width: "100%",
-        overflow: "hidden",
-        boxShadow: "var(--omega-inset-highlight)",
-        transition: "border-color 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), box-shadow 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
-        "&:hover": {
-          borderColor: card.isError ? "var(--omega-danger)" : "var(--omega-border-strong)",
-          boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight)",
-        },
-        "&:before": { display: "none" },
-      }}
-    >
-      <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "var(--omega-text-dim)", fontSize: "1.125rem", transition: "transform 160ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))" }} />} sx={{ px: 1.5, py: 0.25, "& .MuiAccordionSummary-content": { minWidth: 0 } }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, width: "100%" }}>
-          <Box
-            className={card.status === "running" ? "pulse-dot" : undefined}
-            sx={{
-              position: "relative",
-              width: 6,
-              height: 6,
-              borderRadius: 999,
-              background: color,
-              flex: "0 0 auto",
-              boxShadow: card.status === "running" ? `0 0 7px ${color}` : "none",
-            }}
-          />
-          <Box sx={{ color: "var(--omega-text-muted)", flex: "0 0 auto", display: "grid", placeItems: "center" }}>
-            {KIND_ICON[card.kind] ?? <DescriptionIcon sx={{ fontSize: "0.9375rem" }} />}
-          </Box>
-          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text)", fontWeight: 600, letterSpacing: "0.005em", flex: "0 0 auto" }} noWrap>
-            {t(KIND_KEY[card.kind] ?? "toolcard.kind.other")} · {card.toolName}
-          </Typography>
-          {card.target ? (
-            <Typography className="mono-num" sx={{ fontSize: "0.75rem", color: "var(--omega-text-muted)", minWidth: 0, flex: 1 }} noWrap title={card.target}>
-              {card.target}
-            </Typography>
-          ) : null}
-          {stat ? (
-            <Box
-              sx={{
-                display: "flex",
-                gap: 0.75,
-                flex: "0 0 auto",
-                px: 0.75,
-                py: 0.1,
-                borderRadius: "6px",
-                border: "1px solid var(--omega-border)",
-                background: "var(--omega-bg-code)",
-                fontFamily: "ui-monospace, Consolas, monospace",
-                fontSize: "0.65625rem",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              <span style={{ color: "var(--omega-success)" }}>+{stat.added}</span>
-              <span style={{ color: "var(--omega-danger)" }}>−{stat.removed}</span>
-            </Box>
-          ) : null}
-          {duration && card.status !== "running" ? (
-            <Typography className="mono-num" sx={{ fontSize: "0.65625rem", fontWeight: 650, color: "var(--omega-accent-strong)", flex: "0 0 auto" }}>
-              {duration}
-            </Typography>
-          ) : null}
-          {card.approval ? (
-            <Typography
-              sx={{
-                fontSize: "0.65625rem",
-                fontWeight: 600,
-                flex: "0 0 auto",
-                px: 0.75,
-                py: 0.1,
-                borderRadius: "6px",
-                border: `1px solid ${APPROVAL_COLOR[card.approval] ?? "var(--omega-border)"}`,
-                color: APPROVAL_COLOR[card.approval] ?? "var(--omega-text-muted)",
-              }}
-            >
-              {t(`toolcard.approval.${card.approval}` as MessageKey)}
-            </Typography>
-          ) : null}
-          <Typography sx={{ fontSize: "0.65625rem", fontWeight: 550, color, flex: "0 0 auto" }}>
-            {t(card.status === "running" ? "toolcard.status.running" : card.status === "error" ? "toolcard.status.error" : "toolcard.status.done")}
-          </Typography>
-        </Box>
-      </AccordionSummary>
-      <AccordionDetails sx={{ px: 1.5, pt: 0, pb: 1.25 }}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+    <div className={`omega-toolcard${card.isError ? " omega-toolcard-error" : ""}`}>
+      <button type="button" className="omega-toolcard-summary" aria-expanded={expanded} onClick={handleToggle}>
+        <span
+          className={card.status === "running" ? "omega-toolcard-dot pulse-dot" : "omega-toolcard-dot"}
+          style={{ background: color, boxShadow: card.status === "running" ? `0 0 7px ${color}` : "none" }}
+        />
+        <span className="omega-toolcard-kind">
+          <KindIcon kind={card.kind} />
+        </span>
+        <span className="omega-toolcard-title">
+          {t(KIND_KEY[card.kind] ?? "toolcard.kind.other")} · {card.toolName}
+        </span>
+        {card.target ? (
+          <span className="omega-toolcard-target mono-num" title={card.target}>
+            {card.target}
+          </span>
+        ) : null}
+        {stat ? (
+          <span className="omega-toolcard-stat">
+            <span className="omega-toolcard-stat-add">+{stat.added}</span>
+            <span className="omega-toolcard-stat-del">−{stat.removed}</span>
+          </span>
+        ) : null}
+        {duration && card.status !== "running" ? <span className="omega-toolcard-duration mono-num">{duration}</span> : null}
+        {card.approval ? (
+          <span className="omega-toolcard-approval" style={{ borderColor: approvalColor, color: approvalColor }}>
+            {t(`toolcard.approval.${card.approval}` as MessageKey)}
+          </span>
+        ) : null}
+        <span className="omega-toolcard-status" style={{ color }}>
+          {t(card.status === "running" ? "toolcard.status.running" : card.status === "error" ? "toolcard.status.error" : "toolcard.status.done")}
+        </span>
+        <ExpandIcon open={expanded} />
+      </button>
+      {expanded ? (
+        <div className="omega-toolcard-body">
           {diffBlocks.length > 0 ? (
             diffBlocks.map((item, index) => (
-              <Box key={index}>
+              <div key={index}>
                 {diffBlocks.length > 1 || item.path ? (
-                  <Typography className="overline-label" sx={{ mb: 0.5 }}>
+                  <p className="overline-label omega-toolcard-section">
                     {item.path ? `${item.path} · ` : ""}
                     +{item.block.additions} −{item.block.deletions}
-                  </Typography>
+                  </p>
                 ) : null}
                 <DiffBlockView block={item.block} />
-              </Box>
+              </div>
             ))
           ) : null}
           {(detail?.argsJson ?? card.argsJson) ? (
-            <Box>
-              <Typography className="overline-label" sx={{ mb: 0.5 }}>
-                {t("toolcard.args")}
-              </Typography>
-              <Box
-                component="pre"
-                sx={{
-                  m: 0,
-                  p: 1,
-                  borderRadius: "8px",
-                  border: "1px solid var(--omega-border)",
-                  background: "var(--omega-bg-code)",
-                  maxHeight: 220,
-                  overflow: "auto",
-                  fontSize: "0.75rem",
-                  lineHeight: 1.55,
-                  fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
-                  color: "var(--omega-text-soft)",
-                  whiteSpace: "pre-wrap",
-                  overflowWrap: "anywhere",
-                }}
-              >
-                {detail?.argsJson ?? card.argsJson}
-              </Box>
-            </Box>
+            <div>
+              <p className="overline-label omega-toolcard-section">{t("toolcard.args")}</p>
+              <pre className="omega-toolcard-pre">{detail?.argsJson ?? card.argsJson}</pre>
+            </div>
           ) : null}
           {(detail?.resultText ?? card.resultText) ? (
-            <Box>
-              <Typography className="overline-label" sx={{ mb: 0.5 }}>
-                {t(card.isError ? "toolcard.resultError" : "toolcard.result")}
-              </Typography>
-              <Box
-                component="pre"
-                sx={{
-                  m: 0,
-                  p: 1,
-                  borderRadius: "8px",
-                  border: `1px solid ${card.isError ? "var(--omega-danger)" : "var(--omega-border)"}`,
-                  background: "var(--omega-bg-code)",
-                  maxHeight: 300,
-                  overflow: "auto",
-                  fontSize: "0.75rem",
-                  lineHeight: 1.55,
-                  fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
-                  color: card.isError ? "var(--omega-error-text)" : "var(--omega-text-soft)",
-                  whiteSpace: "pre-wrap",
-                  overflowWrap: "anywhere",
-                }}
-              >
+            <div>
+              <p className="overline-label omega-toolcard-section">{t(card.isError ? "toolcard.resultError" : "toolcard.result")}</p>
+              <pre className={`omega-toolcard-pre omega-toolcard-pre-result${card.isError ? " omega-toolcard-pre-error" : ""}`}>
                 {detail?.resultText ?? card.resultText}
-              </Box>
-            </Box>
+              </pre>
+            </div>
           ) : null}
-          <Box sx={{ display: "flex", gap: 2, color: "var(--omega-text-dim)", fontSize: "0.65625rem" }}>
+          <div className="omega-toolcard-meta">
             {card.startedAt ? <span>{t("toolcard.startedAt", { time: new Date(card.startedAt).toLocaleTimeString() })}</span> : null}
             {card.endedAt ? <span>{t("toolcard.endedAt", { time: new Date(card.endedAt).toLocaleTimeString() })}</span> : null}
-          </Box>
-        </Box>
-      </AccordionDetails>
-    </Accordion>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

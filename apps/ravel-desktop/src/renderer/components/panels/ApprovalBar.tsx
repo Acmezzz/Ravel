@@ -1,12 +1,6 @@
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import Typography from "@mui/material/Typography";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import { Button } from "../../ui/Button";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "../../ui/Dialog";
 import { ipc } from "../../ipc/client";
 import type { ChangeApprovalResult, GitStageItem } from "../../types/dto";
 
@@ -16,6 +10,15 @@ export interface ApprovalBarProps {
   selectedItems: GitStageItem[];
   hasUntrackedSelected: boolean;
   onApplied: (result: ChangeApprovalResult) => void;
+}
+
+function WarningIcon({ className }: { className?: string }): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
+      <path d="M8 2.4 14.4 13.2H1.6L8 2.4Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M8 6.4v3.2M8 11.4v.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 /**
@@ -52,7 +55,7 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
     setBusy(true);
     setError(null);
     try {
-      const res = await ipc.approveChange({ action: "reject", snapshotToken, files: selectedFiles, items: selectedItems });
+      const res = await ipc.approveChange({ action: "reject", files: selectedFiles, items: selectedItems, snapshotToken });
       if (res.ok) {
         onApplied(res.data);
         setConfirmOpen(false);
@@ -65,88 +68,46 @@ export function ApprovalBar({ snapshotToken, selectedFiles, selectedItems, hasUn
   }, [selectedFiles, selectedItems, snapshotToken, onApplied]);
 
   return (
-    <Box
-      sx={{
-        flex: "0 0 auto",
-        mt: 1,
-        p: 1,
-        background: "var(--omega-panel-glass)",
-        backdropFilter: "blur(16px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(16px) saturate(1.3)",
-        border: "1px solid var(--omega-border-strong)",
-        borderRadius: "12px",
-        boxShadow: "var(--omega-shadow-md), var(--omega-inset-highlight)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 0.75,
-        zIndex: 2,
-        minWidth: 0,
-      }}
-    >
-      {error ? <Typography role="alert" sx={{ fontSize: "0.75rem", color: "var(--omega-danger)", whiteSpace: "pre-wrap" }}>{error}</Typography> : null}
-      <Button
-        variant="contained"
-        fullWidth
-        onClick={() => void accept()}
-        disabled={busy}
-        sx={{
-          textTransform: "none",
-          fontWeight: 600,
-          background: "var(--omega-accent-gradient)",
-          color: "var(--omega-accent-foreground)",
-          boxShadow: "var(--omega-shadow-sm), var(--omega-inset-highlight), var(--omega-glow-accent)",
-          "&:hover": { background: "var(--omega-accent-gradient)", filter: "brightness(1.07)" },
-        }}
-      >
+    <div className="omega-approval">
+      {error ? <p role="alert" className="omega-error-text omega-approval-error">{error}</p> : null}
+      <Button variant="solid" fullWidth onClick={() => void accept()} disabled={busy}>
         保留全部改动
       </Button>
-      <Button
-        variant="outlined"
-        fullWidth
-        onClick={openReject}
-        disabled={busy || selectedFiles.length === 0}
-        sx={{
-          textTransform: "none",
-          fontWeight: 600,
-          color: "var(--omega-danger)",
-          borderColor: "var(--omega-border-strong)",
-          "&:hover": { borderColor: "var(--omega-danger)", background: "var(--omega-danger-soft)" },
-        }}
-      >
+      <Button className="omega-button-danger" fullWidth onClick={openReject} disabled={busy || selectedFiles.length === 0}>
         还原所选 · {selectedFiles.length}
       </Button>
 
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
-          <WarningAmberIcon sx={{ color: "var(--omega-warning)" }} /> 确认还原改动？
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-text-soft)" }}>
-            将还原选中的 {selectedFiles.length} 个文件。已纳入 git 的文件会回到上一次提交/暂存状态。
-          </Typography>
-          {hasUntrackedSelected ? (
-            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, mt: 1 }}>
-              <WarningAmberIcon sx={{ fontSize: "1rem", color: "var(--omega-danger)", mt: "2px", flex: "0 0 auto" }} />
-              <Typography sx={{ fontSize: "0.8125rem", color: "var(--omega-danger)", fontWeight: 600 }}>
-                其中包含未跟踪的新文件，还原将通过 git clean 永久删除，此操作不可撤销。
-              </Typography>
-            </Box>
-          ) : null}
-          <Box component="ul" sx={{ mt: 1, pl: 2, color: "var(--omega-text-muted)", fontSize: "0.75rem", maxHeight: 160, overflowY: "auto" }}>
-            {selectedFiles.map((f) => (
-              <li key={f}>{f}</li>
-            ))}
-          </Box>
+      <Dialog open={confirmOpen} onOpenChange={(next) => { if (!next) setConfirmOpen(false); }}>
+        <DialogContent className="omega-dialog-narrow">
+          <DialogTitle className="omega-approval-title">
+            <WarningIcon className="omega-icon-warning" /> 确认还原改动？
+          </DialogTitle>
+          <div className="omega-dialog-content-area omega-form-stack">
+            <p className="omega-muted-text">
+              将还原选中的 {selectedFiles.length} 个文件。已纳入 git 的文件会回到上一次提交/暂存状态。
+            </p>
+            {hasUntrackedSelected ? (
+              <div className="omega-approval-untracked">
+                <WarningIcon className="omega-icon-warning-sm" />
+                <p className="omega-error-text">
+                  其中包含未跟踪的新文件，还原将通过 git clean 永久删除，此操作不可撤销。
+                </p>
+              </div>
+            ) : null}
+            <ul className="omega-approval-files">
+              {selectedFiles.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setConfirmOpen(false)}>取消</Button>
+            <Button variant="solid" className="omega-button-danger-solid" onClick={() => void confirmReject()} disabled={busy}>
+              确认还原
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setConfirmOpen(false)} sx={{ textTransform: "none" }}>
-            取消
-          </Button>
-          <Button variant="contained" color="error" onClick={() => void confirmReject()} disabled={busy} sx={{ textTransform: "none" }}>
-            确认还原
-          </Button>
-        </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 }
