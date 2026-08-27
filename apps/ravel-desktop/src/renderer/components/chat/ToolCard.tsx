@@ -164,7 +164,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
   }, [expanded, loadDetail]);
 
   return (
-    <div className={`omega-toolcard${card.isError ? " omega-toolcard-error" : ""}`}>
+    <div className={`omega-toolcard${card.isError ? " omega-toolcard-error" : ""}`} data-tool-call-id={card.toolCallId} tabIndex={card.toolCallId ? -1 : undefined}>
       <button type="button" className="omega-toolcard-summary" aria-expanded={expanded} onClick={handleToggle}>
         <span
           className={card.status === "running" ? "omega-toolcard-dot pulse-dot" : "omega-toolcard-dot"}

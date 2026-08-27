@@ -54,6 +54,8 @@ export function MessageList(): React.ReactElement {
   const [historyLoading, setHistoryLoading] = React.useState(false);
   const historyRequestRef = React.useRef<Promise<void> | null>(null);
   const historyEpochRef = React.useRef(0);
+  const transcriptNavigation = useAppStore((s) => s.transcriptNavigation);
+  const clearTranscriptNavigation = useAppStore((s) => s.clearTranscriptNavigation);
   const scrollFrameRef = React.useRef<number | null>(null);
 
   // Reset the render window when the session changes.
@@ -161,6 +163,31 @@ export function MessageList(): React.ReactElement {
   React.useEffect(() => {
     if (bashRef.current) bashRef.current.scrollTop = bashRef.current.scrollHeight;
   }, [bashTail]);
+
+  React.useEffect(() => {
+    if (!transcriptNavigation || transcriptNavigation.sessionId !== activeSessionId) return;
+    const selector = transcriptNavigation.toolCallId
+      ? `[data-tool-call-id="${CSS.escape(transcriptNavigation.toolCallId)}"]`
+      : transcriptNavigation.entryId
+        ? `[data-entry-id="${CSS.escape(transcriptNavigation.entryId)}"]`
+        : null;
+    if (!selector) {
+      clearTranscriptNavigation(transcriptNavigation.nonce);
+      return;
+    }
+    const target = scrollRef.current?.querySelector<HTMLElement>(selector);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.focus({ preventScroll: true });
+      clearTranscriptNavigation(transcriptNavigation.nonce);
+    } else if (hiddenCount > 0) {
+      setWindowSize((current) => current + WINDOW_SIZE);
+    } else if (canLoadHistorical && !historyLoading) {
+      void loadHistoricalMessages();
+    } else {
+      clearTranscriptNavigation(transcriptNavigation.nonce);
+    }
+  }, [activeSessionId, canLoadHistorical, clearTranscriptNavigation, hiddenCount, historyLoading, loadHistoricalMessages, transcriptNavigation]);
 
   const runningBash = connection === "running" && bashTail.length > 0;
   let turnOrdinal = 0;

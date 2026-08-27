@@ -168,7 +168,7 @@ function MessageBubbleInner({ message, streamingRun }: MessageBubbleProps): Reac
   const isStreamingTarget = streamingRun;
 
   return (
-    <div className={`omega-msg ${isUser ? "omega-msg-user" : "omega-msg-assistant"}`}>
+    <div className={`omega-msg ${isUser ? "omega-msg-user" : "omega-msg-assistant"}`} data-entry-id={message.entryId ?? undefined} tabIndex={message.entryId ? -1 : undefined}>
       <div className="omega-msg-col">
         {showThinking ? (
           <ThinkingBlock

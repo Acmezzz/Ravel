@@ -25,6 +25,7 @@ export function GraphPanel(): React.ReactElement {
   const t = useT();
   const activeSessionId = useAppStore((state) => state.activeSessionId);
   const workspaceEpoch = useAppStore((state) => state.workspaceEpoch);
+  const requestTranscriptNavigation = useAppStore((state) => state.requestTranscriptNavigation);
   const [graph, setGraph] = React.useState<HistosGraphDTO | null>(null);
   const [selection, setSelection] = React.useState<GraphSelection | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -62,6 +63,10 @@ export function GraphPanel(): React.ReactElement {
   const evidenceCount = selected && graph ? graph.evidence.filter((item) => item.revisionId === selected.id).length : 0;
   const target = selected?.anchor;
   const canNavigate = Boolean(target && (target.entryId || target.toolCallId) && target.sessionId === activeSessionId);
+  const openTranscript = React.useCallback(() => {
+    if (!target || !canNavigate) return;
+    requestTranscriptNavigation({ sessionId: target.sessionId, ...(target.entryId ? { entryId: target.entryId } : {}), ...(target.toolCallId ? { toolCallId: target.toolCallId } : {}) });
+  }, [canNavigate, requestTranscriptNavigation, target]);
 
   return (
     <div className="omega-graph-panel">
@@ -101,7 +106,7 @@ export function GraphPanel(): React.ReactElement {
               <span className="mono-num">{selected.id}</span>
               <span className="omega-muted-text">{t("graph.evidence", { n: evidenceCount })}</span>
               {target ? <span className="mono-num">{targetLabel(target)} · {target.sessionId}</span> : <span className="omega-muted-text">{t("graph.noAnchor")}</span>}
-              <Button size="sm" variant="quiet" disabled={!canNavigate} title={!target ? t("graph.noAnchor") : target.sessionId !== activeSessionId ? t("graph.otherSession") : undefined}>{t("graph.openTranscript")}</Button>
+              <Button size="sm" variant="quiet" disabled={!canNavigate} onClick={openTranscript} title={!target ? t("graph.noAnchor") : target.sessionId !== activeSessionId ? t("graph.otherSession") : undefined}>{t("graph.openTranscript")}</Button>
             </section>
           ) : null}
         </>

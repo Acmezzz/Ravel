@@ -80,6 +80,13 @@ export interface SessionActivity {
   failed: boolean;
 }
 
+export interface TranscriptNavigationRequest {
+  sessionId: string;
+  entryId?: string;
+  toolCallId?: string;
+  nonce: number;
+}
+
 export interface LayoutState {
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
@@ -137,6 +144,9 @@ export interface AppState {
   streamingBuckets: Record<string, string>;
   /** Epoch of the last agent_start — lets late prompt failures skip rollback. */
   lastAgentStartAt: number;
+  transcriptNavigation: TranscriptNavigationRequest | null;
+  requestTranscriptNavigation: (request: Omit<TranscriptNavigationRequest, "nonce">) => void;
+  clearTranscriptNavigation: (nonce: number) => void;
 
   agent: AgentStateSnapshot | null;
   models: ModelInfo[];
@@ -293,6 +303,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   optimisticKey: null,
   streamingBuckets: {},
   lastAgentStartAt: 0,
+  transcriptNavigation: null,
+  requestTranscriptNavigation: (request) => set((state) => ({ transcriptNavigation: { ...request, nonce: (state.transcriptNavigation?.nonce ?? 0) + 1 } })),
+  clearTranscriptNavigation: (nonce) => set((state) => (state.transcriptNavigation?.nonce === nonce ? { transcriptNavigation: null } : {})),
 
   agent: null,
   models: [],

@@ -30,10 +30,16 @@ test("Graph panel and right rail expose the read-only graph surface", async () =
   assert.match(panel, /sourceSet: \{ sessionIds: \[sessionId\] \}/);
   assert.match(panel, /lens: "structural"/);
   assert.match(panel, /granularity: "entry"/);
+  assert.match(panel, /requestTranscriptNavigation/);
+  assert.match(panel, /target\.sessionId !== activeSessionId/);
   assert.doesNotMatch(panel, /Run|runSemanticGraph/);
   assert.match(right, /value="graph"/);
   assert.match(right, /rightTab === "graph"/);
   assert.match(workbench, /label="打开 Graph 面板"/);
   assert.match(store, /rightTab: "diff" \| "graph"/);
+  assert.match(store, /transcriptNavigation/);
+  assert.match(await read("components/chat/MessageBubble.tsx"), /data-entry-id/);
+  assert.match(await read("components/chat/ToolCard.tsx"), /data-tool-call-id/);
+  assert.match(await read("components/chat/MessageList.tsx"), /CSS\.escape/);
   assert.match(store, /rightTab: "diff",/);
 });
