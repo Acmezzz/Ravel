@@ -236,6 +236,11 @@ const messages = {
     "graph.convertOk": "Flow 已保存",
     "graph.convertFailed": "Flow 转换失败",
     "graph.convertSha": "Artifact {sha}",
+    "graph.freeze": "冻结上下文",
+    "graph.freezing": "正在冻结…",
+    "graph.freezeSha": "ContextSet {sha}",
+    "graph.freezeFailed": "冻结失败",
+    "graph.sessionNotActive": "目标会话未激活",
 
     "nav.tab.telemetry": "遥测",
     "nav.tab.snapshots": "快照",
@@ -528,6 +533,11 @@ const messages = {
     "graph.convertOk": "Flow saved",
     "graph.convertFailed": "Flow conversion failed",
     "graph.convertSha": "Artifact {sha}",
+    "graph.freeze": "Freeze context",
+    "graph.freezing": "Freezing…",
+    "graph.freezeSha": "ContextSet {sha}",
+    "graph.freezeFailed": "Context freeze failed",
+    "graph.sessionNotActive": "Target session is not active",
 
     "nav.tab.telemetry": "Telemetry",
     "nav.tab.snapshots": "Snapshots",

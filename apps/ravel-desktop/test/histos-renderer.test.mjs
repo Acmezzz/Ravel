@@ -27,6 +27,9 @@ test("Graph panel and right rail expose the read-only graph surface", async () =
   const workbench = await read("components/layout/Workbench.tsx");
   const store = await read("store/useAppStore.ts");
   assert.match(panel, /ipc\.histosGetGraph/);
+  assert.match(panel, /ipc\.histosFreezeContext/);
+  assert.match(panel, /targetSessionId: activeSessionId/);
+  assert.match(panel, /<SnippetEditor value=\{selected\.title\}/);
   assert.match(panel, /sourceSet: \{ sessionIds: \[sessionId\] \}/);
   assert.match(panel, /lens: "structural"/);
   assert.match(panel, /granularity: "entry"/);

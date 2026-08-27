@@ -24,6 +24,11 @@ test("GraphCanvas uses React Flow as a read-only projection surface", async () =
   assert.match(canvas, /nodesDraggable=\{false\}/);
   assert.match(canvas, /nodesConnectable=\{false\}/);
   assert.match(canvas, /elementsSelectable/);
+  assert.match(canvas, /nodeTypes: NodeTypes/);
+  for (const kind of ["operation", "entry", "file", "skill", "approval", "cluster"]) assert.match(canvas, new RegExp(`${kind}: HistosNode`));
+  assert.match(canvas, /selectionOnDrag/);
+  assert.match(canvas, /onSelectionChange/);
+  assert.match(canvas, /draggable: false/);
   assert.match(canvas, /worker\.terminate\(\)/);
   assert.doesNotMatch(canvas, /histosGetGraph|ipc\.|readFile|node:fs|node:sqlite/);
   assert.match(panel, /<GraphCanvas graph=\{projected\}/);
