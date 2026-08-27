@@ -150,6 +150,20 @@ function addParent(result, childId, parentId) {
   result.parents.add(`${childId}\u0000${parentId}`);
 }
 
+function indexFact(result, sessionId, fact, entryId) {
+  if (!isObject(fact) || typeof fact.type !== "string") return;
+  const outerEntryId = string(entryId, "entryId", 512);
+  const sourceAddress = sessionAddress(sessionId, outerEntryId);
+  const sourceAddressId = addAddress(result, sourceAddress);
+  const kind = fact.type === "operation_started" || fact.type === "operation_finished" ? "operation" : fact.type === "approval_asked" || fact.type === "approval_decided" ? "approval" : fact.type === "context_attached" ? "cluster" : "entry";
+  const factId = typeof fact.id === "string" && fact.id.length > 0 ? fact.id : outerEntryId;
+  const nodeId = `${kind}:${sessionObjectId(sessionId, factId)}`;
+  const nodeRevisionId = hashId(`fact-node:${nodeId}:${outerEntryId}`);
+  addNode(result, { nodeRevisionId, nodeId, kind, title: fact.type, createdAt: 0 }, [{ address: sourceAddress, addressId: sourceAddressId, role: "produces" }]);
+  const entryNodeId = `entry:${sessionObjectId(sessionId, outerEntryId)}`;
+  addEdge(result, { edgeRevisionId: hashId(`fact-edge:${entryNodeId}:${nodeId}`), edgeId: `fact:${outerEntryId}:${factId}`, srcNodeId: entryNodeId, dstNodeId: nodeId, kind: "produced", createdAt: 0 }, [{ address: sourceAddress, addressId: sourceAddressId, role: "produces" }]);
+}
+
 function resultFromStructuralGraph(graph, result) {
   for (const node of graph.nodes ?? []) {
     const nodeRevisionId = hashId(`adapter-node:${node.id}`);
@@ -343,7 +357,9 @@ export class HistosEngine {
       for (const fact of input.facts) {
         check();
         if (!isObject(fact)) continue;
-        indexFact(result, sessionId, fact, sessionAddress(sessionId, fact.id ?? `fact-${now()}`));
+        const entryId = typeof fact.entryId === "string" ? fact.entryId : fact.id;
+        if (!entryId) continue;
+        indexFact(result, sessionId, fact.fact ?? fact, entryId);
       }
     } else if (typeof input.file === "string" || typeof input.sessionFile === "string") {
       const scan = await adapters.scanSessionFile(input.file ?? input.sessionFile, { workspaceId: this.workspaceId });

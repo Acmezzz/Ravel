@@ -11,6 +11,138 @@ export type IpcResult<T> =
   | { ok: true; data: T }
   | { ok: false; code: string; message: string };
 
+// ===== Histos =====
+
+export type HistosJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | HistosJsonValue[]
+  | { [key: string]: HistosJsonValue };
+
+export type HistosSourceSet = { [key: string]: HistosJsonValue };
+export type HistosFactSourceType =
+  | "session_entry"
+  | "session_span"
+  | "operation"
+  | "tool"
+  | "approval"
+  | "file"
+  | "skill"
+  | "mcp_config"
+  | "checkpoint"
+  | "graph_revision"
+  | "flow_revision"
+  | "context_set";
+export type HistosLens = "structural" | "semantic" | "mixed";
+export type HistosGranularity = "operation" | "entry" | "span" | "file" | "cluster";
+
+export interface HistosQueryDTO {
+  sourceSet: HistosSourceSet;
+  lens: HistosLens;
+  granularity: HistosGranularity;
+}
+
+export type HistosFactSelector =
+  | { kind: "span"; start: number; length: number }
+  | { kind: "hunk"; startLine: number; endLine: number }
+  | { kind: "json_path"; path: string }
+  | { kind: "node"; nodeRevisionId: string }
+  | { kind: "edge"; edgeRevisionId: string };
+
+export type HistosFactAddress = {
+  sourceType: HistosFactSourceType;
+  objectId: string;
+  revisionId: string;
+  selector?: HistosFactSelector;
+};
+
+export interface HistosEvidenceDTO {
+  revisionId: string;
+  addressId: string;
+  role: string;
+  address?: HistosFactAddress;
+}
+
+export interface HistosNodeRevisionDTO {
+  nodeRevisionId: string;
+  nodeId: string;
+  kind: string;
+  title: string | null;
+  createdAt: number;
+  artifactSha: string | null;
+}
+
+export interface HistosEdgeRevisionDTO {
+  edgeRevisionId: string;
+  edgeId: string;
+  srcNodeId: string;
+  dstNodeId: string;
+  kind: string;
+  createdAt: number;
+  artifactSha: string | null;
+}
+
+export interface HistosRevisionParentDTO {
+  childId: string;
+  parentId: string;
+}
+
+export interface HistosGraphDTO extends HistosQueryDTO {
+  nodes: HistosNodeRevisionDTO[];
+  edges: HistosEdgeRevisionDTO[];
+  evidence: HistosEvidenceDTO[];
+  parents: HistosRevisionParentDTO[];
+}
+
+export type HistosSelection = string | {
+  nodeRevisionId?: string;
+  edgeRevisionId?: string;
+  id?: string;
+};
+
+export type HistosGetGraphRequest = HistosQueryDTO;
+export interface HistosRebuildRequest {
+  granularity?: HistosGranularity;
+  maxFiles?: number;
+}
+export interface HistosGetNodeRequest extends HistosQueryDTO {
+  nodeId: string;
+}
+export interface HistosFreezeContextRequest extends HistosQueryDTO {
+  selection: HistosSelection[];
+  targetSessionId?: string;
+}
+export interface HistosGetArtifactRequest extends HistosQueryDTO {
+  sha256: string;
+}
+
+export interface HistosArtifactDTO extends HistosQueryDTO {
+  schemaVersion: number;
+  workspaceId: string;
+  kind: "graph_revision" | "flow_revision" | "context_set";
+  nodes: HistosNodeRevisionDTO[];
+  edges: HistosEdgeRevisionDTO[];
+  evidence: HistosEvidenceDTO[];
+  parents: string[];
+  selection?: HistosEvidenceDTO[];
+  sha256?: string;
+}
+
+export interface HistosRebuildResultDTO {
+  workspaceId?: string;
+  nodeCount: number;
+  edgeCount: number;
+  artifactCount: number;
+}
+
+export interface HistosContextFreezeResultDTO {
+  sha256: string;
+  artifact: HistosArtifactDTO;
+  targetSessionId: string | null;
+}
+
 // ===== agent_* (V1 placeholders) =====
 
 export interface AgentPermissionState {

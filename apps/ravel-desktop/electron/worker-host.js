@@ -5,7 +5,7 @@
 import { utilityProcess } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isWorkerEvent, isWorkerResponse } from "./worker-protocol.js";
+import { isWorkerEvent, isWorkerFactsAppended, isWorkerResponse } from "./worker-protocol.js";
 import { DEFAULT_PERMISSION_PROFILE } from "./permission-profiles.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +32,7 @@ export class WorkerHost {
     this.customProviders = {};
     this.activating = false;
     this.onEvent = null;
+    this.onFactsAppended = null;
     this.onExtensionUIRequest = null;
     this.onSettled = null;
     this.onError = null;
@@ -145,6 +146,11 @@ export class WorkerHost {
     }
     if (message.type === "init-error") {
       this._rejectInit(new Error(message.error));
+      return;
+    }
+    if (message.type === "facts-appended") {
+      if (!isWorkerFactsAppended(message) || message.generation !== generation || message.sessionId !== this.sessionId) return;
+      this.onFactsAppended?.(message);
       return;
     }
     if (message.type === "app-event") {

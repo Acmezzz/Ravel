@@ -46,13 +46,28 @@ import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.
 import { migrateOmegaUserData } from "./data-migration.js";
 import { DEEP_LINK_PROTOCOL, parseDeepLink, shouldRegisterProtocol } from "./deep-links.js";
 import { WorkerHost } from "./worker-host.js";
+import { HistosHost } from "./histos-host.js";
 import { sanitizeSearchQuery, searchWorkspace } from "./search-service.js";
 import { createCheckpoint, listCheckpoints, pruneCheckpoints, restoreCheckpoint } from "./checkpoint-service.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { DEFAULT_PERMISSION_PROFILE, PERMISSION_PROFILES, sanitizePermissionProfile, createPermissionGuard, assertOperationAllowed } from "./permission-profiles.js";
-import { customProviderRequest, fileRequest, gitCommitRequest, gitStageRequest, replayRequest, sessionNameRequest, sessionRequest, workspaceRequest } from "./ipc-schemas.js";
+import {
+  customProviderRequest,
+  fileRequest,
+  gitCommitRequest,
+  gitStageRequest,
+  histosFreezeContextRequest,
+  histosGetArtifactRequest,
+  histosGetGraphRequest,
+  histosGetNodeRequest,
+  histosRebuildRequest,
+  replayRequest,
+  sessionNameRequest,
+  sessionRequest,
+  workspaceRequest,
+} from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
 import {
   listMcpRows,
@@ -87,6 +102,7 @@ let shuttingDown = false;
 let quitRequested = false;
 let activeCwd = null;
 let agentReady = false;
+const histosHosts = new Map();
 
 // 动态视图: live cross-session rows + debounced push to the renderer.
 const activityTracker = createActivityTracker();
@@ -155,6 +171,18 @@ function dataRoot() {
 
 function workspaceRegistryFile() {
   return join(dataRoot(), "workspaces.json");
+}
+
+function histosRootOf(workspaceId) {
+  return join(dataRoot(), "histos", workspaceId);
+}
+
+function histosDatabasePathOf(workspaceId) {
+  return join(histosRootOf(workspaceId), "index.sqlite");
+}
+
+function histosArtifactsPathOf(workspaceId) {
+  return join(histosRootOf(workspaceId), "artifacts");
 }
 
 function desktopSettingsFile() {
@@ -477,6 +505,21 @@ function bindHost(host) {
       sendTransportState("diagnostic", { sessionId: host.sessionId, foreground: host === worker, error: message });
     }
   };
+  host.onFactsAppended = (message) => {
+    if (!message?.facts?.length || !host.cwd) return;
+    void ensureHistosHost(host.cwd)
+      .then((histos) => histos.call("applySessionFacts", {
+        sessionId: message.sessionId,
+        facts: message.facts,
+      }))
+      .catch((error) => {
+        sendTransportState("diagnostic", {
+          sessionId: message.sessionId,
+          subsystem: "histos",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+  };
   host.onExtensionUIRequest = (request) => {
     if (!isExtensionUIRequest(request)) return;
     if (isBlockingUiMethod(request.method)) {
@@ -510,6 +553,37 @@ function bindHost(host) {
       /* best effort */
     }
   };
+  return host;
+}
+
+function workspaceIdForRoot(root) {
+  const record = workspaceRegistry?.list().find((item) => item.realRoot === root);
+  if (!record?.workspaceId) throw new Error("Workspace identity is unavailable");
+  return record.workspaceId;
+}
+
+async function ensureHistosHost(root = activeCwd) {
+  if (!root) throw new Error("No active workspace");
+  const authorizedRoot = authorizedWorkspace(root);
+  const workspaceId = workspaceIdForRoot(authorizedRoot);
+  let host = histosHosts.get(workspaceId);
+  if (!host) {
+    host = new HistosHost({ timeout: WORKER_RPC_TIMEOUT });
+    histosHosts.set(workspaceId, host);
+    try {
+      await host.start({
+        workspaceId,
+        databasePath: histosDatabasePathOf(workspaceId),
+        artifactsDir: histosArtifactsPathOf(workspaceId),
+        sessionsRoot: piSessionsRoot(),
+        workspaceRoot: authorizedRoot,
+      });
+    } catch (error) {
+      histosHosts.delete(workspaceId);
+      await host.kill().catch(() => {});
+      throw error;
+    }
+  }
   return host;
 }
 
@@ -710,6 +784,11 @@ async function bootstrap() {
   process.stdout.write(`[main] cwd=${cwd}\n`);
   const slot = await acquireSlot({ sessionId: startupRequest.sessionId, cwd, projectTrusted: projectTrust.isTrusted(cwd) });
   activeCwd = slot.cwd ?? cwd;
+  try {
+    await ensureHistosHost(activeCwd);
+  } catch (error) {
+    sendTransportState("diagnostic", { subsystem: "histos", error: error instanceof Error ? error.message : String(error) });
+  }
   agentReady = true;
   process.stdout.write("[main] agent worker ready\n");
 }
@@ -1041,6 +1120,11 @@ ipcMain.handle("omega:switchWorkspace", async (event, req) => {
   if (result.ok) {
     stopAllFileWatches();
     rememberActive(result.data);
+    try {
+      await ensureHistosHost(activeCwd);
+    } catch (error) {
+      sendTransportState("diagnostic", { error: error instanceof Error ? error.message : String(error), subsystem: "histos" });
+    }
   }
   return result;
 });
@@ -1466,6 +1550,63 @@ ipcMain.handle("omega:checkpointRestore", (event, req) => {
     },
     (error) => errorResult("restore_failed", error instanceof Error ? error.message : String(error)),
   );
+});
+
+async function activeHistos() {
+  if (!activeCwd) throw Object.assign(new Error("No active workspace"), { code: "workspace_not_authorized" });
+  return ensureHistosHost(activeCwd);
+}
+
+ipcMain.handle("omega:histosGetGraph", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosGetGraphRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sourceSet, lens, and granularity are required");
+  try { return okResult(await (await activeHistos()).call("getGraph", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosRebuild", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosRebuildRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sourceSet, lens, and granularity are required");
+  try {
+    const host = await activeHistos();
+    return okResult(await host.call("rebuild", { ...normalized, sessionsRoot: piSessionsRoot(), workspaceRoot: activeCwd }));
+  } catch (error) { return errorResult(error?.code ?? "rebuild_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosGetNode", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosGetNodeRequest(req);
+  if (!normalized) return errorResult("invalid_args", "nodeId and query are required");
+  try { return okResult(await (await activeHistos()).call("getNode", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosFreezeContext", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosFreezeContextRequest(req);
+  if (!normalized) return errorResult("invalid_args", "selection and query are required");
+  try {
+    const frozen = await (await activeHistos()).call("freezeContext", normalized);
+    const targetSessionId = normalized.targetSessionId ?? worker?.sessionId;
+    if (targetSessionId && targetSessionId === worker?.sessionId && frozen?.sha256) {
+      try {
+        await worker.call("appendContextAttached", { targetSessionId, contextSha: frozen.sha256 });
+      } catch (error) {
+        return okResult({ ...frozen, targetSessionId, factAppend: { ok: false, error: error instanceof Error ? error.message : String(error) } });
+      }
+    }
+    return okResult({ ...frozen, targetSessionId: targetSessionId ?? null, factAppend: targetSessionId ? { ok: true } : { ok: false, error: "targetSessionId is required" } });
+  } catch (error) { return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosGetArtifact", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosGetArtifactRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sha256 and query are required");
+  try { return okResult(await (await activeHistos()).call("getArtifact", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
 });
 
 ipcMain.handle("omega:getThinking", (event, req) => {
@@ -2052,6 +2193,8 @@ async function shutdown() {
   agentReady = false;
   worker = null;
   stopAllFileWatches();
+  for (const host of histosHosts.values()) await host.dispose().catch(() => {});
+  histosHosts.clear();
   await workerPool.disposeAll();
 }
 

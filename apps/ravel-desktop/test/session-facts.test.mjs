@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
-import { appendContextAttachedFact, appendFact, argsDigestOf, closeStaleApprovals, closeStaleOperations, pendingApprovalAsks, pendingOperations, readFacts, unfinishedFinishFor, unavailableDecisionFor } from "../electron/session-facts.js";
+import { appendContextAttachedFact, appendFact, argsDigestOf, closeStaleApprovals, closeStaleOperations, pendingApprovalAsks, pendingOperations, readFacts, setFactsAppendedListener, unfinishedFinishFor, unavailableDecisionFor } from "../electron/session-facts.js";
 import { createPermissionGuard } from "../electron/permission-profiles.js";
 
 function fakeSessionManager() {
@@ -81,6 +81,18 @@ test("appendFact validates the shared record shape before writing", () => {
     appendFact(sm, { type: "approval_decided", id: "d3", lane: "main", runId: "r", toolCallId: "c", askedId: "a", outcome: "rejected" }),
   );
   assert.equal(sm.appended.length, 2);
+});
+
+test("appendFact notifies after the durable writer returns its outer entry id", () => {
+  const sm = fakeSessionManager();
+  const notifications = [];
+  const dispose = setFactsAppendedListener(sm, (value) => notifications.push(value));
+  const contextSha = "a".repeat(64);
+  appendContextAttachedFact(sm, { targetSessionId: "target-session", contextSha });
+  dispose();
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].entryId, "entry-1");
+  assert.equal(notifications[0].fact.contextSha, contextSha);
 });
 
 test("context_attached facts require a content-addressed context artifact", () => {

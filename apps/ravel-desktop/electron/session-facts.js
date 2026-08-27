@@ -13,6 +13,15 @@ import { createHash, randomUUID } from "node:crypto";
 export const FACT_CUSTOM_TYPE = "ravel_record";
 
 const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached"]);
+const factsAppendedListeners = new WeakMap();
+
+export function setFactsAppendedListener(sessionManager, listener) {
+	if (!sessionManager || typeof sessionManager !== "object") throw new TypeError("sessionManager is required");
+	if (listener !== undefined && typeof listener !== "function") throw new TypeError("listener must be a function");
+	if (listener) factsAppendedListeners.set(sessionManager, listener);
+	else factsAppendedListeners.delete(sessionManager);
+	return () => factsAppendedListeners.delete(sessionManager);
+}
 
 /** Delimiters for the model-visible block that resolves @session mentions. */
 export const SESSION_REFERENCE_BEGIN = "===== BEGIN RAVEL SESSION REFERENCES =====";
@@ -119,7 +128,14 @@ export function appendFact(sessionManager, record) {
 				break;
 			}
 		}
-	return sessionManager.appendCustomEntry(FACT_CUSTOM_TYPE, record);
+		const appended = sessionManager.appendCustomEntry(FACT_CUSTOM_TYPE, record);
+		try {
+			const listener = factsAppendedListeners.get(sessionManager);
+			listener?.({ entryId: typeof appended === "string" ? appended : appended?.id ?? appended?.entryId ?? null, fact: { ...record } });
+		} catch {
+			/* Fact notifications are diagnostic only and never affect persistence. */
+		}
+		return appended;
 }
 
 /** All durable facts of a session, oldest first (file order). */

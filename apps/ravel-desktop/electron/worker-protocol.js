@@ -30,6 +30,10 @@ function isEventMeta(meta) {
   return true;
 }
 
+export function isWorkerFactsAppended(value) {
+  return Boolean(value && typeof value === "object" && value.type === "facts-appended" && typeof value.sessionId === "string" && value.sessionId.length > 0 && Number.isInteger(value.generation) && value.generation >= 0 && Array.isArray(value.facts) && value.facts.every((item) => item && typeof item === "object" && typeof item.entryId === "string" && item.entryId.length > 0 && item.fact && typeof item.fact === "object"));
+}
+
 export function isWorkerEvent(value) {
   if (!value || typeof value !== "object") return false;
   if (!["app-event", "settled", "extension-ui-request"].includes(value.type)) return false;

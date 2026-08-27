@@ -33,6 +33,8 @@ import { validateCustomProvider } from "./custom-providers.js";
 import {
   appendCheckpointFacts,
   appendFact,
+  appendContextAttachedFact,
+  setFactsAppendedListener,
   appendSessionReferenceFacts,
   buildSessionReferenceBlock,
   closeStaleApprovals,
@@ -45,6 +47,7 @@ import { createCheckpoint } from "./checkpoint-service.js";
 let runtime = null;
 let extensionsRoot = null;
 let unsubscribe = null;
+let unsubscribeFacts = null;
 let generation = 0;
 let disposed = false;
 let eventSequence = 0;
@@ -265,6 +268,14 @@ function settleSessionFacts() {
 	}
 }
 
+function bindFacts(session) {
+  unsubscribeFacts?.();
+  unsubscribeFacts = setFactsAppendedListener(session.sessionManager, (item) => {
+    if (!item?.entryId || !item.fact) return;
+    post({ type: "facts-appended", sessionId: session.sessionId, generation, facts: [{ entryId: item.entryId, fact: item.fact }] });
+  });
+}
+
 function attach(session) {
   try {
     unsubscribe?.();
@@ -324,9 +335,11 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   runtime.setRebindSession(async (session) => {
     attach(session);
     await bindSession(session);
+    bindFacts(session);
   });
   attach(runtime.session);
   await bindSession(runtime.session);
+  bindFacts(runtime.session);
   settleSessionFacts();
   post({ type: "init-done", sessionId: runtime.session.sessionId, cwd: runtime.cwd });
 }
@@ -537,9 +550,11 @@ async function recreateForWorkspace(workspace) {
   runtime.setRebindSession(async (session) => {
     attach(session);
     await bindSession(session);
+    bindFacts(session);
   });
   attach(runtime.session);
   await bindSession(runtime.session);
+  bindFacts(runtime.session);
   settleSessionFacts();
 }
 
@@ -558,6 +573,15 @@ const methods = {
       console.error("checkpoint fact failed", factError);
       return { operationId: null };
     }
+  },
+  appendContextAttached: async ({ targetSessionId, contextSha, lane = "main" }) => {
+    if (targetSessionId !== runtime.session.sessionId) {
+      const error = new Error("context attachment target must be the active session");
+      error.code = "invalid_args";
+      throw error;
+    }
+    appendContextAttachedFact(runtime.session.sessionManager, { targetSessionId, contextSha, lane });
+    return { targetSessionId, contextSha };
   },
   getState: () => bridge.snapshotOf(runtime),
   listModels: () => bridge.listModels(runtime),

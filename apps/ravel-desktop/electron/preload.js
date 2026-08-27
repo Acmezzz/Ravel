@@ -59,6 +59,45 @@ function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+const HISTOS_LENSES = ["structural", "semantic", "mixed"];
+const HISTOS_GRANULARITIES = ["operation", "entry", "span", "file", "cluster"];
+const HISTOS_SHA256 = /^[0-9a-f]{64}$/;
+const HISTOS_CONTROL = /[\u0000-\u001f\u007f]/;
+const HISTOS_MAX_ITEMS = 4096;
+const HISTOS_MAX_DEPTH = 12;
+
+function histosString(value, max = 4096) {
+  return typeof value === "string" && value.length > 0 && value.length <= max && !HISTOS_CONTROL.test(value);
+}
+
+function histosJson(value, depth = 0, count = { value: 0 }) {
+  count.value += 1;
+  if (depth > HISTOS_MAX_DEPTH || count.value > HISTOS_MAX_ITEMS) return false;
+  if (value === null || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "string") return value.length <= 4096 && !HISTOS_CONTROL.test(value);
+  if (Array.isArray(value)) return value.every((item) => histosJson(item, depth + 1, count));
+  if (!isPlainObject(value)) return false;
+  return Object.entries(value).every(([key, item]) => histosString(key, 256) && histosJson(item, depth + 1, count));
+}
+
+function histosQuery(req) {
+  if (!isPlainObject(req) || !isPlainObject(req.sourceSet) || !histosJson(req.sourceSet) || !HISTOS_LENSES.includes(req.lens) || !HISTOS_GRANULARITIES.includes(req.granularity)) return null;
+  return { sourceSet: req.sourceSet, lens: req.lens, granularity: req.granularity };
+}
+
+function histosSelection(value) {
+  if (typeof value === "string") return histosString(value, 512) ? value : null;
+  if (!isPlainObject(value)) return null;
+  const keys = ["nodeRevisionId", "edgeRevisionId", "id"].filter((key) => typeof value[key] === "string");
+  if (keys.length !== 1 || Object.keys(value).some((key) => !["nodeRevisionId", "edgeRevisionId", "id"].includes(key)) || !histosString(value[keys[0]], 512)) return null;
+  return { [keys[0]]: value[keys[0]] };
+}
+
+function invalidHistos(message) {
+  return Promise.resolve({ ok: false, code: "invalid_args", message });
+}
+
 contextBridge.exposeInMainWorld("omega", {
   ...windowApi,
   // ----- legacy contract (unchanged) -----
@@ -215,6 +254,35 @@ contextBridge.exposeInMainWorld("omega", {
   configureCustomProvider: (req) => {
     if (!req || typeof req !== "object") return Promise.resolve({ ok: false, code: "invalid_args", message: "provider config is required" });
     return ipcRenderer.invoke("omega:configureCustomProvider", req);
+  },
+  histosGetGraph: (req) => {
+    const query = histosQuery(req);
+    return query ? ipcRenderer.invoke("omega:histosGetGraph", query) : invalidHistos("sourceSet, lens, and granularity are required");
+  },
+  histosRebuild: (req) => {
+    const query = histosQuery(req);
+    if (!query) return invalidHistos("sourceSet, lens, and granularity are required");
+    const maxFiles = req?.maxFiles;
+    if (maxFiles !== undefined && (!Number.isSafeInteger(maxFiles) || maxFiles < 1 || maxFiles > 100000)) return invalidHistos("maxFiles is out of bounds");
+    return ipcRenderer.invoke("omega:histosRebuild", { ...query, ...(maxFiles === undefined ? {} : { maxFiles }) });
+  },
+  histosGetNode: (req) => {
+    const query = histosQuery(req);
+    const nodeId = req?.nodeId ?? req?.id;
+    return query && histosString(nodeId, 512) ? ipcRenderer.invoke("omega:histosGetNode", { ...query, nodeId }) : invalidHistos("nodeId and query are required");
+  },
+  histosFreezeContext: (req) => {
+    const query = histosQuery(req);
+    const selection = Array.isArray(req?.selection) ? req.selection.slice(0, 2000).map(histosSelection) : [];
+    if (!query || selection.length === 0 || selection.some((item) => item === null)) return invalidHistos("selection and query are required");
+    if (req?.selection?.length > 2000) return invalidHistos("selection is too large");
+    if (req?.targetSessionId !== undefined && !histosString(req.targetSessionId, 128)) return invalidHistos("targetSessionId is invalid");
+    return ipcRenderer.invoke("omega:histosFreezeContext", { ...query, selection, ...(req?.targetSessionId === undefined ? {} : { targetSessionId: req.targetSessionId }) });
+  },
+  histosGetArtifact: (req) => {
+    const query = histosQuery(req);
+    const sha256 = req?.sha256 ?? req?.hash;
+    return query && typeof sha256 === "string" && HISTOS_SHA256.test(sha256) ? ipcRenderer.invoke("omega:histosGetArtifact", { ...query, sha256 }) : invalidHistos("sha256 and query are required");
   },
   setPermissionProfile: (req) => {
     const allowed = ["trusted", "workspace-only", "read-only", "ask-before-command"];

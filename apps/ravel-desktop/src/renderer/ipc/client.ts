@@ -37,6 +37,16 @@ import type {
   TelemetrySnapshot,
   SearchResultBundle,
   CheckpointInfo,
+  HistosGetGraphRequest,
+  HistosRebuildRequest,
+  HistosGetNodeRequest,
+  HistosFreezeContextRequest,
+  HistosGetArtifactRequest,
+  HistosGraphDTO,
+  HistosRebuildResultDTO,
+  HistosNodeRevisionDTO,
+  HistosContextFreezeResultDTO,
+  HistosArtifactDTO,
 } from "../types/dto";
 
 /** A structured @session mention resolved by the composer mention menu. */
@@ -133,6 +143,11 @@ export interface RavelBridge {
   updateDesktopSettings(req: Partial<DesktopSettings>): Promise<IpcResult<DesktopSettings>>;
   configureCustomProvider(req: Record<string, unknown>): Promise<IpcResult<{ provider: Record<string, unknown>; models: ModelInfo[] }>>;
   setPermissionProfile(req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>>;
+  histosGetGraph(req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>>;
+  histosRebuild(req: HistosRebuildRequest): Promise<IpcResult<HistosRebuildResultDTO>>;
+  histosGetNode(req: HistosGetNodeRequest): Promise<IpcResult<HistosNodeRevisionDTO | null>>;
+  histosFreezeContext(req: HistosFreezeContextRequest): Promise<IpcResult<HistosContextFreezeResultDTO>>;
+  histosGetArtifact(req: HistosGetArtifactRequest): Promise<IpcResult<HistosArtifactDTO>>;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
   listSessions(req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>>;
@@ -277,6 +292,16 @@ export const ipc = {
   configureCustomProvider: async (req: Record<string, unknown>): Promise<IpcResult<{ provider: Record<string, unknown>; models: ModelInfo[] }>> => ok(await window.omega?.configureCustomProvider?.(req)),
   setPermissionProfile: async (req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>> =>
     ok(await window.omega?.setPermissionProfile?.(req)),
+  histosGetGraph: async (req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>> =>
+    ok(await window.omega?.histosGetGraph?.(req)),
+  histosRebuild: async (req: HistosRebuildRequest): Promise<IpcResult<HistosRebuildResultDTO>> =>
+    ok(await window.omega?.histosRebuild?.(req)),
+  histosGetNode: async (req: HistosGetNodeRequest): Promise<IpcResult<HistosNodeRevisionDTO | null>> =>
+    ok(await window.omega?.histosGetNode?.(req)),
+  histosFreezeContext: async (req: HistosFreezeContextRequest): Promise<IpcResult<HistosContextFreezeResultDTO>> =>
+    ok(await window.omega?.histosFreezeContext?.(req)),
+  histosGetArtifact: async (req: HistosGetArtifactRequest): Promise<IpcResult<HistosArtifactDTO>> =>
+    ok(await window.omega?.histosGetArtifact?.(req)),
   setProviderApiKey: async (req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>> =>
     ok(await window.omega?.setProviderApiKey?.(req)),
   removeProviderApiKey: async (req: { providerId: string }): Promise<IpcResult<AuthStatus>> =>
