@@ -35,6 +35,7 @@
     "@xyflow/react": "12.11.5",
     "elkjs": "0.12.0",
     "highlight.js": "11.10.0",
+    "lucide-react": "1.34.0",
     "node-pty": "1.1.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",

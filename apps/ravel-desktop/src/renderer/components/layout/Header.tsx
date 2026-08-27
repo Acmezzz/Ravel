@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ChevronDown, Focus, Workflow, Info, Minimize2, MonitorSmartphone, Moon, MoreHorizontal, Network, Puzzle, Settings, Square, Sun } from "lucide-react";
 import { Button, IconButton } from "../../ui/Button";
 import { Popover } from "../../ui/Popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
@@ -62,121 +63,55 @@ function Divider(): React.ReactElement {
 }
 
 function StopIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <rect x="4" y="4" width="8" height="8" rx="1.2" fill="currentColor" />
-    </svg>
-  );
+  return <Square className="omega-icon-14" fill="currentColor" aria-hidden="true" />;
 }
 
 function CompressIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
-      <path d="M3 5.5h10M5 3.5 8 6.5 11 3.5M3 10.5h10M5 12.5 8 9.5 11 12.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <Minimize2 className="omega-icon-16" aria-hidden="true" />;
 }
 
 function FocusIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M3 6.2V3h3.2M10 3h3v3.2M13 10v3h-3.2M6 13H3v-3.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <Focus className="omega-icon-16" aria-hidden="true" />;
 }
 
 function MoreIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
-      <circle cx="4" cy="8" r="1.15" fill="currentColor" />
-      <circle cx="8" cy="8" r="1.15" fill="currentColor" />
-      <circle cx="12" cy="8" r="1.15" fill="currentColor" />
-    </svg>
-  );
+  return <MoreHorizontal className="omega-icon-16" aria-hidden="true" />;
 }
 
 function ExpandIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <path d="M4 6.2 8 10l4-3.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <ChevronDown className="omega-icon-14" aria-hidden="true" />;
 }
 
 function HubIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="3.2" cy="4.2" r="1.2" fill="currentColor" />
-      <circle cx="12.8" cy="4.2" r="1.2" fill="currentColor" />
-      <circle cx="3.2" cy="11.8" r="1.2" fill="currentColor" />
-      <circle cx="12.8" cy="11.8" r="1.2" fill="currentColor" />
-    </svg>
-  );
+  return <Workflow className="omega-icon-14" aria-hidden="true" />;
 }
 
 function ExtensionIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <path d="M6.2 3.2h3.6v2.2h2.8v3.6H10v2.8H6.2V9H3.4V5.4h2.8V3.2Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  );
+  return <Puzzle className="omega-icon-14" aria-hidden="true" />;
 }
 
 function TreeIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <path d="M8 3.2v6.4M8 9.6H4.4V12.8M8 9.6h3.6V12.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="8" cy="3.2" r="1.3" fill="currentColor" />
-      <circle cx="4.4" cy="12.8" r="1.3" fill="currentColor" />
-      <circle cx="11.6" cy="12.8" r="1.3" fill="currentColor" />
-    </svg>
-  );
+  return <Network className="omega-icon-14" aria-hidden="true" />;
 }
 
 function InfoIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 7.2V11M8 5.2v.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <Info className="omega-icon-14" aria-hidden="true" />;
 }
 
 function SettingsIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.1" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 2.6v1.4M8 12v1.4M2.6 8h1.4M12 8h1.4M4.1 4.1l1 1M10.9 10.9l1 1M11.9 4.1l-1 1M5.1 10.9l-1 1" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
+  return <Settings className="omega-icon-14" aria-hidden="true" />;
 }
 
 function LightModeIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 2.4v1.4M8 12.2v1.4M2.4 8h1.4M12.2 8h1.4M4.1 4.1l1 1M10.9 10.9l1 1M11.9 4.1l-1 1M5.1 10.9l-1 1" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
+  return <Sun className="omega-icon-14" aria-hidden="true" />;
 }
 
 function DarkModeIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <path d="M10.2 3.4A5.2 5.2 0 1 0 12.6 11 4.2 4.2 0 0 1 10.2 3.4Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-    </svg>
-  );
+  return <Moon className="omega-icon-14" aria-hidden="true" />;
 }
 
 function SystemModeIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <rect x="2.6" y="3.4" width="10.8" height="7.4" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M6 12.6h4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <MonitorSmartphone className="omega-icon-14" aria-hidden="true" />;
 }
 
 function ThemeIcon({ mode }: { mode: ThemeMode }): React.ReactElement {

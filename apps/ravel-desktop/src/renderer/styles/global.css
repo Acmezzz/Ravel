@@ -41,6 +41,11 @@ body,
 :root {
   color-scheme: light;
 
+  /* Type stacks — Inter/JetBrains first, CJK system fallbacks for the
+   * novel/document product surface (docs §5.5). CJK never enters Inter. */
+  --omega-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --omega-font-mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Consolas, "Liberation Mono", Menlo, "PingFang Mono", "Microsoft YaHei Mono", monospace;
+
   /* Surfaces — L0 canvas → L4 overlay, ~4% luminance steps */
   --omega-bg: #f4f5f6;
   --omega-bg-rail: #eceeef;
@@ -184,7 +189,7 @@ body {
     radial-gradient(ellipse 80% 50% at 15% -10%, var(--omega-glow-1) 0, transparent 60%),
     radial-gradient(ellipse 70% 55% at 90% 110%, var(--omega-glow-2) 0, transparent 60%),
     var(--omega-bg);
-  font: 0.875rem/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 0.875rem/1.6 var(--omega-font-sans);
   font-feature-settings: "ss01", "cv05", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -277,7 +282,7 @@ body {
   box-shadow: var(--omega-inset-highlight);
 }
 .md-body code {
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: var(--omega-font-mono);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
@@ -609,7 +614,7 @@ body {
 .omega-session-stat { min-width: 84px; }.omega-session-stat span, .omega-session-stat strong { display: block; }.omega-session-stat span { color: var(--omega-text-dim); font-size: 0.65625rem; }.omega-session-stat strong { color: var(--omega-text); font-size: 0.875rem; }
 .omega-divider { margin: 1rem 0; border: 0; border-top: 1px solid var(--omega-border); }
 .omega-session-prompt-toggle { border: 0; padding: 0; background: transparent; color: var(--omega-accent); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; text-align: left; }
-.omega-session-prompt { max-height: 300px; margin: 0.75rem 0 0; overflow-y: auto; border: 1px solid var(--omega-border); border-radius: 10px; padding: 0.75rem; background: var(--omega-bg-code); color: var(--omega-text-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.75rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.omega-session-prompt { max-height: 300px; margin: 0.75rem 0 0; overflow-y: auto; border: 1px solid var(--omega-border); border-radius: 10px; padding: 0.75rem; background: var(--omega-bg-code); color: var(--omega-text-muted); font-family: var(--omega-font-mono); font-size: 0.75rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .omega-inline-error { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
 
 .omega-session-search-wrap { position: relative; }
@@ -628,7 +633,7 @@ body {
   gap: 6px;
   min-width: 0;
   padding: 4px 8px;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--omega-font-mono);
   font-size: 0.65625rem;
   letter-spacing: 0;
 }
@@ -793,7 +798,7 @@ body {
 .omega-bash-tail { margin-bottom: 1rem; overflow: hidden; border: 1px solid var(--omega-border); border-radius: 12px; background: var(--omega-bg-code); box-shadow: var(--omega-inset-highlight); }
 .omega-bash-title { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; }
 .omega-bash-title .omega-operation-dot { box-shadow: 0 0 6px var(--omega-accent); }
-.omega-bash-tail pre { max-height: 160px; margin: 0; overflow-y: auto; padding: 0 1rem 0.75rem; color: var(--omega-text-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.75rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.omega-bash-tail pre { max-height: 160px; margin: 0; overflow-y: auto; padding: 0 1rem 0.75rem; color: var(--omega-text-muted); font-family: var(--omega-font-mono); font-size: 0.75rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .omega-list-status { margin: 0 0 1rem; font-size: 0.75rem; font-weight: 600; }
 .omega-list-status-warning { color: var(--omega-warning); }
 .omega-muted-text,
@@ -806,7 +811,7 @@ body {
 .omega-error-text { color: var(--omega-danger); }
 .omega-status-text { color: var(--omega-accent); }
 .omega-success-text { color: var(--omega-success); }
-.omega-mono-text { color: var(--omega-text-muted); font-family: ui-monospace, Consolas, monospace; font-size: 0.8125rem; overflow-wrap: anywhere; }
+.omega-mono-text { color: var(--omega-text-muted); font-family: var(--omega-font-mono); font-size: 0.8125rem; overflow-wrap: anywhere; }
 .omega-callout { border-radius: var(--omega-radius-md); padding: 0.75rem 0.875rem; background: var(--omega-bg-soft); color: var(--omega-text-muted); line-height: 1.6; }
 .omega-callout p { margin: 0; }
 .omega-button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
@@ -926,7 +931,7 @@ body {
 .omega-settings-centers { padding-top: 0.5rem; border-top: 1px solid var(--omega-border); }
 .omega-settings-item { display: flex; align-items: center; gap: 0.5rem; min-height: 28px; }
 .omega-settings-item strong { font-size: 0.8125rem; font-weight: 600; color: var(--omega-text); }
-.omega-settings-prompt { font-family: ui-monospace, Consolas, monospace; color: var(--omega-accent); }
+.omega-settings-prompt { font-family: var(--omega-font-mono); color: var(--omega-accent); }
 .omega-settings-path { min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--omega-text-dim); font-size: 0.65625rem; }
 
 .omega-rail { width: 100%; display: flex; flex-direction: column; background: var(--omega-bg-rail); overflow: hidden; }
@@ -970,8 +975,8 @@ body {
 .omega-graph-edge.is-selected { border-color: var(--omega-accent); background: var(--omega-selected); }
 .omega-graph-node strong,
 .omega-graph-edge > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.omega-graph-node-kind { flex: 0 0 auto; color: var(--omega-accent); font: 0.625rem ui-monospace, Consolas, monospace; text-transform: uppercase; }
-.omega-graph-edge { flex-wrap: wrap; font: 0.6875rem ui-monospace, Consolas, monospace; }
+.omega-graph-node-kind { flex: 0 0 auto; color: var(--omega-accent); font: 0.625rem var(--omega-font-mono); text-transform: uppercase; }
+.omega-graph-edge { flex-wrap: wrap; font: 0.6875rem var(--omega-font-mono); }
 .omega-graph-detail { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.65rem; border-top: 1px solid var(--omega-border); background: var(--omega-bg-soft); }
 .omega-graph-canvas { min-height: 360px; height: min(58vh, 620px); overflow: hidden; border: 1px solid var(--omega-border); border-radius: 10px; background: var(--omega-bg-code); }
 .omega-graph-canvas .react-flow { background: var(--omega-bg-code); }
@@ -979,7 +984,7 @@ body {
 .omega-histos-node { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.25rem 0.45rem; min-width: 150px; max-width: 220px; padding: 0.5rem 0.6rem; border: 1px solid var(--omega-border-strong); border-left: 2px solid var(--omega-accent); border-radius: 8px; background: var(--omega-bg-elevated); color: var(--omega-text); box-shadow: var(--omega-inset-highlight); }
 .omega-histos-node.is-selected { border-color: var(--omega-accent); background: var(--omega-selected); }
 .omega-histos-node.is-isolated { border-left-color: var(--omega-warning); }
-.omega-histos-node-kind { color: var(--omega-accent); font: 0.6rem ui-monospace, Consolas, monospace; text-transform: uppercase; }
+.omega-histos-node-kind { color: var(--omega-accent); font: 0.6rem var(--omega-font-mono); text-transform: uppercase; }
 .omega-histos-node-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .omega-histos-node-flag { grid-column: 2; color: var(--omega-warning); font-size: 0.6rem; }
 .omega-snippet-editor { min-height: 2rem; border: 1px solid var(--omega-border); border-radius: var(--omega-radius-sm); padding: 0.35rem; background: var(--omega-bg-code); }
@@ -990,7 +995,7 @@ body {
 .omega-terminal-surface { flex: 1; min-height: 120px; min-width: 0; overflow: hidden; border: 1px solid var(--omega-border); border-radius: var(--omega-radius-sm); background: #0d0e12; padding: 0.4rem; }
 .omega-terminal-surface .xterm { height: 100%; }
 .omega-terminal-surface .xterm-viewport { overflow-y: auto !important; }
-.omega-terminal-status { margin: 0; color: var(--omega-text-dim); font: 0.6875rem ui-monospace, Consolas, monospace; }
+.omega-terminal-status { margin: 0; color: var(--omega-text-dim); font: 0.6875rem var(--omega-font-mono); }
 .omega-icon-plus,
 .omega-icon-close { display: block; width: 0.9375rem; height: 0.9375rem; }
 .omega-attention-dot::after {
@@ -1042,7 +1047,7 @@ body {
 .omega-command-option { width: 100%; border: 1px solid transparent; margin-bottom: 2px; text-align: left; cursor: pointer; }
 .omega-command-option:hover { border-color: var(--omega-border); }
 .omega-command-option[aria-selected="true"] { border-color: var(--omega-accent-line); background: var(--omega-selected); }
-.omega-command-label { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--omega-accent); font-weight: 600; }
+.omega-command-label { font-family: var(--omega-font-mono); color: var(--omega-accent); font-weight: 600; }
 
 .extension-ui-host-dialog-content { display: flex; flex-direction: column; gap: 0.75rem; }
 .extension-ui-host-dialog-title { margin: 0; padding-top: 1rem; }
@@ -1145,7 +1150,7 @@ body {
 .omega-composer-at-mark { flex: 0 0 auto; color: var(--omega-accent); font-size: 0.65625rem; font-weight: 700; text-transform: uppercase; }
 .omega-composer-at-title { min-width: 0; overflow: hidden; color: var(--omega-text); font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
 .omega-composer-at-detail { flex: 0 0 auto; margin-left: auto; color: var(--omega-text-dim); font-size: 0.65625rem; }
-.omega-composer-at-path { overflow: hidden; color: var(--omega-text); font-family: ui-monospace, Consolas, monospace; font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
+.omega-composer-at-path { overflow: hidden; color: var(--omega-text); font-family: var(--omega-font-mono); font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
 .omega-composer-error { padding: 0 0.5rem 0.4rem; white-space: pre-wrap; }
 .omega-composer-queue {
   display: flex;
@@ -1165,13 +1170,13 @@ body {
   border-radius: 999px;
   background: transparent;
   color: var(--omega-accent);
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--omega-font-mono);
 }
 .omega-chip-queue {
   border: 1px solid var(--omega-border);
   border-radius: 999px;
   background: transparent;
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--omega-font-mono);
 }
 .omega-composer-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0 0.5rem 0.4rem; }
 .omega-chip-dismiss {
@@ -1402,7 +1407,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .omega-diff-branch { min-width: 0; max-width: 100%; flex: 1 1 auto; overflow: hidden; background: var(--omega-accent-soft); color: var(--omega-accent-strong); text-overflow: ellipsis; }
 .omega-diff-root { flex: 0 0 100%; min-width: 0; overflow: hidden; color: var(--omega-text-dim); font-size: 0.65625rem; text-overflow: ellipsis; white-space: nowrap; }
 .omega-diff-log { max-height: 52px; flex: 0 0 auto; margin-bottom: 0.75rem; overflow-y: auto; }
-.omega-diff-log p { margin: 0; overflow: hidden; color: var(--omega-text-dim); font-family: ui-monospace, Consolas, monospace; font-size: 0.65625rem; text-overflow: ellipsis; white-space: nowrap; }
+.omega-diff-log p { margin: 0; overflow: hidden; color: var(--omega-text-dim); font-family: var(--omega-font-mono); font-size: 0.65625rem; text-overflow: ellipsis; white-space: nowrap; }
 .omega-diff-error { margin-bottom: 0.75rem; white-space: pre-wrap; }
 .omega-diff-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; padding: 0.5rem; border: 1px solid var(--omega-accent-line); background: var(--omega-selected); }
 .omega-diff-selection > button:last-child { margin-left: auto; }
@@ -1424,7 +1429,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .omega-diff-hunk-header { display: flex; align-items: center; gap: 0.35rem; width: 100%; min-width: 0; border: 0; padding: 0.3rem 0.45rem; background: var(--omega-bg); color: var(--omega-text-muted); font: inherit; font-size: 0.65625rem; text-align: left; cursor: pointer; }
 .omega-diff-hunk-header > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .omega-diff-lines { min-width: 0; overflow-x: auto; padding: 0.35rem 0.6rem; }
-.omega-diff-hunk-line { display: flex; min-width: max-content; font-family: ui-monospace, monospace; font-size: 0.75rem; line-height: 1.65; white-space: pre; }
+.omega-diff-hunk-line { display: flex; min-width: max-content; font-family: var(--omega-font-mono); font-size: 0.75rem; line-height: 1.65; white-space: pre; }
 .omega-diff-prefix { flex: 0 0 auto; width: 1.25rem; color: currentColor; font-weight: 600; user-select: none; }
 .omega-diff-content { flex: 1 1 auto; color: var(--omega-text-soft); }
 .omega-diff-context { color: var(--omega-text-dim); }
@@ -1485,13 +1490,13 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .omega-file-viewer-muted { margin: 0; color: var(--omega-text-muted); font-size: 0.8125rem; }
 .omega-file-viewer-markdown { max-height: 64vh; overflow-y: auto; }
 .omega-file-viewer-docx { max-height: 64vh; overflow-y: auto; border: 1px solid var(--omega-border); border-radius: 10px; padding: 0.9rem; background: var(--omega-bg-code); }
-.omega-file-viewer-docx pre { margin: 0; color: var(--omega-text-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.8125rem; line-height: 1.7; white-space: pre-wrap; }
-.omega-file-viewer-preview { margin: 0; padding: 1rem; border: 1px solid var(--omega-border); border-radius: 10px; background: var(--omega-bg-code); color: var(--omega-text-soft); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.75rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.omega-file-viewer-docx pre { margin: 0; color: var(--omega-text-muted); font-family: var(--omega-font-mono); font-size: 0.8125rem; line-height: 1.7; white-space: pre-wrap; }
+.omega-file-viewer-preview { margin: 0; padding: 1rem; border: 1px solid var(--omega-border); border-radius: 10px; background: var(--omega-bg-code); color: var(--omega-text-soft); font-family: var(--omega-font-mono); font-size: 0.75rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .omega-file-viewer-source { max-height: 64vh; overflow: auto; border: 1px solid var(--omega-border); border-radius: 10px; padding: 0.35rem 0.25rem; background: var(--omega-bg-code); }
 .omega-file-viewer-line { display: flex; gap: 0.6rem; cursor: text; }
 .omega-file-viewer-line:hover, .omega-file-viewer-line.is-active { background: var(--omega-accent-soft); }
-.omega-file-viewer-line-number { width: 36px; flex: 0 0 auto; color: var(--omega-text-dim); font-family: ui-monospace, Consolas, monospace; font-size: 0.6875rem; line-height: 1.7; text-align: right; user-select: none; }
-.omega-file-viewer-line-text { min-width: 0; color: var(--omega-text-soft); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.6875rem; line-height: 1.7; white-space: pre; }
+.omega-file-viewer-line-number { width: 36px; flex: 0 0 auto; color: var(--omega-text-dim); font-family: var(--omega-font-mono); font-size: 0.6875rem; line-height: 1.7; text-align: right; user-select: none; }
+.omega-file-viewer-line-text { min-width: 0; color: var(--omega-text-soft); font-family: var(--omega-font-mono); font-size: 0.6875rem; line-height: 1.7; white-space: pre; }
 .omega-file-viewer-page-error { margin: 0.5rem 0 0; color: var(--omega-danger); font-size: 0.75rem; }
 .omega-file-viewer-copy-error { position: absolute; bottom: 10px; left: 14px; margin: 0; color: var(--omega-danger); font-size: 0.75rem; }
 .omega-file-viewer-copied { position: absolute; bottom: 10px; left: 14px; margin: 0; color: var(--omega-accent); font-size: 0.75rem; }
@@ -1612,7 +1617,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   border: 1px solid var(--omega-border);
   border-radius: 6px;
   background: var(--omega-bg-code);
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--omega-font-mono);
   font-size: 0.65625rem;
   font-variant-numeric: tabular-nums;
 }
@@ -1649,7 +1654,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   border-radius: 8px;
   background: var(--omega-bg-code);
   color: var(--omega-text-soft);
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--omega-font-mono);
   font-size: 0.75rem;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -1666,7 +1671,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   border-radius: 8px;
   background: var(--omega-bg-code);
 }
-.omega-diff-pre { margin: 0; padding: 0.5rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.71875rem; line-height: 1.5; }
+.omega-diff-pre { margin: 0; padding: 0.5rem; font-family: var(--omega-font-mono); font-size: 0.71875rem; line-height: 1.5; }
 .omega-diff-line { display: block; padding: 0 0.25rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .omega-diff-add { color: var(--omega-success); background: rgba(46, 160, 67, 0.12); }
 .omega-diff-del { color: var(--omega-danger); background: rgba(248, 81, 73, 0.10); }
@@ -1725,7 +1730,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .omega-thinking-pre {
   margin: 0;
   color: var(--omega-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--omega-font-mono);
   font-size: 0.75rem;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -1820,7 +1825,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 
 /* Data readouts: metrics, tokens, percents always render in mono numerals */
 .mono-num {
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: var(--omega-font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
@@ -2026,7 +2031,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .omega-file-viewer-docx pre,
 .omega-file-viewer-preview { margin: 0; white-space: pre-wrap; font-size: 0.8125rem; line-height: 1.7; }
 .omega-file-viewer-preview { padding: 1rem; }
-.omega-file-viewer-source { max-height: 64vh; margin: 0; overflow: auto; padding: 0.5rem; color: var(--omega-text-soft); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.75rem; line-height: 1.6; }
+.omega-file-viewer-source { max-height: 64vh; margin: 0; overflow: auto; padding: 0.5rem; color: var(--omega-text-soft); font-family: var(--omega-font-mono); font-size: 0.75rem; line-height: 1.6; }
 .omega-file-viewer-line { display: flex; gap: 0.5rem; cursor: text; }
 .omega-file-viewer-line:hover,
 .omega-file-viewer-line.is-active { background: var(--omega-accent-soft); }

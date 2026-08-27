@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Diff, GitBranch, PanelLeftOpen, PanelRightOpen, Waypoints, X } from "lucide-react";
 import { IconButton } from "../../ui/Button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
@@ -171,7 +172,7 @@ export function Workbench(): React.ReactElement {
             <Tooltip>
               <TooltipTrigger asChild>
                 <IconButton size="sm" label="展开左侧导航" aria-expanded={false} aria-controls="omega-left-drawer" onClick={() => useAppStore.getState().toggleLeftPanel()} style={{ color: "var(--omega-text-dim)", minWidth: 36, minHeight: 36 }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16M4 12h10M4 19h16" /><path d="m16 8 4 4-4 4" /></svg>
+                  <PanelLeftOpen size={20} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent side="right">展开左栏</TooltipContent>
@@ -215,7 +216,7 @@ export function Workbench(): React.ReactElement {
           >
             <div className="ravel-workbench-drawer-header" style={{ display: "flex", justifyContent: "flex-end", padding: "4px", borderBottom: "1px solid var(--omega-border)" }}>
               <IconButton size="sm" label="关闭左侧导航" onClick={() => useAppStore.getState().toggleLeftPanel()} style={{ color: "var(--omega-text-muted)" }}>
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                <X size={18} aria-hidden="true" />
               </IconButton>
             </div>
             <div className="ravel-workbench-drawer-content" style={{ minHeight: 0, flex: 1, display: "flex" }}><LeftNav /></div>
@@ -234,7 +235,7 @@ export function Workbench(): React.ReactElement {
             <Tooltip>
               <TooltipTrigger asChild>
                 <IconButton size="sm" label="展开右侧面板" aria-expanded={false} aria-controls="omega-right-drawer" onClick={toggleRightPanel} style={{ color: "var(--omega-text-dim)", minWidth: 36, minHeight: 36 }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m14 6-6 6 6 6" /><path d="M20 5v14" /></svg>
+                  <PanelRightOpen size={20} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent side="left">展开右栏</TooltipContent>
@@ -242,7 +243,7 @@ export function Workbench(): React.ReactElement {
             <Tooltip>
               <TooltipTrigger asChild>
                 <IconButton size="sm" label="打开 Diff 变更面板" active={rightTab === "diff"} onClick={() => setRightTab("diff")} style={{ color: rightTab === "diff" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "diff" ? "var(--omega-selected)" : "transparent" }}>
-                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M8 4h11v13H8z" /><path d="M5 7H4v13h11v-3" /><path d="M11 8v5M14 8v5" /></svg>
+                  <Diff size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>变更 Diff</TooltipContent>
@@ -250,7 +251,7 @@ export function Workbench(): React.ReactElement {
             <Tooltip>
               <TooltipTrigger asChild>
                 <IconButton size="sm" label="打开 Graph 面板" active={rightTab === "graph"} onClick={() => setRightTab("graph")} style={{ color: rightTab === "graph" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "graph" ? "var(--omega-selected)" : "transparent" }}>
-                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="8" r="2" /><circle cx="12" cy="18" r="2" /><path d="m7.8 6.4 8.4 1.2M16.8 9.7l-3.6 6.4M10.2 16.5 7.4 7.8" /></svg>
+                  <Waypoints size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>Graph</TooltipContent>
@@ -258,7 +259,7 @@ export function Workbench(): React.ReactElement {
             <Tooltip>
               <TooltipTrigger asChild>
                 <IconButton size="sm" label="打开 Worktree 面板" active={rightTab === "worktree"} onClick={() => setRightTab("worktree")} style={{ color: rightTab === "worktree" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "worktree" ? "var(--omega-selected)" : "transparent" }}>
-                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="6" r="2" /><circle cx="17" cy="18" r="2" /><path d="M7 8v7a3 3 0 0 0 3 3h5M7 12h7a3 3 0 0 0 3-3V8" /></svg>
+                  <GitBranch size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>Worktree</TooltipContent>
@@ -301,7 +302,7 @@ export function Workbench(): React.ReactElement {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <IconButton size="sm" label="关闭右侧面板" onClick={toggleRightPanel} style={{ color: "var(--omega-text-muted)" }}>
-                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                    <X size={18} aria-hidden="true" />
                   </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>关闭面板</TooltipContent>

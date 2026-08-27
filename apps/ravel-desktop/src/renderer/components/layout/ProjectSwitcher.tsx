@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ChevronDown, FolderOpen, Plus, Shield, X } from "lucide-react";
 import { IconButton } from "../../ui/Button";
 import { Popover } from "../../ui/Popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
@@ -20,56 +21,23 @@ function trustChip(workspace: WorkspaceInfo): string | null {
 }
 
 function FolderOpenIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" style={{ display: "block", width: "1rem", height: "1rem", flex: "0 0 auto", color: "var(--omega-accent)" }} aria-hidden="true">
-      <path
-        d="M2.6 12.6V4.8c0-.66.54-1.2 1.2-1.2h2.4l1.4 1.6h4.2c.66 0 1.2.54 1.2 1.2v1.1M4.9 7.3h9.9c.5 0 .87.47.74.96l-1.06 4a1.2 1.2 0 0 1-1.16.9H2.6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <FolderOpen style={{ display: "block", width: "1rem", height: "1rem", flex: "0 0 auto", color: "var(--omega-accent)" }} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function AddIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" style={{ display: "block", width: "1.0625rem", height: "1.0625rem", flex: "0 0 auto", color: "var(--omega-accent)" }} aria-hidden="true">
-      <path d="M8 3.6v8.8M3.6 8h8.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <Plus style={{ display: "block", width: "1.0625rem", height: "1.0625rem", flex: "0 0 auto", color: "var(--omega-accent)" }} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function ExpandMoreIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" style={{ display: "block", width: "0.9375rem", height: "0.9375rem", flex: "0 0 auto", marginLeft: "auto", color: "var(--omega-text-muted)" }} aria-hidden="true">
-      <path d="M4.2 6.4 8 10.2l3.8-3.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <ChevronDown style={{ display: "block", width: "0.9375rem", height: "0.9375rem", flex: "0 0 auto", marginLeft: "auto", color: "var(--omega-text-muted)" }} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function CloseIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" style={{ display: "block", width: "0.875rem", height: "0.875rem" }} aria-hidden="true">
-      <path d="m4.4 4.4 7.2 7.2m0-7.2-7.2 7.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <X style={{ display: "block", width: "0.875rem", height: "0.875rem" }} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function ShieldIcon({ size }: { size: string }): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" style={{ display: "block", width: size, height: size, flex: "0 0 auto" }} aria-hidden="true">
-      <path
-        d="M8 2.4l4.6 1.8v3.4c0 3-1.9 5.1-4.6 6-2.7-.9-4.6-3-4.6-6V4.2L8 2.4Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <Shield style={{ display: "block", width: size, height: size, flex: "0 0 auto" }} strokeWidth={1.4} aria-hidden="true" />;
 }
 
 let workspaceLoadGeneration = 0;

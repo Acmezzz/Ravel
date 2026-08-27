@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Command, Paperclip, RotateCcw, Send, Square, Zap } from "lucide-react";
 import { IconButton } from "../../ui/Button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
@@ -50,53 +51,27 @@ function truncate(text: string, max = 120): string {
 }
 
 function CommandIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
-      <path d="M5.5 2.5a2 2 0 0 0-2 2v1.25H5.5V4.5a.5.5 0 0 1 1 0v1.25h3V4.5a.5.5 0 0 1 1 0v1.25H12.5V4.5a2 2 0 0 0-2-2h-.25a2 2 0 0 0-1.75 1 2 2 0 0 0-1.75-1H5.5Zm0 11a2 2 0 0 1-2-2v-1.25H5.5v1.25a.5.5 0 0 0 1 0v-1.25h3v1.25a.5.5 0 0 0 1 0v-1.25H12.5v1.25a2 2 0 0 1-2 2h-.25a2 2 0 0 1-1.75-1 2 2 0 0 1-1.75 1H5.5ZM3.5 7.25h9v1.5h-9v-1.5Z" fill="currentColor" />
-    </svg>
-  );
+  return <Command className="omega-icon-16" aria-hidden="true" />;
 }
 
 function AttachFile(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
-      <path d="M13.2 8.4 7.05 14.55a3.2 3.2 0 0 1-4.53-4.53l7.07-7.07a2.1 2.1 0 1 1 2.97 2.97L5.4 13a1 1 0 1 1-1.41-1.41l6.36-6.37" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <Paperclip className="omega-icon-16" aria-hidden="true" />;
 }
 
 function ReplayIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <path d="M3.2 8A4.8 4.8 0 1 0 8 3.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M3.2 3.2v3.2H6.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <RotateCcw className="omega-icon-14" aria-hidden="true" />;
 }
 
 function BoltIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-16" aria-hidden="true">
-      <path d="M9.2 2.2 3.8 9.1h3.5L6.8 13.8l5.4-6.9H8.7L9.2 2.2Z" fill="currentColor" />
-    </svg>
-  );
+  return <Zap className="omega-icon-16" fill="currentColor" aria-hidden="true" />;
 }
 
 function StopIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <rect x="4" y="4" width="8" height="8" rx="1.2" fill="currentColor" />
-    </svg>
-  );
+  return <Square className="omega-icon-14" fill="currentColor" aria-hidden="true" />;
 }
 
 function SendIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <path d="M2.4 8 13.6 2.8 10.4 13.2 7.6 8.8 2.4 8Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M7.6 8.8 13.6 2.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <Send className="omega-icon-14" aria-hidden="true" />;
 }
 
 function QueuedRow({ kind, text }: { kind: "steer" | "followUp"; text: string }): React.ReactElement {

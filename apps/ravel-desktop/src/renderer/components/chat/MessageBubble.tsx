@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Check, Copy, GitFork } from "lucide-react";
 import { IconButton } from "../../ui/Button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { Markdown } from "../common/Markdown";
@@ -31,31 +32,15 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 function CopyIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <rect x="5.5" y="5.5" width="7.5" height="8.5" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M10.5 5.5V4.2A1.2 1.2 0 0 0 9.3 3H4.2A1.2 1.2 0 0 0 3 4.2v7.1A1.2 1.2 0 0 0 4.2 12.5H5.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-    </svg>
-  );
+  return <Copy className="omega-icon-14" strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function CheckIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <path d="M3.4 8.3 6.4 11.4 12.6 4.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <Check className="omega-icon-14" strokeWidth={1.8} aria-hidden="true" />;
 }
 
 function ForkIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-icon-14" aria-hidden="true">
-      <circle cx="4.2" cy="3.4" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      <circle cx="11.8" cy="3.4" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      <circle cx="8" cy="12.6" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M4.2 4.9v1.4c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V4.9M8 8.3v2.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  );
+  return <GitFork className="omega-icon-14" strokeWidth={1.5} aria-hidden="true" />;
 }
 
 export interface MessageBubbleProps {

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Copy, Folder } from "lucide-react";
 import { Button, IconButton } from "../../ui/Button";
 import { Dialog, DialogContent, DialogTitle } from "../../ui/Dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
@@ -47,11 +48,11 @@ function pathsMatch(leftPath: string, rightPath: string): boolean {
 }
 
 function CopyIcon(): React.ReactElement {
-  return <svg viewBox="0 0 16 16" className="omega-file-viewer-icon" aria-hidden="true"><rect x="5" y="5" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M3 10V3.8c0-.5.3-.8.8-.8H10" fill="none" stroke="currentColor" strokeWidth="1.3" /></svg>;
+  return <Copy className="omega-file-viewer-icon" strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function FolderIcon(): React.ReactElement {
-  return <svg viewBox="0 0 16 16" className="omega-file-viewer-icon" aria-hidden="true"><path d="M1.8 3.8h4l1.3 1.4h7.1v7.1H1.8Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>;
+  return <Folder className="omega-file-viewer-icon" strokeWidth={1.5} aria-hidden="true" />;
 }
 
 /** Read-only file viewer dialog (text, size-capped; binary guarded). */

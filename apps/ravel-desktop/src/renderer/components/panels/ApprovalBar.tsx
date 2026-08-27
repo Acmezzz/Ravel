@@ -1,4 +1,5 @@
 import * as React from "react";
+import { TriangleAlert } from "lucide-react";
 import { Button } from "../../ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "../../ui/Dialog";
 import { ipc } from "../../ipc/client";
@@ -13,12 +14,7 @@ export interface ApprovalBarProps {
 }
 
 function WarningIcon({ className }: { className?: string }): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
-      <path d="M8 2.4 14.4 13.2H1.6L8 2.4Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M8 6.4v3.2M8 11.4v.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <TriangleAlert className={className} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 /**

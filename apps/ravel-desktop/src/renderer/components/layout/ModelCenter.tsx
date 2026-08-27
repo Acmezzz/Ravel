@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Check, Plus } from "lucide-react";
 import { Button } from "../../ui/Button";
 import { Dialog, DialogContent, DialogContentArea, DialogFooter, DialogTitle } from "../../ui/Dialog";
 import { Menu, MenuAnchor, MenuContent, MenuItem } from "../../ui/Menu";
@@ -19,19 +20,11 @@ function groupByProvider(models: ModelInfo[]): Array<{ provider: string; models:
 }
 
 function AddIcon(): React.ReactElement {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
+  return <Plus size={16} strokeWidth={2.2} aria-hidden="true" focusable="false" />;
 }
 
 function CheckIcon(): React.ReactElement {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="m4 12.5 5 5L20 6.5" />
-    </svg>
-  );
+  return <Check size={16} strokeWidth={2.2} aria-hidden="true" focusable="false" />;
 }
 
 function ProviderCard({

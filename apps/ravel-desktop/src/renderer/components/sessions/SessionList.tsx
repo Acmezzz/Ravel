@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Copy, Pencil, Search, Trash2 } from "lucide-react";
 import { Button, IconButton } from "../../ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "../../ui/Dialog";
 import { TextField } from "../../ui/TextField";
@@ -8,40 +9,19 @@ import { ipc } from "../../ipc/client";
 import { useT, type MessageKey, type TranslateParams } from "../../lib/i18n";
 
 function SearchIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-session-icon" aria-hidden="true">
-      <circle cx="7" cy="7" r="4.5" />
-      <path d="m13.5 13.5-3.2-3.2" />
-    </svg>
-  );
+  return <Search className="omega-session-icon" aria-hidden="true" />;
 }
 
 function EditIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-session-icon" aria-hidden="true">
-      <path d="M11.3 2.2a1.6 1.6 0 0 1 2.26 2.26l-7.65 7.65-3.06.8.8-3.06Z" />
-      <path d="m10 3.5 2.5 2.5" />
-    </svg>
-  );
+  return <Pencil className="omega-session-icon" aria-hidden="true" />;
 }
 
 function DeleteIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-session-icon" aria-hidden="true">
-      <path d="M2.5 4h11M6.5 4V2.75A.75.75 0 0 1 7.25 2h1.5a.75.75 0 0 1 .75.75V4" />
-      <path d="M3.83 4.67 4.5 12.5a1.25 1.25 0 0 0 1.24 1.13h4.52a1.25 1.25 0 0 0 1.24-1.13l.67-7.83" />
-      <path d="M6.5 6.75v4.5M9.5 6.75v4.5" />
-    </svg>
-  );
+  return <Trash2 className="omega-session-icon" aria-hidden="true" />;
 }
 
 function CopyIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-session-icon" aria-hidden="true">
-      <rect x="5.5" y="5.5" width="8" height="8" rx="1.25" />
-      <path d="M10.5 5.5v-2A1.25 1.25 0 0 0 9.25 2.25H3.75A1.25 1.25 0 0 0 2.5 3.5v5.5a1.25 1.25 0 0 0 1.25 1.25h1.75" />
-    </svg>
-  );
+  return <Copy className="omega-session-icon" aria-hidden="true" />;
 }
 
 function groupKey(session: { workspace: string; workspaceId?: string; workspaceLabel?: string }): string {

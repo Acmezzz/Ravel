@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ChevronDown, FilePenLine, FileText, Pencil, Search, SquareTerminal } from "lucide-react";
 import type { ToolCardState } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { useT, type MessageKey } from "../../lib/i18n";
@@ -27,52 +28,15 @@ const KIND_KEY: Record<string, MessageKey> = {
 };
 
 function KindIcon({ kind }: { kind: string }): React.ReactElement {
-  if (kind === "search") {
-    return (
-      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
-        <circle cx="7" cy="7" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M9.6 9.6 13 13" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (kind === "bash") {
-    return (
-      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
-        <rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M4.6 6.4 6.6 8 4.6 9.6M8.2 9.8h3.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (kind === "edit") {
-    return (
-      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
-        <path d="M10.4 3.4 12.6 5.6 6.2 12H4v-2.2l6.4-6.4Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-        <path d="M9.3 4.5 11.5 6.7" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      </svg>
-    );
-  }
-  if (kind === "write") {
-    return (
-      <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
-        <path d="M5 3.2h4.2L12.8 7v5.8H5A1.2 1.2 0 0 1 3.8 11.6V4.4A1.2 1.2 0 0 1 5 3.2Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-        <path d="M9.2 3.2V7h3.6M6.4 9.4h3.2M6.4 11.4h3.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 16 16" className="omega-toolcard-icon" aria-hidden="true">
-      <path d="M5 3.2h4.2L12.8 7v5.8H5A1.2 1.2 0 0 1 3.8 11.6V4.4A1.2 1.2 0 0 1 5 3.2Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-      <path d="M9.2 3.2V7h3.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  );
+  if (kind === "search") return <Search className="omega-toolcard-icon" strokeWidth={1.6} aria-hidden="true" />;
+  if (kind === "bash") return <SquareTerminal className="omega-toolcard-icon" strokeWidth={1.6} aria-hidden="true" />;
+  if (kind === "edit") return <Pencil className="omega-toolcard-icon" strokeWidth={1.6} aria-hidden="true" />;
+  if (kind === "write") return <FilePenLine className="omega-toolcard-icon" strokeWidth={1.6} aria-hidden="true" />;
+  return <FileText className="omega-toolcard-icon" strokeWidth={1.6} aria-hidden="true" />;
 }
 
 function ExpandIcon({ open }: { open: boolean }): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className={`omega-toolcard-chevron${open ? " is-open" : ""}`} aria-hidden="true">
-      <path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <ChevronDown className={`omega-toolcard-chevron${open ? " is-open" : ""}`} strokeWidth={1.7} aria-hidden="true" />;
 }
 
 /** Extract +/- line stats from an edit/write diff-style result (best effort). */

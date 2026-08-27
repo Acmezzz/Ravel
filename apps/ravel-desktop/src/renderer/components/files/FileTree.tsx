@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ChevronDown, File, Folder, FolderOpen, RefreshCw, Upload } from "lucide-react";
 import { Button, IconButton } from "../../ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "../../ui/Dialog";
 import { TextField } from "../../ui/TextField";
@@ -10,11 +11,11 @@ import type { DirListing } from "../../types/dto";
 
 interface DirState { loading: boolean; error: string | null; listing: DirListing | null; }
 function formatSize(size: number): string { if (size < 1024) return `${size} B`; if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`; return `${(size / 1024 / 1024).toFixed(1)} MB`; }
-function FolderIcon({ open = false }: { open?: boolean }): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-icon" aria-hidden="true"><path d={open ? "M1.8 4.8h4l1.3 1.4h7.1v6.1H1.8Z" : "M1.8 3.8h4l1.3 1.4h7.1v7.1H1.8Z"} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>; }
-function FileIcon(): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-icon" aria-hidden="true"><path d="M4.1 2.5h4.4l3.4 3.4v7.6H4.1a1.1 1.1 0 0 1-1.1-1.1V3.6a1.1 1.1 0 0 1 1.1-1.1Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M8.5 2.5v3.4h3.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>; }
-function Chevron({ open }: { open: boolean }): React.ReactElement { return <svg viewBox="0 0 16 16" className={`omega-file-chevron${open ? " is-open" : ""}`} aria-hidden="true"><path d="m5.2 6.2 2.8 2.8 2.8-2.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function RefreshIcon(): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-action-icon" aria-hidden="true"><path d="M13 5.8A5.2 5.2 0 1 0 13.1 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /><path d="M10.4 3.7h3v3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function UploadIcon(): React.ReactElement { return <svg viewBox="0 0 16 16" className="omega-file-action-icon" aria-hidden="true"><path d="M8 10.8V2.7M5.2 5.5 8 2.7l2.8 2.8M3 9.8v2.5c0 .6.5 1 1 1h8c.6 0 1-.4 1-1V9.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function FolderIcon({ open = false }: { open?: boolean }): React.ReactElement { return open ? <FolderOpen className="omega-file-icon" strokeWidth={1.5} aria-hidden="true" /> : <Folder className="omega-file-icon" strokeWidth={1.5} aria-hidden="true" />; }
+function FileIcon(): React.ReactElement { return <File className="omega-file-icon" strokeWidth={1.5} aria-hidden="true" />; }
+function Chevron({ open }: { open: boolean }): React.ReactElement { return <ChevronDown className={`omega-file-chevron${open ? " is-open" : ""}`} strokeWidth={1.7} aria-hidden="true" />; }
+function RefreshIcon(): React.ReactElement { return <RefreshCw className="omega-file-action-icon" strokeWidth={1.5} aria-hidden="true" />; }
+function UploadIcon(): React.ReactElement { return <Upload className="omega-file-action-icon" strokeWidth={1.5} aria-hidden="true" />; }
 
 function TreeRow({ name, rel, isDir, size, depth, expanded, onToggleDir, onOpenFile, onReveal }: { name: string; rel: string; isDir: boolean; size: number; depth: number; expanded: boolean; onToggleDir: (rel: string) => void; onOpenFile: (rel: string) => void; onReveal: (rel: string) => void }): React.ReactElement {
   return <div {...clickableRole} className="omega-file-row" style={{ paddingLeft: `calc(0.5rem + ${depth * 1.25}rem)` }} onClick={() => (isDir ? onToggleDir(rel) : onOpenFile(rel))}>

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ChevronDown, Lightbulb } from "lucide-react";
 import { ipc } from "../../ipc/client";
 import { clickableRole } from "../../lib/a11y";
 
@@ -24,20 +25,11 @@ function cacheSet(key: string, value: string): void {
 }
 
 function BulbIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className="omega-thinking-icon" aria-hidden="true">
-      <path d="M8 2.4A3.8 3.8 0 0 0 4.2 6.2c0 1.5.8 2.4 1.5 3.2.4.4.7.9.7 1.4v.2h3.2v-.2c0-.5.3-1 .7-1.4.7-.8 1.5-1.7 1.5-3.2A3.8 3.8 0 0 0 8 2.4Z" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M6.4 12.8h3.2M6.8 14h2.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
+  return <Lightbulb className="omega-thinking-icon" strokeWidth={1.4} aria-hidden="true" />;
 }
 
 function ExpandIcon({ open }: { open: boolean }): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" className={`omega-thinking-chevron${open ? " is-open" : ""}`} aria-hidden="true">
-      <path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <ChevronDown className={`omega-thinking-chevron${open ? " is-open" : ""}`} strokeWidth={1.6} aria-hidden="true" />;
 }
 
 export interface ThinkingBlockProps {
