@@ -15,8 +15,10 @@ extraResources:
   - from: ../../packages/coding-agent/dist
     to: ravel-runtime/packages/coding-agent/dist
 asar: true
+# ConPTY loads conoutSocketWorker.js and conpty_console_list_agent.js via
+# worker_threads / child_process.fork; those scripts cannot run from inside asar.
 asarUnpack:
-  - node_modules/node-pty/**/*.node
+  - node_modules/node-pty/**
 npmRebuild: false
 publish: null
 linux:

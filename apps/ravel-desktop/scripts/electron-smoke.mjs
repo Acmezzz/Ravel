@@ -20,11 +20,18 @@ const requiredSignals = [
   "[main] agent worker ready",
   "[main] domprobe ",
   "[main] autotest done, quitting",
+  ...(process.env.RAVEL_PTY_SMOKE === "1" ? [
+    "[main] pty smoke: spawn ok",
+    "[main] pty smoke: write ok",
+    "[main] pty smoke: resize ok",
+    "[main] pty smoke: kill ok",
+  ] : []),
 ];
 
 function runAttempt(attempt) {
   const userDataDir = mkdtempSync(join(tmpdir(), `ravel-electron-smoke-${attempt}-`));
   const args = [`--user-data-dir=${userDataDir}`];
+  if (process.env.RAVEL_PTY_SMOKE === "1") args.push("--ravel-pty-smoke");
   const child = spawn(executable, args, {
     cwd: releaseDir,
     env: {
@@ -62,7 +69,7 @@ function runAttempt(attempt) {
       stderr += `spawn error: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`;
       finish(1, null);
     });
-    child.once("close", (code, signal) => finish(code, signal));
+    child.once("exit", (code, signal) => finish(code, signal));
 
     timer = setTimeout(() => {
       stderr += `smoke timeout after ${timeoutMs}ms\n`;
@@ -92,11 +99,11 @@ async function main() {
   }
 
   let result = await runAttempt(1);
-  rmSync(result.userDataDir, { recursive: true, force: true });
+  try { rmSync(result.userDataDir, { recursive: true, force: true }); } catch { /* Electron may release profile handles after process termination. */ }
   const passed = result.code === 0 && result.missingSignals.length === 0;
   if (!passed && result.code === 0 && result.stdout.trim() === "" && !result.stderr.trim()) {
     result = await runAttempt(2);
-    rmSync(result.userDataDir, { recursive: true, force: true });
+    try { rmSync(result.userDataDir, { recursive: true, force: true }); } catch { /* Electron may release profile handles after process termination. */ }
   }
 
   const finalPassed = result.code === 0 && result.missingSignals.length === 0;

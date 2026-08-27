@@ -8,7 +8,7 @@ class FakeChild {
   postMessage(message) { this.messages.push(message); }
   emit(event, ...args) { this.listeners.get(event)?.(...args); }
   reply(data) { this.emit("message", data); }
-  kill() { this.killed = true; }
+  kill() { this.killed = true; this.emit("exit", 0); }
 }
 
 function harness() {
@@ -59,6 +59,29 @@ test("PTY host rejects timed out requests and deterministically disposes", async
   const child = children[0];
   await host.dispose();
   assert.equal(child.killed, true);
+  assert.equal(host.state, "dead");
+});
+
+test("PTY host dispose waits for the child exit event before returning", async () => {
+  const { host, children } = await initHarness();
+  const child = children[0];
+  let resolveExit;
+  child.kill = function kill() {
+    this.killed = true;
+    resolveExit = () => this.emit("exit", 0);
+  };
+  let disposed = false;
+  const disposing = host.dispose().then(() => { disposed = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  const request = child.messages.at(-1);
+  child.reply({ type: "pty:resp", id: request.id, generation: request.generation, data: null });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(child.killed, true);
+  assert.equal(disposed, false);
+  assert.equal(host.state, "stopping");
+  resolveExit();
+  await disposing;
+  assert.equal(disposed, true);
   assert.equal(host.state, "dead");
 });
 

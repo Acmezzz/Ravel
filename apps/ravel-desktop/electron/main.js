@@ -26,6 +26,7 @@ import { appendFile, mkdir, readFile, rename, stat, writeFile as writeFileAsync 
 import { basename, dirname, join, resolve, isAbsolute } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import {
   hasExtensionNamed,
   forgetSessionPath,
@@ -99,6 +100,7 @@ const MAX_PROMPT_IMAGES = 4;
 const MAX_IMAGE_CHARS = 8_000_000;
 const WORKER_RPC_TIMEOUT = 120_000;
 const CLOSE_FLUSH_TIMEOUT = 10_000;
+const SHUTDOWN_WORKER_TIMEOUT = 10_000;
 const RECENT_EVENT_LIMIT = 300;
 const RECENT_EVENT_MAX_BYTES = 4 * 1024 * 1024;
 let win;
@@ -482,6 +484,31 @@ function minimalPtyEnv() {
     if ((name === "LANG" || name.startsWith("LC_")) && typeof value === "string" && value.length > 0 && !/[\u0000-\u001f\u007f]/.test(value) && !/(API|KEY|TOKEN|SECRET|CREDENTIAL)/i.test(name)) env[name] = value;
   }
   return env;
+}
+
+async function runPtySmoke() {
+  if (!win || win.isDestroyed() || !activeCwd) throw new Error("PTY smoke requires an active window and workspace");
+  const cwd = authorizedWorkspace(activeCwd);
+  const sessionId = `smoke-${randomUUID()}`;
+  const host = ptyHostForWindow();
+  if (host.state !== "ready") await host.start({});
+  await host.call("spawn", {
+    sessionId,
+    file: process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "/bin/sh",
+    args: [],
+    cwd,
+    cols: 80,
+    rows: 24,
+    env: minimalPtyEnv(),
+  });
+  process.stdout.write("[main] pty smoke: spawn ok\n");
+  await host.call("write", { sessionId, data: process.platform === "win32" ? "echo ravel-pty-smoke\r\n" : "printf ravel-pty-smoke\\n" });
+  process.stdout.write("[main] pty smoke: write ok\n");
+  await host.call("resize", { sessionId, cols: 100, rows: 30 });
+  process.stdout.write("[main] pty smoke: resize ok\n");
+  await new Promise((resolveTimer) => setTimeout(resolveTimer, 250));
+  await host.call("kill", { sessionId });
+  process.stdout.write("[main] pty smoke: kill ok\n");
 }
 
 function ptyHostForWindow() {
@@ -958,6 +985,11 @@ async function createWindow() {
   }
   win.show();
   if ((process.env.RAVEL_AUTOTEST ?? process.env.OMEGA_AUTOTEST) === "1" && worker) {
+    if (process.argv.includes("--ravel-pty-smoke")) {
+      setTimeout(() => {
+        void runPtySmoke().catch((error) => process.stdout.write(`[main] pty smoke failed: ${error instanceof Error ? error.message : String(error)}\n`));
+      }, 1_500);
+    }
     setTimeout(() => {
       rpc("prompt", { text: "Reply with exactly: hello from ravel-desktop" })
         .then(() => process.stdout.write("[main] autotest prompt: ok\n"))
@@ -1024,7 +1056,14 @@ async function createWindow() {
         }
       }
       process.stdout.write("[main] autotest done, quitting\n");
-      void shutdown().finally(() => app.quit());
+      // Electron aliases process.exit to app.exit(). Packaged Chromium teardown
+      // and ConPTY ClosePseudoConsole can block the main thread, so JS timers
+      // and app.exit never return. Autotest/PTY smoke must not await shutdown
+      // or child.kill; terminate the process group immediately.
+      closeApproved = true;
+      quitRequested = true;
+      if (typeof process.reallyExit === "function") process.reallyExit(0);
+      process.exit(0);
     }, 25_000);
   }
 }
@@ -2304,18 +2343,38 @@ ipcMain.handle("omega:ptyKill", async (event, req) => {
 
 // ---------------------------------------------------------------------------
 
+async function disposeHostWithTimeout(host) {
+  await Promise.race([
+    Promise.resolve().then(() => host.dispose()).catch(() => {}),
+    new Promise((resolveTimer) => {
+      const timer = setTimeout(resolveTimer, SHUTDOWN_WORKER_TIMEOUT);
+      timer.unref?.();
+    }),
+  ]);
+}
+
 async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   agentReady = false;
   worker = null;
   stopAllFileWatches();
-  for (const host of histosHosts.values()) await host.dispose().catch(() => {});
+  const histos = [...histosHosts.values()];
+  const ptys = [...ptyHosts.values()];
   histosHosts.clear();
-  for (const host of ptyHosts.values()) await host.dispose().catch(() => {});
   ptyHosts.clear();
   ptyOwnerBySession.clear();
-  await workerPool.disposeAll();
+  await Promise.race([
+    Promise.all([
+      ...histos.map((host) => disposeHostWithTimeout(host)),
+      ...ptys.map((host) => disposeHostWithTimeout(host)),
+      workerPool.disposeAll().catch(() => {}),
+    ]),
+    new Promise((resolveTimer) => {
+      const timer = setTimeout(resolveTimer, SHUTDOWN_WORKER_TIMEOUT);
+      timer.unref?.();
+    }),
+  ]);
 }
 
 singleInstancePrimary = app.requestSingleInstanceLock();

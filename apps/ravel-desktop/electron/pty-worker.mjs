@@ -13,6 +13,8 @@ const require = createRequire(import.meta.url);
 let nodePty;
 try { nodePty = require("node-pty"); } catch { nodePty = null; }
 
+const KILL_WAIT_MS = 2_000;
+
 let sendMessage = (message) => {
   if (process.parentPort) process.parentPort.postMessage(message);
   else if (typeof process.send === "function") process.send(message);
@@ -22,15 +24,32 @@ function error(message, code = "pty_error") {
   return Object.assign(new Error(message), { code });
 }
 
-export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage } = {}) {
+export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage, killWaitMs = KILL_WAIT_MS } = {}) {
   const active = new Map();
   let generation = -1;
   const post = (message) => send(message);
   const close = (sessionId) => {
     const session = active.get(sessionId);
-    if (!session) return;
-    active.delete(sessionId);
-    try { session.terminal.kill(); } catch { /* already exited */ }
+    if (!session) return Promise.resolve();
+    if (session.closing) return session.closing;
+    session.closing = new Promise((resolveClose) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        active.delete(sessionId);
+        resolveClose();
+      };
+      const timer = setTimeout(done, killWaitMs);
+      timer.unref?.();
+      try { session.terminal.onExit(() => done()); } catch { /* already exited */ }
+      try { session.terminal.kill(); } catch { done(); }
+    });
+    return session.closing;
+  };
+  const closeAll = async () => {
+    await Promise.all([...active.keys()].map((id) => close(id)));
   };
   const handle = async (message) => {
     if (!isPtyRequest(message)) return null;
@@ -41,7 +60,7 @@ export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage } = {
     try {
       let data = null;
       if (message.method === "init") {
-        for (const id of active.keys()) close(id);
+        await closeAll();
         generation = message.generation;
       } else if (message.method === "spawn") {
         if (active.size >= MAX_PTY_SESSIONS) throw error("PTY session limit exceeded", "session_limit");
@@ -52,7 +71,7 @@ export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage } = {
           name: args.name ?? "xterm-256color", cols: args.cols ?? 80, rows: args.rows ?? 24,
           cwd: args.cwd, env: args.env,
         });
-        const session = { terminal, generation, sequence: 0 };
+        const session = { terminal, generation, sequence: 0, closing: null };
         active.set(args.sessionId, session);
         terminal.onData((output) => {
           if (active.get(args.sessionId) !== session || session.generation !== generation) return;
@@ -61,8 +80,8 @@ export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage } = {
           }
         });
         terminal.onExit(({ exitCode, signal }) => {
-          if (active.get(args.sessionId) !== session) return;
-          active.delete(args.sessionId);
+          if (session.generation !== generation) return;
+          if (active.get(args.sessionId) === session) active.delete(args.sessionId);
           post({ type: "pty:exit", sessionId: args.sessionId, exitCode: Number.isInteger(exitCode) ? exitCode : null, signal: typeof signal === "number" ? signal : null, generation });
         });
         data = { sessionId: args.sessionId, pid: terminal.pid };
@@ -75,9 +94,9 @@ export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage } = {
         if (!session) throw error("PTY session not found", "session_not_found");
         session.terminal.resize(message.args.cols, message.args.rows);
       } else if (message.method === "kill") {
-        close(message.args.sessionId);
+        await close(message.args.sessionId);
       } else if (message.method === "dispose") {
-        for (const id of active.keys()) close(id);
+        await closeAll();
         generation = -1;
       }
       post(createPtyResponse(message.id, message.generation, data));
@@ -91,5 +110,9 @@ export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage } = {
 }
 
 const handler = createPtyWorkerHandler();
-if (process.parentPort) process.parentPort.on("message", (event) => void handler.handle(event?.data ?? event));
-else if (typeof process.on === "function") process.on("message", (message) => void handler.handle(message));
+async function onWorkerMessage(message) {
+  await handler.handle(message);
+  if (isPtyRequest(message) && message.method === "dispose") setImmediate(() => process.exit(0));
+}
+if (process.parentPort) process.parentPort.on("message", (event) => void onWorkerMessage(event?.data ?? event));
+else if (typeof process.on === "function") process.on("message", (message) => void onWorkerMessage(message));

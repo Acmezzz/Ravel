@@ -286,3 +286,19 @@ test("first prompt auto-titles an unnamed session", async () => {
   assert.match(worker, /autoTitleFor/);
   assert.match(worker, /sessionName/);
 });
+
+test("node-pty stays in the isolated PTY worker and is unpacked for ConPTY", async () => {
+  const worker = await read("../electron/pty-worker.mjs");
+  const host = await read("../electron/pty-host.js");
+  const preload = await read("../electron/preload.js");
+  const main = await read("../electron/main.js");
+  const builder = await read("../electron-builder.yml");
+  assert.match(worker, /require\("node-pty"\)/);
+  assert.match(worker, /session\.terminal\.onExit/);
+  assert.match(worker, /setImmediate\(\(\) => process\.exit\(0\)\)/);
+  assert.match(host, /_waitForChildExit/);
+  assert.doesNotMatch(host, /require\("node-pty"\)|from ["']node-pty["']/);
+  assert.doesNotMatch(preload, /node-pty/);
+  assert.doesNotMatch(main, /require\("node-pty"\)|from ["']node-pty["']/);
+  assert.match(builder, /node_modules\/node-pty\/\*\*/);
+});
