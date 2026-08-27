@@ -231,6 +231,11 @@ const messages = {
     "graph.noAnchor": "没有可追溯的 transcript anchor",
     "graph.otherSession": "目标属于其他会话",
     "graph.openTranscript": "打开 Transcript",
+    "graph.convert": "转换为 Flow",
+    "graph.converting": "正在转换…",
+    "graph.convertOk": "Flow 已保存",
+    "graph.convertFailed": "Flow 转换失败",
+    "graph.convertSha": "Artifact {sha}",
 
     "nav.tab.telemetry": "遥测",
     "nav.tab.snapshots": "快照",
@@ -513,6 +518,11 @@ const messages = {
     "graph.noAnchor": "No transcript anchor available",
     "graph.otherSession": "Target belongs to another session",
     "graph.openTranscript": "Open transcript",
+    "graph.convert": "Convert to Flow",
+    "graph.converting": "Converting…",
+    "graph.convertOk": "Flow saved",
+    "graph.convertFailed": "Flow conversion failed",
+    "graph.convertSha": "Artifact {sha}",
 
     "nav.tab.telemetry": "Telemetry",
     "nav.tab.snapshots": "Snapshots",

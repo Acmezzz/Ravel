@@ -30,6 +30,8 @@ export function GraphPanel(): React.ReactElement {
   const [selection, setSelection] = React.useState<GraphSelection | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [converting, setConverting] = React.useState(false);
+  const [convertResult, setConvertResult] = React.useState<string | null>(null);
   const requestEpoch = React.useRef(0);
 
   const refresh = React.useCallback(async () => {
@@ -67,6 +69,21 @@ export function GraphPanel(): React.ReactElement {
     if (!target || !canNavigate) return;
     requestTranscriptNavigation({ sessionId: target.sessionId, ...(target.entryId ? { entryId: target.entryId } : {}), ...(target.toolCallId ? { toolCallId: target.toolCallId } : {}) });
   }, [canNavigate, requestTranscriptNavigation, target]);
+  const convertToFlow = React.useCallback(async () => {
+    if (!graph || !activeSessionId || converting) return;
+    setConverting(true);
+    setConvertResult(null);
+    const result = await ipc.histosConvertToFlow({
+      sourceSet: { sessionIds: [activeSessionId] },
+      lens: "structural",
+      granularity: "entry",
+      ...(selection?.type === "node" ? { selectedNodeRevisionIds: [selection.nodeRevisionId] } : {}),
+      ...(selection?.type === "edge" ? { selectedEdgeRevisionIds: [selection.edgeRevisionId] } : {}),
+    });
+    if (result.ok) setConvertResult(t("graph.convertSha", { sha: result.data.sha256 }));
+    else setConvertResult(`${t("graph.convertFailed")}: ${result.message}`);
+    setConverting(false);
+  }, [activeSessionId, converting, graph, selection, t]);
 
   return (
     <div className="omega-graph-panel">
@@ -98,6 +115,10 @@ export function GraphPanel(): React.ReactElement {
                 <span className="omega-muted-text">{edge.missingSource || edge.missingTarget ? t("graph.missingEndpoint") : `${edge.sourceNodeRevisionId} → ${edge.targetNodeRevisionId}`}</span>
               </button>
             ))}
+          </div>
+          <div className="omega-graph-detail">
+            <Button size="sm" variant="quiet" disabled={converting || projected.nodes.length === 0} onClick={() => void convertToFlow()}>{converting ? t("graph.converting") : t("graph.convert")}</Button>
+            {convertResult ? <span className="omega-muted-text" role="status">{convertResult}</span> : null}
           </div>
           {selected ? (
             <section className="omega-graph-detail" aria-label={t("graph.detailAria")}>

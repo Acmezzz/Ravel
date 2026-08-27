@@ -7,6 +7,7 @@ import * as addressModule from "./histos-address.js";
 import * as adapters from "./histos-adapters.js";
 import * as provenance from "./histos-provenance.js";
 import { chunkFactAddress } from "./histos-chunker.js";
+import { convertGraphToFlowDraft, validateFlowSpec } from "./flow-validation.js";
 
 const LENSES = new Set(["structural", "semantic", "mixed"]);
 const GRANULARITIES = new Set(["operation", "entry", "span", "file", "cluster"]);
@@ -487,8 +488,6 @@ export class HistosEngine {
     const graph = graphRows(database, query);
     const selectedNodeRevisionIds = Array.isArray(input.selectedNodeRevisionIds) && input.selectedNodeRevisionIds.length > 0 ? input.selectedNodeRevisionIds : null;
     const selectedEdgeRevisionIds = Array.isArray(input.selectedEdgeRevisionIds) && input.selectedEdgeRevisionIds.length > 0 ? input.selectedEdgeRevisionIds : null;
-    const { convertGraphToFlowDraft } = await import("./flow-validation.js");
-    const { validateFlowSpec } = await import("./flow-validation.js");
     const draft = convertGraphToFlowDraft(graph, { workspaceId: this.workspaceId, selectedNodeRevisionIds, selectedEdgeRevisionIds, parentSha: input.parentSha ?? null });
     const validation = validateFlowSpec(draft, { workspaceId: this.workspaceId });
     if (!validation.ok) {
