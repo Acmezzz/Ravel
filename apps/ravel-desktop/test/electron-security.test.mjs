@@ -238,7 +238,7 @@ test("index.html CSP allows only external styles and no unsafe-inline / unsafe-e
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
   assert.ok(csp, "CSP meta tag is present");
   const cspContent = csp[1];
-  assert.match(cspContent, /style-src 'self'(?:;|')/);
+  assert.match(cspContent, /style-src 'self' app:(?:;|')/);
   assert.doesNotMatch(cspContent, /nonce-/);
   assert.match(cspContent, /script-src 'self'/);
   assert.doesNotMatch(cspContent, /unsafe-inline/);

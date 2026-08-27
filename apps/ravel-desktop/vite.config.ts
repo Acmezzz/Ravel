@@ -9,12 +9,22 @@
  *  - CSS is emitted as an external file (`dist/assets/index.css`) to satisfy
  *    `style-src 'self'`.
  */
+import { resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+
+const desktopRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
   root: ".",
   base: "./",
+  resolve: {
+    alias: {
+      react: resolvePath(desktopRoot, "node_modules/react"),
+      "react-dom": resolvePath(desktopRoot, "node_modules/react-dom"),
+    },
+  },
   plugins: [
     react({
       babel: {

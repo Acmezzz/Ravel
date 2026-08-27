@@ -10,7 +10,7 @@
       - style-src 'self' → renderer styles are build-time external CSS;
         still NO 'unsafe-inline' / 'unsafe-eval'.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; script-src 'self' app:; style-src 'self' app:; object-src 'none'; base-uri 'none'; form-action 'self' app:" />
   <title>Ravel Desktop</title>
   <link rel="stylesheet" href="./dist/assets/style.css" />
 </head>

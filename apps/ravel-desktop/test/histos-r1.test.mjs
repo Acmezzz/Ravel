@@ -22,7 +22,7 @@ test("R1 keeps the single-file IIFE, CSP, and compiler build contract", async ()
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
   assert.ok(csp, "CSP meta tag is present");
   assert.match(csp[1], /script-src 'self'/);
-  assert.match(csp[1], /style-src 'self'(?:;|')/);
+  assert.match(csp[1], /style-src 'self' app:(?:;|')/);
   assert.doesNotMatch(csp[1], /nonce-/);
   assert.doesNotMatch(csp[1], /unsafe-inline/);
   assert.doesNotMatch(csp[1], /unsafe-eval/);
@@ -35,7 +35,7 @@ test("R1 headless primitives use static classes and preserve ModelPicker behavio
   const picker = await read("../src/renderer/components/layout/ModelPicker.tsx");
   const empty = await read("../src/renderer/components/chat/EmptyState.tsx");
   const css = await read("../src/renderer/styles/global.css");
-  assert.match(popover, /virtualRef/);
+  assert.match(popover, /anchor=\{anchor\}/);
   assert.match(popover, /onOpenChange/);
   assert.match(popover, /omega-popover/);
   assert.match(button, /omega-button/);
