@@ -39,7 +39,9 @@ test("extension UI bridge is bound in the worker and isolated behind IPC", async
   assert.match(preload, /onExtensionUiRequest/);
   assert.match(preload, /omega:extensionUiResponse/);
   assert.match(app, /Dialog/);
-  assert.match(app, /Snackbar/);
+  assert.match(app, /extension-ui-host-notice/);
+  assert.match(app, /setNotice/);
+  assert.match(app, /role=\{notice\.severity === "error" \? "alert" : "status"\}/);
   assert.match(app, /setWidget/);
   assert.match(app, /set_editor_text/);
   assert.match(app, /incoming.sessionId !== activeSessionId/);

@@ -8,7 +8,9 @@ test("tool details are fetched only when a card expands", async () => {
   const card = await readFile(new URL("../src/renderer/components/chat/ToolCard.tsx", import.meta.url), "utf8");
   assert.match(worker, /getToolDetail/);
   assert.match(bridge, /export function getToolDetail/);
-  assert.match(card, /onChange=.*loadDetail/);
+  assert.match(card, /const handleToggle = React\.useCallback/);
+  assert.match(card, /if \(next\) void loadDetail\(\)/);
+  assert.match(card, /ipc\.getToolDetail\(\{ toolCallId: card\.toolCallId \}\)/);
   assert.match(card, /detail\?\.argsJson/);
   assert.match(card, /detail\?\.resultText/);
 });
