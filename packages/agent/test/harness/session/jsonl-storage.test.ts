@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Usage } from "@earendil-works/pi-ai";
@@ -481,6 +481,27 @@ describe("JSONL v4 per-session storage", () => {
 		);
 		expect(valid.seq).toBe(1);
 		expect((await reopen(root, restored)).getEntry("valid")).resolves.toEqual(valid);
+	});
+
+	it("quarantines malformed context attachments during reopen", async () => {
+		const root = createTempDir();
+		const session = await createRepository(root).create({ id: "malformed-context", cwd: root });
+		const metadata = await session.getMetadata();
+		appendFileSync(
+			metadata.path,
+			JSON.stringify({
+				kind: "record",
+				id: "bad-context",
+				lane: "main",
+				type: "context_attached",
+				seq: 1,
+				timestamp: 1,
+				targetSessionId: "",
+				contextSha: "a".repeat(64),
+			}) + "\n",
+		);
+		await expect(reopen(root, session)).rejects.toMatchObject({ code: "invalid_entry" });
+		expect(existsSync(metadata.path)).toBe(false);
 	});
 
 	it("does not advance state or poison the write queue after an append failure", async () => {
