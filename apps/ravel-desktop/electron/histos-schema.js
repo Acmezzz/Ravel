@@ -12,7 +12,7 @@ import {
  * this module deliberately does not mutate an existing database to another
  * version.
  */
-export const HISTOS_SCHEMA_VERSION = "1";
+export const HISTOS_SCHEMA_VERSION = "2";
 export const SCHEMA_VERSION = HISTOS_SCHEMA_VERSION;
 
 const TABLE_DEFINITIONS = Object.freeze({
@@ -30,6 +30,7 @@ const TABLE_DEFINITIONS = Object.freeze({
     ["title", "TEXT", 0, null, 0],
     ["created_at", "INTEGER", 1, null, 0],
     ["artifact_sha", "TEXT", 0, null, 0],
+    ["anchor_json", "TEXT", 0, null, 0],
   ]),
   edge_revisions: Object.freeze([
     ["edge_revision_id", "TEXT", 0, null, 1],
@@ -39,6 +40,7 @@ const TABLE_DEFINITIONS = Object.freeze({
     ["kind", "TEXT", 1, null, 0],
     ["created_at", "INTEGER", 1, null, 0],
     ["artifact_sha", "TEXT", 0, null, 0],
+    ["anchor_json", "TEXT", 0, null, 0],
   ]),
   revision_parents: Object.freeze([
     ["child_id", "TEXT", 1, null, 1],
@@ -99,7 +101,8 @@ CREATE TABLE IF NOT EXISTS node_revisions (
   kind TEXT NOT NULL,
   title TEXT,
   created_at INTEGER NOT NULL,
-  artifact_sha TEXT
+  artifact_sha TEXT,
+  anchor_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS edge_revisions (
@@ -109,7 +112,8 @@ CREATE TABLE IF NOT EXISTS edge_revisions (
   dst_node_id TEXT NOT NULL,
   kind TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  artifact_sha TEXT
+  artifact_sha TEXT,
+  anchor_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS revision_parents (

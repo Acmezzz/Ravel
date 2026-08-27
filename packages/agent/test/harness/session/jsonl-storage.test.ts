@@ -210,6 +210,13 @@ describe("JSONL v4 per-session storage", () => {
 		};
 
 		await append({
+			type: "context_attached",
+			id: "context-attached",
+			lane: "main",
+			targetSessionId: "target-session",
+			contextSha: "a".repeat(64),
+		});
+		await append({
 			type: "operation_started",
 			id: "run",
 			lane: "main",

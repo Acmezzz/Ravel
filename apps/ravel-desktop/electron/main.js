@@ -1590,14 +1590,21 @@ ipcMain.handle("omega:histosFreezeContext", async (event, req) => {
   try {
     const frozen = await (await activeHistos()).call("freezeContext", normalized);
     const targetSessionId = normalized.targetSessionId ?? worker?.sessionId;
-    if (targetSessionId && targetSessionId === worker?.sessionId && frozen?.sha256) {
-      try {
-        await worker.call("appendContextAttached", { targetSessionId, contextSha: frozen.sha256 });
-      } catch (error) {
-        return okResult({ ...frozen, targetSessionId, factAppend: { ok: false, error: error instanceof Error ? error.message : String(error) } });
-      }
+    if (!targetSessionId) {
+      return okResult({ ...frozen, targetSessionId: null, factAppend: { ok: false, error: "targetSessionId is required" } });
     }
-    return okResult({ ...frozen, targetSessionId: targetSessionId ?? null, factAppend: targetSessionId ? { ok: true } : { ok: false, error: "targetSessionId is required" } });
+    if (!worker?.sessionId || targetSessionId !== worker.sessionId) {
+      return okResult({ ...frozen, targetSessionId, factAppend: { ok: false, error: "target session is not active" } });
+    }
+    if (!frozen?.sha256) {
+      return okResult({ ...frozen, targetSessionId, factAppend: { ok: false, error: "context artifact has no sha256" } });
+    }
+    try {
+      await worker.call("appendContextAttached", { targetSessionId, contextSha: frozen.sha256 });
+    } catch (error) {
+      return okResult({ ...frozen, targetSessionId, factAppend: { ok: false, error: error instanceof Error ? error.message : String(error) } });
+    }
+    return okResult({ ...frozen, targetSessionId, factAppend: { ok: true } });
   } catch (error) { return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error)); }
 });
 

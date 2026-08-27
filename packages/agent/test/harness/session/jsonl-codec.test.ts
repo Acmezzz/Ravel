@@ -171,6 +171,32 @@ describe("JSONL v4 codec", () => {
 					contextSha: "bad",
 				},
 			},
+			{
+				name: "a context attachment with an empty target session",
+				mutation: {
+					kind: "record",
+					type: "context_attached",
+					id: "context",
+					lane: "main",
+					seq: 1,
+					timestamp: 1,
+					targetSessionId: "",
+					contextSha: "a".repeat(64),
+				},
+			},
+			...["A".repeat(64), "a".repeat(63), "a".repeat(65)].map((contextSha) => ({
+				name: `a context attachment with SHA ${contextSha.slice(0, 8)}`,
+				mutation: {
+					kind: "record",
+					type: "context_attached",
+					id: "context",
+					lane: "main",
+					seq: 1,
+					timestamp: 1,
+					targetSessionId: "target",
+					contextSha,
+				},
+			})),
 		])("rejects $name", ({ mutation }) => {
 			expect(parseMutation(JSON.stringify(mutation))).toMatchObject({ ok: false });
 		});

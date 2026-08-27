@@ -6,6 +6,7 @@ import * as schema from "./histos-schema.js";
 import * as addressModule from "./histos-address.js";
 import * as adapters from "./histos-adapters.js";
 import * as provenance from "./histos-provenance.js";
+import { chunkFactAddress } from "./histos-chunker.js";
 
 const LENSES = new Set(["structural", "semantic", "mixed"]);
 const GRANULARITIES = new Set(["operation", "entry", "span", "file", "cluster"]);
@@ -114,6 +115,15 @@ function addEvidence(result, revisionId, address, role = "supports") {
   if (!result.evidence.has(key)) result.evidence.set(key, { revisionId, addressId: addressIdValue, role });
 }
 
+function traceAnchor(data) {
+  if (!isObject(data) || typeof data.sessionId !== "string" || data.sessionId.length === 0) return undefined;
+  const anchor = { sessionId: data.sessionId };
+  for (const field of ["entryId", "toolCallId", "assistantEntryId", "resultEntryId"]) {
+    if (typeof data[field] === "string" && data[field].length > 0 && data[field].length <= MAX_ID && !/[\u0000-\u001f\u007f]/.test(data[field])) anchor[field] = data[field];
+  }
+  return Object.keys(anchor).length > 1 ? anchor : undefined;
+}
+
 function addNode(result, node, evidence = []) {
   if (!isObject(node)) return;
   const nodeRevisionId = string(node.nodeRevisionId ?? node.revisionId, "nodeRevisionId");
@@ -125,6 +135,7 @@ function addNode(result, node, evidence = []) {
     title: node.title === undefined ? null : String(node.title).slice(0, 4096),
     createdAt: Number.isSafeInteger(node.createdAt) ? node.createdAt : now(),
     artifactSha: node.artifactSha ?? null,
+    anchor: traceAnchor(node.anchor ?? node.data),
   };
   result.nodes.set(nodeRevisionId, item);
   for (const itemEvidence of evidence) addEvidence(result, nodeRevisionId, itemEvidence.address ?? itemEvidence.factAddress ?? itemEvidence, itemEvidence.role ?? "supports");
@@ -141,6 +152,7 @@ function addEdge(result, edge, evidence = []) {
     kind: string(edge.kind ?? "references", "edge.kind", 64),
     createdAt: Number.isSafeInteger(edge.createdAt) ? edge.createdAt : now(),
     artifactSha: edge.artifactSha ?? null,
+    anchor: traceAnchor(edge.anchor ?? edge.data),
   };
   result.edges.set(edgeRevisionId, item);
   for (const itemEvidence of evidence) addEvidence(result, edgeRevisionId, itemEvidence.address ?? itemEvidence.factAddress ?? itemEvidence, itemEvidence.role ?? "supports");
@@ -164,16 +176,27 @@ function indexFact(result, sessionId, fact, entryId) {
   addEdge(result, { edgeRevisionId: hashId(`fact-edge:${entryNodeId}:${nodeId}`), edgeId: `fact:${outerEntryId}:${factId}`, srcNodeId: entryNodeId, dstNodeId: nodeId, kind: "produced", createdAt: 0 }, [{ address: sourceAddress, addressId: sourceAddressId, role: "produces" }]);
 }
 
+function graphAnchor(item) {
+  const data = isObject(item?.data) ? item.data : {};
+  const kindSeparator = typeof item?.id === "string" ? item.id.indexOf(":") : -1;
+  const objectSeparator = kindSeparator >= 0 ? item.id.indexOf("/", kindSeparator + 1) : -1;
+  const sessionId = typeof data.sessionId === "string" && data.sessionId.length > 0
+    ? data.sessionId
+    : objectSeparator > kindSeparator ? item.id.slice(kindSeparator + 1, objectSeparator) : undefined;
+  if (!sessionId) return undefined;
+  return traceAnchor({ sessionId, ...data });
+}
+
 function resultFromStructuralGraph(graph, result) {
   for (const node of graph.nodes ?? []) {
     const nodeRevisionId = hashId(`adapter-node:${node.id}`);
     const evidence = (node.evidence ?? []).map((item) => ({ ...item, revisionId: nodeRevisionId }));
-    addNode(result, { nodeRevisionId, nodeId: node.id, kind: node.kind, title: node.title, createdAt: 0 }, evidence);
+    addNode(result, { nodeRevisionId, nodeId: node.id, kind: node.kind, title: node.title, createdAt: 0, anchor: graphAnchor(node) }, evidence);
   }
   for (const edge of graph.edges ?? []) {
     const edgeRevisionId = hashId(`adapter-edge:${edge.id}`);
     const evidence = (edge.evidence ?? []).map((item) => ({ ...item, revisionId: edgeRevisionId }));
-    addEdge(result, { edgeRevisionId, edgeId: edge.id, srcNodeId: edge.srcNodeId, dstNodeId: edge.dstNodeId, kind: edge.kind, createdAt: 0 }, evidence);
+    addEdge(result, { edgeRevisionId, edgeId: edge.id, srcNodeId: edge.srcNodeId, dstNodeId: edge.dstNodeId, kind: edge.kind, createdAt: 0, anchor: graphAnchor(edge) }, evidence);
   }
 }
 
@@ -191,25 +214,54 @@ async function scanSources(options, result, check) {
     scans.push(...rootScans);
   }
   const unique = new Map(scans.filter((scan) => scan?.sessionId).map((scan) => [scan.sessionId, scan]));
-  const graph = adapters.projectStructuralGraph([...unique.values()], { workspaceId: result.workspaceId, granularity: options.granularity ?? "entry" });
+  const uniqueScans = [...unique.values()];
+  const graph = adapters.projectStructuralGraph(uniqueScans, { workspaceId: result.workspaceId, granularity: options.granularity ?? "entry" });
   resultFromStructuralGraph(graph, result);
-  for (const scan of unique.values()) result.sessionIds.add(scan.sessionId);
+  for (const scan of uniqueScans) {
+    result.sessionIds.add(scan.sessionId);
+    indexScanMessages(result, scan);
+  }
   return [...unique.values()].map((scan) => scan.filePath).filter(Boolean);
 }
 
 function emptyResult(workspaceId) {
-  return { workspaceId, addresses: new Map(), nodes: new Map(), edges: new Map(), evidence: new Map(), parents: new Set(), sessionIds: new Set(), lastEntryBySession: new Map() };
+  return { workspaceId, addresses: new Map(), nodes: new Map(), edges: new Map(), evidence: new Map(), spans: new Map(), parents: new Set(), sessionIds: new Set(), lastEntryBySession: new Map() };
+}
+
+function indexMessageSpans(result, message) {
+  if (!message?.entryAddress || typeof message.text !== "string" || message.text.length === 0) return;
+  for (const chunk of chunkFactAddress(message.entryAddress, message.text)) {
+    const spanAddressId = addAddress(result, chunk.address);
+    result.spans.set(spanAddressId, {
+      spanId: spanAddressId,
+      addressId: spanAddressId,
+      entryObjectId: chunk.address.objectId,
+      start: chunk.start,
+      length: chunk.length,
+    });
+  }
+}
+
+function indexScanMessages(result, scan) {
+  for (const message of scan?.messages ?? []) indexMessageSpans(result, message);
 }
 
 function rowsFromResult(database, result) {
   const insertAddress = database.prepare("INSERT OR IGNORE INTO addresses (address_id, source_type, object_id, revision_id, selector_json) VALUES (?, ?, ?, ?, ?)");
-  const insertNode = database.prepare("INSERT OR IGNORE INTO node_revisions (node_revision_id, node_id, kind, title, created_at, artifact_sha) VALUES (?, ?, ?, ?, ?, ?)");
-  const insertEdge = database.prepare("INSERT OR IGNORE INTO edge_revisions (edge_revision_id, edge_id, src_node_id, dst_node_id, kind, created_at, artifact_sha) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  const insertNode = database.prepare("INSERT OR IGNORE INTO node_revisions (node_revision_id, node_id, kind, title, created_at, artifact_sha, anchor_json) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  const insertEdge = database.prepare("INSERT OR IGNORE INTO edge_revisions (edge_revision_id, edge_id, src_node_id, dst_node_id, kind, created_at, artifact_sha, anchor_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   const insertEvidence = database.prepare("INSERT OR IGNORE INTO evidence (revision_id, address_id, role) VALUES (?, ?, ?)");
   const insertParent = database.prepare("INSERT OR IGNORE INTO revision_parents (child_id, parent_id) VALUES (?, ?)");
-  for (const [id, item] of result.addresses) insertAddress.run(id, item.sourceType, item.objectId, item.revisionId, item.selector ? JSON.stringify(item.selector) : null);
-  for (const item of result.nodes.values()) insertNode.run(item.nodeRevisionId, item.nodeId, item.kind, item.title, item.createdAt, item.artifactSha);
-  for (const item of result.edges.values()) insertEdge.run(item.edgeRevisionId, item.edgeId, item.srcNodeId, item.dstNodeId, item.kind, item.createdAt, item.artifactSha);
+  const insertSpan = database.prepare("INSERT OR IGNORE INTO spans (span_id, address_id, entry_object_id, start, length) VALUES (?, ?, ?, ?, ?)");
+  for (const [id, item] of result.addresses) {
+    insertAddress.run(id, item.sourceType, item.objectId, item.revisionId, item.selector ? JSON.stringify(item.selector) : null);
+    if (item.sourceType === "session_span" && item.selector?.kind === "span") {
+      insertSpan.run(id, id, item.objectId, item.selector.start, item.selector.length);
+    }
+  }
+  for (const item of result.spans.values()) insertSpan.run(item.spanId, item.addressId, item.entryObjectId, item.start, item.length);
+  for (const item of result.nodes.values()) insertNode.run(item.nodeRevisionId, item.nodeId, item.kind, item.title, item.createdAt, item.artifactSha, item.anchor ? JSON.stringify(item.anchor) : null);
+  for (const item of result.edges.values()) insertEdge.run(item.edgeRevisionId, item.edgeId, item.srcNodeId, item.dstNodeId, item.kind, item.createdAt, item.artifactSha, item.anchor ? JSON.stringify(item.anchor) : null);
   for (const item of result.evidence.values()) insertEvidence.run(item.revisionId, item.addressId, item.role);
   for (const pair of result.parents) { const [childId, parentId] = pair.split("\u0000"); insertParent.run(childId, parentId); }
 }
@@ -267,13 +319,36 @@ function queryFromArgs(first, second, third) {
   throw invalid("query requires sourceSet, lens, and granularity");
 }
 
+function traceAnchorFor(revision, evidence) {
+  const addresses = evidence.filter((item) => item.revisionId === revision).map((item) => item.address);
+  const sessionEntry = addresses.find((address) => address.sourceType === "session_entry");
+  const tool = addresses.find((address) => address.sourceType === "tool");
+  const operation = addresses.find((address) => address.sourceType === "operation");
+  const approval = addresses.find((address) => address.sourceType === "approval");
+  const selected = sessionEntry ?? tool ?? operation ?? approval;
+  if (!selected) return undefined;
+  const separator = selected.objectId.indexOf("/");
+  if (separator <= 0) return undefined;
+  const sessionId = selected.objectId.slice(0, separator);
+  const objectId = selected.objectId.slice(separator + 1);
+  if (selected.sourceType === "session_entry") return { sessionId, entryId: objectId };
+  if (selected.sourceType === "tool") return { sessionId, toolCallId: objectId, ...(selected.revisionId ? { assistantEntryId: selected.revisionId } : {}) };
+  if (selected.sourceType === "operation") return { sessionId, entryId: selected.revisionId };
+  if (selected.sourceType === "approval") return { sessionId, entryId: selected.revisionId };
+  return undefined;
+}
+
 function graphRows(database, query) {
-  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha FROM node_revisions ORDER BY created_at, node_revision_id").all().filter((row) => revisionMatches(database, row.nodeRevisionId, query));
-  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha FROM edge_revisions ORDER BY created_at, edge_revision_id").all().filter((row) => revisionMatches(database, row.edgeRevisionId, query));
+  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.nodeRevisionId, query));
+  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.edgeRevisionId, query));
   const revisions = [...nodes.map((item) => item.nodeRevisionId), ...edges.map((item) => item.edgeRevisionId)];
   const evidence = revisions.length === 0 ? [] : database.prepare(`SELECT e.revision_id AS revisionId, e.address_id AS addressId, e.role, a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS addressRevisionId, a.selector_json AS selectorJson FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id IN (${revisions.map(() => "?").join(",")})`).all(...revisions).map((row) => ({ revisionId: row.revisionId, addressId: row.addressId, role: row.role, address: { sourceType: row.sourceType, objectId: row.objectId, revisionId: row.addressRevisionId, ...(row.selectorJson ? { selector: JSON.parse(row.selectorJson) } : {}) } }));
+  const withAnchors = (items, revisionKey) => items.map((item) => {
+    const fallback = traceAnchorFor(item[revisionKey], evidence);
+    return fallback && !item.anchor ? { ...item, anchor: fallback } : item;
+  });
   const parents = database.prepare("SELECT child_id AS childId, parent_id AS parentId FROM revision_parents").all();
-  return { nodes, edges, evidence, parents, sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity };
+  return { nodes: withAnchors(nodes, "nodeRevisionId"), edges: withAnchors(edges, "edgeRevisionId"), evidence, parents, sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity };
 }
 
 export class HistosEngine {
@@ -383,7 +458,7 @@ export class HistosEngine {
     const nodeId = typeof first === "string" ? first : first.nodeId ?? first.id;
     string(nodeId, "nodeId");
     const database = this.assertOpen();
-    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).filter((row) => revisionMatches(database, row.nodeRevisionId, query));
+    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.nodeRevisionId, query));
     if (rows.length === 0) return null;
     const graph = graphRows(database, query);
     return { ...rows[0], evidence: graph.evidence.filter((item) => item.revisionId === rows[0].nodeRevisionId), parents: graph.parents.filter((item) => item.childId === rows[0].nodeRevisionId) };

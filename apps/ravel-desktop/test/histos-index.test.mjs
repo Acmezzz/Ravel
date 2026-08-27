@@ -26,6 +26,7 @@ import {
   validateArtifact,
   writeArtifact,
 } from "../electron/histos-provenance.js";
+import { HistosEngine } from "../electron/histos-engine.js";
 
 const SHA1 = "0123456789abcdef0123456789abcdef01234567";
 const SHA256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -113,7 +114,7 @@ test("DatabaseSync Histos schema initializes and validates", () => {
   try {
     initializeHistosSchema(database, "workspace-1");
     const metadata = validateHistosSchema(database, "workspace-1");
-    assert.equal(metadata.schema_version, "1");
+    assert.equal(metadata.schema_version, "2");
     assert.equal(metadata.workspace_id, "workspace-1");
     assert.deepEqual(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((row) => row.name), [...HISTOS_TABLES].sort());
     assert.deepEqual(database.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map((row) => row.name), [...HISTOS_INDEXES].sort());
@@ -184,6 +185,52 @@ test("context_set artifact hash is written atomically, read, hydrated, and rejec
 
   await fs.writeFile(join(artifactsDir, `${expectedHash}.json`), Buffer.from("tampered", "utf8"));
   await assert.rejects(() => readArtifact(artifactsDir, expectedHash), { code: "integrity_error" });
+});
+
+test("HistosEngine rebuilds JSONL deterministically with trace anchors and spans", async (t) => {
+  const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-engine-"));
+  t.after(async () => fs.rm(root, { recursive: true, force: true }));
+  const sessionFile = join(root, "session.jsonl");
+  await fs.writeFile(sessionFile, [
+    JSON.stringify({ type: "session", version: 3, id: "session-engine", cwd: root }),
+    JSON.stringify({ type: "message", id: "entry-user", parentId: null, timestamp: "2026-01-01T00:00:00.000Z", message: { role: "user", content: "inspect" } }),
+    JSON.stringify({ type: "message", id: "entry-assistant", parentId: "entry-user", timestamp: "2026-01-01T00:00:01.000Z", message: { role: "assistant", content: [{ type: "toolCall", id: "call-engine", name: "read", arguments: { path: "README.md" } }] } }),
+    JSON.stringify({ type: "message", id: "entry-tool", parentId: "entry-assistant", timestamp: "2026-01-01T00:00:02.000Z", message: { role: "toolResult", toolCallId: "call-engine", content: [{ type: "text", text: "done" }], isError: false } }),
+  ].join("\n") + "\n");
+  const databasePath = join(root, "index.sqlite");
+  const artifactsDir = join(root, "artifacts");
+  const options = { workspaceId: "workspace-engine", databasePath, artifactsDir, sessionFiles: [sessionFile] };
+  const first = new HistosEngine(options);
+  t.after(() => first.close());
+  await first.rebuild({ granularity: "entry" });
+  const query = { sourceSet: { sessionIds: ["session-engine"] }, lens: "structural", granularity: "entry" };
+  const graph = first.getGraph(query);
+  const entry = graph.nodes.find((node) => node.nodeId === "entry:session-engine/entry-user");
+  const tool = graph.nodes.find((node) => node.nodeId === "tool:session-engine/call-engine");
+  assert.deepEqual(entry?.anchor, { sessionId: "session-engine", entryId: "entry-user" });
+  assert.deepEqual(tool?.anchor, { sessionId: "session-engine", toolCallId: "call-engine", assistantEntryId: "entry-assistant", resultEntryId: "entry-tool" });
+  assert.ok(graph.evidence.length > 0);
+  const database = new DatabaseSync(databasePath);
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM spans").get().count > 0, true);
+  database.close();
+
+  first.close();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      await fs.rm(databasePath, { force: true });
+      break;
+    } catch (error) {
+      if (error?.code !== "EBUSY" || attempt === 99) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+  const second = new HistosEngine(options);
+  t.after(() => second.close());
+  await second.rebuild({ granularity: "entry" });
+  const rebuiltGraph = second.getGraph(query);
+  second.close();
+  assert.deepEqual(rebuiltGraph, graph);
 });
 
 test("context_set validation requires valid selected evidence", () => {

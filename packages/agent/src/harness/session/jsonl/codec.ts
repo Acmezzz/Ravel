@@ -51,6 +51,14 @@ function requireString(value: unknown, field: string): string {
 	return value;
 }
 
+function requireNonEmptyString(value: unknown, field: string): string {
+	const result = requireString(value, field);
+	if (result.length === 0 || /[\u0000-\u001f\u007f]/.test(result)) {
+		throw new JsonlDecodeError("schema", `has invalid ${field}`);
+	}
+	return result;
+}
+
 function requireSequence(value: unknown): number {
 	if (!Number.isSafeInteger(value) || (value as number) <= 0) {
 		throw new JsonlDecodeError("schema", "has invalid seq");
@@ -195,7 +203,7 @@ function parseRecordMutation(
 		requireString(value.targetTitle, "targetTitle");
 	}
 	if (type === "context_attached") {
-		requireString(value.targetSessionId, "targetSessionId");
+		requireNonEmptyString(value.targetSessionId, "targetSessionId");
 		const contextSha = requireString(value.contextSha, "contextSha");
 		if (!/^[0-9a-f]{64}$/.test(contextSha)) {
 			throw new JsonlDecodeError("schema", "has invalid contextSha");

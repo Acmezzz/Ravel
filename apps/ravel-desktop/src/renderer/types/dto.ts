@@ -65,6 +65,14 @@ export interface HistosEvidenceDTO {
   address?: HistosFactAddress;
 }
 
+export interface HistosTraceAnchorDTO {
+  sessionId: string;
+  entryId?: string;
+  toolCallId?: string;
+  assistantEntryId?: string;
+  resultEntryId?: string;
+}
+
 export interface HistosNodeRevisionDTO {
   nodeRevisionId: string;
   nodeId: string;
@@ -72,6 +80,7 @@ export interface HistosNodeRevisionDTO {
   title: string | null;
   createdAt: number;
   artifactSha: string | null;
+  anchor?: HistosTraceAnchorDTO;
 }
 
 export interface HistosEdgeRevisionDTO {
@@ -82,6 +91,7 @@ export interface HistosEdgeRevisionDTO {
   kind: string;
   createdAt: number;
   artifactSha: string | null;
+  anchor?: HistosTraceAnchorDTO;
 }
 
 export interface HistosRevisionParentDTO {
@@ -90,10 +100,13 @@ export interface HistosRevisionParentDTO {
 }
 
 export interface HistosGraphDTO extends HistosQueryDTO {
+  workspaceId?: string;
+  schemaVersion?: number;
   nodes: HistosNodeRevisionDTO[];
   edges: HistosEdgeRevisionDTO[];
   evidence: HistosEvidenceDTO[];
   parents: HistosRevisionParentDTO[];
+  diagnostics?: Array<{ line: number; code: string; message: string }>;
 }
 
 export type HistosSelection = string | {
@@ -103,8 +116,7 @@ export type HistosSelection = string | {
 };
 
 export type HistosGetGraphRequest = HistosQueryDTO;
-export interface HistosRebuildRequest {
-  granularity?: HistosGranularity;
+export interface HistosRebuildRequest extends HistosQueryDTO {
   maxFiles?: number;
 }
 export interface HistosGetNodeRequest extends HistosQueryDTO {
@@ -125,9 +137,14 @@ export interface HistosArtifactDTO extends HistosQueryDTO {
   nodes: HistosNodeRevisionDTO[];
   edges: HistosEdgeRevisionDTO[];
   evidence: HistosEvidenceDTO[];
-  parents: string[];
+  parents: HistosRevisionParentDTO[];
   selection?: HistosEvidenceDTO[];
   sha256?: string;
+}
+
+export interface HistosFactAppendResultDTO {
+  ok: boolean;
+  error?: string;
 }
 
 export interface HistosRebuildResultDTO {
@@ -141,6 +158,7 @@ export interface HistosContextFreezeResultDTO {
   sha256: string;
   artifact: HistosArtifactDTO;
   targetSessionId: string | null;
+  factAppend?: HistosFactAppendResultDTO;
 }
 
 // ===== agent_* (V1 placeholders) =====
