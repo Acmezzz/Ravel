@@ -12,7 +12,8 @@ test("R1 keeps the single-file IIFE, CSP, and compiler build contract", async ()
   const postcss = await read("../postcss.config.js");
   const css = await read("../src/renderer/styles/global.css");
   assert.match(vite, /format:\s*["']iife["']/);
-  assert.match(vite, /inlineDynamicImports:\s*true/);
+  assert.match(vite, /codeSplitting:\s*false/);
+  assert.doesNotMatch(vite, /inlineDynamicImports/);
   assert.match(vite, /modulePreload:\s*false/);
   assert.match(vite, /babel-plugin-react-compiler/);
   assert.match(vite, /target:\s*["']19["']/);

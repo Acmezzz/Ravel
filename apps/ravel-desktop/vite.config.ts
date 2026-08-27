@@ -1,13 +1,16 @@
 /**
- * Vite configuration for the Ravel Desktop renderer.
+ * Vite configuration for the Ravel Desktop renderer (Vite 8 / Rolldown).
  *
- * Hard constraints (see system_design.md §1.1):
- *  - Output a SINGLE classic (IIFE) script so it can be loaded via
- *    `<script src="./dist/assets/index.js">` without violating the
- *    `script-src 'self'` CSP (no ES modules, no eval, no inline).
- *  - Base is relative (`./`) so the built files work from the file:// page.
- *  - CSS is emitted as an external file (`dist/assets/index.css`) to satisfy
- *    `style-src 'self'`.
+ * Hard constraints (see docs/ravel-histos-refactor-plan.md §T2):
+ *  - Output a SINGLE classic (IIFE) script with code splitting disabled, so
+ *    it can be loaded via `<script src="./dist/assets/index.js">` without
+ *    violating the `script-src 'self' app:` CSP (no ES modules, no eval, no
+ *    inline scripts).
+ *  - Base is relative (`./`) so the built files work behind the contained
+ *    app:// protocol.
+ *  - CSS is emitted as one external file (`dist/assets/style.css`) to satisfy
+ *    `style-src 'self' app:`.
+ *  - No HMR dev server is used; `dev`/`watch` are build --watch only.
  */
 import { resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,11 +42,10 @@ export default defineConfig({
     modulePreload: false,
     rollupOptions: {
       input: "src/renderer/main.tsx",
+      codeSplitting: false,
       output: {
         format: "iife",
-        inlineDynamicImports: true,
         entryFileNames: "assets/index.js",
-        chunkFileNames: "assets/index.js",
         assetFileNames: "assets/[name][extname]",
       },
     },

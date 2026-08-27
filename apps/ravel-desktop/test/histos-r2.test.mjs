@@ -208,7 +208,7 @@ test("SettingsDialog keeps IPC, i18n, and validation contracts", async () => {
 test("R2 chrome stays isolated from runtime storage and upgrade gates", async () => {
   const pkg = await read("../package.json");
   const settings = await read("../src/renderer/components/layout/SettingsDialog.tsx");
-  assert.doesNotMatch(pkg, /"vite":\s*"8\./);
+  assert.match(pkg, /"vite":\s*"8\./);
   assert.match(pkg, /@xyflow\/react/);
   assert.match(pkg, /elkjs/);
   assert.doesNotMatch(pkg, /better-sqlite3/);
