@@ -21,6 +21,8 @@ import type {
   AuthStatus,
   DesktopSettings,
   PromptImage,
+  PtyDataDTO,
+  PtyExitDTO,
   SessionTree,
   DirListing,
   FileReadResult,
@@ -61,6 +63,12 @@ export interface RavelBridge {
   /** A structured @session mention resolved by the composer menu. */
   prompt(text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string, references?: PromptSessionReference[]): Promise<IpcResult<void>>;
   abort(): Promise<IpcResult<void>>;
+  ptyCreate(req: { sessionId: string; cwd: string; cols?: number; rows?: number }): Promise<IpcResult<{ sessionId: string }>>;
+  ptyWrite(req: { sessionId: string; data: string }): Promise<IpcResult<void>>;
+  ptyResize(req: { sessionId: string; cols: number; rows: number }): Promise<IpcResult<void>>;
+  ptyKill(req: { sessionId: string }): Promise<IpcResult<void>>;
+  onPtyData(callback: (data: PtyDataDTO) => void): () => void;
+  onPtyExit(callback: (data: PtyExitDTO) => void): () => void;
   updateSettings(req: {
     steeringMode?: "all" | "one-at-a-time";
     followUpMode?: "all" | "one-at-a-time";
@@ -191,6 +199,12 @@ export const ipc = {
   prompt: async (text: string, behavior?: "steer" | "followUp", images?: PromptImage[], clientMessageId?: string, references?: PromptSessionReference[]): Promise<IpcResult<void>> =>
     ok(await window.omega?.prompt?.(text, behavior, images, clientMessageId, references)),
   abort: async (): Promise<IpcResult<void>> => ok(await window.omega?.abort?.()),
+  ptyCreate: async (req: { sessionId: string; cwd: string; cols?: number; rows?: number }): Promise<IpcResult<{ sessionId: string }>> => ok(await window.omega?.ptyCreate?.(req)),
+  ptyWrite: async (req: { sessionId: string; data: string }): Promise<IpcResult<void>> => ok(await window.omega?.ptyWrite?.(req)),
+  ptyResize: async (req: { sessionId: string; cols: number; rows: number }): Promise<IpcResult<void>> => ok(await window.omega?.ptyResize?.(req)),
+  ptyKill: async (req: { sessionId: string }): Promise<IpcResult<void>> => ok(await window.omega?.ptyKill?.(req)),
+  onPtyData: (callback: (data: PtyDataDTO) => void): (() => void) => window.omega?.onPtyData?.(callback) ?? (() => {}),
+  onPtyExit: (callback: (data: PtyExitDTO) => void): (() => void) => window.omega?.onPtyExit?.(callback) ?? (() => {}),
   updateSettings: async (req: {
     steeringMode?: "all" | "one-at-a-time";
     followUpMode?: "all" | "one-at-a-time";

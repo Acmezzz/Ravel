@@ -974,6 +974,11 @@ body {
 .omega-graph-edge { flex-wrap: wrap; font: 0.6875rem ui-monospace, Consolas, monospace; }
 .omega-graph-detail { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.65rem; border-top: 1px solid var(--omega-border); background: var(--omega-bg-soft); }
 .omega-graph-empty { margin: auto 0; padding: 1rem 0.5rem; color: var(--omega-text-dim); text-align: center; }
+.omega-terminal-panel { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 0.4rem; }
+.omega-terminal-surface { flex: 1; min-height: 120px; min-width: 0; overflow: hidden; border: 1px solid var(--omega-border); border-radius: var(--omega-radius-sm); background: #0d0e12; padding: 0.4rem; }
+.omega-terminal-surface .xterm { height: 100%; }
+.omega-terminal-surface .xterm-viewport { overflow-y: auto !important; }
+.omega-terminal-status { margin: 0; color: var(--omega-text-dim); font: 0.6875rem ui-monospace, Consolas, monospace; }
 .omega-icon-plus,
 .omega-icon-close { display: block; width: 0.9375rem; height: 0.9375rem; }
 .omega-attention-dot::after {

@@ -11,12 +11,13 @@
     "build:renderer": "vite build",
     "watch:renderer": "vite build --watch",
     "dev": "vite build --watch",
-    "typecheck": "node --check electron/main.js && node --check electron/app-protocol.js && node --check electron/deep-links.js && node --check electron/data-migration.js && node --check electron/agent-bridge.js && node --check electron/preload.js && node --check electron/diff-service.js && node --check electron/workspace-service.js && node --check electron/workspace-registry.js && node --check electron/project-trust.js && node --check electron/close-lifecycle.js && node --check electron/ipc-registry.js && node --check electron/ipc-contracts.js && node --check electron/session-reader.js && node --check electron/worker-host.js && node --check electron/worker-pool.js && node --check electron/desktop-settings.js && node --check electron/credential-store.js && node --check electron/resource-center.js && node --check electron/extension-ui-protocol.js && node --check electron/permission-profiles.js && node --check electron/worker-protocol.js && node --check electron/ipc-schemas.js && node --check electron/keybindings.js && node --check electron/docx-service.js && node --check electron/updater-service.js && node --check electron/worker.mjs && node --check electron/session-facts.js && node --check electron/activity-service.js && node --check electron/mcp-service.js",
+    "typecheck": "node --check electron/main.js && node --check electron/app-protocol.js && node --check electron/deep-links.js && node --check electron/data-migration.js && node --check electron/agent-bridge.js && node --check electron/preload.js && node --check electron/diff-service.js && node --check electron/workspace-service.js && node --check electron/workspace-registry.js && node --check electron/project-trust.js && node --check electron/close-lifecycle.js && node --check electron/ipc-registry.js && node --check electron/ipc-contracts.js && node --check electron/session-reader.js && node --check electron/worker-host.js && node --check electron/worker-pool.js && node --check electron/desktop-settings.js && node --check electron/credential-store.js && node --check electron/resource-center.js && node --check electron/extension-ui-protocol.js && node --check electron/permission-profiles.js && node --check electron/worker-protocol.js && node --check electron/ipc-schemas.js && node --check electron/keybindings.js && node --check electron/docx-service.js && node --check electron/updater-service.js && node --check electron/worker.mjs && node --check electron/pty-host.js && node --check electron/pty-worker.mjs && node --check electron/session-facts.js && node --check electron/activity-service.js && node --check electron/mcp-service.js",
     "typecheck:renderer": "tsc -p tsconfig.renderer.json --noEmit",
     "test": "node --test test/*.test.mjs",
     "sdk-check": "node scripts/sdk-check.mjs",
     "release:gate": "node scripts/release-gate.mjs",
     "electron:smoke": "node scripts/electron-smoke.mjs",
+    "rebuild:native": "electron-rebuild -v 43.4.1 -w node-pty --force",
     "migration:smoke": "node scripts/migration-smoke.mjs",
     "package:dir": "electron-builder --dir",
     "package": "electron-builder"
@@ -29,7 +30,10 @@
     "@radix-ui/react-tooltip": "1.2.16",
     "@tailwindcss/postcss": "4.3.3",
     "@tanstack/react-virtual": "3.13.12",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "5.5.0",
     "highlight.js": "11.10.0",
+    "node-pty": "1.1.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-markdown": "9.0.1",
@@ -38,6 +42,7 @@
     "zustand": "4.5.5"
   },
   "devDependencies": {
+    "@electron/rebuild": "4.2.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "4.7.0",

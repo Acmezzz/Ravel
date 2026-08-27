@@ -17,7 +17,7 @@ test("PTY wire protocol enforces strict methods, bounded envelopes, and sanitize
   assert.equal(isPtyMethod("spawn"), true);
   assert.equal(isPtyMethod("eval"), false);
 
-  const req = createPtyRequest("req-1", 1, "spawn", { cols: 80, rows: 24 });
+  const req = createPtyRequest("req-1", 1, "spawn", { sessionId: "sess-1", file: "shell", args: [], cols: 80, rows: 24 });
   assert.equal(isPtyRequest(req), true);
   assert.equal(isPtyRequest({ ...req, method: "invalid" }), false);
 

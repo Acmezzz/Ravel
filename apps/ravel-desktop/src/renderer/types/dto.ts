@@ -462,6 +462,19 @@ export interface PromptImage {
   data: string;
 }
 
+export interface PtyDataDTO {
+  sessionId: string;
+  chunk: string;
+  sequence: number;
+  isFinal: boolean;
+}
+
+export interface PtyExitDTO {
+  sessionId: string;
+  exitCode: number | null;
+  signal: number | null;
+}
+
 export interface AgentStateSnapshot {
   ready: boolean;
   cwd: string;

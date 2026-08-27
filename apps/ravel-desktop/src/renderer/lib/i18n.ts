@@ -239,6 +239,11 @@ const messages = {
 
     "nav.tab.telemetry": "遥测",
     "nav.tab.snapshots": "快照",
+    "nav.tab.terminal": "终端",
+    "terminal.title": "终端",
+    "terminal.noWorkspace": "请选择工作区后使用终端。",
+    "terminal.startFailed": "终端启动失败：{message}",
+    "terminal.exited": "终端已退出（{code}）",
     "snapshots.create": "创建快照",
     "snapshots.hint": "快照保存在独立引用中，不产生分支或提交历史；恢复前会自动创建安全快照。",
     "snapshots.restore": "恢复",
@@ -526,6 +531,11 @@ const messages = {
 
     "nav.tab.telemetry": "Telemetry",
     "nav.tab.snapshots": "Snapshots",
+    "nav.tab.terminal": "Terminal",
+    "terminal.title": "Terminal",
+    "terminal.noWorkspace": "Select a workspace to use the terminal.",
+    "terminal.startFailed": "Failed to start terminal: {message}",
+    "terminal.exited": "Terminal exited ({code})",
     "snapshots.create": "Create snapshot",
     "snapshots.hint": "Snapshots live on a dedicated ref — no branches or history are touched. A safety snapshot is taken before every restore.",
     "snapshots.restore": "Restore",

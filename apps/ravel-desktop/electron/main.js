@@ -21,9 +21,9 @@ import {
   net,
   protocol,
 } from "electron";
-import { existsSync, mkdirSync, unlinkSync, writeFileSync, watch } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync, watch, statSync } from "node:fs";
 import { appendFile, mkdir, readFile, rename, stat, writeFile as writeFileAsync } from "node:fs/promises";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve, isAbsolute } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import {
@@ -50,6 +50,7 @@ import { DEEP_LINK_PROTOCOL, parseDeepLink, shouldRegisterProtocol } from "./dee
 import { appRendererUrl, isAllowedAppUrl, registerAppProtocol, rendererAssetRoot } from "./app-protocol.js";
 import { WorkerHost } from "./worker-host.js";
 import { HistosHost } from "./histos-host.js";
+import { createPtyHost } from "./pty-host.js";
 import { sanitizeSearchQuery, searchWorkspace } from "./search-service.js";
 import { createCheckpoint, listCheckpoints, pruneCheckpoints, restoreCheckpoint } from "./checkpoint-service.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
@@ -71,6 +72,10 @@ import {
   sessionNameRequest,
   sessionRequest,
   workspaceRequest,
+  ptyCreateRequest,
+  ptyWriteRequest,
+  ptyResizeRequest,
+  ptySessionRequest,
 } from "./ipc-schemas.js";
 import { sanitizeKeybindings } from "./keybindings.js";
 import {
@@ -107,6 +112,9 @@ let quitRequested = false;
 let activeCwd = null;
 let agentReady = false;
 const histosHosts = new Map();
+const ptyHosts = new Map();
+const ptyOwnerBySession = new Map();
+const MAX_PTY_SESSIONS_PER_WINDOW = 8;
 
 // 动态视图: live cross-session rows + debounced push to the renderer.
 const activityTracker = createActivityTracker();
@@ -454,6 +462,37 @@ function senderAllowed(event) {
 
 function errorResult(code, message) {
   return { ok: false, code, message };
+}
+
+function ptyError(error) {
+  const code = ["pty_unavailable", "worker_unavailable", "worker_timeout", "session_not_found", "session_exists", "session_limit", "path_escape", "not_found", "invalid_args"].includes(error?.code) ? error.code : "pty_error";
+  return errorResult(code, code === "pty_error" ? "PTY operation failed" : String(error?.message ?? code).slice(0, 512));
+}
+
+function minimalPtyEnv() {
+  const names = process.platform === "win32"
+    ? ["PATH", "SystemRoot", "ComSpec", "HOME", "USERPROFILE", "TEMP", "TMP", "TERM"]
+    : ["PATH", "HOME", "USERPROFILE", "TEMP", "TMP", "TERM"];
+  const env = {};
+  for (const name of names) {
+    const value = process.env[name];
+    if (typeof value === "string" && value.length > 0 && !/[\u0000-\u001f\u007f]/.test(value) && !/(API|KEY|TOKEN|SECRET|CREDENTIAL)/i.test(name)) env[name] = value;
+  }
+  for (const [name, value] of Object.entries(process.env)) {
+    if ((name === "LANG" || name.startsWith("LC_")) && typeof value === "string" && value.length > 0 && !/[\u0000-\u001f\u007f]/.test(value) && !/(API|KEY|TOKEN|SECRET|CREDENTIAL)/i.test(name)) env[name] = value;
+  }
+  return env;
+}
+
+function ptyHostForWindow() {
+  let host = ptyHosts.get(win?.webContents);
+  if (host) return host;
+  host = createPtyHost({
+    onOutput: (event) => { if (win && !win.isDestroyed()) win.webContents.send("pty:data", { type: "pty:data", sessionId: event.sessionId, chunk: event.chunk, sequence: event.sequence, isFinal: event.isFinal }); },
+    onExit: (event) => { ptyOwnerBySession.delete(event.sessionId); if (win && !win.isDestroyed()) win.webContents.send("pty:exit", { type: "pty:exit", sessionId: event.sessionId, exitCode: event.exitCode, signal: event.signal }); },
+  });
+  ptyHosts.set(win?.webContents, host);
+  return host;
 }
 
 function okResult(data) {
@@ -904,6 +943,10 @@ async function createWindow() {
   });
   win.on("closed", () => {
     persistWindowBounds();
+    const host = ptyHosts.get(win.webContents);
+    if (host) void host.dispose().catch(() => {});
+    ptyHosts.delete(win.webContents);
+    for (const [sessionId, owner] of ptyOwnerBySession) if (owner === win.webContents) ptyOwnerBySession.delete(sessionId);
     win = undefined;
   });
   if (desktopSettings?.get()?.windowBounds?.maximized) win.maximize();
@@ -2215,6 +2258,50 @@ ipcMain.handle("omega:approveChange", async (event, req) => {
   }
 });
 
+ipcMain.handle("omega:ptyCreate", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = ptyCreateRequest(req);
+  if (!normalized) return errorResult("invalid_args", "Invalid PTY create request");
+  try {
+    const root = authorizedWorkspace(activeCwd);
+    const cwd = isAbsolute(normalized.cwd)
+      ? canonicalInside(root, normalized.cwd)
+      : (() => { try { return canonicalInside(root, resolve(root, normalized.cwd)); } catch { return null; } })();
+    if (!cwd) return errorResult("path_escape", "PTY cwd must be inside the authorized workspace");
+    if (!existsSync(cwd) || !statSync(cwd).isDirectory()) return errorResult("invalid_args", "PTY cwd must be a directory");
+    if (ptyOwnerBySession.size >= MAX_PTY_SESSIONS_PER_WINDOW) return errorResult("session_limit", "PTY session limit exceeded");
+    if (ptyOwnerBySession.has(normalized.sessionId)) return errorResult("session_exists", "PTY session already exists");
+    const shellPath = process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "/bin/sh";
+    const env = minimalPtyEnv();
+    const host = ptyHostForWindow();
+    if (host.state !== "ready") await host.start({});
+    await host.call("spawn", { sessionId: normalized.sessionId, file: shellPath, args: [], cwd, cols: normalized.cols, rows: normalized.rows, env });
+    ptyOwnerBySession.set(normalized.sessionId, event.sender);
+    return okResult({ sessionId: normalized.sessionId });
+  } catch (error) { return ptyError(error); }
+});
+
+ipcMain.handle("omega:ptyWrite", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = ptyWriteRequest(req);
+  if (!normalized || ptyOwnerBySession.get(normalized.sessionId) !== event.sender) return errorResult("forbidden", "PTY session is not owned by this window");
+  try { await ptyHostForWindow().call("write", normalized); return okResult(undefined); } catch (error) { return ptyError(error); }
+});
+
+ipcMain.handle("omega:ptyResize", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = ptyResizeRequest(req);
+  if (!normalized || ptyOwnerBySession.get(normalized.sessionId) !== event.sender) return errorResult("forbidden", "PTY session is not owned by this window");
+  try { await ptyHostForWindow().call("resize", normalized); return okResult(undefined); } catch (error) { return ptyError(error); }
+});
+
+ipcMain.handle("omega:ptyKill", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = ptySessionRequest(req);
+  if (!normalized || ptyOwnerBySession.get(normalized.sessionId) !== event.sender) return errorResult("forbidden", "PTY session is not owned by this window");
+  try { await ptyHostForWindow().call("kill", normalized); ptyOwnerBySession.delete(normalized.sessionId); return okResult(undefined); } catch (error) { return ptyError(error); }
+});
+
 // ---------------------------------------------------------------------------
 
 async function shutdown() {
@@ -2225,6 +2312,9 @@ async function shutdown() {
   stopAllFileWatches();
   for (const host of histosHosts.values()) await host.dispose().catch(() => {});
   histosHosts.clear();
+  for (const host of ptyHosts.values()) await host.dispose().catch(() => {});
+  ptyHosts.clear();
+  ptyOwnerBySession.clear();
   await workerPool.disposeAll();
 }
 

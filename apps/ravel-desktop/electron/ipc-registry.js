@@ -91,6 +91,10 @@ export const INVOKE_CHANNELS = Object.freeze([
   "window:toggleMaximize",
   "window:close",
   "window:isMaximized",
+  "omega:ptyCreate",
+  "omega:ptyWrite",
+  "omega:ptyResize",
+  "omega:ptyKill",
 ]);
 
 export const PUSH_CHANNELS = Object.freeze([
@@ -101,6 +105,8 @@ export const PUSH_CHANNELS = Object.freeze([
   "file:changed",
   "extension-ui:request",
   "activity:changed",
+  "pty:data",
+  "pty:exit",
 ]);
 
 export function extractHandleChannels(source) {

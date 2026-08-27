@@ -1,7 +1,35 @@
-const MAX = Object.freeze({ sessionId: 128, workspace: 4096, path: 4096 });
+const MAX = Object.freeze({ sessionId: 128, workspace: 4096, path: 4096, ptyData: 64 * 1024, ptyCwd: 4096 });
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+export function ptyCreateRequest(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const sessionId = boundedString(value.sessionId, MAX.sessionId);
+  const cwd = boundedString(value.cwd, MAX.ptyCwd);
+  const cols = value.cols === undefined ? 80 : value.cols;
+  const rows = value.rows === undefined ? 24 : value.rows;
+  return sessionId && cwd && Number.isInteger(cols) && cols >= 1 && cols <= 500 && Number.isInteger(rows) && rows >= 1 && rows <= 300
+    ? { sessionId, cwd, cols, rows } : null;
+}
+
+export function ptySessionRequest(value) {
+  const sessionId = boundedString(value?.sessionId, MAX.sessionId);
+  return sessionId ? { sessionId } : null;
+}
+
+export function ptyWriteRequest(value) {
+  const request = ptySessionRequest(value);
+  return request && typeof value.data === "string" && Buffer.byteLength(value.data, "utf8") <= MAX.ptyData
+    ? { ...request, data: value.data } : null;
+}
+
+export function ptyResizeRequest(value) {
+  const request = ptySessionRequest(value);
+  return request && Number.isInteger(value.cols) && value.cols >= 1 && value.cols <= 500 && Number.isInteger(value.rows) && value.rows >= 1 && value.rows <= 300
+    ? { ...request, cols: value.cols, rows: value.rows } : null;
+}
 
 export function boundedString(value, max) {
-  return typeof value === "string" && value.length > 0 && value.length <= max ? value : null;
+  return typeof value === "string" && value.length > 0 && value.length <= max && !CONTROL_CHARS.test(value) ? value : null;
 }
 
 export function sessionRequest(value) {

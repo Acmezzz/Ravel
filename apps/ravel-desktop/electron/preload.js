@@ -12,6 +12,26 @@ const MAX_PROMPT_CHARS = 40_000;
 const MAX_FIELD_CHARS = 256_000;
 const MAX_PROMPT_IMAGES = 4;
 const MAX_IMAGE_CHARS = 8_000_000;
+const MAX_PTY_ID_LENGTH = 128;
+const MAX_PTY_WRITE_BYTES = 64 * 1024;
+const MAX_PTY_CWD_LENGTH = 4096;
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+function validPtyString(value, max) {
+  return typeof value === "string" && value.length > 0 && value.length <= max && !CONTROL_CHARS.test(value);
+}
+
+function validPtyDimensions(cols, rows) {
+  return Number.isInteger(cols) && cols >= 1 && cols <= 500 && Number.isInteger(rows) && rows >= 1 && rows <= 300;
+}
+
+function validPtyData(value) {
+  return value && typeof value === "object" && value.type === "pty:data" && validPtyString(value.sessionId, MAX_PTY_ID_LENGTH) && typeof value.chunk === "string" && Buffer.byteLength(value.chunk, "utf8") <= MAX_PTY_WRITE_BYTES && Number.isSafeInteger(value.sequence) && value.sequence >= 0 && typeof value.isFinal === "boolean";
+}
+
+function validPtyExit(value) {
+  return value && typeof value === "object" && value.type === "pty:exit" && validPtyString(value.sessionId, MAX_PTY_ID_LENGTH) && (value.exitCode === null || Number.isSafeInteger(value.exitCode)) && (value.signal === null || Number.isSafeInteger(value.signal));
+}
 
 function validImage(image) {
   return (
@@ -507,6 +527,37 @@ contextBridge.exposeInMainWorld("omega", {
   mcpRemove: (req) => {
     if (!isPlainObject(req) || typeof req.name !== "string") return Promise.resolve({ ok: false, code: "invalid_args", message: "name is required" });
     return ipcRenderer.invoke("omega:mcpRemove", { name: req.name.slice(0, 128), project: req.project === true });
+  },
+
+  ptyCreate: (req) => {
+    const cols = req?.cols === undefined ? 80 : req.cols;
+    const rows = req?.rows === undefined ? 24 : req.rows;
+    if (!isPlainObject(req) || !validPtyString(req.sessionId, MAX_PTY_ID_LENGTH) || !validPtyString(req.cwd, MAX_PTY_CWD_LENGTH) || !validPtyDimensions(cols, rows)) return Promise.resolve({ ok: false, code: "invalid_args", message: "Invalid PTY create request" });
+    return ipcRenderer.invoke("omega:ptyCreate", { sessionId: req.sessionId, cwd: req.cwd, cols, rows });
+  },
+  ptyWrite: (req) => {
+    if (!isPlainObject(req) || !validPtyString(req.sessionId, MAX_PTY_ID_LENGTH) || typeof req.data !== "string" || CONTROL_CHARS.test(req.data) || Buffer.byteLength(req.data, "utf8") > MAX_PTY_WRITE_BYTES) return Promise.resolve({ ok: false, code: "invalid_args", message: "Invalid PTY write request" });
+    return ipcRenderer.invoke("omega:ptyWrite", { sessionId: req.sessionId, data: req.data });
+  },
+  ptyResize: (req) => {
+    if (!isPlainObject(req) || !validPtyString(req.sessionId, MAX_PTY_ID_LENGTH) || !validPtyDimensions(req.cols, req.rows)) return Promise.resolve({ ok: false, code: "invalid_args", message: "Invalid PTY resize request" });
+    return ipcRenderer.invoke("omega:ptyResize", { sessionId: req.sessionId, cols: req.cols, rows: req.rows });
+  },
+  ptyKill: (req) => {
+    if (!isPlainObject(req) || !validPtyString(req.sessionId, MAX_PTY_ID_LENGTH)) return Promise.resolve({ ok: false, code: "invalid_args", message: "Invalid PTY kill request" });
+    return ipcRenderer.invoke("omega:ptyKill", { sessionId: req.sessionId });
+  },
+  onPtyData: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const handler = (_event, data) => { if (!validPtyData(data)) return; try { callback({ sessionId: data.sessionId, chunk: data.chunk, sequence: data.sequence, isFinal: data.isFinal }); } catch {} };
+    ipcRenderer.on("pty:data", handler);
+    return () => ipcRenderer.removeListener("pty:data", handler);
+  },
+  onPtyExit: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const handler = (_event, data) => { if (!validPtyExit(data)) return; try { callback({ sessionId: data.sessionId, exitCode: data.exitCode, signal: data.signal }); } catch {} };
+    ipcRenderer.on("pty:exit", handler);
+    return () => ipcRenderer.removeListener("pty:exit", handler);
   },
 
   // ----- sessions -----

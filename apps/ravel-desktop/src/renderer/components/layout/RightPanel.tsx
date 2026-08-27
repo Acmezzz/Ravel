@@ -9,6 +9,7 @@ import { GraphPanel } from "../panels/GraphPanel";
 import { WorktreePanel } from "../panels/WorktreePanel";
 import { TelemetryPanel } from "../panels/TelemetryPanel";
 import { SnapshotsPanel } from "../panels/SnapshotsPanel";
+import { TerminalPanel } from "../panels/TerminalPanel";
 
 function CloseIcon(): React.ReactElement {
   return (
@@ -19,7 +20,7 @@ function CloseIcon(): React.ReactElement {
 }
 
 function isRightTab(value: string): value is LayoutState["rightTab"] {
-  return value === "diff" || value === "graph" || value === "worktree" || value === "telemetry" || value === "snapshots";
+  return value === "diff" || value === "graph" || value === "worktree" || value === "telemetry" || value === "snapshots" || value === "terminal";
 }
 
 export function RightPanel(): React.ReactElement {
@@ -43,6 +44,7 @@ export function RightPanel(): React.ReactElement {
             <TabsTrigger value="worktree">{t("nav.tab.worktree")}</TabsTrigger>
             <TabsTrigger value="telemetry">{t("nav.tab.telemetry")}</TabsTrigger>
             <TabsTrigger value="snapshots">{t("nav.tab.snapshots")}</TabsTrigger>
+            <TabsTrigger value="terminal">{t("nav.tab.terminal")}</TabsTrigger>
           </TabsList>
         </Tabs>
         <Tooltip>
@@ -60,6 +62,7 @@ export function RightPanel(): React.ReactElement {
         {rightTab === "worktree" ? <WorktreePanel /> : null}
         {rightTab === "telemetry" ? <TelemetryPanel /> : null}
         {rightTab === "snapshots" ? <SnapshotsPanel /> : null}
+        {rightTab === "terminal" ? <TerminalPanel /> : null}
       </div>
     </aside>
   );
