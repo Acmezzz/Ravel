@@ -5,6 +5,7 @@ import { projectHistosGraph, type GraphSelection, type GraphTraceTarget } from "
 import { useAppStore } from "../../store/useAppStore";
 import type { HistosGraphDTO } from "../../types/dto";
 import { Button, IconButton } from "../../ui/Button";
+import { GraphCanvas } from "./GraphCanvas";
 
 type SelectedItem = ReturnType<typeof projectHistosGraph>["nodes"][number] | ReturnType<typeof projectHistosGraph>["edges"][number];
 
@@ -100,22 +101,7 @@ export function GraphPanel(): React.ReactElement {
       {!loading && !error && projected && projected.nodes.length === 0 ? <p className="omega-graph-empty">{t("graph.empty")}</p> : null}
       {projected ? (
         <>
-          <div className="omega-graph-surface" role="region" aria-label={t("graph.nodesAria")}>
-            {projected.nodes.map((node) => (
-              <button key={node.id} type="button" className={`omega-graph-node${node.selected ? " is-selected" : ""}`} onClick={() => setSelection({ type: "node", nodeRevisionId: node.id })}>
-                <span className="omega-graph-node-kind">{node.knownKind ? node.kind : `? ${node.kind}`}</span>
-                <strong>{node.title}</strong>
-                {node.isolated ? <span className="omega-muted-text">{t("graph.isolated")}</span> : null}
-              </button>
-            ))}
-            {projected.edges.map((edge) => (
-              <button key={edge.id} type="button" className={`omega-graph-edge${edge.selected ? " is-selected" : ""}`} onClick={() => setSelection({ type: "edge", edgeRevisionId: edge.id })}>
-                <span className="omega-graph-node-kind">{edge.kind}</span>
-                <span>{edge.edgeId}</span>
-                <span className="omega-muted-text">{edge.missingSource || edge.missingTarget ? t("graph.missingEndpoint") : `${edge.sourceNodeRevisionId} → ${edge.targetNodeRevisionId}`}</span>
-              </button>
-            ))}
-          </div>
+          <GraphCanvas graph={projected} onSelect={setSelection} />
           <div className="omega-graph-detail">
             <Button size="sm" variant="quiet" disabled={converting || projected.nodes.length === 0} onClick={() => void convertToFlow()}>{converting ? t("graph.converting") : t("graph.convert")}</Button>
             {convertResult ? <span className="omega-muted-text" role="status">{convertResult}</span> : null}

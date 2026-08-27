@@ -973,6 +973,11 @@ body {
 .omega-graph-node-kind { flex: 0 0 auto; color: var(--omega-accent); font: 0.625rem ui-monospace, Consolas, monospace; text-transform: uppercase; }
 .omega-graph-edge { flex-wrap: wrap; font: 0.6875rem ui-monospace, Consolas, monospace; }
 .omega-graph-detail { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.65rem; border-top: 1px solid var(--omega-border); background: var(--omega-bg-soft); }
+.omega-graph-canvas { min-height: 360px; height: min(58vh, 620px); overflow: hidden; border: 1px solid var(--omega-border); border-radius: 10px; background: var(--omega-bg-code); }
+.omega-graph-canvas .react-flow { background: var(--omega-bg-code); }
+.omega-graph-canvas .react-flow__node { border: 1px solid var(--omega-border-strong); border-radius: 8px; padding: 0.55rem 0.7rem; background: var(--omega-bg-elevated); color: var(--omega-text); box-shadow: var(--omega-inset-highlight); font-size: 0.72rem; }
+.omega-graph-canvas .react-flow__edge-text { fill: var(--omega-text-muted); font-size: 0.62rem; }
+.omega-graph-canvas .react-flow__controls { border: 1px solid var(--omega-border); box-shadow: none; }
 .omega-graph-empty { margin: auto 0; padding: 1rem 0.5rem; color: var(--omega-text-dim); text-align: center; }
 .omega-terminal-panel { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 0.4rem; }
 .omega-terminal-surface { flex: 1; min-height: 120px; min-width: 0; overflow: hidden; border: 1px solid var(--omega-border); border-radius: var(--omega-radius-sm); background: #0d0e12; padding: 0.4rem; }
