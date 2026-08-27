@@ -126,6 +126,11 @@ export interface HistosFreezeContextRequest extends HistosQueryDTO {
   selection: HistosSelection[];
   targetSessionId?: string;
 }
+export interface HistosConvertToFlowRequest extends HistosQueryDTO {
+  selectedNodeRevisionIds?: string[];
+  selectedEdgeRevisionIds?: string[];
+  parentSha?: string;
+}
 export interface HistosGetArtifactRequest extends HistosQueryDTO {
   sha256: string;
 }
@@ -159,6 +164,18 @@ export interface HistosContextFreezeResultDTO {
   artifact: HistosArtifactDTO;
   targetSessionId: string | null;
   factAppend?: HistosFactAppendResultDTO;
+}
+
+export interface HistosFlowValidationDTO {
+  ok: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface HistosConvertToFlowResultDTO {
+  sha256: string;
+  artifact: HistosArtifactDTO;
+  validation: HistosFlowValidationDTO;
 }
 
 // ===== agent_* (V1 placeholders) =====

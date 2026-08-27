@@ -81,6 +81,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:histosRebuild",
   "omega:histosGetNode",
   "omega:histosFreezeContext",
+  "omega:histosConvertToFlow",
   "omega:histosGetArtifact",
   "omega:extensionUiResponse",
   "omega:extensionUiCancel",

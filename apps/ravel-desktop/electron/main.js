@@ -63,6 +63,7 @@ import {
   histosGetGraphRequest,
   histosGetNodeRequest,
   histosRebuildRequest,
+  histosConvertToFlowRequest,
   replayRequest,
   sessionNameRequest,
   sessionRequest,
@@ -1606,6 +1607,21 @@ ipcMain.handle("omega:histosFreezeContext", async (event, req) => {
     }
     return okResult({ ...frozen, targetSessionId, factAppend: { ok: true } });
   } catch (error) { return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosConvertToFlow", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosConvertToFlowRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sourceSet, lens, and granularity are required");
+  try {
+    const result = await (await activeHistos()).call("convertToFlow", normalized);
+    return okResult(result);
+  } catch (error) {
+    if (error?.code === "validation_failed") {
+      return errorResult("validation_failed", error instanceof Error ? error.message : String(error));
+    }
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
 });
 
 ipcMain.handle("omega:histosGetArtifact", async (event, req) => {

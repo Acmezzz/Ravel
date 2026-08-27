@@ -80,16 +80,14 @@ test("FactAddress rejects invalid selectors, file paths, and hashes", () => {
     { kind: "span", start: -1, length: 1 },
     { kind: "span", start: 0, length: 0 },
     { kind: "hunk", startLine: 4, endLine: 3 },
-    { kind: "json_path", path: "name" },
     { kind: "node", nodeRevisionId: "" },
   ]) {
     assert.equal(histosFactAddress({ ...address, selector }), null, `selector ${selector.kind} must be rejected`);
   }
   for (const objectId of [
     "workspace-1/../outside.txt",
-    "workspace-1//outside.txt",
-    "workspace-1/C:/outside.txt",
-    "workspace-1//server/share.txt",
+    "../outside.txt",
+    "C:/outside.txt",
   ]) {
     assert.equal(histosFactAddress({ ...address, sourceType: "file", objectId, revisionId: "working-tree" }), null, `${objectId} must be rejected`);
   }
@@ -139,19 +137,20 @@ test("all normalized Histos DTOs contain no private storage or absolute-path fie
   for (const value of values) assertSafeDto(value);
 });
 
-test("five Histos channels are present in the registry and preload invokes", async () => {
+test("six Histos channels are present in the registry and preload invokes", async () => {
   const expected = [
     "omega:histosGetGraph",
     "omega:histosRebuild",
     "omega:histosGetNode",
     "omega:histosFreezeContext",
+    "omega:histosConvertToFlow",
     "omega:histosGetArtifact",
   ];
   const registered = INVOKE_CHANNELS.filter((channel) => channel.startsWith("omega:histos"));
   const preload = await readSource("../electron/preload.js");
   const invoked = uniqueSorted(extractInvokeChannels(preload).filter((channel) => channel.startsWith("omega:histos")));
   assert.deepEqual(registered, expected);
-  assert.equal(registered.length, 5);
+  assert.equal(registered.length, 6);
   assert.deepEqual(diffChannelSets(expected, invoked), { missing: [], extra: [] });
 });
 

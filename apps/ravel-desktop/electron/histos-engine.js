@@ -481,6 +481,29 @@ export class HistosEngine {
     return { sha256, artifact: stored, targetSessionId: input.targetSessionId ?? null };
   }
 
+  async convertToFlow(input = {}) {
+    const query = queryOf(input);
+    const database = this.assertOpen();
+    const graph = graphRows(database, query);
+    const selectedNodeRevisionIds = Array.isArray(input.selectedNodeRevisionIds) && input.selectedNodeRevisionIds.length > 0 ? input.selectedNodeRevisionIds : null;
+    const selectedEdgeRevisionIds = Array.isArray(input.selectedEdgeRevisionIds) && input.selectedEdgeRevisionIds.length > 0 ? input.selectedEdgeRevisionIds : null;
+    const { convertGraphToFlowDraft } = await import("./flow-validation.js");
+    const { validateFlowSpec } = await import("./flow-validation.js");
+    const draft = convertGraphToFlowDraft(graph, { workspaceId: this.workspaceId, selectedNodeRevisionIds, selectedEdgeRevisionIds, parentSha: input.parentSha ?? null });
+    const validation = validateFlowSpec(draft, { workspaceId: this.workspaceId });
+    if (!validation.ok) {
+      const error = new Error(`Flow validation failed: ${validation.errors.join("; ")}`);
+      error.code = "validation_failed";
+      error.errors = validation.errors;
+      throw error;
+    }
+    const sha256 = await writeArtifact(this.artifactsDir, validation.artifact, { workspaceId: this.workspaceId, kind: "flow_revision" });
+    const stored = { ...validation.artifact, sha256 };
+    database.exec("BEGIN IMMEDIATE");
+    try { insertArtifact(database, stored, sha256); database.exec("COMMIT"); } catch (error) { database.exec("ROLLBACK"); throw error; }
+    return { sha256, artifact: stored, validation: { ok: validation.ok, errors: validation.errors, warnings: validation.warnings } };
+  }
+
   async getArtifact(input, maybeOptions) {
     const query = queryFromArgs(input, maybeOptions);
     const sha256 = typeof input === "string" ? input : input.sha256 ?? input.hash;

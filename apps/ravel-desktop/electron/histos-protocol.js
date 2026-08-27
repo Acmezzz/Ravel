@@ -9,6 +9,7 @@ export const HISTOS_METHODS = Object.freeze([
   "rebuild",
   "getNode",
   "freezeContext",
+  "convertToFlow",
   "getArtifact",
   "applySessionFacts",
   "dispose",

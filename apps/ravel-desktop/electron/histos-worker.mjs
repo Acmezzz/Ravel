@@ -53,6 +53,7 @@ async function invoke(method, args) {
   if (method === "getArtifact") return current.getArtifact(args);
   if (method === "rebuild") return current.rebuild(args ?? {});
   if (method === "freezeContext") return current.freezeContext(args ?? {});
+  if (method === "convertToFlow") return current.convertToFlow(args ?? {});
   if (method === "applySessionFacts") return current.applySessionFacts(args ?? {});
   throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });
 }

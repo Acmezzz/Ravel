@@ -79,6 +79,7 @@ export const IPC_CHANNELS = Object.freeze({
   histosRebuild: "omega:histosRebuild",
   histosGetNode: "omega:histosGetNode",
   histosFreezeContext: "omega:histosFreezeContext",
+  histosConvertToFlow: "omega:histosConvertToFlow",
   histosGetArtifact: "omega:histosGetArtifact",
   extensionUiResponse: "omega:extensionUiResponse",
   extensionUiCancel: "omega:extensionUiCancel",

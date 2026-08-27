@@ -279,6 +279,21 @@ contextBridge.exposeInMainWorld("omega", {
     if (req?.targetSessionId !== undefined && !histosString(req.targetSessionId, 128)) return invalidHistos("targetSessionId is invalid");
     return ipcRenderer.invoke("omega:histosFreezeContext", { ...query, selection, ...(req?.targetSessionId === undefined ? {} : { targetSessionId: req.targetSessionId }) });
   },
+  histosConvertToFlow: (req) => {
+    const query = histosQuery(req);
+    if (!query) return invalidHistos("sourceSet, lens, and granularity are required");
+    const selectedNodeRevisionIds = Array.isArray(req?.selectedNodeRevisionIds) && req.selectedNodeRevisionIds.length > 0 && req.selectedNodeRevisionIds.length <= 2000
+      ? req.selectedNodeRevisionIds.slice(0, 2000).filter((id) => histosString(id, 512))
+      : undefined;
+    if (selectedNodeRevisionIds !== undefined && selectedNodeRevisionIds.length === 0) return invalidHistos("selectedNodeRevisionIds contains invalid entries");
+    const selectedEdgeRevisionIds = Array.isArray(req?.selectedEdgeRevisionIds) && req.selectedEdgeRevisionIds.length > 0 && req.selectedEdgeRevisionIds.length <= 2000
+      ? req.selectedEdgeRevisionIds.slice(0, 2000).filter((id) => histosString(id, 512))
+      : undefined;
+    if (selectedEdgeRevisionIds !== undefined && selectedEdgeRevisionIds.length === 0) return invalidHistos("selectedEdgeRevisionIds contains invalid entries");
+    const parentSha = req?.parentSha !== undefined && histosString(req.parentSha, 64) && HISTOS_SHA256.test(req.parentSha) ? req.parentSha : undefined;
+    if (req?.parentSha !== undefined && parentSha === undefined) return invalidHistos("parentSha is invalid");
+    return ipcRenderer.invoke("omega:histosConvertToFlow", { ...query, ...(selectedNodeRevisionIds === undefined ? {} : { selectedNodeRevisionIds }), ...(selectedEdgeRevisionIds === undefined ? {} : { selectedEdgeRevisionIds }), ...(parentSha === undefined ? {} : { parentSha }) });
+  },
   histosGetArtifact: (req) => {
     const query = histosQuery(req);
     const sha256 = req?.sha256 ?? req?.hash;

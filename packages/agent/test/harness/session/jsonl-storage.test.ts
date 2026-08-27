@@ -489,7 +489,7 @@ describe("JSONL v4 per-session storage", () => {
 		const metadata = await session.getMetadata();
 		appendFileSync(
 			metadata.path,
-			JSON.stringify({
+			`${JSON.stringify({
 				kind: "record",
 				id: "bad-context",
 				lane: "main",
@@ -498,7 +498,7 @@ describe("JSONL v4 per-session storage", () => {
 				timestamp: 1,
 				targetSessionId: "",
 				contextSha: "a".repeat(64),
-			}) + "\n",
+			})}\n`,
 		);
 		await expect(reopen(root, session)).rejects.toMatchObject({ code: "invalid_entry" });
 		expect(existsSync(metadata.path)).toBe(false);

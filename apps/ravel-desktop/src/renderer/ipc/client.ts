@@ -41,11 +41,13 @@ import type {
   HistosRebuildRequest,
   HistosGetNodeRequest,
   HistosFreezeContextRequest,
+  HistosConvertToFlowRequest,
   HistosGetArtifactRequest,
   HistosGraphDTO,
   HistosRebuildResultDTO,
   HistosNodeRevisionDTO,
   HistosContextFreezeResultDTO,
+  HistosConvertToFlowResultDTO,
   HistosArtifactDTO,
 } from "../types/dto";
 
@@ -147,6 +149,7 @@ export interface RavelBridge {
   histosRebuild(req: HistosRebuildRequest): Promise<IpcResult<HistosRebuildResultDTO>>;
   histosGetNode(req: HistosGetNodeRequest): Promise<IpcResult<HistosNodeRevisionDTO | null>>;
   histosFreezeContext(req: HistosFreezeContextRequest): Promise<IpcResult<HistosContextFreezeResultDTO>>;
+  histosConvertToFlow(req: HistosConvertToFlowRequest): Promise<IpcResult<HistosConvertToFlowResultDTO>>;
   histosGetArtifact(req: HistosGetArtifactRequest): Promise<IpcResult<HistosArtifactDTO>>;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
@@ -300,6 +303,8 @@ export const ipc = {
     ok(await window.omega?.histosGetNode?.(req)),
   histosFreezeContext: async (req: HistosFreezeContextRequest): Promise<IpcResult<HistosContextFreezeResultDTO>> =>
     ok(await window.omega?.histosFreezeContext?.(req)),
+  histosConvertToFlow: async (req: HistosConvertToFlowRequest): Promise<IpcResult<HistosConvertToFlowResultDTO>> =>
+    ok(await window.omega?.histosConvertToFlow?.(req)),
   histosGetArtifact: async (req: HistosGetArtifactRequest): Promise<IpcResult<HistosArtifactDTO>> =>
     ok(await window.omega?.histosGetArtifact?.(req)),
   setProviderApiKey: async (req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>> =>

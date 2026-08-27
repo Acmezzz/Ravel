@@ -82,82 +82,85 @@ function histosPlainObject(value) {
 }
 
 function histosString(value, _label, max = HISTOS_MAX_ID) {
-  return typeof value === "string" && value.length > 0 && value.length <= max && !HISTOS_CONTROL.test(value) ? value : null;
+  if (typeof value !== "string" || value.length === 0 || value.length > max || HISTOS_CONTROL.test(value)) return null;
+  return value;
 }
 
-function histosJson(value, label, depth = 0, count = { value: 0 }) {
-  count.value += 1;
-  if (depth > HISTOS_MAX_DEPTH || count.value > HISTOS_MAX_ITEMS) return null;
+function histosJsonValue(value, depth = 0, count = { items: 0 }) {
+  count.items += 1;
+  if (depth > HISTOS_MAX_DEPTH || count.items > HISTOS_MAX_ITEMS) return null;
   if (value === null || typeof value === "boolean") return value;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string") return value.length <= HISTOS_MAX_ID && !HISTOS_CONTROL.test(value) ? value : null;
   if (Array.isArray(value)) {
-    const items = value.map((item) => histosJson(item, label, depth + 1, count));
-    return items.every((item) => item !== null || value.some((original) => original === null)) ? items : null;
+    const mapped = value.map((item) => histosJsonValue(item, depth + 1, count));
+    return mapped.every((item) => item !== null) ? mapped : null;
   }
-  const object = histosPlainObject(value, label);
-  if (!object) return null;
-  const result = {};
-  for (const [key, item] of Object.entries(object)) {
-    if (!histosString(key, `${label} key`, 256)) return null;
-    const normalized = histosJson(item, `${label}.${key}`, depth + 1, count);
-    if (normalized === null && item !== null) return null;
-    result[key] = normalized;
-  }
-  return result;
+  if (!histosPlainObject(value)) return null;
+  const entries = Object.entries(value).map(([key, item]) => {
+    const safeKey = histosString(key, "json key", HISTOS_MAX_ID);
+    const safeValue = histosJsonValue(item, depth + 1, count);
+    return safeKey && safeValue !== null ? [safeKey, safeValue] : null;
+  });
+  return entries.every((entry) => entry !== null) ? Object.fromEntries(entries) : null;
 }
 
-function histosSourceSet(value) {
-  const normalized = histosJson(value, "sourceSet");
-  return histosPlainObject(normalized, "sourceSet") ? normalized : null;
-}
-
-function histosQuery(value) {
-  const object = histosPlainObject(value, "Histos query");
-  if (!object) return null;
-  const sourceSet = histosSourceSet(object.sourceSet);
-  if (!sourceSet || typeof object.lens !== "string" || !HISTOS_LENSES.has(object.lens) || typeof object.granularity !== "string" || !HISTOS_GRANULARITIES.has(object.granularity)) return null;
-  return { sourceSet, lens: object.lens, granularity: object.granularity };
-}
-
-function histosAddress(value) {
-  const object = histosPlainObject(value, "FactAddress");
-  if (!object || typeof object.sourceType !== "string" || !HISTOS_SOURCE_TYPES.has(object.sourceType)) return null;
-  const objectId = histosString(object.objectId, "FactAddress.objectId");
-  const revisionId = histosString(object.revisionId, "FactAddress.revisionId");
-  if (!objectId || !revisionId) return null;
-  if (object.sourceType === "file") {
-    const relative = objectId.includes("/") ? objectId.slice(objectId.indexOf("/") + 1) : objectId;
-    if (relative.startsWith("/") || /^[A-Za-z]:[\\/]/.test(relative) || relative.split(/[\\/]/).includes("..")) return null;
+function histosSelector(value) {
+  if (!value || typeof value !== "object" || typeof value.kind !== "string" || !HISTOS_SELECTOR_KINDS.has(value.kind)) return null;
+  if (value.kind === "span") {
+    if (!Number.isSafeInteger(value.start) || value.start < 0 || !Number.isSafeInteger(value.length) || value.length < 1) return null;
+    return { kind: "span", start: value.start, length: value.length };
   }
-  if (["graph_revision", "flow_revision", "context_set"].includes(object.sourceType) && !HISTOS_SHA256.test(revisionId)) return null;
-  const selector = object.selector;
-  if (selector === undefined) return { sourceType: object.sourceType, objectId, revisionId };
-  const selectorObject = histosPlainObject(selector, "FactAddress.selector");
-  if (!selectorObject || typeof selectorObject.kind !== "string" || !HISTOS_SELECTOR_KINDS.has(selectorObject.kind)) return null;
-  if (selectorObject.kind === "span" && Number.isSafeInteger(selectorObject.start) && selectorObject.start >= 0 && Number.isSafeInteger(selectorObject.length) && selectorObject.length >= 1) {
-    return { sourceType: object.sourceType, objectId, revisionId, selector: { kind: "span", start: selectorObject.start, length: selectorObject.length } };
+  if (value.kind === "hunk") {
+    if (!Number.isSafeInteger(value.startLine) || value.startLine < 1 || !Number.isSafeInteger(value.endLine) || value.endLine < value.startLine) return null;
+    return { kind: "hunk", startLine: value.startLine, endLine: value.endLine };
   }
-  if (selectorObject.kind === "hunk" && Number.isSafeInteger(selectorObject.startLine) && selectorObject.startLine >= 1 && Number.isSafeInteger(selectorObject.endLine) && selectorObject.endLine >= selectorObject.startLine) {
-    return { sourceType: object.sourceType, objectId, revisionId, selector: { kind: "hunk", startLine: selectorObject.startLine, endLine: selectorObject.endLine } };
+  if (value.kind === "json_path") {
+    const path = histosString(value.path, "json_path.path", 512);
+    return path ? { kind: "json_path", path } : null;
   }
-  if (selectorObject.kind === "json_path" && histosString(selectorObject.path, "FactAddress.selector.path", 16_384) && (selectorObject.path.startsWith("$") || selectorObject.path.startsWith("."))) {
-    return { sourceType: object.sourceType, objectId, revisionId, selector: { kind: "json_path", path: selectorObject.path } };
+  if (value.kind === "node") {
+    const nodeRevisionId = histosString(value.nodeRevisionId, "nodeRevisionId", 512);
+    return nodeRevisionId ? { kind: "node", nodeRevisionId } : null;
   }
-  const selectorId = `${selectorObject.kind}RevisionId`;
-  if ((selectorObject.kind === "node" || selectorObject.kind === "edge") && histosString(selectorObject[selectorId], `FactAddress.selector.${selectorId}`)) {
-    return { sourceType: object.sourceType, objectId, revisionId, selector: { kind: selectorObject.kind, [selectorId]: selectorObject[selectorId] } };
+  if (value.kind === "edge") {
+    const edgeRevisionId = histosString(value.edgeRevisionId, "edgeRevisionId", 512);
+    return edgeRevisionId ? { kind: "edge", edgeRevisionId } : null;
   }
   return null;
 }
 
+function histosAddress(value) {
+  if (!value || typeof value !== "object") return null;
+  const sourceType = histosString(value.sourceType, "sourceType", 64);
+  if (!sourceType || !HISTOS_SOURCE_TYPES.has(sourceType)) return null;
+  const objectId = histosString(value.objectId, "objectId", 512);
+  if (!objectId) return null;
+  if (sourceType === "file" && (/^\.\.\/|\.\.\\|\/\.\.\//i.test(objectId) || /^[A-Za-z]:[\\\/]/i.test(objectId) || /^[\\]{2}/i.test(objectId))) return null;
+  const revisionId = histosString(value.revisionId, "revisionId", 512);
+  if (!revisionId) return null;
+  const selector = value.selector === undefined ? undefined : histosSelector(value.selector);
+  if (selector === null) return null;
+  return { sourceType, objectId, revisionId, ...(selector === undefined ? {} : { selector }) };
+}
+
+function histosQuery(value) {
+  if (!value || typeof value !== "object") return null;
+  const sourceSet = histosJsonValue(value.sourceSet, 0, { items: 0 });
+  if (!sourceSet || typeof sourceSet !== "object" || Array.isArray(sourceSet)) return null;
+  const lens = histosString(value.lens, "lens", 16);
+  if (!lens || !HISTOS_LENSES.has(lens)) return null;
+  const granularity = histosString(value.granularity, "granularity", 32);
+  if (!granularity || !HISTOS_GRANULARITIES.has(granularity)) return null;
+  return { sourceSet, lens, granularity };
+}
+
 function histosSelection(value) {
-  if (typeof value === "string") return histosString(value, "selection item", 512);
-  const object = histosPlainObject(value, "selection item");
-  if (!object) return null;
-  const keys = ["nodeRevisionId", "edgeRevisionId", "id"].filter((key) => typeof object[key] === "string");
-  if (keys.length !== 1 || Object.keys(object).some((key) => !["nodeRevisionId", "edgeRevisionId", "id"].includes(key))) return null;
-  return { [keys[0]]: histosString(object[keys[0]], `selection.${keys[0]}`, 512) };
+  if (typeof value === "string") return histosString(value, "selection", 512);
+  if (!value || typeof value !== "object") return null;
+  const keys = Object.keys(value).filter((key) => ["nodeRevisionId", "edgeRevisionId", "id"].includes(key));
+  if (keys.length !== 1) return null;
+  return { [keys[0]]: histosString(value[keys[0]], `selection.${keys[0]}`, 512) };
 }
 
 /** Normalize a Histos graph query without exposing filesystem or database paths. */
@@ -189,6 +192,22 @@ export function histosFreezeContextRequest(value) {
   if (selection.some((item) => item === null)) return null;
   const targetSessionId = value.targetSessionId === undefined ? undefined : histosString(value.targetSessionId, "targetSessionId", 128);
   return targetSessionId === null ? null : { ...query, selection, ...(targetSessionId === undefined ? {} : { targetSessionId }) };
+}
+
+export function histosConvertToFlowRequest(value) {
+  const query = histosQuery(value);
+  if (!query) return null;
+  const selectedNodeRevisionIds = Array.isArray(value.selectedNodeRevisionIds) && value.selectedNodeRevisionIds.length > 0 && value.selectedNodeRevisionIds.length <= HISTOS_MAX_SELECTION
+    ? value.selectedNodeRevisionIds.map((id) => histosString(id, "selectedNodeRevisionIds[]", 512)).filter((id) => id !== null)
+    : undefined;
+  if (selectedNodeRevisionIds !== undefined && (selectedNodeRevisionIds.length === 0 || selectedNodeRevisionIds.length !== value.selectedNodeRevisionIds.length)) return null;
+  const selectedEdgeRevisionIds = Array.isArray(value.selectedEdgeRevisionIds) && value.selectedEdgeRevisionIds.length > 0 && value.selectedEdgeRevisionIds.length <= HISTOS_MAX_SELECTION
+    ? value.selectedEdgeRevisionIds.map((id) => histosString(id, "selectedEdgeRevisionIds[]", 512)).filter((id) => id !== null)
+    : undefined;
+  if (selectedEdgeRevisionIds !== undefined && (selectedEdgeRevisionIds.length === 0 || selectedEdgeRevisionIds.length !== value.selectedEdgeRevisionIds.length)) return null;
+  const parentSha = value.parentSha === undefined ? undefined : histosString(value.parentSha, "parentSha", 64);
+  if (parentSha !== undefined && (parentSha === null || !HISTOS_SHA256.test(parentSha))) return null;
+  return { ...query, ...(selectedNodeRevisionIds === undefined ? {} : { selectedNodeRevisionIds }), ...(selectedEdgeRevisionIds === undefined ? {} : { selectedEdgeRevisionIds }), ...(parentSha === undefined ? {} : { parentSha }) };
 }
 
 export function histosGetArtifactRequest(value) {
