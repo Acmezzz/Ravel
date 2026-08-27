@@ -18,12 +18,14 @@ import {
   shell,
   dialog,
   safeStorage,
+  net,
+  protocol,
 } from "electron";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync, watch } from "node:fs";
 import { appendFile, mkdir, readFile, rename, stat, writeFile as writeFileAsync } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import {
   hasExtensionNamed,
   forgetSessionPath,
@@ -45,6 +47,7 @@ import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-prot
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 import { migrateOmegaUserData } from "./data-migration.js";
 import { DEEP_LINK_PROTOCOL, parseDeepLink, shouldRegisterProtocol } from "./deep-links.js";
+import { appRendererUrl, isAllowedAppUrl, registerAppProtocol, rendererAssetRoot } from "./app-protocol.js";
 import { WorkerHost } from "./worker-host.js";
 import { HistosHost } from "./histos-host.js";
 import { sanitizeSearchQuery, searchWorkspace } from "./search-service.js";
@@ -441,7 +444,8 @@ function rendererPath() {
 }
 
 function expectedPageUrl() {
-  return pathToFileURL(rendererPath()).toString();
+  rendererPath();
+  return appRendererUrl("index.html");
 }
 
 function senderAllowed(event) {
@@ -856,7 +860,10 @@ async function createWindow() {
   win.on("resize", () => persistWindowBounds());
   win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   win.webContents.on("will-navigate", (event, url) => {
-    if (url !== expectedPageUrl()) event.preventDefault();
+    if (!isAllowedAppUrl(url) || url !== expectedPageUrl()) event.preventDefault();
+  });
+  win.webContents.on("will-redirect", (event, url) => {
+    if (!isAllowedAppUrl(url) || url !== expectedPageUrl()) event.preventDefault();
   });
   electronSession.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   win.webContents.on("console-message", (details) => {
@@ -901,10 +908,10 @@ async function createWindow() {
   });
   if (desktopSettings?.get()?.windowBounds?.maximized) win.maximize();
   if (bootstrapError) {
-    await win.loadFile(rendererPath());
+    await win.loadURL(expectedPageUrl());
     win.webContents.send("app:bootstrap-error", { message: bootstrapError.slice(0, 2_000) });
   } else {
-    await win.loadFile(rendererPath());
+    await win.loadURL(expectedPageUrl());
   }
   win.show();
   if ((process.env.RAVEL_AUTOTEST ?? process.env.OMEGA_AUTOTEST) === "1" && worker) {
@@ -2289,6 +2296,7 @@ app
   .then(async () => {
     if (!singleInstancePrimary) return;
     try {
+      await registerAppProtocol({ protocol, net, root: rendererAssetRoot({ isPackaged: app.isPackaged, appPath: app.getAppPath(), mainDir: MAIN_DIR }) });
       await bootstrap();
     } catch (error) {
       showBootstrapError(error);

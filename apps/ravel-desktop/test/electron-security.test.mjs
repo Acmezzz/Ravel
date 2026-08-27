@@ -13,6 +13,11 @@ test("main configures Electron isolation and navigation boundaries", async () =>
   assert.match(source, /sandbox:\s*true/);
   assert.match(source, /setWindowOpenHandler/);
   assert.match(source, /will-navigate/);
+  assert.match(source, /will-redirect/);
+  assert.match(source, /appRendererUrl/);
+  assert.match(source, /registerAppProtocol/);
+  assert.match(source, /await win\.loadURL\(expectedPageUrl\(\)\)/);
+  assert.doesNotMatch(source, /win\.loadFile\(/);
   assert.match(source, /senderAllowed/);
   assert.match(source, /await workerPool\.disposeAll/);
   assert.match(source, /requestCloseDecision/);
