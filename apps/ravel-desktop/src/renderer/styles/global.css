@@ -957,6 +957,23 @@ body {
 .omega-rail-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: auto; padding: 0.5rem 0.75rem 1.5rem; }
 .omega-right-panel .omega-rail-body { padding: 0.5rem; }
 .omega-rail-body-clip { overflow: hidden; }
+.omega-graph-panel { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
+.omega-graph-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-height: 2rem; }
+.omega-graph-toolbar > div:first-child { display: flex; flex-direction: column; min-width: 0; }
+.omega-graph-toolbar-actions { display: flex; align-items: center; gap: 0.35rem; flex: 0 0 auto; }
+.omega-graph-surface { display: flex; flex-direction: column; gap: 0.3rem; min-height: 0; overflow: auto; }
+.omega-graph-node,
+.omega-graph-edge { display: flex; align-items: center; gap: 0.45rem; width: 100%; min-height: 2.25rem; padding: 0.4rem 0.5rem; border: 1px solid var(--omega-border); border-radius: var(--omega-radius-sm); background: var(--omega-bg-soft); color: var(--omega-text); text-align: left; cursor: pointer; }
+.omega-graph-node:hover,
+.omega-graph-edge:hover,
+.omega-graph-node.is-selected,
+.omega-graph-edge.is-selected { border-color: var(--omega-accent); background: var(--omega-selected); }
+.omega-graph-node strong,
+.omega-graph-edge > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.omega-graph-node-kind { flex: 0 0 auto; color: var(--omega-accent); font: 0.625rem ui-monospace, Consolas, monospace; text-transform: uppercase; }
+.omega-graph-edge { flex-wrap: wrap; font: 0.6875rem ui-monospace, Consolas, monospace; }
+.omega-graph-detail { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.65rem; border-top: 1px solid var(--omega-border); background: var(--omega-bg-soft); }
+.omega-graph-empty { margin: auto 0; padding: 1rem 0.5rem; color: var(--omega-text-dim); text-align: center; }
 .omega-icon-plus,
 .omega-icon-close { display: block; width: 0.9375rem; height: 0.9375rem; }
 .omega-attention-dot::after {

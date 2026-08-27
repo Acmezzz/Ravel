@@ -249,6 +249,14 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
+                <IconButton size="sm" label="打开 Graph 面板" active={rightTab === "graph"} onClick={() => setRightTab("graph")} style={{ color: rightTab === "graph" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "graph" ? "var(--omega-selected)" : "transparent" }}>
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2" /><circle cx="18" cy="8" r="2" /><circle cx="12" cy="18" r="2" /><path d="m7.8 6.4 8.4 1.2M16.8 9.7l-3.6 6.4M10.2 16.5 7.4 7.8" /></svg>
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Graph</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <IconButton size="sm" label="打开 Worktree 面板" active={rightTab === "worktree"} onClick={() => setRightTab("worktree")} style={{ color: rightTab === "worktree" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "worktree" ? "var(--omega-selected)" : "transparent" }}>
                   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="6" r="2" /><circle cx="17" cy="18" r="2" /><path d="M7 8v7a3 3 0 0 0 3 3h5M7 12h7a3 3 0 0 0 3-3V8" /></svg>
                 </IconButton>

@@ -84,7 +84,7 @@ export interface LayoutState {
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   focusMode: boolean;
-  rightTab: "diff" | "worktree" | "telemetry" | "snapshots";
+  rightTab: "diff" | "graph" | "worktree" | "telemetry" | "snapshots";
   commandPaletteOpen: boolean;
   treeOpen: boolean;
   leftTab: "sessions" | "files" | "search" | "activity";
