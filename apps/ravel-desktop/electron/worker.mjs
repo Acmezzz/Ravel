@@ -174,6 +174,7 @@ async function bindSession(session) {
       allowTool: (toolName) => modeAllowsTool(modeProfile, toolName),
       cwd: runtime.cwd,
       planWritePath: planFilePath(),
+      rules: permissionRulesets,
       confirm: (title, message, onIssued) => uiContext.confirm(title, message, { onIssued }),
       facts: {
         runId: () => activeRunId ?? "",
@@ -330,6 +331,8 @@ let projectTrusted = true;
 let permissionProfile = "trusted";
 /** Session mode (next-cycle ModeProfile). Narrow-only: plan forces read-only. */
 let modeProfile = "default";
+/** Persistent per-tool rulesets in increasing precedence: [user, project] (B3). */
+let permissionRulesets = [];
 /**
  * Goal-mode continuation state (B2). The goal starts with the first prompt in
  * goal mode and keeps prompting within the round/elapsed caps; it stops on
@@ -351,10 +354,11 @@ function planFilePath() {
   return join(runtime.cwd, ".ravel", "plans", `${runtime.session.sessionId}.md`);
 }
 
-async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, modeProfile: mode, runtimeCredentials = {}, mcpCredentials = {}, customProviders = {} }) {
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, modeProfile: mode, permissionRules = [], runtimeCredentials = {}, mcpCredentials = {}, customProviders = {} }) {
   permissionProfile = sanitizePermissionProfile(profile);
   try { modeProfile = sanitizeModeProfile(mode ?? "default"); } catch { modeProfile = "default"; }
   goalState = null;
+  permissionRulesets = Array.isArray(permissionRules) ? permissionRules.filter((ruleset) => Array.isArray(ruleset)) : [];
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
   activeRunId = null;
@@ -866,6 +870,11 @@ const methods = {
     permissionProfile = sanitizePermissionProfile(profile);
     await bindSession(runtime.session);
     return { profile: permissionProfile };
+  },
+  setPermissionRules: async ({ rulesets }) => {
+    permissionRulesets = Array.isArray(rulesets) ? rulesets.filter((ruleset) => Array.isArray(ruleset)) : [];
+    await bindSession(runtime.session);
+    return { count: permissionRulesets.flat().length };
   },
   setModeProfile: async ({ mode }) => {
     const next = sanitizeModeProfile(mode);

@@ -1167,6 +1167,11 @@ body {
 .omega-composer-queue-row { display: flex; align-items: center; gap: 0.5rem; min-width: 0; padding: 0.1rem 0.25rem; }
 .omega-plan-review { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; padding: 0.25rem 0.5rem; border: 1px solid var(--omega-border); border-radius: 12px; background: var(--omega-bg-soft); }
 .omega-plan-review-content { max-height: 45vh; overflow: auto; padding: 0.6rem; border: 1px solid var(--omega-border); border-radius: 8px; background: var(--omega-bg-soft); color: var(--omega-text); font-family: var(--omega-font-mono); font-size: 0.75rem; line-height: 1.5; white-space: pre-wrap; }
+.omega-rules-list { display: flex; flex-direction: column; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+.omega-rules-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.25rem; }
+.omega-rules-tool { flex: 0 0 auto; color: var(--omega-text); font-family: var(--omega-font-mono); font-size: 0.75rem; }
+.omega-rules-pattern { flex: 1; min-width: 0; overflow: hidden; color: var(--omega-text-muted); font-family: var(--omega-font-mono); font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
+.omega-rules-action { flex: 0 0 auto; color: var(--omega-text-muted); font-size: 0.6875rem; }
 .omega-composer-queue-text { min-width: 0; overflow: hidden; color: var(--omega-text-muted); font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
 .omega-chip-steer {
   border: 1px solid var(--omega-accent);

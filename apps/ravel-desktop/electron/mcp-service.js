@@ -13,8 +13,8 @@
  * Pure transforms are exported separately from the file operations so tests
  * can exercise validation without touching disk.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { writeJsonFileAtomic } from "./config-file.js";
 
 export const MCP_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/;
 export const MAX_NAME = 64;
@@ -24,7 +24,6 @@ export const MAX_ARG = 2048;
 export const MAX_URL = 2048;
 export const MAX_HEADERS = 16;
 export const MAX_HEADER = 4096;
-const LOCK_STALE_MS = 10_000;
 
 export function validateMcpName(name) {
   if (typeof name !== "string" || !name.trim()) throw invalid("name is required");
@@ -161,81 +160,6 @@ function readConfigFile(file) {
   return parseMcpConfig(readFileSync(file, "utf8"));
 }
 
-function serialize(config) {
-  return `${JSON.stringify(config, null, 2)}\n`;
-}
-
-/**
- * Directory lock around config writes: an owner file inside a `.lock` dir with
- * dead-pid and age-based stale recovery. Single-writer by construction (one
- * desktop app), so contention resolves in at most two passes.
- */
-function claimLock(lockDir) {
-  // mkdirSync(recursive) does not raise EEXIST, so contest on the owner file.
-  if (existsSync(join(lockDir, "owner.json"))) return false;
-  try {
-    mkdirSync(lockDir, { recursive: true });
-    writeFileSync(join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid, createdAt: Date.now() }), "utf8");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function lockIsStale(ownerFile) {
-  try {
-    const owner = JSON.parse(readFileSync(ownerFile, "utf8"));
-    const alive =
-      typeof owner.pid === "number" && owner.pid !== process.pid
-        ? (() => {
-            try {
-              process.kill(owner.pid, 0);
-              return true;
-            } catch {
-              return false;
-            }
-          })()
-        : false;
-      return !alive && typeof owner.createdAt === "number" ? Date.now() - owner.createdAt > LOCK_STALE_MS : !alive;
-  } catch {
-    return true;
-  }
-}
-
-function acquireLock(lockDir) {
-  if (claimLock(lockDir)) return;
-  const ownerFile = join(lockDir, "owner.json");
-  if (!lockIsStale(ownerFile)) {
-    throw Object.assign(new Error("mcp.json 正在被其他写入方占用，请稍后重试"), { code: "busy" });
-  }
-  rmSync(lockDir, { recursive: true, force: true });
-  if (!claimLock(lockDir)) {
-    throw Object.assign(new Error("mcp.json 正在被其他写入方占用，请稍后重试"), { code: "busy" });
-  }
-}
-
-function releaseLock(lockDir) {
-  try {
-    rmSync(lockDir, { recursive: true, force: true });
-  } catch {
-    /* best effort */
-  }
-}
-
-/** Atomic temp+rename write under the lock; throws before touching the file on validation errors. */
-function writeConfigFile(file, config) {
-  mkdirSync(dirname(file), { recursive: true });
-  const lockDir = `${file}.lock`;
-  acquireLock(lockDir);
-  try {
-    const tmp = `${file}.tmp-${process.pid}`;
-    writeFileSync(tmp, serialize(config), { encoding: "utf8" });
-    renameSync(tmp, file);
-  } finally {
-    releaseLock(lockDir);
-  }
-}
-
 export function loadMcpBundle({ userFile, projectFile }) {
   return {
     user: readConfigFile(userFile) ?? { mcpServers: {} },
@@ -246,6 +170,6 @@ export function loadMcpBundle({ userFile, projectFile }) {
 export function mutateMcpFile(file, mutate) {
   const current = readConfigFile(file) ?? { mcpServers: {} };
   const next = mutate(current);
-  writeConfigFile(file, next);
+  writeJsonFileAtomic(file, next);
   return next;
 }

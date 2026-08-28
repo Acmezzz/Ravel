@@ -30,6 +30,7 @@ export class WorkerHost {
     this.projectTrusted = true;
     this.permissionProfile = DEFAULT_PERMISSION_PROFILE;
     this.modeProfile = "default";
+    this.permissionRules = [];
     this.runtimeCredentials = {};
     this.mcpCredentials = {};
     this.customProviders = {};
@@ -78,6 +79,7 @@ export class WorkerHost {
       projectTrusted: this.projectTrusted,
       permissionProfile: this.permissionProfile,
       modeProfile: this.modeProfile,
+      permissionRules: this.permissionRules,
       runtimeCredentials: this.runtimeCredentials,
       mcpCredentials: this.mcpCredentials,
       customProviders: this.customProviders,

@@ -21,6 +21,7 @@ import type {
   AuthStatus,
   DesktopSettings,
   PlanReviewResult,
+  PermissionRuleRow,
   PromptImage,
   PtyDataDTO,
   PtyExitDTO,
@@ -163,6 +164,9 @@ export interface RavelBridge {
   setModeProfile(req: { mode: DesktopSettings["modeProfile"] }): Promise<IpcResult<{ modeProfile: DesktopSettings["modeProfile"] }>>;
   planReview(): Promise<IpcResult<PlanReviewResult>>;
   approvePlan(): Promise<IpcResult<{ mode: string }>>;
+  permissionRulesList(): Promise<IpcResult<{ items: PermissionRuleRow[] }>>;
+  permissionRulesAdd(req: { permission: string; pattern: string; action: "allow" | "ask" | "deny"; project?: boolean }): Promise<IpcResult<{ items: PermissionRuleRow[] }>>;
+  permissionRulesRemove(req: { id: string; scope: "user" | "project" }): Promise<IpcResult<{ items: PermissionRuleRow[] }>>;
   histosGetGraph(req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>>;
   histosCondenseGraph(req: HistosCondenseGraphRequest): Promise<IpcResult<HistosCondenseGraphResultDTO>>;
   histosSaveViewState(req: HistosQueryDTO & { positions: Array<{ id: string; x: number; y: number }> }): Promise<IpcResult<{ sha256: string; artifact: HistosArtifactDTO }>>;
@@ -332,6 +336,11 @@ export const ipc = {
     ok(await window.omega?.setModeProfile?.(req)),
   planReview: async (): Promise<IpcResult<PlanReviewResult>> => ok(await window.omega?.planReview?.()),
   approvePlan: async (): Promise<IpcResult<{ mode: string }>> => ok(await window.omega?.approvePlan?.()),
+  permissionRulesList: async (): Promise<IpcResult<{ items: PermissionRuleRow[] }>> => ok(await window.omega?.permissionRulesList?.()),
+  permissionRulesAdd: async (req: { permission: string; pattern: string; action: "allow" | "ask" | "deny"; project?: boolean }): Promise<IpcResult<{ items: PermissionRuleRow[] }>> =>
+    ok(await window.omega?.permissionRulesAdd?.(req)),
+  permissionRulesRemove: async (req: { id: string; scope: "user" | "project" }): Promise<IpcResult<{ items: PermissionRuleRow[] }>> =>
+    ok(await window.omega?.permissionRulesRemove?.(req)),
   histosGetGraph: async (req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>> =>
     ok(await window.omega?.histosGetGraph?.(req)),
   histosCondenseGraph: async (req: HistosCondenseGraphRequest): Promise<IpcResult<HistosCondenseGraphResultDTO>> =>

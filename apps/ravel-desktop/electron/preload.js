@@ -387,6 +387,24 @@ contextBridge.exposeInMainWorld("omega", {
   },
   planReview: () => ipcRenderer.invoke("omega:planReview", {}),
   approvePlan: () => ipcRenderer.invoke("omega:approvePlan", {}),
+  permissionRulesList: () => ipcRenderer.invoke("omega:permissionRulesList", {}),
+  permissionRulesAdd: (req) => {
+    const permission = req && typeof req.permission === "string" ? req.permission.trim().slice(0, 128) : "";
+    const pattern = req && typeof req.pattern === "string" ? req.pattern.slice(0, 2048) : "*";
+    const action = req && typeof req.action === "string" ? req.action : "";
+    if (!permission || !["allow", "ask", "deny"].includes(action)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "permission and an allow/ask/deny action are required" });
+    }
+    return ipcRenderer.invoke("omega:permissionRulesAdd", { permission, pattern, action, project: req?.project === true });
+  },
+  permissionRulesRemove: (req) => {
+    const id = req && typeof req.id === "string" ? req.id.trim().slice(0, 64) : "";
+    const scope = req && req.scope === "project" ? "project" : "user";
+    if (!/^(user|project):\d+$/.test(id)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "a user:N or project:N rule id is required" });
+    }
+    return ipcRenderer.invoke("omega:permissionRulesRemove", { id, scope });
+  },
   setProviderApiKey: (req) => {
     if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "providerId is required" });

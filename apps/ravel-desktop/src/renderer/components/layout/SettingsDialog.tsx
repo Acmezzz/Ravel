@@ -7,6 +7,7 @@ import { TextField } from "../../ui/TextField";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { useT } from "../../lib/i18n";
+import { PermissionRulesSection } from "./PermissionRulesSection";
 import type { ResourceBundle } from "../../types/dto";
 
 const MODE_KEY: Record<"all" | "one-at-a-time", "settings.mode.all" | "settings.mode.oneAtATime"> = {
@@ -283,10 +284,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
 								}}
 							>
 								{(Object.keys(SESSION_MODE_KEY) as SessionMode[]).map((value) => (
-									<option key={value} value={value}>{t(SESSION_MODE_KEY[value])}{value === "goal" ? "（未接入）" : ""}</option>
+									<option key={value} value={value}>{t(SESSION_MODE_KEY[value])}</option>
 								))}
 							</TextField>
 						</section>
+						<PermissionRulesSection />
 						<section className="omega-form-stack">
 							<h3 className="overline-label">{t("settings.section.keybindings")}</h3>
 							<div className="omega-settings-grid">

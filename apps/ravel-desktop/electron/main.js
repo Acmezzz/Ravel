@@ -100,6 +100,15 @@ import {
   upsertMcpServer,
   validateMcpName,
 } from "./mcp-service.js";
+import {
+  RULES_FILE_NAME,
+  addRule,
+  listRuleRows,
+  loadRulesBundle,
+  removeRuleAt,
+  rulesetsForGuard,
+  validateRule,
+} from "./permission-rules-store.js";
 import * as fileTransfer from "./file-transfer-service.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
@@ -720,8 +729,93 @@ function createBoundHost() {
     host.mcpCredentials = Object.fromEntries(credentialStore.listIds().filter((id) => id.startsWith("mcp:")).map((id) => [id, credentialStore.read(id)]).filter(([, value]) => typeof value === "string" && value.length > 0));
   }
   host.customProviders = desktopSettings?.get()?.customProviders ?? {};
+  host.permissionRules = currentPermissionRulesets();
   return bindHost(host);
 }
+
+// ----- Permission rules (next-cycle B3): persistent per-tool allow/ask/deny -----
+
+const RULES_USER_FILE = join(homedir(), ".ravel", RULES_FILE_NAME);
+
+function rulesProjectFile() {
+  return activeCwd ? join(activeCwd, ".ravel", RULES_FILE_NAME) : null;
+}
+
+/** Guard rulesets in increasing precedence: [user, project (trusted only)]. */
+function currentPermissionRulesets() {
+  try {
+    const projectFile = activeCwd && projectTrust.isTrusted(activeCwd) ? rulesProjectFile() : null;
+    return rulesetsForGuard(loadRulesBundle({ userFile: RULES_USER_FILE, projectFile }));
+  } catch {
+    // A broken store must never widen access: empty rulesets fall back to the
+    // default ask + profile tiers + safety floor.
+    return [[], []];
+  }
+}
+
+function assertRulesProjectScopeAllowed() {
+  if (!activeCwd) throw errorLike("invalid_args", "当前没有活动工作区，无法写入项目级权限规则");
+  if (!projectTrust.isTrusted(activeCwd)) throw errorLike("trust_required", "项目未信任，无法写入项目级权限规则");
+}
+
+async function pushRulesToWorkers() {
+  const rulesets = currentPermissionRulesets();
+  await Promise.all(workerPool.list().map(async (slot) => {
+    if (slot.host?.state !== "ready") return;
+    try {
+      await slot.host.call("setPermissionRules", { rulesets });
+      slot.host.permissionRules = rulesets;
+    } catch {
+      /* the guard keeps the previous ruleset until the next rebind */
+    }
+  }));
+}
+
+ipcMain.handle("omega:permissionRulesList", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const projectFile = activeCwd && projectTrust.isTrusted(activeCwd) ? rulesProjectFile() : null;
+    const bundle = loadRulesBundle({ userFile: RULES_USER_FILE, projectFile });
+    return okResult({ items: listRuleRows(bundle) });
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:permissionRulesAdd", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const file = req?.project === true ? rulesProjectFile() : RULES_USER_FILE;
+    await assertDesktopOperation("permission.rule.write", { permission: req?.permission, pattern: req?.pattern, path: file });
+    if (req?.project === true) assertRulesProjectScopeAllowed();
+    const rule = validateRule({ permission: req?.permission, pattern: req?.pattern, action: req?.action });
+    addRule(file, rule);
+    await pushRulesToWorkers();
+    const projectFile = activeCwd && projectTrust.isTrusted(activeCwd) ? rulesProjectFile() : null;
+    const bundle = loadRulesBundle({ userFile: RULES_USER_FILE, projectFile });
+    return okResult({ items: listRuleRows(bundle) });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:permissionRulesRemove", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const scope = req?.scope === "project" ? "project" : "user";
+    const file = scope === "project" ? rulesProjectFile() : RULES_USER_FILE;
+    await assertDesktopOperation("permission.rule.write", { scope, path: file });
+    if (scope === "project") assertRulesProjectScopeAllowed();
+    const index = Number(req?.id?.split(":")[1]);
+    removeRuleAt(file, Number.isSafeInteger(index) ? index : -1);
+    await pushRulesToWorkers();
+    const projectFile = activeCwd && projectTrust.isTrusted(activeCwd) ? rulesProjectFile() : null;
+    const bundle = loadRulesBundle({ userFile: RULES_USER_FILE, projectFile });
+    return okResult({ items: listRuleRows(bundle) });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
 
 async function authorizedSessionOf(sessionId, requestedWorkspace) {
   if (typeof sessionId !== "string" || !sessionId.trim()) return null;

@@ -604,6 +604,15 @@ export interface PlanReviewResult {
   content: string;
 }
 
+/** Persistent per-tool permission rule row (next-cycle B3). */
+export interface PermissionRuleRow {
+  id: string;
+  scope: "user" | "project";
+  permission: string;
+  pattern: string;
+  action: "allow" | "ask" | "deny";
+}
+
 export interface TreeNodeRow {
   id: string;
   parentId: string | null;
