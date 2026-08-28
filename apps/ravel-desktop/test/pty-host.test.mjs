@@ -85,6 +85,31 @@ test("PTY host dispose waits for the child exit event before returning", async (
   assert.equal(host.state, "dead");
 });
 
+test("PTY host treats a clean unexpected exit as death and reports a diagnostic", async () => {
+  const value = harness();
+  const errors = [];
+  value.host.onError = (diagnostic) => errors.push(diagnostic);
+  const starting = value.host.start({});
+  await new Promise((resolve) => setImmediate(resolve));
+  const child = value.children[0];
+  child.reply({ type: "pty:resp", id: child.messages[0].id, generation: child.messages[0].generation, data: null });
+  await starting;
+  const call = value.host.call("write", { sessionId: "s1", data: "hello" });
+  child.emit("exit", 0, null);
+  await assert.rejects(call, { code: "worker_unavailable" });
+  assert.equal(value.host.state, "dead");
+  assert.equal(errors[0]?.type, "exit");
+});
+
+test("PTY host kills itself when sending to a dead child fails", async () => {
+  const value = await initHarness();
+  const child = value.children[0];
+  child.postMessage = () => { throw new Error("closed"); };
+  await assert.rejects(value.host.call("write", { sessionId: "s1", data: "hello" }), { code: "worker_unavailable" });
+  assert.equal(value.host.state, "dead");
+  assert.equal(child.killed, true);
+});
+
 test("PTY host rejects stale child responses after replacement", async () => {
   const value = harness();
   const firstStart = value.host.start({});

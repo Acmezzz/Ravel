@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isWorkerEvent, isWorkerFactsAppended, isWorkerResponse } from "./worker-protocol.js";
 import { DEFAULT_PERMISSION_PROFILE } from "./permission-profiles.js";
+import { normalizeUtilityProcessError, utilityProcessError } from "./process-log.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_RPC_TIMEOUT = 120_000;
@@ -54,10 +55,10 @@ export class WorkerHost {
     const child = utilityProcess.fork(this.workerPath, [], { stdio: "ignore" });
     this.child = child;
     child.on("message", (message) => this._handle(message, generation));
-    child.on("error", (error) => this._handleDeath(generation, error));
+    child.on("error", (type, location, report) => this._handleDeath(generation, utilityProcessError(type, location, report)));
     child.on("exit", (code, signal) => {
-      if (code === 0 && this.stopping) return;
-      this._handleDeath(generation, new Error(`Worker exited (${code ?? "unknown"}${signal ? `, ${signal}` : ""})`));
+      if (this.stopping) return;
+      this._handleDeath(generation, utilityProcessError("exit", "worker", `code=${code ?? "unknown"}${signal ? ` signal=${signal}` : ""}`));
     });
     const done = new Promise((resolvePromise, rejectPromise) => {
       this._initResolve = resolvePromise;
@@ -110,7 +111,8 @@ export class WorkerHost {
     }
     this.pending.clear();
     const message = error instanceof Error ? error.message : String(error);
-    this.onError?.(message);
+    const diagnostic = normalizeUtilityProcessError(error?.diagnostic?.type ?? "error", error?.diagnostic?.location ?? "worker", error?.diagnostic?.report ?? message);
+    this.onError?.(diagnostic);
     try {
       this.child?.kill();
     } catch {
@@ -121,17 +123,17 @@ export class WorkerHost {
     if (canAutoRestart) {
       this.restartCount += 1;
       this.state = "restarting";
-      this.onTransport?.("restarting", { error: message });
+      this.onTransport?.("restarting", { error: message, diagnostic: normalizeUtilityProcessError(error?.diagnostic?.type ?? "error", error?.diagnostic?.location ?? "worker", error?.diagnostic?.report ?? message) });
       setTimeout(() => {
         if (this.stopping) return;
         void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted, this.permissionProfile).catch((restartError) => {
           const restartMessage = restartError instanceof Error ? restartError.message : String(restartError);
-          this.onTransport?.("dead", { error: restartMessage, canRetry: true });
+          this.onTransport?.("dead", { error: restartMessage, canRetry: true, diagnostic: normalizeUtilityProcessError("restart_failed", "worker", restartMessage) });
         });
       }, 250);
       return;
     }
-    this.onTransport?.("dead", { error: message, canRetry: !this.stopping });
+    this.onTransport?.("dead", { error: message, canRetry: !this.stopping, diagnostic: normalizeUtilityProcessError(error?.diagnostic?.type ?? "error", error?.diagnostic?.location ?? "worker", error?.diagnostic?.report ?? message) });
   }
 
   _handle(message, generation) {
@@ -168,8 +170,9 @@ export class WorkerHost {
       return;
     }
     if (message.type === "worker-error") {
-      process.stderr.write(`[worker] ${message.error}\n`);
-      this.onError?.(message.error);
+      const diagnostic = normalizeUtilityProcessError("worker-error", "worker", message.error);
+      process.stderr.write(`[worker] ${diagnostic.report}\n`);
+      this.onError?.(diagnostic);
       return;
     }
     if (message.type === "resp") {

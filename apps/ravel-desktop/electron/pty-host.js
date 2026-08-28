@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as electron from "electron";
 import { PTY_METHODS, createPtyRequest, isPtyResponse, isPtyOutputEvent, isPtyExitEvent } from "./pty-protocol.js";
+import { utilityProcessError } from "./process-log.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const METHODS = new Set(PTY_METHODS);
@@ -36,14 +37,14 @@ export class PtyHost {
     this.exitWaiters.clear();
     for (const waiter of waiters) waiter();
   }
-  _death(child, generation, cause) { if (child !== this.child || generation !== this.generation) return; const e = cause instanceof Error ? cause : hostError("PTY worker unavailable", "worker_unavailable"); this._reject(e, generation); this.child = null; this.state = "dead"; this._notifyExit(); if (!this.stopping) this.onError?.(e); }
+  _death(child, generation, cause) { if (child !== this.child || generation !== this.generation) return; const e = cause instanceof Error ? cause : hostError("PTY worker unavailable", "worker_unavailable"); this._reject(e, generation); this.child = null; this.state = "dead"; this._notifyExit(); terminate(child); if (!this.stopping) this.onError?.(e.diagnostic ?? { type: "error", location: "pty", report: e.message }); }
   _attach(child, generation) {
     const receive = (message) => { const value = typeof message?.type === "string" ? message : message?.data; if (value?.type === "pty:data") { if (generation === this.generation && child === this.child && isPtyOutputEvent(value) && value.generation === generation) this.onOutput?.(value); return; } if (value?.type === "pty:exit") { if (generation === this.generation && child === this.child && isPtyExitEvent(value) && value.generation === generation) this.onExit?.(value); return; } if (!isPtyResponse(value) || child !== this.child || generation !== this.generation) return; const item = this.pending.get(value.id); if (!item || item.generation !== generation) return; this.pending.delete(value.id); this.timers.clearTimeout(item.timer); if (value.generation !== generation) item.reject(hostError("stale PTY response", "stale_generation")); else if (value.error !== undefined) item.reject(hostError(value.error, value.code)); else item.resolve(value.data ?? null); };
-    child.on?.("message", receive); child.on?.("error", (e) => this._death(child, generation, e)); child.on?.("exit", (code) => {
+    child.on?.("message", receive); child.on?.("error", (type, location, report) => this._death(child, generation, utilityProcessError(type, location, report))); child.on?.("exit", (code, signal) => {
       if (child !== this.child || generation !== this.generation) return;
       this._notifyExit();
       if (this.stopping) return;
-      if (code !== 0) this._death(child, generation, hostError(`PTY worker exited (${code ?? "unknown"})`, "worker_unavailable"));
+      this._death(child, generation, utilityProcessError("exit", "pty", `code=${code ?? "unknown"}${signal ? ` signal=${signal}` : ""}`));
     });
   }
   _waitForChildExit(child, timeout) {
@@ -62,7 +63,7 @@ export class PtyHost {
       if (this.childExited || this.child !== child) done();
     });
   }
-  _request(method, args, generation, timeout, states = ["ready"]) { if (!METHODS.has(method)) return Promise.reject(hostError("Unsupported PTY method", "unsupported_method")); if (!this.child || generation !== this.generation || !states.includes(this.state)) return Promise.reject(hostError("PTY worker is not ready", "not_ready")); const id = `pty-${++this.nextId}`; return new Promise((resolve, reject) => { const timer = this.timers.setTimeout(() => { if (!this.pending.delete(id)) return; reject(hostError(`PTY RPC timeout: ${method}`, "worker_timeout")); }, timeout); this.pending.set(id, { resolve, reject, timer, generation }); try { send(this.child, createPtyRequest(id, generation, method, args)); } catch (e) { this.pending.delete(id); this.timers.clearTimeout(timer); reject(e); } }); }
+  _request(method, args, generation, timeout, states = ["ready"]) { if (!METHODS.has(method)) return Promise.reject(hostError("Unsupported PTY method", "unsupported_method")); if (!this.child || generation !== this.generation || !states.includes(this.state)) return Promise.reject(hostError("PTY worker is not ready", "not_ready")); const child = this.child; const id = `pty-${++this.nextId}`; return new Promise((resolve, reject) => { const timer = this.timers.setTimeout(() => { if (!this.pending.delete(id)) return; reject(hostError(`PTY RPC timeout: ${method}`, "worker_timeout")); }, timeout); this.pending.set(id, { resolve, reject, timer, generation }); try { send(child, createPtyRequest(id, generation, method, args)); } catch (e) { this.pending.delete(id); this.timers.clearTimeout(timer); const failure = e instanceof Error ? e : hostError(String(e), "worker_unavailable"); if (!failure.code) failure.code = "worker_unavailable"; reject(failure); this._death(child, generation, failure); } }); }
   async start(options = {}) { await this.kill(); const generation = ++this.generation; const child = this.fork(this.workerPath); this.child = child; this.childExited = false; this.state = "starting"; this._attach(child, generation); try { const result = await this._request("init", options, generation, this.initTimeout, ["starting"]); if (child !== this.child) throw hostError("stale PTY initialization", "stale_generation"); this.state = "ready"; return result; } catch (e) { terminate(child); this._reject(e, generation); await this._waitForChildExit(child, this.initTimeout); if (this.child === child) this.child = null; this.state = "dead"; throw e; } }
   call(method, args = {}) { return this._request(method, args, this.generation, this.timeout); }
   async dispose() {

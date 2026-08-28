@@ -53,6 +53,7 @@ import { appRendererUrl, isAllowedAppUrl, registerAppProtocol, rendererAssetRoot
 import { WorkerHost } from "./worker-host.js";
 import { HistosHost } from "./histos-host.js";
 import { createPtyHost } from "./pty-host.js";
+import { normalizeUtilityProcessError } from "./process-log.js";
 import { sanitizeSearchQuery, searchWorkspace } from "./search-service.js";
 import { createCheckpoint, listCheckpoints, pruneCheckpoints, restoreCheckpoint } from "./checkpoint-service.js";
 import { createWorkerSlotPool } from "./worker-pool.js";
@@ -519,11 +520,16 @@ async function runPtySmoke() {
 function ptyHostForWindow() {
   let host = ptyHosts.get(win?.webContents);
   if (host) return host;
+  const owner = win?.webContents;
   host = createPtyHost({
     onOutput: (event) => { if (win && !win.isDestroyed()) win.webContents.send("pty:data", { type: "pty:data", sessionId: event.sessionId, chunk: event.chunk, sequence: event.sequence, isFinal: event.isFinal }); },
     onExit: (event) => { ptyOwnerBySession.delete(event.sessionId); if (win && !win.isDestroyed()) win.webContents.send("pty:exit", { type: "pty:exit", sessionId: event.sessionId, exitCode: event.exitCode, signal: event.signal }); },
+    onError: (diagnostic) => {
+      if (owner) for (const [sessionId, sessionOwner] of ptyOwnerBySession) if (sessionOwner === owner) ptyOwnerBySession.delete(sessionId);
+      sendTransportState("diagnostic", { subsystem: "pty", diagnostic: normalizeUtilityProcessError(diagnostic?.type, diagnostic?.location, diagnostic?.report) });
+    },
   });
-  ptyHosts.set(win?.webContents, host);
+  ptyHosts.set(owner, host);
   return host;
 }
 
@@ -608,6 +614,14 @@ function bindHost(host) {
     if (!win || win.isDestroyed()) return;
     win.webContents.send("extension-ui:request", request);
   };
+  host.onError = (diagnostic) => {
+    sendTransportState("diagnostic", {
+      subsystem: "worker",
+      sessionId: host.sessionId,
+      foreground: host === worker,
+      diagnostic: normalizeUtilityProcessError(diagnostic?.type, diagnostic?.location, diagnostic?.report),
+    });
+  };
   host.onTransport = (state, extra = {}) => {
     const foreground = host === worker;
     if (foreground) {
@@ -643,9 +657,13 @@ async function ensureHistosHost(root = activeCwd) {
   const authorizedRoot = authorizedWorkspace(root);
   const workspaceId = workspaceIdForRoot(authorizedRoot);
   let host = histosHosts.get(workspaceId);
-  if (!host) {
+  if (!host || host.state === "dead") {
     host = new HistosHost({ timeout: WORKER_RPC_TIMEOUT });
     histosHosts.set(workspaceId, host);
+    host.onError = (diagnostic) => {
+      if (histosHosts.get(workspaceId) === host && host.state === "dead") histosHosts.delete(workspaceId);
+      sendTransportState("diagnostic", { subsystem: "histos", diagnostic: normalizeUtilityProcessError(diagnostic?.type, diagnostic?.location, diagnostic?.report) });
+    };
     try {
       await host.start({
         workspaceId,

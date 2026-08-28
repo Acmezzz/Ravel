@@ -14,6 +14,7 @@ import {
   createHistosRequest,
   isHistosResponse,
 } from "./histos-protocol.js";
+import { normalizeUtilityProcessError, utilityProcessError } from "./process-log.js";
 
 const MAIN_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_TIMEOUT = 120_000;
@@ -119,8 +120,9 @@ export class HistosHost {
     this._rejectPending(failure, generation);
     this.child = null;
     const intentional = this.stopping || this.state === "stopping";
-    this._setState("dead", intentional ? undefined : { error: failure.message });
-    if (!intentional) this.onError?.(failure.message);
+    const diagnostic = normalizeUtilityProcessError(failure.diagnostic?.type ?? "error", failure.diagnostic?.location ?? "histos", failure.diagnostic?.report ?? failure.message);
+    this._setState("dead", intentional ? undefined : { error: failure.message, diagnostic });
+    if (!intentional) this.onError?.(diagnostic);
   }
 
   _handleMessage(child, generation, message) {
@@ -145,10 +147,10 @@ export class HistosHost {
       const wireMessage = message && typeof message.type === "string" ? message : message?.data;
       this._handleMessage(child, generation, wireMessage);
     };
-    const onError = (error) => this._handleDeath(child, generation, error);
+    const onError = (type, location, report) => this._handleDeath(child, generation, utilityProcessError(type, location, report));
     const onExit = (code, signal) => {
-      if (this.stopping && code === 0) return;
-      this._handleDeath(child, generation, hostError(`Histos exited (${code ?? "unknown"}${signal ? `, ${signal}` : ""})`, "worker_unavailable"));
+      if (this.stopping) return;
+      this._handleDeath(child, generation, utilityProcessError("exit", "histos", `code=${code ?? "unknown"}${signal ? ` signal=${signal}` : ""}`));
     };
     child.on?.("message", onMessage);
     child.on?.("error", onError);

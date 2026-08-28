@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { HistosHost } from "../electron/histos-host.js";
 
 /**
  * Contract tests for the planned HistosHost boundary.
@@ -19,9 +20,34 @@ const HOST_PATH = fileURLToPath(HOST_URL);
 const HOST_EXISTS = existsSync(HOST_PATH);
 const HOST_SKIP = "histos-host.js is not present; contract tests are staged for R3";
 
+class FakeChild {
+  constructor() { this.listeners = new Map(); this.messages = []; this.killed = false; }
+  on(event, listener) { this.listeners.set(event, listener); }
+  postMessage(message) { this.messages.push(message); }
+  emit(event, ...args) { this.listeners.get(event)?.(...args); }
+  reply(data) { this.emit("message", data); }
+  kill() { this.killed = true; }
+}
+
 async function hostSource() {
   return readFile(HOST_URL, "utf8");
 }
+
+test("HistosHost marks an unexpected clean exit dead and reports bounded diagnostics", async () => {
+  const child = new FakeChild();
+  const diagnostics = [];
+  const host = new HistosHost({ fork: () => child, initTimeout: 100, timeout: 100, onError: (diagnostic) => diagnostics.push(diagnostic) });
+  const starting = host.start({ workspaceId: "ws" });
+  await new Promise((resolve) => setImmediate(resolve));
+  const request = child.messages[0];
+  child.reply({ type: "resp", id: request.id, generation: request.generation, data: { workspaceId: "ws" } });
+  await starting;
+  const call = host.call("getGraph", {});
+  child.emit("exit", 0, null);
+  await assert.rejects(call, { code: "worker_unavailable" });
+  assert.equal(host.state, "dead");
+  assert.equal(diagnostics[0]?.type, "exit");
+});
 
 function assertHasAny(source, patterns, message) {
   assert.ok(patterns.some((pattern) => pattern.test(source)), message);
