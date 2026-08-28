@@ -619,6 +619,24 @@ export interface PermissionRuleRow {
   action: "allow" | "ask" | "deny";
 }
 
+/** Remote skill registry index entry (next-cycle B6). */
+export interface RegistryEntry {
+  name: string;
+  url: string;
+  description?: string;
+}
+
+/** One concurrently-staged registry entry; per-entry errors are non-blocking. */
+export interface RegistryStagedResult {
+  name: string;
+  filename?: string;
+  path?: string;
+  sha256?: string;
+  bytes?: number;
+  error?: string;
+  code?: string;
+}
+
 export interface TreeNodeRow {
   id: string;
   parentId: string | null;

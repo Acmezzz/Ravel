@@ -559,6 +559,21 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:stageRemoteResource", { url });
   },
+  registryFetch: (req) => {
+    const url = req && typeof req.url === "string" ? req.url.trim() : "";
+    if (!url || url.length > 2048 || !url.startsWith("https://")) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "https url is required" });
+    }
+    return ipcRenderer.invoke("omega:registryFetch", { url });
+  },
+  registryStage: (req) => {
+    const url = req && typeof req.url === "string" ? req.url.trim() : "";
+    if (!url || url.length > 2048 || !url.startsWith("https://")) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "https url is required" });
+    }
+    const names = Array.isArray(req?.names) ? req.names.filter((name) => typeof name === "string" && name.trim()).slice(0, 64).map((name) => name.slice(0, 64)) : null;
+    return ipcRenderer.invoke("omega:registryStage", names ? { url, names } : { url });
+  },
   installLocalResource: (req) => ipcRenderer.invoke("omega:installLocalResource", {
     source: safeString(req?.source, 4096),
     project: req?.project === true,

@@ -37,6 +37,7 @@ import {
 import { buildSessionHtml } from "./export-html.js";
 import { createHistosFactForwarder } from "./histos-fact-forwarder.js";
 import { stageRemoteResource, validateRemoteResourceUrl } from "./remote-resource-service.js";
+import { downloadRegistryEntries, fetchRegistryIndex } from "./skill-registry-service.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
@@ -2122,6 +2123,32 @@ ipcMain.handle("omega:stageRemoteResource", async (event, req) => {
     const url = validateRemoteResourceUrl(req?.url);
     const staged = await stageRemoteResource(url, stagedResourcesRoot());
     return okResult(staged);
+  } catch (error) {
+    return errorResult(error?.code ?? "stage_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+// ----- Remote skill registry (next-cycle B6): index fetch + staged batch download -----
+
+ipcMain.handle("omega:registryFetch", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const entries = await fetchRegistryIndex(req?.url);
+    return okResult({ entries });
+  } catch (error) {
+    return errorResult(error?.code ?? "stage_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:registryStage", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const entries = await fetchRegistryIndex(req?.url);
+    const wanted = Array.isArray(req?.names) ? req.names.filter((name) => typeof name === "string" && name.trim()) : null;
+    const selected = wanted ? entries.filter((entry) => wanted.includes(entry.name)) : entries;
+    if (selected.length === 0) return errorResult("invalid_args", "registry index has no matching entries");
+    const results = await downloadRegistryEntries(selected, stagedResourcesRoot());
+    return okResult({ results });
   } catch (error) {
     return errorResult(error?.code ?? "stage_failed", error instanceof Error ? error.message : String(error));
   }

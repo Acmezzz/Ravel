@@ -22,6 +22,8 @@ import type {
   DesktopSettings,
   PlanReviewResult,
   PermissionRuleRow,
+  RegistryEntry,
+  RegistryStagedResult,
   PromptImage,
   PtyDataDTO,
   PtyExitDTO,
@@ -117,6 +119,8 @@ export interface RavelBridge {
   listResources(): Promise<IpcResult<ResourceBundle>>;
   reloadResources(): Promise<IpcResult<ResourceBundle>>;
   stageRemoteResource(req: { url: string }): Promise<IpcResult<{ path: string; sha256: string; bytes: number; filename: string }>>;
+  registryFetch(req: { url: string }): Promise<IpcResult<{ entries: RegistryEntry[] }>>;
+  registryStage(req: { url: string; names?: string[] }): Promise<IpcResult<{ results: RegistryStagedResult[] }>>;
   installLocalResource(req?: { source?: string; project?: boolean }): Promise<IpcResult<ResourceBundle>>;
   removeLocalResource(req: { source: string; project?: boolean }): Promise<IpcResult<ResourceBundle>>;
   setResourceEnabled(req: {
@@ -277,6 +281,10 @@ export const ipc = {
   reloadResources: async (): Promise<IpcResult<ResourceBundle>> => ok(await window.omega?.reloadResources?.()),
   stageRemoteResource: async (req: { url: string }): Promise<IpcResult<{ path: string; sha256: string; bytes: number; filename: string }>> =>
     ok(await window.omega?.stageRemoteResource?.(req)),
+  registryFetch: async (req: { url: string }): Promise<IpcResult<{ entries: RegistryEntry[] }>> =>
+    ok(await window.omega?.registryFetch?.(req)),
+  registryStage: async (req: { url: string; names?: string[] }): Promise<IpcResult<{ results: RegistryStagedResult[] }>> =>
+    ok(await window.omega?.registryStage?.(req)),
   installLocalResource: async (req?: { source?: string; project?: boolean }): Promise<IpcResult<ResourceBundle>> =>
     ok(await window.omega?.installLocalResource?.(req)),
   removeLocalResource: async (req: { source: string; project?: boolean }): Promise<IpcResult<ResourceBundle>> =>
