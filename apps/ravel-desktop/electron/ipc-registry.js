@@ -76,6 +76,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:gitCommit",
   "omega:approveChange",
   "omega:setPermissionProfile",
+  "omega:setModeProfile",
   "omega:configureCustomProvider",
   "omega:histosGetGraph",
   "omega:histosCondenseGraph",

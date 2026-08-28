@@ -29,6 +29,7 @@ export class WorkerHost {
     this.sessionId = null;
     this.projectTrusted = true;
     this.permissionProfile = DEFAULT_PERMISSION_PROFILE;
+    this.modeProfile = "default";
     this.runtimeCredentials = {};
     this.customProviders = {};
     this.activating = false;
@@ -43,12 +44,13 @@ export class WorkerHost {
     this._initTimer = null;
   }
 
-  async start(cwd, extensionsRoot, sessionId = this.sessionId, projectTrusted = this.projectTrusted, permissionProfile = this.permissionProfile) {
+  async start(cwd, extensionsRoot, sessionId = this.sessionId, projectTrusted = this.projectTrusted, permissionProfile = this.permissionProfile, modeProfile = this.modeProfile) {
     this.cwd = cwd;
     this.extensionsRoot = extensionsRoot;
     this.sessionId = sessionId ?? null;
     this.projectTrusted = projectTrusted !== false;
     this.permissionProfile = permissionProfile ?? this.permissionProfile;
+    this.modeProfile = typeof modeProfile === "string" ? modeProfile : this.modeProfile;
     this.stopping = false;
     this.state = "starting";
     const generation = ++this.generation;
@@ -74,6 +76,7 @@ export class WorkerHost {
       generation,
       projectTrusted: this.projectTrusted,
       permissionProfile: this.permissionProfile,
+      modeProfile: this.modeProfile,
       runtimeCredentials: this.runtimeCredentials,
       customProviders: this.customProviders,
     });
@@ -126,7 +129,7 @@ export class WorkerHost {
       this.onTransport?.("restarting", { error: message, diagnostic: normalizeUtilityProcessError(error?.diagnostic?.type ?? "error", error?.diagnostic?.location ?? "worker", error?.diagnostic?.report ?? message) });
       setTimeout(() => {
         if (this.stopping) return;
-        void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted, this.permissionProfile).catch((restartError) => {
+        void this.start(this.cwd, this.extensionsRoot, this.sessionId, this.projectTrusted, this.permissionProfile, this.modeProfile).catch((restartError) => {
           const restartMessage = restartError instanceof Error ? restartError.message : String(restartError);
           this.onTransport?.("dead", { error: restartMessage, canRetry: true, diagnostic: normalizeUtilityProcessError("restart_failed", "worker", restartMessage) });
         });

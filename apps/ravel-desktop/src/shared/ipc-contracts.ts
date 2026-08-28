@@ -73,6 +73,7 @@ export const IPC_CHANNELS = {
   gitCommit: "omega:gitCommit",
   approveChange: "omega:approveChange",
   setPermissionProfile: "omega:setPermissionProfile",
+  setModeProfile: "omega:setModeProfile",
   configureCustomProvider: "omega:configureCustomProvider",
   histosGetGraph: "omega:histosGetGraph",
   histosCondenseGraph: "omega:histosCondenseGraph",

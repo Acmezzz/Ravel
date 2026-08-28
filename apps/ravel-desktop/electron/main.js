@@ -61,6 +61,7 @@ import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
 import { DEFAULT_PERMISSION_PROFILE, PERMISSION_PROFILES, sanitizePermissionProfile, assertOperationAllowed } from "./permission-profiles.js";
+import { sanitizeModeProfile } from "./mode-profiles.js";
 import {
   customProviderRequest,
   fileRequest,
@@ -802,13 +803,14 @@ async function loadNamedSession({ sessionId, workspace } = {}) {
   return result;
 }
 
-async function acquireSlot({ sessionId = null, cwd, projectTrusted, permissionProfile } = {}) {
+async function acquireSlot({ sessionId = null, cwd, projectTrusted, permissionProfile, modeProfile } = {}) {
   const slot = await workerPool.acquire({
     sessionId,
     cwd: cwd ?? activeCwd ?? rootOf(),
     extensionsRoot: extensionsRootOf(),
     projectTrusted: projectTrusted !== false,
     permissionProfile: permissionProfile ?? desktopSettings?.get()?.permissionProfile ?? "trusted",
+    modeProfile: modeProfile ?? desktopSettings?.get()?.modeProfile ?? "default",
     createHost: createBoundHost,
   });
   return adoptSlot(slot);
@@ -1576,6 +1578,45 @@ ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
     return errorResult(failed?.code ?? "write_failed", failed instanceof Error ? failed.message : String(failed));
   }
   return okResult(next);
+});
+
+ipcMain.handle("omega:setModeProfile", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  let mode;
+  try {
+    mode = sanitizeModeProfile(req?.mode);
+  } catch {
+    return errorResult("invalid_args", "Unsupported mode profile");
+  }
+  const previous = desktopSettings.get().modeProfile;
+  desktopSettings.update({ modeProfile: mode });
+  const slots = workerPool.list().filter((slot) => slot.host?.state === "ready");
+  const applied = [];
+  const results = await Promise.all(slots.map(async (slot) => {
+    const prior = slot.host.modeProfile;
+    try {
+      await slot.host.call("setModeProfile", { mode });
+      slot.host.modeProfile = mode;
+      applied.push({ slot, prior });
+      return null;
+    } catch (error) {
+      return error;
+    }
+  }));
+  const failed = results.find(Boolean);
+  if (failed) {
+    desktopSettings.update({ modeProfile: previous });
+    await Promise.all(applied.map(async ({ slot, prior }) => {
+      try {
+        await slot.host.call("setModeProfile", { mode: prior });
+        slot.host.modeProfile = prior;
+      } catch {
+        /* best effort rollback */
+      }
+    }));
+    return errorResult(failed?.code ?? "write_failed", failed instanceof Error ? failed.message : String(failed));
+  }
+  return okResult({ modeProfile: mode });
 });
 
 ipcMain.handle("omega:setProviderApiKey", async (event, req) => {

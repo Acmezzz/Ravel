@@ -350,6 +350,13 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:setPermissionProfile", { profile: req.profile });
   },
+  setModeProfile: (req) => {
+    const allowed = ["default", "plan", "goal"];
+    if (!req || typeof req.mode !== "string" || !allowed.includes(req.mode)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "mode must be a supported mode profile" });
+    }
+    return ipcRenderer.invoke("omega:setModeProfile", { mode: req.mode });
+  },
   setProviderApiKey: (req) => {
     if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "providerId is required" });

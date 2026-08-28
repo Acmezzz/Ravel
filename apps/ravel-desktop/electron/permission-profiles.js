@@ -232,12 +232,19 @@ export async function assertOperationAllowed({ profile, cwd, confirm, operation,
   }
 }
 
-export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot }) {
+export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, allowTool }) {
 	const mode = sanitizePermissionProfile(profile);
 	return async (event) => {
 		const { toolCall, toolCallId, args } = permissionEventOf(event);
 		const toolName = String(toolCall?.name ?? "");
 		const input = args && typeof args === "object" ? args : {};
+		// Session-mode narrowing (e.g. plan mode) applies before any profile
+		// tier: a mode can only remove access, never grant it.
+		if (typeof allowTool === "function" && !allowTool(toolName)) {
+			const error = new Error(`当前会话模式已阻止工具 ${toolName}`);
+			error.code = "permission_denied";
+			throw error;
+		}
 		const tier = riskTierOf(toolName);
 
 		if (mode === "trusted") return;

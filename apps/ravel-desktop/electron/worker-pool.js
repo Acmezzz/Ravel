@@ -195,13 +195,13 @@ export function createWorkerSlotPool({
     return slot;
   }
 
-  async function acquire({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, permissionProfile, createHost }) {
-    const run = acquireQueue.then(() => acquireUnlocked({ sessionId, cwd, extensionsRoot, projectTrusted, permissionProfile, createHost }));
+  async function acquire({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, permissionProfile, modeProfile, createHost }) {
+    const run = acquireQueue.then(() => acquireUnlocked({ sessionId, cwd, extensionsRoot, projectTrusted, permissionProfile, modeProfile, createHost }));
     acquireQueue = run.catch(() => {});
     return run;
   }
 
-  async function acquireUnlocked({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, permissionProfile, createHost }) {
+  async function acquireUnlocked({ sessionId = null, cwd, extensionsRoot, projectTrusted = true, permissionProfile, modeProfile, createHost }) {
     startHealthChecks();
     if (sessionId && slots.has(sessionId)) return activate(sessionId);
     await evictToFit();
@@ -232,7 +232,7 @@ export function createWorkerSlotPool({
     slots.set(pendingId, slot);
     setForeground(pendingId);
     try {
-      const info = await host.start(cwd, extensionsRoot, sessionId, projectTrusted, permissionProfile);
+      const info = await host.start(cwd, extensionsRoot, sessionId, projectTrusted, permissionProfile, modeProfile);
       const id = info?.sessionId ?? sessionId ?? pendingId;
       slot.cwd = info?.cwd ?? cwd;
       if (id !== pendingId) rekey(pendingId, id);

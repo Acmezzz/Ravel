@@ -31,6 +31,7 @@ import {
 import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
+import { getModeProfile, modeAllowsTool, sanitizeModeProfile } from "./mode-profiles.js";
 import { validateCustomProvider } from "./custom-providers.js";
 import {
   appendCheckpointFacts,
@@ -167,7 +168,8 @@ async function bindSession(session) {
     uiContext,
     mode: "rpc",
     toolCallGuard: createPermissionGuard({
-      profile: permissionProfile,
+      profile: effectivePermissionProfile(),
+      allowTool: (toolName) => modeAllowsTool(modeProfile, toolName),
       cwd: runtime.cwd,
       confirm: (title, message, onIssued) => uiContext.confirm(title, message, { onIssued }),
       facts: {
@@ -323,9 +325,16 @@ function attach(session) {
 
 let projectTrusted = true;
 let permissionProfile = "trusted";
+/** Session mode (next-cycle ModeProfile). Narrow-only: plan forces read-only. */
+let modeProfile = "default";
 
-async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, runtimeCredentials = {}, customProviders = {} }) {
+function effectivePermissionProfile() {
+  return getModeProfile(modeProfile)?.forcedPermissionProfile ?? permissionProfile;
+}
+
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, modeProfile: mode, runtimeCredentials = {}, customProviders = {} }) {
   permissionProfile = sanitizePermissionProfile(profile);
+  try { modeProfile = sanitizeModeProfile(mode ?? "default"); } catch { modeProfile = "default"; }
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
   activeRunId = null;
@@ -761,7 +770,7 @@ const methods = {
     appendContextAttachedFact(runtime.session.sessionManager, { targetSessionId, contextSha, lane });
     return { targetSessionId, contextSha };
   },
-  getState: () => bridge.snapshotOf(runtime),
+  getState: () => ({ ...bridge.snapshotOf(runtime), mode: modeProfile, effectiveProfile: effectivePermissionProfile() }),
   listModels: () => bridge.listModels(runtime),
   configureCustomProvider: async (input) => {
     const provider = validateCustomProvider(input);
@@ -773,6 +782,11 @@ const methods = {
     permissionProfile = sanitizePermissionProfile(profile);
     await bindSession(runtime.session);
     return { profile: permissionProfile };
+  },
+  setModeProfile: async ({ mode }) => {
+    modeProfile = sanitizeModeProfile(mode);
+    await bindSession(runtime.session);
+    return { mode: modeProfile, profile: effectivePermissionProfile(), snapshot: bridge.snapshotOf(runtime) };
   },
   setProviderApiKey: async ({ providerId, apiKey }) => {
     if (typeof providerId !== "string" || !providerId.trim()) {

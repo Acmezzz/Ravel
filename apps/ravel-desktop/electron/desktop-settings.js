@@ -17,6 +17,7 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
   lastWorkspace: null,
   rightPanelOpen: true,
   permissionProfile: DEFAULT_PERMISSION_PROFILE,
+  modeProfile: "default",
   sessionRecovery: {},
   keybindings: DEFAULT_KEYBINDINGS,
   customProviders: {},
@@ -25,6 +26,7 @@ export const DESKTOP_SETTINGS_DEFAULTS = Object.freeze({
 
 const THEME_MODES = new Set(["system", "light", "dark"]);
 const PERMISSION_PROFILES = new Set(["trusted", "workspace-only", "read-only", "ask-before-command"]);
+const MODE_PROFILES = new Set(["default", "plan", "goal"]);
 
 // Settings updates are synchronous today, so JavaScript calls cannot overlap
 // normally. Keep a process-local queue for re-entrant/concurrent persistence
@@ -82,6 +84,7 @@ export function sanitizeDesktopSettings(input, base = DESKTOP_SETTINGS_DEFAULTS)
     lastWorkspace: typeof source.lastWorkspace === "string" && source.lastWorkspace.trim() ? source.lastWorkspace.trim().slice(0, 4096) : null,
     rightPanelOpen: typeof source.rightPanelOpen === "boolean" ? source.rightPanelOpen : base.rightPanelOpen,
     permissionProfile: PERMISSION_PROFILES.has(source.permissionProfile) ? source.permissionProfile : base.permissionProfile,
+    modeProfile: MODE_PROFILES.has(source.modeProfile) ? source.modeProfile : base.modeProfile,
     sessionRecovery: source.sessionRecovery && typeof source.sessionRecovery === "object" ? Object.fromEntries(Object.entries(source.sessionRecovery).slice(-100).map(([id, value]) => [String(id).slice(0, 128), { state: typeof value?.state === "string" ? value.state.slice(0, 64) : "unknown", running: Boolean(value?.running), unread: Boolean(value?.unread), error: typeof value?.error === "string" ? value.error.slice(0, 1000) : null, retryAttempt: Number.isInteger(value?.retryAttempt) ? value.retryAttempt : 0, retryMaxAttempts: Number.isInteger(value?.retryMaxAttempts) ? value.retryMaxAttempts : 0, retryDelayMs: Number.isInteger(value?.retryDelayMs) ? value.retryDelayMs : 0, updatedAt: typeof value?.updatedAt === "string" ? value.updatedAt : new Date().toISOString() }])) : { ...base.sessionRecovery },
     keybindings: (() => { const normalized = sanitizeKeybindings(source.keybindings); return normalized.conflicts.length === 0 ? { commandPalette: normalized.commandPalette, newSession: normalized.newSession, abort: normalized.abort, zoomIn: normalized.zoomIn, zoomOut: normalized.zoomOut, zoomReset: normalized.zoomReset } : { ...base.keybindings }; })(),
     customProviders: source.customProviders && typeof source.customProviders === "object" ? Object.fromEntries(Object.entries(source.customProviders).slice(-50)) : { ...base.customProviders },

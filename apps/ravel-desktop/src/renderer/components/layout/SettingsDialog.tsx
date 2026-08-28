@@ -23,6 +23,14 @@ const PERMISSION_KEY = {
 
 type PermissionProfile = keyof typeof PERMISSION_KEY;
 
+const SESSION_MODE_KEY = {
+	default: "settings.modeProfile.default",
+	plan: "settings.modeProfile.plan",
+	goal: "settings.modeProfile.goal",
+} as const;
+
+type SessionMode = keyof typeof SESSION_MODE_KEY;
+
 const DEFAULT_KEYBINDINGS = {
 	commandPalette: "Ctrl+K",
 	newSession: "Ctrl+Shift+N",
@@ -247,6 +255,35 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps): React.Re
 							>
 								{(Object.keys(PERMISSION_KEY) as PermissionProfile[]).map((value) => (
 									<option key={value} value={value}>{t(PERMISSION_KEY[value])}</option>
+								))}
+							</TextField>
+							<TextField
+								select
+								label={t("settings.modeProfile")}
+								hint={t("settings.modeProfileHelper")}
+								value={desktopSettings?.modeProfile ?? "default"}
+								onChange={(event) => {
+									const mode = event.target.value as SessionMode;
+									setSaveState("saving");
+									void ipc.setModeProfile({ mode }).then((res) => {
+										if (res.ok) {
+											if (desktopSettings) {
+												setDesktopSettings({ ...desktopSettings, modeProfile: res.data.modeProfile });
+											}
+											setDesktopError(null);
+											setSaveState("saved");
+										} else {
+											setDesktopError(res.message);
+											setSaveState("idle");
+										}
+									}).catch((reason) => {
+										setDesktopError(reason instanceof Error ? reason.message : String(reason));
+										setSaveState("idle");
+									});
+								}}
+							>
+								{(Object.keys(SESSION_MODE_KEY) as SessionMode[]).map((value) => (
+									<option key={value} value={value}>{t(SESSION_MODE_KEY[value])}{value === "goal" ? "（未接入）" : ""}</option>
 								))}
 							</TextField>
 						</section>

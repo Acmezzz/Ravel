@@ -158,6 +158,7 @@ export interface RavelBridge {
   updateDesktopSettings(req: Partial<DesktopSettings>): Promise<IpcResult<DesktopSettings>>;
   configureCustomProvider(req: Record<string, unknown>): Promise<IpcResult<{ provider: Record<string, unknown>; models: ModelInfo[] }>>;
   setPermissionProfile(req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>>;
+  setModeProfile(req: { mode: DesktopSettings["modeProfile"] }): Promise<IpcResult<{ modeProfile: DesktopSettings["modeProfile"] }>>;
   histosGetGraph(req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>>;
   histosCondenseGraph(req: HistosCondenseGraphRequest): Promise<IpcResult<HistosCondenseGraphResultDTO>>;
   histosSaveViewState(req: HistosQueryDTO & { positions: Array<{ id: string; x: number; y: number }> }): Promise<IpcResult<{ sha256: string; artifact: HistosArtifactDTO }>>;
@@ -318,6 +319,8 @@ export const ipc = {
   configureCustomProvider: async (req: Record<string, unknown>): Promise<IpcResult<{ provider: Record<string, unknown>; models: ModelInfo[] }>> => ok(await window.omega?.configureCustomProvider?.(req)),
   setPermissionProfile: async (req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>> =>
     ok(await window.omega?.setPermissionProfile?.(req)),
+  setModeProfile: async (req: { mode: DesktopSettings["modeProfile"] }): Promise<IpcResult<{ modeProfile: DesktopSettings["modeProfile"] }>> =>
+    ok(await window.omega?.setModeProfile?.(req)),
   histosGetGraph: async (req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>> =>
     ok(await window.omega?.histosGetGraph?.(req)),
   histosCondenseGraph: async (req: HistosCondenseGraphRequest): Promise<IpcResult<HistosCondenseGraphResultDTO>> =>
