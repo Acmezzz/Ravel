@@ -151,12 +151,13 @@ test("Histos channels are present in the registry and preload invokes", async ()
     "omega:histosFreezeContext",
     "omega:histosConvertToFlow",
     "omega:histosGetArtifact",
+    "omega:histosDistillResource",
   ];
   const registered = INVOKE_CHANNELS.filter((channel) => channel.startsWith("omega:histos"));
   const preload = await readSource("../electron/preload.js");
   const invoked = uniqueSorted(extractInvokeChannels(preload).filter((channel) => channel.startsWith("omega:histos")));
   assert.deepEqual(registered, expected);
-  assert.equal(registered.length, 10);
+  assert.equal(registered.length, 11);
   assert.deepEqual(diffChannelSets(expected, invoked), { missing: [], extra: [] });
 });
 

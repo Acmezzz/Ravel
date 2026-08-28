@@ -26,7 +26,7 @@ import { appendFile, mkdir, readFile, rename, stat, writeFile as writeFileAsync 
 import { basename, dirname, join, resolve, isAbsolute } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   hasExtensionNamed,
   forgetSessionPath,
@@ -75,6 +75,7 @@ import {
   histosGetViewStateRequest,
   histosExecuteFlowRequest,
   histosGetNodeRequest,
+  histosDistillResourceRequest,
   histosRebuildRequest,
   histosConvertToFlowRequest,
   replayRequest,
@@ -107,6 +108,7 @@ const PROMPT_BEHAVIORS = ["steer", "followUp"];
 const MAX_PROMPT_IMAGES = 4;
 const MAX_IMAGE_CHARS = 8_000_000;
 const WORKER_RPC_TIMEOUT = 120_000;
+const HISTOS_DISTILL_MAX_CONTENT_BYTES = 262_144;
 const CLOSE_FLUSH_TIMEOUT = 10_000;
 const SHUTDOWN_WORKER_TIMEOUT = 10_000;
 const RECENT_EVENT_LIMIT = 300;
@@ -1798,6 +1800,30 @@ ipcMain.handle("omega:histosGetGraph", async (event, req) => {
   if (!normalized) return errorResult("invalid_args", "sourceSet, lens, and granularity are required");
   try { return okResult(await (await activeHistos()).call("getGraph", normalized)); }
   catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosDistillResource", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosDistillResourceRequest(req);
+  if (!normalized) return errorResult("invalid_args", "kind, name, and filePath are required");
+  try {
+    // Only resources the session's own loader has registered may be distilled:
+    // this is the path-containment gate, so no arbitrary renderer path reaches fs.
+    const bundle = await worker.call("listResources");
+    const items = normalized.kind === "skill" ? bundle?.skills ?? [] : normalized.kind === "extension" ? bundle?.extensions ?? [] : bundle?.prompts ?? [];
+    const pathKey = normalized.kind === "extension" ? "path" : "filePath";
+    const registered = items.some((item) => item?.[pathKey] === normalized.filePath && (normalized.kind === "extension" || item?.name === normalized.name));
+    if (!registered) return errorResult("not_found", "Resource is not registered in the current session");
+    const content = await readFile(normalized.filePath, "utf8");
+    if (Buffer.byteLength(content, "utf8") > HISTOS_DISTILL_MAX_CONTENT_BYTES) return errorResult("invalid_args", "Resource exceeds the distillation size limit");
+    const revisionId = createHash("sha256").update(content, "utf8").digest("hex");
+    const histos = await ensureHistosHost(activeCwd);
+    const result = await histos.call("distillResource", { ...normalized, content, revisionId }, 10 * 60_000);
+    if (result?.ok === false) return errorResult(result.code ?? "distill_failed", result.diagnostics?.[0]?.message ?? "Resource distillation unavailable");
+    return okResult({ graphSha256: result.graphSha256, contextSha256: result.contextSha256, node: result.node });
+  } catch (error) {
+    return errorResult(error?.code ?? "distill_failed", error instanceof Error ? error.message : String(error));
+  }
 });
 
 ipcMain.handle("omega:histosCondenseGraph", async (event, req) => {

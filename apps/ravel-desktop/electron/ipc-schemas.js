@@ -215,6 +215,19 @@ export function histosExecuteFlowRequest(value) {
   return sha256 && HISTOS_SHA256.test(sha256) ? { sha256 } : null;
 }
 
+const HISTOS_DISTILL_KINDS = new Set(["skill", "extension", "prompt"]);
+
+export function histosDistillResourceRequest(value) {
+  const kind = histosString(value?.kind, "kind", 16);
+  if (!kind || !HISTOS_DISTILL_KINDS.has(kind)) return null;
+  const name = histosString(value?.name, "name", 256);
+  const filePath = histosString(value?.filePath, "filePath", 1024);
+  if (!name || !filePath) return null;
+  const contentHash = histosString(value?.contentHash, "contentHash", 64);
+  if (contentHash !== null && !HISTOS_SHA256.test(contentHash)) return null;
+  return { kind, name, filePath, ...(contentHash ? { contentHash } : {}) };
+}
+
 export function histosSaveViewStateRequest(value) {
   const query = histosQuery(value);
   if (!query || !Array.isArray(value?.positions) || value.positions.length > 500) return null;

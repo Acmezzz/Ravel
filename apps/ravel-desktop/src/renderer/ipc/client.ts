@@ -169,6 +169,7 @@ export interface RavelBridge {
   histosFreezeContext(req: HistosFreezeContextRequest): Promise<IpcResult<HistosContextFreezeResultDTO>>;
   histosConvertToFlow(req: HistosConvertToFlowRequest): Promise<IpcResult<HistosConvertToFlowResultDTO>>;
   histosGetArtifact(req: HistosGetArtifactRequest): Promise<IpcResult<HistosArtifactDTO>>;
+  histosDistillResource(req: { kind: "skill" | "extension" | "prompt"; name: string; filePath: string }): Promise<IpcResult<{ graphSha256: string; contextSha256: string | null; node: { nodeId: string; nodeRevisionId: string; title: string } }>>;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
   listSessions(req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>>;
@@ -339,6 +340,8 @@ export const ipc = {
     ok(await window.omega?.histosFreezeContext?.(req)),
   histosConvertToFlow: async (req: HistosConvertToFlowRequest): Promise<IpcResult<HistosConvertToFlowResultDTO>> =>
     ok(await window.omega?.histosConvertToFlow?.(req)),
+  histosDistillResource: async (req: { kind: "skill" | "extension" | "prompt"; name: string; filePath: string }): Promise<IpcResult<{ graphSha256: string; contextSha256: string | null; node: { nodeId: string; nodeRevisionId: string; title: string } }>> =>
+    ok(await window.omega?.histosDistillResource?.(req)),
   histosGetArtifact: async (req: HistosGetArtifactRequest): Promise<IpcResult<HistosArtifactDTO>> =>
     ok(await window.omega?.histosGetArtifact?.(req)),
   setProviderApiKey: async (req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>> =>

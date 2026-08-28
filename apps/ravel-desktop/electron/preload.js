@@ -350,6 +350,16 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:setPermissionProfile", { profile: req.profile });
   },
+  histosDistillResource: (req) => {
+    const allowed = ["skill", "extension", "prompt"];
+    const kind = req && typeof req.kind === "string" ? req.kind : "";
+    const name = req && typeof req.name === "string" ? req.name.trim() : "";
+    const filePath = req && typeof req.filePath === "string" ? req.filePath.trim() : "";
+    if (!allowed.includes(kind) || !name || name.length > 256 || !filePath || filePath.length > 1024) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "kind, name, and filePath are required" });
+    }
+    return ipcRenderer.invoke("omega:histosDistillResource", { kind, name, filePath });
+  },
   setModeProfile: (req) => {
     const allowed = ["default", "plan", "goal"];
     if (!req || typeof req.mode !== "string" || !allowed.includes(req.mode)) {

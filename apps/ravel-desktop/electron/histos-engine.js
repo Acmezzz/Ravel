@@ -16,6 +16,8 @@ const MAX_JSONL_FILES = 4096;
 const MAX_ID = 1024;
 const MAX_CONDENSE_NODES = 128;
 const MAX_CONDENSE_BUDGET = 32_000;
+const MAX_DISTILL_CONTENT_BYTES = 262_144;
+const MAX_DISTILL_CONTEXT_BUDGET = 64_000;
 
 const initializeSchema = schema.initializeHistosSchema ?? schema.createHistosSchema;
 const validateSchema = schema.validateHistosSchema ?? schema.validateSchema;
@@ -605,8 +607,66 @@ export class HistosEngine {
     return { ok: true, sha256, artifact: stored, diagnostics: [] };
   }
 
-  getNode(first, second) {
-    const query = queryFromArgs(first, second);
+  /**
+   * resource.distill profile: one user-triggered LLM summary of a resource
+   * center item (skill/extension/prompt). The file content arrives from Main
+   * (which validates registration); the engine owns the prompt, the evidence
+   * address (sourceType=skill anchored at the content hash) and the resulting
+   * GraphRevision plus an optional draft ContextSet. Nothing executes.
+   */
+  async distillResource(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input)) throw invalid("distillResource input must be an object");
+    const resourceKind = ["skill", "extension", "prompt"].includes(input.kind) ? input.kind : null;
+    if (!resourceKind) throw invalid("distillResource.kind must be skill, extension, or prompt");
+    const name = string(input.name, "distillResource.name", 256);
+    const filePath = string(input.filePath, "distillResource.filePath", 1024);
+    if (typeof input.revisionId !== "string" || !/^[0-9a-f]{64}$/.test(input.revisionId)) throw invalid("distillResource.revisionId must be a lowercase SHA-256 hash");
+    if (typeof input.content !== "string" || input.content.length === 0 || Buffer.byteLength(input.content, "utf8") > MAX_DISTILL_CONTENT_BYTES) {
+      throw invalid(`distillResource.content must be a non-empty string up to ${MAX_DISTILL_CONTENT_BYTES} bytes`);
+    }
+    if (!this.semanticProvider) {
+      return { ok: false, code: "semantic_provider_unavailable", diagnostics: [{ code: "offline", message: "Resource distillation requires an available model provider" }] };
+    }
+    const parentSha = typeof input.parentSha === "string" && /^[0-9a-f]{64}$/.test(input.parentSha) ? input.parentSha : null;
+    const prompt = [
+      `Summarize this ${resourceKind} ("${name}") for an agent skill library.`,
+      "Describe what it does, when an agent should use it, and its key constraints. Reply with the summary text only.",
+      "",
+      "CONTENT:",
+      input.content,
+    ].join("\n");
+    let summary;
+    try {
+      summary = await this.semanticProvider({ kind: resourceKind, name, prompt, budget: MAX_CONDENSE_BUDGET });
+    } catch (error) {
+      throw Object.assign(new Error(`Resource distillation failed: ${error instanceof Error ? error.message : String(error)}`), { code: error?.code ?? "provider_invalid" });
+    }
+    if (typeof summary !== "string" || summary.trim().length === 0) throw Object.assign(new Error("semantic provider returned no summary"), { code: "provider_invalid" });
+
+    const address = validateAddress({ sourceType: "skill", objectId: `${resourceKind}:${name}+${filePath}`, revisionId: input.revisionId }, { workspaceId: this.workspaceId });
+    const nodeId = hashId(`resource:${resourceKind}:${name}`);
+    const nodeRevisionId = hashId(`resource-distill:${resourceKind}:${name}:${input.revisionId}:${parentSha ?? "root"}`);
+    const node = { nodeId, nodeRevisionId, kind: "skill", title: summary.trim().slice(0, 4096), createdAt: now() };
+    const evidence = [{ revisionId: nodeRevisionId, role: "supports", address }];
+    const sourceSet = { resource: `${resourceKind}:${name}` };
+    const artifact = validateArtifact(
+      { schemaVersion: 1, workspaceId: this.workspaceId, kind: "graph_revision", sourceSet, lens: "semantic", granularity: "file", nodes: [node], edges: [], evidence, parents: parentSha ? [parentSha] : [] },
+      { workspaceId: this.workspaceId, kind: "graph_revision" },
+    );
+    const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "graph_revision" });
+    const stored = { ...artifact, sha256 };
+    database.exec("BEGIN IMMEDIATE");
+    try { insertArtifact(database, stored, sha256); database.prepare("INSERT INTO meta (key, value) VALUES ('last_apply_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(now())); database.exec("COMMIT"); } catch (error) { database.exec("ROLLBACK"); throw error; }
+
+    // Optional draft ContextSet over the distilled node. Freezing writes an
+    // artifact only; context_attached is appended when the user attaches it
+    // to a session, never automatically.
+    const draft = await this.freezeContext({ sourceSet, lens: "semantic", granularity: "file", selection: [{ nodeRevisionId }], budget: MAX_DISTILL_CONTEXT_BUDGET });
+    return { ok: true, graphSha256: sha256, contextSha256: draft?.sha256 ?? null, node: { nodeId, nodeRevisionId, title: node.title } };
+  }
+
+  getNode(first, second) {    const query = queryFromArgs(first, second);
     const nodeId = typeof first === "string" ? first : first.nodeId ?? first.id;
     string(nodeId, "nodeId");
     const database = this.assertOpen();

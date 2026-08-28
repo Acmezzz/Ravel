@@ -77,7 +77,16 @@ function createRelayedSemanticProvider() {
           reject(error);
         },
       });
-      post({ type: "histos-provider", reqId, request: { prompt: buildCondensePrompt(request), maxTokens: PROVIDER_MAX_TOKENS } });
+      post({
+        type: "histos-provider",
+        reqId,
+        // The engine may pass a ready-made prompt (resource distillation) or
+        // raw condensation input that we compile here.
+        request: {
+          prompt: typeof request.prompt === "string" ? request.prompt : buildCondensePrompt(request),
+          maxTokens: Number.isSafeInteger(request.maxTokens) ? request.maxTokens : PROVIDER_MAX_TOKENS,
+        },
+      });
     });
   };
 }
@@ -137,6 +146,7 @@ async function invoke(method, args) {
   if (method === "freezeContext") return current.freezeContext(args ?? {});
   if (method === "convertToFlow") return current.convertToFlow(args ?? {});
   if (method === "applySessionFacts") return current.applySessionFacts(args ?? {});
+  if (method === "distillResource") return current.distillResource(args ?? {});
   throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });
 }
 
