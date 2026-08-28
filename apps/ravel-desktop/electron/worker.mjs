@@ -33,7 +33,7 @@ import {
 import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
-import { getModeProfile, modeAllowsTool, sanitizeModeProfile, buildModeDirectiveBlock, PLAN_APPROVED_TEXT } from "./mode-profiles.js";
+import { getModeProfile, modeAllowsTool, sanitizeModeProfile, buildModeDirectiveBlock, goalCapExceeded, GOAL_CONTINUATION_TEXT, PLAN_APPROVED_TEXT } from "./mode-profiles.js";
 import { validateCustomProvider } from "./custom-providers.js";
 import {
   appendCheckpointFacts,
@@ -330,6 +330,13 @@ let projectTrusted = true;
 let permissionProfile = "trusted";
 /** Session mode (next-cycle ModeProfile). Narrow-only: plan forces read-only. */
 let modeProfile = "default";
+/**
+ * Goal-mode continuation state (B2). The goal starts with the first prompt in
+ * goal mode and keeps prompting within the round/elapsed caps; it stops on
+ * abort, error, cap exhaustion or a mode switch. Completion is never
+ * self-declared by the model — that needs the evidence gate (borrowing B1).
+ */
+let goalState = null;
 
 function effectivePermissionProfile() {
   return getModeProfile(modeProfile)?.forcedPermissionProfile ?? permissionProfile;
@@ -347,6 +354,7 @@ function planFilePath() {
 async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, modeProfile: mode, runtimeCredentials = {}, mcpCredentials = {}, customProviders = {} }) {
   permissionProfile = sanitizePermissionProfile(profile);
   try { modeProfile = sanitizeModeProfile(mode ?? "default"); } catch { modeProfile = "default"; }
+  goalState = null;
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
   activeRunId = null;
@@ -566,6 +574,10 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
       operationId = `op-${randomUUID()}`;
       beginOperationFact(session, operationId, text);
     }
+    // First prompt in goal mode starts the goal loop.
+    if (modeProfile === "goal" && !goalState) {
+      goalState = { text, rounds: 1, startedAt: Date.now() };
+    }
     if (trackedClientMessageId) activeClientMessageIds.add(trackedClientMessageId);
     try {
       await session.prompt(fullText, options);
@@ -580,12 +592,28 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
         endOperationFact(session, operationId, aborted ? "aborted" : "failed", error);
         if (activeRunId === operationId) activeRunId = null;
       }
+      // A failed or aborted round stops the goal loop: never continue on error.
+      goalState = null;
       throw error;
     } finally {
       if (trackedClientMessageId) activeClientMessageIds.delete(trackedClientMessageId);
       if (refs.length > 0 && trackedClientMessageId) {
         recordReferenceFacts(session.sessionManager, { leafBefore, promptText: fullText, clientMessageId: trackedClientMessageId, references: refs });
       }
+    }
+    // Goal continuation (B2): within the round/elapsed caps the harness keeps
+    // prompting; the caps — never a model completion claim — end the loop.
+    // Fire-and-forget: awaiting here would queue the continuation behind the
+    // very run that is still executing it (promptQueue deadlock).
+    if (modeProfile === "goal" && goalState && !disposed) {
+      goalState.rounds += 1;
+      if (goalCapExceeded(goalState)) {
+        goalState = null;
+        return;
+      }
+      void prompt({ text: GOAL_CONTINUATION_TEXT, behavior: "followUp", generation: requestGeneration }).catch(() => {
+        goalState = null;
+      });
     }
   };
   if (session.isStreaming) {
@@ -786,7 +814,13 @@ const methods = {
     appendContextAttachedFact(runtime.session.sessionManager, { targetSessionId, contextSha, lane });
     return { targetSessionId, contextSha };
   },
-  getState: () => ({ ...bridge.snapshotOf(runtime), mode: modeProfile, effectiveProfile: effectivePermissionProfile(), planFile: planFilePath() }),
+  getState: () => ({
+    ...bridge.snapshotOf(runtime),
+    mode: modeProfile,
+    effectiveProfile: effectivePermissionProfile(),
+    planFile: planFilePath(),
+    goal: goalState ? { rounds: goalState.rounds, elapsedMs: Date.now() - goalState.startedAt } : null,
+  }),
   /** Plan review surface (B1): the plan file's content for the human gate. */
   getPlanFile: async () => {
     const planFile = planFilePath();
@@ -834,7 +868,9 @@ const methods = {
     return { profile: permissionProfile };
   },
   setModeProfile: async ({ mode }) => {
-    modeProfile = sanitizeModeProfile(mode);
+    const next = sanitizeModeProfile(mode);
+    if (next !== "goal") goalState = null;
+    modeProfile = next;
     await bindSession(runtime.session);
     return { mode: modeProfile, profile: effectivePermissionProfile(), snapshot: bridge.snapshotOf(runtime) };
   },

@@ -18,6 +18,11 @@ export const PLAN_MODE_TOOLS = Object.freeze(["read", "grep", "find", "ls"]);
 /** Model-visible text injected on plan approval to switch back to execution. */
 export const PLAN_APPROVED_TEXT = "计划已批准，执行。";
 
+/** Goal-mode budget defaults (B2): rounds and wall-clock, not self-declared completion. */
+export const GOAL_ROUND_CAP = 25;
+export const GOAL_ELAPSED_CAP_MS = 30 * 60 * 1000;
+export const GOAL_CONTINUATION_TEXT = "目标尚未完成，在预算内继续推进。";
+
 /** Delimiters for the model-visible block that carries the plan-mode directive. */
 export const MODE_DIRECTIVE_BEGIN = "===== BEGIN RAVEL MODE DIRECTIVE =====";
 export const MODE_DIRECTIVE_END = "===== END RAVEL MODE DIRECTIVE =====";
@@ -82,12 +87,13 @@ const PROFILES = new Map([
   ["goal", frozenProfile({
     id: "goal",
     title: "目标",
-    wired: false,
+    wired: true,
     writeAccess: null,
     tools: null,
-    completion: "evidence",
+    completion: "round-cap",
     histosProfile: null,
     forcedPermissionProfile: null,
+    budget: { roundCap: GOAL_ROUND_CAP, elapsedCapMs: GOAL_ELAPSED_CAP_MS },
   })],
 ]);
 
@@ -113,4 +119,11 @@ export function modeAllowsTool(modeId, toolName) {
   if (!profile || !profile.wired) return true;
   if (!profile.tools) return true;
   return profile.tools.includes(toolName);
+}
+
+/** Goal budget state: one round per prompt (initial + each continuation). */
+export function goalCapExceeded(state, now = Date.now()) {
+  if (!state) return false;
+  if (state.rounds >= GOAL_ROUND_CAP) return true;
+  return now - state.startedAt >= GOAL_ELAPSED_CAP_MS;
 }

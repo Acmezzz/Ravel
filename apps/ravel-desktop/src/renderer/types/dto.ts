@@ -548,6 +548,9 @@ export interface AgentStateSnapshot {
   markers?: TranscriptMarker[];
   operations?: TimelineOperation[];
   approvals?: ApprovalFact[];
+  /** Session mode + goal continuation state (B2); absent on older workers. */
+  mode?: "default" | "plan" | "goal";
+  goal?: { rounds: number; elapsedMs: number } | null;
 }
 
 export interface SlashCommandInfo {

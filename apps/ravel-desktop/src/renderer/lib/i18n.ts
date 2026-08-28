@@ -64,7 +64,7 @@ const messages = {
     "settings.permissionProfile": "工具权限 profile",
     "settings.permissionHelper": "Read-only 和 Workspace-only 会在工具执行前阻止越界或写入。",
     "settings.modeProfile": "会话模式",
-    "settings.modeProfileHelper": "计划模式只读探索、人审后执行；目标模式暂未接入，按普通会话运行。",
+    "settings.modeProfileHelper": "计划模式只读探索、写计划文件、人审后执行；目标模式在轮次/时间预算内自动续跑，停止或预算耗尽即结束。",
     "settings.modeProfile.default": "默认",
     "settings.modeProfile.plan": "计划（只读探索）",
     "settings.modeProfile.goal": "目标（实据校验，未接入）",
@@ -133,6 +133,10 @@ const messages = {
     "planReview.refresh": "刷新",
     "planReview.keepPlanning": "继续规划",
     "planReview.approve": "批准并执行",
+
+    "goalBar.modeChip": "目标模式",
+    "goalBar.active": "第 {n} 轮 · 预算内自动续跑；终止请按停止按钮",
+    "goalBar.idle": "下一次发送将开始目标续跑（轮次/时间预算内）",
 
     "sessions.empty": "暂无会话，点击「新建」开始。",
     "sessions.search": "搜索会话",
@@ -390,7 +394,7 @@ const messages = {
     "settings.permissionProfile": "Tool permission profile",
     "settings.permissionHelper": "Read-only and Workspace-only block out-of-scope or write actions before execution.",
     "settings.modeProfile": "Session mode",
-    "settings.modeProfileHelper": "Plan mode explores read-only and executes after human review; Goal mode is not wired yet and runs as a normal session.",
+    "settings.modeProfileHelper": "Plan mode explores read-only, writes a plan file and executes after human review; Goal mode keeps continuing within round/time budgets and stops on abort or budget exhaustion.",
     "settings.modeProfile.default": "Default",
     "settings.modeProfile.plan": "Plan (read-only explore)",
     "settings.modeProfile.goal": "Goal (evidence-based, not wired)",
@@ -459,6 +463,10 @@ const messages = {
     "planReview.refresh": "Refresh",
     "planReview.keepPlanning": "Keep planning",
     "planReview.approve": "Approve and execute",
+
+    "goalBar.modeChip": "Goal mode",
+    "goalBar.active": "Round {n} · continuing within budget; press stop to end",
+    "goalBar.idle": "The next message starts goal continuation (round/time budgeted)",
 
     "sessions.empty": "No sessions yet — click “New” to start.",
     "sessions.search": "Search sessions",

@@ -2,10 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createPermissionGuard } from "../electron/permission-profiles.js";
 import {
+  GOAL_ELAPSED_CAP_MS,
+  GOAL_ROUND_CAP,
   MODE_DIRECTIVE_BEGIN,
   PLAN_MODE_TOOLS,
   buildModeDirectiveBlock,
   getModeProfile,
+  goalCapExceeded,
   listModeProfiles,
   modeAllowsTool,
   sanitizeModeProfile,
@@ -22,8 +25,11 @@ test("ModeProfile registry freezes the plan contract and marks goal unwired", ()
   assert.equal(plan.forcedPermissionProfile, "read-only");
 
   const goal = getModeProfile("goal");
-  assert.equal(goal.wired, false, "goal must be an explicit placeholder this cycle");
-  assert.equal(goal.histosProfile, null);
+  assert.equal(goal.wired, true, "goal is wired for round-cap continuation (B2)");
+  assert.equal(goal.tools, null, "goal never narrows the tool surface");
+  assert.equal(goal.forcedPermissionProfile, null, "goal inherits the user's permission profile");
+  assert.equal(goal.completion, "round-cap", "completion is budget-based, never a model claim");
+  assert.deepEqual(goal.budget, { roundCap: GOAL_ROUND_CAP, elapsedCapMs: GOAL_ELAPSED_CAP_MS });
 
   const list = listModeProfiles();
   assert.deepEqual(list.map((profile) => profile.id), ["default", "plan", "goal"]);
@@ -46,7 +52,20 @@ test("plan mode allowlist gates tools; default and unwired goal do not restrict"
     assert.equal(modeAllowsTool("plan", tool), false, `plan must deny ${tool}`);
   }
   assert.equal(modeAllowsTool("default", "edit"), true);
-  assert.equal(modeAllowsTool("goal", "edit"), true, "unwired goal must degrade to default behavior, not fake evidence gating");
+  assert.equal(modeAllowsTool("goal", "edit"), true, "goal inherits the user profile instead of narrowing");
+});
+
+test("goal budget stops on round or elapsed caps, never on a completion claim", () => {
+  const startedAt = 1_000_000;
+  assert.equal(goalCapExceeded({ rounds: 1, startedAt }, startedAt + 1000), false);
+  assert.equal(goalCapExceeded({ rounds: GOAL_ROUND_CAP - 1, startedAt }, startedAt + 1000), false);
+  assert.equal(goalCapExceeded({ rounds: GOAL_ROUND_CAP, startedAt }, startedAt + 1000), true, "round cap ends the loop");
+  assert.equal(
+    goalCapExceeded({ rounds: 2, startedAt }, startedAt + GOAL_ELAPSED_CAP_MS),
+    true,
+    "elapsed cap ends the loop even with rounds left",
+  );
+  assert.equal(goalCapExceeded(null), false, "no goal state means nothing to stop");
 });
 
 test("plan mode guard narrows the user profile: trusted user still cannot edit through the agent", async () => {
