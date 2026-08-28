@@ -4,7 +4,7 @@
 
 已完成的迁移、切片 0/1、S2–S4、Histos R0–R5 不再列为待办。技术栈与切片定义只认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。发布策略认 [`ravel-release.md`](./ravel-release.md)。
 
-当前工作树：`feat/histos-r2-renderer-migration`（HEAD `d8412f5a2`）。未合进 `main`。H0、T1–T5、P1/P5/P6/P7/P8 与 P2/P3/P4 深化均已提交。不发 npm，暂不发安装器 / exe Release。
+当前工作树：`feat/histos-r2-renderer-migration`（HEAD `1a3df2620`）。未合进 `main`。H0、T1–T5、P1/P5/P6/P7/P8 与 P2/P3/P4 深化均已提交。不发 npm，暂不发安装器 / exe Release。
 
 没有备选栈。T* 一次只升一个 major。失败修目标版本，不退回 Vite 6 / TS 5 / Radix / Electron 43 作为长期形态。
 
@@ -34,6 +34,17 @@
 | P3 嵌套 Sub Flow UI | 递归 compound ELK 布局已提交；完整交互式嵌套 Sub Flow UI 未做 |
 | P4 超窗收缩 UX | 确定性优先级裁剪与 `budget_exceeded` fail-closed 已提交；超窗后停到 Composer 前让用户缩选择的交互未验证，诊断之外无收缩引导 |
 | P8 crashReporter 上传 | 三进程崩溃结构化诊断已提交；Electron `crashReporter` 上传未接入，仅本地诊断 |
+
+---
+
+## 外部调研结论（2026-08-28，vibe-memory / StrataGate / archify）
+
+三库对照后的净收获，按可信度排序。archify（24.5★）为唯一大规模验证项目；两个记忆库的 benchmark 均为小样本自报，只取设计不取数字。
+
+- **确定项 — GraphRevision 结构化 diff**：两个已验证 revision 之间输出 added / removed / changed / moved / rerouted 的纯函数。artifact 已是 canonical JSON + SHA-256，成本低，直接服务语义凝练审查。参照 archify 的 Before / Delta / After。
+- **候选项 — ContextSet 证据门控**：检索命中不等于证据充分。Ravel 已可沿 FactAddress 回溯原文，门控只做 advisory 诊断字段，不做子系统。参照 StrataGate 的 evidence gate。
+- **不立项**：修正推翻边（取代语义已由 revision DAG `parents` 表达，矛盾检测是 LLM 低可靠判断）；使用反馈加权（Ravel 无检索排序系统，留作未来 ranking 的约束）；open-tail 压缩边界（Ravel 按需从 JSONL 重建，无此问题）。L0–L5 分层与 typed IR 确定性编译与现有三层不变量 / canonical artifact 同构，仅作佐证。
+- **选型警示（弱证据）**：vibe-memory 自报 <2B 本地模型做 LLM 边分类 33% / 53s。任务不同（分类 ≠ 凝练），不能外推到 semanticProvider，但支持"接 API provider 或保持 offline fail-closed，不走本地小模型"的默认选择。
 
 ---
 
