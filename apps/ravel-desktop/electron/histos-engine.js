@@ -666,6 +666,48 @@ export class HistosEngine {
     return { ok: true, graphSha256: sha256, contextSha256: draft?.sha256 ?? null, node: { nodeId, nodeRevisionId, title: node.title } };
   }
 
+  /**
+   * memory.suggest profile: deterministic, zero-LLM retrieval over durable
+   * artifacts (node titles) for the workspace. This NEVER writes anything and
+   * never injects into a session — it only proposes candidates the user may
+   * review and freeze. No hits is an honest empty result.
+   */
+  suggestContext(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input)) throw invalid("suggestContext input must be an object");
+    const rawTerms = Array.isArray(input.terms) ? input.terms : typeof input.query === "string" ? input.query.split(/\s+/) : [];
+    if (rawTerms.length === 0) throw invalid("suggestContext requires terms or a query string");
+    if (rawTerms.length > 8) throw invalid("suggestContext accepts at most 8 terms");
+    const terms = [...new Set(rawTerms.map((term) => String(term).trim().toLowerCase()).filter((term) => term.length >= 2 && term.length <= 64))];
+    if (terms.length === 0) throw invalid("suggestContext terms must each be 2-64 characters after trimming");
+    const limit = input.limit === undefined ? 8 : input.limit;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 16) throw invalid("suggestContext.limit must be between 1 and 16");
+    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha FROM node_revisions ORDER BY created_at DESC, node_revision_id").all();
+    const evidenceCounts = new Map(database.prepare("SELECT revision_id AS revisionId, COUNT(*) AS count FROM evidence GROUP BY revision_id").all().map((row) => [row.revisionId, row.count]));
+    const lensBySha = new Map(database.prepare("SELECT sha256, lens FROM artifacts").all().map((row) => [row.sha256, row.lens]));
+    const candidates = [];
+    for (const row of rows) {
+      const title = String(row.title ?? "").toLowerCase();
+      if (!title) continue;
+      const matched = terms.filter((term) => title.includes(term));
+      if (matched.length === 0) continue;
+      candidates.push({
+        nodeRevisionId: row.nodeRevisionId,
+        nodeId: row.nodeId,
+        kind: row.kind,
+        title: row.title,
+        artifactSha: row.artifactSha,
+        lens: row.artifactSha ? lensBySha.get(row.artifactSha) ?? null : "structural",
+        createdAt: row.createdAt,
+        evidenceCount: evidenceCounts.get(row.nodeRevisionId) ?? 0,
+        matchedTerms: matched,
+        score: matched.length,
+      });
+    }
+    candidates.sort((a, b) => b.score - a.score || b.createdAt - a.createdAt);
+    return { terms, candidates: candidates.slice(0, limit) };
+  }
+
   getNode(first, second) {    const query = queryFromArgs(first, second);
     const nodeId = typeof first === "string" ? first : first.nodeId ?? first.id;
     string(nodeId, "nodeId");

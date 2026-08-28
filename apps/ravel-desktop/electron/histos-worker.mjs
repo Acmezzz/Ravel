@@ -147,6 +147,7 @@ async function invoke(method, args) {
   if (method === "convertToFlow") return current.convertToFlow(args ?? {});
   if (method === "applySessionFacts") return current.applySessionFacts(args ?? {});
   if (method === "distillResource") return current.distillResource(args ?? {});
+  if (method === "suggestContext") return current.suggestContext(args ?? {});
   throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });
 }
 

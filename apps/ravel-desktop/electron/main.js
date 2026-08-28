@@ -76,6 +76,7 @@ import {
   histosExecuteFlowRequest,
   histosGetNodeRequest,
   histosDistillResourceRequest,
+  histosSuggestContextRequest,
   histosRebuildRequest,
   histosConvertToFlowRequest,
   replayRequest,
@@ -1824,6 +1825,14 @@ ipcMain.handle("omega:histosDistillResource", async (event, req) => {
   } catch (error) {
     return errorResult(error?.code ?? "distill_failed", error instanceof Error ? error.message : String(error));
   }
+});
+
+ipcMain.handle("omega:histosSuggestContext", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosSuggestContextRequest(req);
+  if (!normalized) return errorResult("invalid_args", "terms (1-8, each 2-64 chars) or a query string are required");
+  try { return okResult(await (await activeHistos()).call("suggestContext", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "suggest_failed", error instanceof Error ? error.message : String(error)); }
 });
 
 ipcMain.handle("omega:histosCondenseGraph", async (event, req) => {

@@ -10,6 +10,18 @@ import { GraphCanvas, type GraphDraftSelection } from "./GraphCanvas";
 
 type ProjectedGraph = ReturnType<typeof projectHistosGraph>;
 type SelectedItem = ProjectedGraph["nodes"][number] | ProjectedGraph["edges"][number];
+type SuggestCandidate = {
+  nodeRevisionId: string;
+  nodeId: string;
+  kind: string;
+  title: string | null;
+  artifactSha: string | null;
+  lens: string | null;
+  createdAt: number;
+  evidenceCount: number;
+  matchedTerms: string[];
+  score: number;
+};
 
 function targetLabel(target: GraphTraceTarget): string {
   if (target.entryId) return `entry ${target.entryId}`;
@@ -44,6 +56,11 @@ export function GraphPanel(): React.ReactElement {
   const [freezeResult, setFreezeResult] = React.useState<string | null>(null);
   const [condensing, setCondensing] = React.useState(false);
   const [condenseResult, setCondenseResult] = React.useState<string | null>(null);
+  const [suggestQuery, setSuggestQuery] = React.useState("");
+  const [suggesting, setSuggesting] = React.useState(false);
+  const [suggestCandidates, setSuggestCandidates] = React.useState<SuggestCandidate[] | null>(null);
+  const [suggestSelection, setSuggestSelection] = React.useState<string[]>([]);
+  const [suggestStatus, setSuggestStatus] = React.useState<string | null>(null);
   const requestEpoch = React.useRef(0);
 
   const refresh = React.useCallback(async () => {
@@ -126,6 +143,30 @@ export function GraphPanel(): React.ReactElement {
     setFreezing(false);
   }, [activeSessionId, draft, freezing, t]);
 
+  const runSuggest = React.useCallback(async () => {
+    const query = suggestQuery.trim();
+    if (suggesting) return;
+    if (!query) { setSuggestCandidates(null); setSuggestStatus(t("graph.suggestEmptyQuery")); return; }
+    setSuggesting(true); setSuggestStatus(null);
+    const result = await ipc.histosSuggestContext({ query, limit: 8 });
+    setSuggesting(false);
+    if (!result.ok) { setSuggestCandidates(null); setSuggestStatus(result.message); return; }
+    setSuggestSelection([]);
+    if (result.data.candidates.length === 0) { setSuggestCandidates([]); setSuggestStatus(t("graph.suggestNoHits")); return; }
+    setSuggestCandidates(result.data.candidates);
+  }, [suggestQuery, suggesting, t]);
+
+  const freezeSuggested = React.useCallback(async () => {
+    if (!activeSessionId || suggestSelection.length === 0) return;
+    setSuggesting(true); setSuggestStatus(null);
+    const result = await ipc.histosFreezeContext({ sourceSet: {}, lens: "mixed", granularity: "entry", selection: suggestSelection, targetSessionId: activeSessionId });
+    if (!result.ok) setSuggestStatus(`${t("graph.freezeFailed")}: ${result.message}`);
+    else if (result.data.ok === false) setSuggestStatus(`${t("graph.freezeFailed")}: ${result.data.diagnostics[0]?.message ?? result.data.result.message ?? ""}`);
+    else if (result.data.factAppend?.ok) setSuggestStatus(t("graph.freezeSha", { sha: result.data.sha256 }));
+    else setSuggestStatus(`${t("graph.freezeFailed")}: ${result.data.factAppend?.error ?? t("graph.sessionNotActive")}`);
+    setSuggesting(false);
+  }, [activeSessionId, suggestSelection, t]);
+
   return (
     <div className="omega-graph-panel">
       <div className="omega-graph-toolbar">
@@ -168,6 +209,39 @@ export function GraphPanel(): React.ReactElement {
           ) : null}
         </>
       ) : null}
+      <section className="omega-graph-detail" aria-label={t("graph.suggestAria")}>
+        <span className="overline-label">{t("graph.suggestTitle")}</span>
+        <div className="omega-graph-toolbar-actions">
+          <input
+            className="omega-input"
+            type="text"
+            value={suggestQuery}
+            placeholder={t("graph.suggestPlaceholder")}
+            onChange={(event) => setSuggestQuery(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter") void runSuggest(); }}
+          />
+          <Button size="sm" variant="quiet" disabled={suggesting} onClick={() => void runSuggest()}>{suggesting ? t("graph.suggestSearching") : t("graph.suggestRun")}</Button>
+          <Button size="sm" variant="solid" disabled={suggesting || suggestSelection.length === 0 || !activeSessionId} onClick={() => void freezeSuggested()}>{t("graph.suggestFreeze")}</Button>
+        </div>
+        {suggestStatus ? <span className="omega-muted-text" role="status">{suggestStatus}</span> : null}
+        {suggestCandidates !== null && suggestCandidates.length > 0 ? (
+          <ul className="omega-resource-list">
+            {suggestCandidates.map((candidate) => (
+              <li key={candidate.nodeRevisionId} className="omega-resource-row">
+                <label className="omega-resource-row-title">
+                  <input
+                    type="checkbox"
+                    checked={suggestSelection.includes(candidate.nodeRevisionId)}
+                    onChange={(event) => setSuggestSelection((current) => event.target.checked ? [...current, candidate.nodeRevisionId] : current.filter((id) => id !== candidate.nodeRevisionId))}
+                  />
+                  <strong>{candidate.title ?? candidate.nodeId}</strong>
+                  <span className="omega-muted-text">{candidate.kind} · {candidate.lens ?? "structural"} · {t("graph.evidence", { n: candidate.evidenceCount })}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
     </div>
   );
 }

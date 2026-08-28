@@ -215,6 +215,22 @@ export function histosExecuteFlowRequest(value) {
   return sha256 && HISTOS_SHA256.test(sha256) ? { sha256 } : null;
 }
 
+export function histosSuggestContextRequest(value) {
+  let terms = [];
+  if (Array.isArray(value?.terms)) {
+    if (value.terms.length < 1 || value.terms.length > 8) return null;
+    terms = value.terms.map((term) => histosString(term, "terms", 64));
+    if (terms.some((term) => term === null || term.length < 2)) return null;
+  } else if (typeof value?.query === "string" && value.query.length > 0 && value.query.length <= 512) {
+    terms = value.query.split(/s+/).filter(Boolean);
+  } else {
+    return null;
+  }
+  const limit = value?.limit === undefined ? undefined : Number.isSafeInteger(value.limit) && value.limit >= 1 && value.limit <= 16 ? value.limit : null;
+  if (limit === null) return null;
+  return { terms, ...(limit === undefined ? {} : { limit }) };
+}
+
 const HISTOS_DISTILL_KINDS = new Set(["skill", "extension", "prompt"]);
 
 export function histosDistillResourceRequest(value) {

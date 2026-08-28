@@ -360,6 +360,15 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:histosDistillResource", { kind, name, filePath });
   },
+  histosSuggestContext: (req) => {
+    const query = typeof req?.query === "string" ? req.query.trim().slice(0, 512) : "";
+    const terms = Array.isArray(req?.terms) ? req.terms.filter((term) => typeof term === "string" && term.trim().length >= 2 && term.trim().length <= 64).slice(0, 8) : [];
+    if (!query && terms.length === 0) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "query or terms are required" });
+    }
+    const limit = Number.isSafeInteger(req?.limit) && req.limit >= 1 && req.limit <= 16 ? req.limit : undefined;
+    return ipcRenderer.invoke("omega:histosSuggestContext", query ? { query, ...(limit === undefined ? {} : { limit }) } : { terms, ...(limit === undefined ? {} : { limit }) });
+  },
   setModeProfile: (req) => {
     const allowed = ["default", "plan", "goal"];
     if (!req || typeof req.mode !== "string" || !allowed.includes(req.mode)) {
