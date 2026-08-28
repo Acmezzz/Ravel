@@ -18,10 +18,11 @@ import { existsSync, lstatSync, readFileSync, renameSync, writeFileSync } from "
 import { stat, readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { DefaultPackageManager } from "@earendil-works/pi-coding-agent";
+import { DefaultPackageManager, SessionManager, SettingsManager, createAgentSessionFromServices, createAgentSessionServices } from "@earendil-works/pi-coding-agent";
 import { completeSimple, contentText } from "@earendil-works/pi-ai/compat";
 import { processLog } from "./process-log.js";
 import * as bridge from "./agent-bridge.js";
+import { AGENT_DIR } from "./agent-bridge.js";
 import {
   RESOURCE_ARRAY_KEYS,
   RESOURCE_KINDS,
@@ -47,6 +48,7 @@ import {
   resolveSourceEntryId,
 } from "./session-facts.js";
 import { createCheckpoint } from "./checkpoint-service.js";
+import { MAX_TASK_DEPTH, SUBAGENT_TOOLS, TASK_TIMEOUT_MS, buildTaskPrompt, finalAssistantTextOf, validateTaskInput } from "./task-service.js";
 
 /** @type {import("./agent-bridge.js").ReturnType<typeof bridge.createRuntime> | null} */
 let runtime = null;
@@ -196,6 +198,73 @@ async function bindSession(session) {
       },
     }),
   });
+}
+
+/** Active task-tool nesting depth (B4); capped so subagents cannot recurse unbounded. */
+let taskDepth = 0;
+
+/**
+ * Run one read-only subagent task (B4). The child session lives in this same
+ * worker, shares the parent's model runtime and settings, and records its own
+ * durable JSONL (with a parentSession header) plus the same fail-closed
+ * approval facts. Narrowing invariant: read-only tool family + same permission
+ * rules + depth cap; the child never gains access the parent lacks.
+ */
+async function runSubagent({ prompt }) {
+  if (disposed || !runtime?.session) {
+    const error = new Error("Agent runtime is not initialized");
+    error.code = "no_model";
+    throw error;
+  }
+  const validated = validateTaskInput({ prompt });
+  if (taskDepth >= MAX_TASK_DEPTH) {
+    const error = new Error(`task nesting exceeds the depth cap (${MAX_TASK_DEPTH})`);
+    error.code = "task_depth_exceeded";
+    throw error;
+  }
+  const parent = runtime.session;
+  const services = await createAgentSessionServices({
+    cwd: runtime.cwd,
+    agentDir: AGENT_DIR,
+    modelRuntime: parent.modelRuntime,
+    settingsManager: SettingsManager.create(runtime.cwd, AGENT_DIR, { projectTrusted }),
+  });
+  const sessionManager = SessionManager.create(runtime.cwd, undefined, { parentSession: parent.sessionId });
+  const { session: child } = await createAgentSessionFromServices({ services, sessionManager, tools: [...SUBAGENT_TOOLS] });
+  const childRunId = `task-${child.sessionId}`;
+  await child.bindExtensions({
+    uiContext: createDesktopExtensionUIContext(),
+    mode: "rpc",
+    toolCallGuard: createPermissionGuard({
+      profile: effectivePermissionProfile(),
+      cwd: runtime.cwd,
+      rules: permissionRulesets,
+      confirm: (title, message, onIssued) => activeUiContext?.confirm?.(title, message, { onIssued }),
+      facts: {
+        runId: () => childRunId,
+        appendAsked: (asked) => appendFact(child.sessionManager, asked),
+        appendDecided: (decided) => appendFact(child.sessionManager, decided),
+      },
+    }),
+  });
+  taskDepth += 1;
+  const timer = setTimeout(() => {
+    void child.abort();
+  }, TASK_TIMEOUT_MS);
+  timer.unref?.();
+  try {
+    await child.prompt(buildTaskPrompt(validated), {});
+    const text = finalAssistantTextOf(child.messages) ?? "(子代理未产生文本输出)";
+    return { text, sessionId: child.sessionId };
+  } finally {
+    clearTimeout(timer);
+    taskDepth -= 1;
+    try {
+      child.dispose();
+    } catch {
+      /* best effort */
+    }
+  }
 }
 
 /**
@@ -358,7 +427,11 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   permissionProfile = sanitizePermissionProfile(profile);
   try { modeProfile = sanitizeModeProfile(mode ?? "default"); } catch { modeProfile = "default"; }
   goalState = null;
+  taskDepth = 0;
   permissionRulesets = Array.isArray(permissionRules) ? permissionRules.filter((ruleset) => Array.isArray(ruleset)) : [];
+  // The task extension delegates to this runner; execution stays in the worker
+  // so the child session inherits guard, rules and the shared model runtime.
+  globalThis.__ravelTaskRunner = runSubagent;
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
   eventSequence = 0;
   activeRunId = null;

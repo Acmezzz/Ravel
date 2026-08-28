@@ -14,6 +14,8 @@ export const PERMISSION_PROFILES = Object.freeze([
 export const DEFAULT_PERMISSION_PROFILE = "workspace-only";
 /** Known read-only built-ins; every other tool name is treated as untrusted. */
 const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "ls"]);
+/** `task` delegates to a read-only subagent by construction (B4), so its risk tier is read. */
+const READ_ONLY_PROXY_TOOLS = new Set(["task"]);
 const MUTATING_TOOLS = new Set(["bash", "edit", "write", "flow.execute"]);
 
 /**
@@ -23,7 +25,7 @@ const MUTATING_TOOLS = new Set(["bash", "edit", "write", "flow.execute"]);
  * fail-closed: denied under restrictive profiles, approval-gated under ask.
  */
 function riskTierOf(toolName) {
-	if (READ_ONLY_TOOLS.has(toolName)) return "read";
+	if (READ_ONLY_TOOLS.has(toolName) || READ_ONLY_PROXY_TOOLS.has(toolName)) return "read";
 	if (MUTATING_TOOLS.has(toolName)) return "mutating";
 	return "untrusted";
 }
