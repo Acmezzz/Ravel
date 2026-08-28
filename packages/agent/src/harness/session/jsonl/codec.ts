@@ -182,6 +182,7 @@ function parseRecordMutation(
 		requireString(value.argsDigest, "argsDigest");
 		// Optional explainability fields: absent on legacy asks, validated when present.
 		if (value.policyProfile !== undefined) requireString(value.policyProfile, "policyProfile");
+		if (value.ruleSource !== undefined) requireString(value.ruleSource, "ruleSource");
 	}
 	if (type === "approval_decided") {
 		requireString(value.runId, "runId");
@@ -192,6 +193,7 @@ function parseRecordMutation(
 		}
 		if (value.policyProfile !== undefined) requireString(value.policyProfile, "policyProfile");
 		if (value.uiRequestId !== undefined) requireString(value.uiRequestId, "uiRequestId");
+		if (value.ruleSource !== undefined) requireString(value.ruleSource, "ruleSource");
 		if (value.reasonCode !== undefined && !APPROVAL_REASON_CODES.includes(value.reasonCode as never)) {
 			throw new JsonlDecodeError("schema", `has invalid approval reason code ${JSON.stringify(value.reasonCode)}`);
 		}

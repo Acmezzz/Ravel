@@ -2,6 +2,7 @@ import { realpathSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { argsDigestOf } from "./session-facts.js";
+import { evaluatePermissionRules, primaryPatternOf } from "./permission-rules.js";
 
 export const PERMISSION_PROFILES = Object.freeze([
   "trusted",
@@ -232,8 +233,42 @@ export async function assertOperationAllowed({ profile, cwd, confirm, operation,
   }
 }
 
-export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, allowTool }) {
+/**
+ * Record an automated (rule-decided) ask+decide pair. Like the interactive
+ * path, a decision that cannot be persisted must never allow execution; a
+ * failed write of the pair falls through to the interactive confirm instead.
+ */
+function recordRuleDecisionFacts({ facts, toolName, toolCallId, input, policyProfile, ruleSource, outcome, reasonCode }) {
+	const asked = {
+		type: "approval_asked",
+		id: randomUUID(),
+		lane: "main",
+		runId: facts.runId() ?? "",
+		toolCallId,
+		toolName,
+		argsDigest: argsDigestOf(input),
+		...(policyProfile ? { policyProfile } : {}),
+		ruleSource,
+		timestamp: Date.now(),
+	};
+	facts.appendAsked(asked);
+	facts.appendDecided({
+		type: "approval_decided",
+		id: randomUUID(),
+		lane: "main",
+		runId: facts.runId() ?? "",
+		toolCallId,
+		askedId: asked.id,
+		outcome,
+		reasonCode,
+		ruleSource,
+		timestamp: Date.now(),
+	});
+}
+
+export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, allowTool, rules = [] }) {
 	const mode = sanitizePermissionProfile(profile);
+	const rulesets = Array.isArray(rules) ? rules : [rules].filter(Boolean);
 	return async (event) => {
 		const { toolCall, toolCallId, args } = permissionEventOf(event);
 		const toolName = String(toolCall?.name ?? "");
@@ -246,6 +281,25 @@ export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, 
 			throw error;
 		}
 		const tier = riskTierOf(toolName);
+		// Wildcard rules narrow access only: a deny stands in every mode,
+		// while an allow can skip the interactive confirm solely in
+		// ask-before-command mode (trusted needs no skip; restrictive modes
+		// were already blocked above/below). The built-in safety floor inside
+		// the evaluator escalates allow -> ask for destructive or sensitive
+		// patterns, so no user config reaches below it.
+		const decision = rulesets.length > 0
+			? evaluatePermissionRules(rulesets, toolName, primaryPatternOf(toolName, input, cwd))
+			: null;
+		if (decision?.action === "deny") {
+			if (mode === "ask-before-command" && facts) {
+				try {
+					recordRuleDecisionFacts({ facts, toolName, toolCallId, input, policyProfile: mode, ruleSource: decision.ruleSource, outcome: "rejected", reasonCode: "rule-denied" });
+				} catch {
+					/* denied either way; fact failure must not grant access */
+				}
+			}
+			denied(`权限规则 ${decision.ruleSource} 已拒绝 ${toolName}`);
+		}
 
 		if (mode === "trusted") return;
 
@@ -279,14 +333,30 @@ export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, 
 		}
 
 		if (mode === "ask-before-command" && tier !== "read") {
-			const outcome = await confirmWithDurableFacts({
-				toolName,
-				toolCallId,
-				input,
-				confirm,
-				facts,
-				policyProfile: mode,
-			});
+			// A rule allow that the safety floor did not escalate skips the
+			// interactive confirm — but the decision is still a durable,
+			// paired fact with its winning rule as provenance.
+			const ruleAllowed = decision?.action === "allow" && !decision.escalatedBySafetyFloor;
+			let outcome = "allowed-once";
+			if (ruleAllowed) {
+				if (facts) {
+					try {
+						recordRuleDecisionFacts({ facts, toolName, toolCallId, input, policyProfile: mode, ruleSource: decision.ruleSource, outcome: "allowed-once", reasonCode: "rule-allowed" });
+					} catch {
+						denied("规则放行的审批事实未能落盘，已按 fail-closed 阻止本次执行");
+					}
+				}
+			} else {
+				outcome = await confirmWithDurableFacts({
+					toolName,
+					toolCallId,
+					input,
+					confirm,
+					facts,
+					policyProfile: mode,
+					...(decision ? { ruleSource: decision.ruleSource } : {}),
+				});
+			}
 			if (outcome !== "allowed-once") {
 				denied(
 					outcome === "rejected"

@@ -28,7 +28,7 @@ export const SESSION_REFERENCE_BEGIN = "===== BEGIN RAVEL SESSION REFERENCES ===
 export const SESSION_REFERENCE_END = "===== END RAVEL SESSION REFERENCES =====";
 
 export const APPROVAL_OUTCOMES = Object.freeze(["allowed-once", "rejected", "cancelled", "unavailable"]);
-export const APPROVAL_REASON_CODES = Object.freeze(["user-allowed", "user-denied", "ui-cancelled", "timeout", "no-answerer"]);
+export const APPROVAL_REASON_CODES = Object.freeze(["user-allowed", "user-denied", "ui-cancelled", "timeout", "no-answerer", "rule-allowed", "rule-denied"]);
 const OPERATION_OUTCOMES = new Set(["completed", "aborted", "failed", "declined"]);
 
 function requireString(record, field) {
@@ -108,11 +108,13 @@ export function appendFact(sessionManager, record) {
 		case "approval_asked":
 			for (const field of ["runId", "toolCallId", "toolName", "argsDigest"]) requireString(record, field);
 			requireOptionalString(record, "policyProfile");
+			requireOptionalString(record, "ruleSource");
 			break;
 		case "approval_decided": {
 			for (const field of ["runId", "toolCallId", "askedId"]) requireString(record, field);
 			requireOptionalString(record, "policyProfile");
 			requireOptionalString(record, "uiRequestId");
+			requireOptionalString(record, "ruleSource");
 			if (!APPROVAL_OUTCOMES.includes(record.outcome)) {
 				throw new Error(`Invalid approval_decided fact: outcome ${JSON.stringify(record.outcome)}`);
 			}

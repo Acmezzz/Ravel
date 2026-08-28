@@ -119,13 +119,14 @@ SQLite = rebuild(JSONL facts, Git workspace, skill files, durable artifacts)
 - Cordis 插件平台、Hermes Python gateway
 - TUI 34 适配器层
 - 云沙箱、messaging、voice、computer use
-- 网络安装 skills、OAuth 当 MVP
 - 用 Git Review 冒充执行前权限
 - 没有 runtime 权威源的 Plan / Todo 假面板
 - 现在做子 agent worktree
 - 第二套会话权威、第二套 turn schema、第二套审批库
 - Neo4j / 通用图数据库 / Monaco / 自研 Canvas 引擎
 - Radix 与 Base UI 长期双轨；Vite 6 / TS 5 作为长期基线
+
+> 2026-08-28 勘误：原「网络安装 skills、OAuth 当 MVP」「MCP 网络传输」不作为永久排除。MCP（含 http/sse 传输与 OAuth）、skills、plugin 是完整 Agent 的普遍能力，Ravel 必须有，纳入基线补齐（见 [`ravel-example-agent-borrowing.md`](./ravel-example-agent-borrowing.md) §3）。仍按设计排除的是：把这些执行挪出 Pi 审批管线、把凭据写进 JSONL、以及云沙箱/computer use。
 
 ---
 

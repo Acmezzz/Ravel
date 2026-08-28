@@ -195,8 +195,18 @@ export const APPROVAL_OUTCOMES: readonly ApprovalOutcome[] = ["allowed-once", "r
 /**
  * Closed vocabulary explaining why a decision reached its outcome. Absent on
  * records written before decision explainability landed; writers always set it.
+ * `rule-allowed` / `rule-denied` mark automated decisions made by a matching
+ * wildcard permission rule (opencode/kilocode pattern, adapted): the outcome
+ * vocabulary stays unchanged, explainability lives in the reason code.
  */
-export type ApprovalReasonCode = "user-allowed" | "user-denied" | "ui-cancelled" | "timeout" | "no-answerer";
+export type ApprovalReasonCode =
+	| "user-allowed"
+	| "user-denied"
+	| "ui-cancelled"
+	| "timeout"
+	| "no-answerer"
+	| "rule-allowed"
+	| "rule-denied";
 
 export const APPROVAL_REASON_CODES: readonly ApprovalReasonCode[] = [
 	"user-allowed",
@@ -204,6 +214,8 @@ export const APPROVAL_REASON_CODES: readonly ApprovalReasonCode[] = [
 	"ui-cancelled",
 	"timeout",
 	"no-answerer",
+	"rule-allowed",
+	"rule-denied",
 ];
 
 export interface ApprovalAskedRecord extends RecordBase {
@@ -215,6 +227,8 @@ export interface ApprovalAskedRecord extends RecordBase {
 	argsDigest: string;
 	/** Permission profile in effect when the ask was issued; absent on legacy asks. */
 	policyProfile?: string;
+	/** Permission rule that matched at ask time (scope:pattern); absent on legacy asks. */
+	ruleSource?: string;
 }
 
 export interface ApprovalDecidedRecord extends RecordBase {
@@ -228,6 +242,8 @@ export interface ApprovalDecidedRecord extends RecordBase {
 	reasonCode?: ApprovalReasonCode;
 	/** Extension UI RPC correlation id, when an interactive request produced this decision. */
 	uiRequestId?: string;
+	/** Permission rule that decided this automatically (reasonCode rule-allowed/rule-denied). */
+	ruleSource?: string;
 }
 
 /**
