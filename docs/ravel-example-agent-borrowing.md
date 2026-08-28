@@ -58,9 +58,12 @@
 
 | # | 能力 | 现状 | 借鉴来源 | 接入位 |
 |---|---|---|---|---|
-| C1 | MCP 网络传输（http/sse/streamable） | 已有 stdio；缺网络传输 | opencode mcp/index.ts（1005 行）的传输层与状态机 | 工具注册仍走 `mcp__server__tool` + untrusted 审批；新增 needs_auth/failed 状态入资源中心与 MCP 节点 |
-| C2 | MCP OAuth / 凭据 | 无 | opencode oauth-provider/oauth-callback；prime 的「登录门控集成」概念 | 凭据进现有 safeStorage vault；登录是 UI 动作，不是模型工具 |
-| C3 | skill/plugin 在线获取 | 仅本地路径安装 | kilocode 远端 registry（index.json 拉取）+ omp 的 reverse-domain 命名空间纪律 | 下载进本地暂存区，展示来源+SHA-256，人审后走现有 installLocalResource；不跑安装脚本 |
+| C1 | MCP 网络传输（http/sse/streamable） | 已落地（N7，streamable-HTTP + vault `$cred:`） | opencode mcp/index.ts 的传输层与状态机 | 工具注册仍走 `mcp__server__tool` + untrusted 审批 |
+| C2 | MCP OAuth / 凭据 | 🟡 transport+凭据引用已落地；缺登录闭环（needs_auth 状态、callback、登录 UI）→ 包 B B5 | opencode oauth-provider/oauth-callback；prime 的「登录门控集成」概念 | 凭据进现有 safeStorage vault；登录是 UI 动作，不是模型工具 |
+| C3 | skill/plugin 在线获取 | 🟡 N8 已落地单文件 HTTPS 暂存+SHA 人审安装；缺 registry index/批量 → 包 B B6 | kilocode 远端 registry（index.json 拉取）+ omp 的 reverse-domain 命名空间纪律 | 下载进本地暂存区，展示来源+SHA-256，人审后走现有 installLocalResource；不跑安装脚本 |
+| C4 | 每工具 `allow/prompt/deny` override + 档位热切换 | ❌ → 包 B B3（=A1b）。A1 评估器已就绪，缺规则持久库 + 设置 UI | opencode permission rules、kilocode always-rules | 规则命中是事实（A1 已有 rule-allowed/rule-denied）；safety floor 不可覆盖 |
+| C5 | task/子代理（前台工具、权限继承只窄不宽、结构化产出、深度上限） | ❌ → 包 B B4。原 🔒「子 agent worktree 编排不做」经用户决策重估 | omp task.*（batch/semaphore/structured output）、prime rlm() admission handle、kilocode task + agent-manager | 子代理审批走同一 fail-closed 事实层；不新增 artifact kind |
+| C6 | Goal 持久目标（跨 turn 续跑、token/轮次/时间预算、complete/pause/budget 退出） | ❌ → 包 B B2。ModeProfile 已占 `goal` id（wired:false） | prime persistent /goal + /autonomous quality gate | goal 实据续跑事实进 JSONL；预算耗尽如实停止 |
 
 这三项不改变「单一事实写者、fail-closed 审批、无第二权威」；改变的是原「按设计排除」清单中「MCP 网络传输、OAuth 当 MVP、网络安装 skills」三行（核心设计 §2.7 同步勘误）。
 

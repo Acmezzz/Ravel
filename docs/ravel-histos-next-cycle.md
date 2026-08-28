@@ -2,7 +2,7 @@
 
 更新日期：2026-08-28
 状态：**当前执行入口。**
-进度：2026-08-29 — N0–N8 已全部落地（N0 checkpoint 后置校验早前已交付；N1 semanticProvider 中继 bd9590000；N2 事实转发 57ecd2167；N3 ModeProfile/plan 5c0b07a07；N4 资源蒸馏 59c57b75c；N5 记忆建议 e24290bc9；A1 权限规则 89d0bf60c；N7 MCP 网络传输+OAuth 凭据 cba43eaf6；N8 URL 安装暂存 a2d284059；N6 跨库 ContextSet c6408496c）。桌面 320 测试绿，npm run check 绿。待办：A2 计划文件与人审退出、A1b 规则持久库与设置 UI、Goal 接线。 本文冻结接入契约，并只排本周期切片。R0–R5 验收仍认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。产品不变量仍认 [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)；冲突时以核心设计为准，但核心设计 §1「记忆」行以本文勘误为准。
+进度：2026-08-29 — N0–N8 已全部落地（N0 checkpoint 后置校验早前已交付；N1 semanticProvider 中继 bd9590000；N2 事实转发 57ecd2167；N3 ModeProfile/plan 5c0b07a07；N4 资源蒸馏 59c57b75c；N5 记忆建议 e24290bc9；A1 权限规则 89d0bf60c；N7 MCP 网络传输+OAuth 凭据 cba43eaf6；N8 URL 安装暂存 a2d284059；N6 跨库 ContextSet c6408496c）。桌面 320 测试绿，npm run check 绿。待办：A2 计划文件与人审退出、A1b 规则持久库与设置 UI、Goal 接线（均已升级为包 B 切片，见 §5）。本文冻结接入契约；包 A 已完成验收，包 B 按 §5 顺序推进。R0–R5 验收仍认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。产品不变量仍认 [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)；冲突时以核心设计为准，但核心设计 §1「记忆」行以本文勘误为准。
 
 没有备选架构。不换壳、不换 JSONL、不换 Pi 运行时、不新增第二套审批库、本周期不新增 artifact kind。
 
@@ -44,7 +44,7 @@ Histos（记忆 / 图 / 剖面）
 | 跨工作区记忆 | 源工作区先 freeze ContextSet；当前会话再过一遍预算；禁止静默注入原文 |
 | 语义端口 | 本周期接通生产 `semanticProvider`；默认用工作区对话模型；以后可拆 |
 | 模式 | 冻结 `ModeProfile`；本周期只交货 Plan；Goal 等占稳定 id，未接线时按无 Histos 会话模式跑 |
-| 本周期包 | 包 A（见 §4）；嵌套 Sub Flow、定时 Flow、每工具 override、分享/导入、PR 面板、结构化 diff 推迟 |
+| 本周期包 | 包 A（见 §4）。包 B（补齐周期，2026-08-28 用户决策）：竞品普遍具备的功能全部补齐——每工具 override、task/子代理、Goal 持久目标、MCP OAuth 闭环、在线 skill registry、计划文件+人审退出（A2）等；此前「推迟」读法以包 B 为准 |
 
 勘误：核心设计「先不设计跨项目记忆」不再读成「Histos 不做记忆」。正确读法是：**不另做记忆产品；记忆就是 Histos。** 同工作区默认可检索、可建议。跨工作区不是禁区，但只能显式搬运已 freeze 的 ContextSet，禁止把外库原文灌进当前 prompt。
 
@@ -208,19 +208,22 @@ N2 可与 N1 并行准备，但语义剖面不得在 N1 验收前对用户宣称
 
 ---
 
-## 5. 明确推迟
+## 5. 补齐周期（包 B，2026-08-28 用户决策升级）
 
-本周期不做，也不在本文验收：
+原「明确推迟」清单经用户决策升级为执行项：竞品普遍具备的功能 Ravel 必须有。顺序即优先级，一次推进一项，验收不过不进下一项。
 
-- 交互式嵌套 Sub Flow UI、超窗收缩 UX 的完整 Composer 引导
-- GraphRevision 结构化 diff / 时间轴回放
-- 定时 / 事件 Flow、无人值守预授权
-- 每工具 override 的**持久规则库与设置 UI**（评估引擎与规则决策事实化已由 borrowing A1 落地，worker 尚传 `rules=[]`；store 装载、设置面板、动态 add/revoke IPC 待单列 A1b）
-- 加密分享、竞品会话导入、PR/gh 面板
-- Goal 实据续跑、模式可视化编辑器
-- 凝练 eval 回归、crashReporter 上传、跨工作区静默同步
+| 切片 | 内容 | 来源 | 验收 |
+|---|---|---|---|
+| **B1（=A2）** | 计划文件 + 人审退出：plan 模式产物是计划文件（`.ravel/plans/<sessionId>.md`，agent 只能写这个文件），plan_exit 是人审事件；批准后注入「计划已批准，执行」切回执行档 | kilocode plan-file/plan-exit、omp/prime plan-mode | 无画布也能出可审计划；批准有审批事实；未批准不得执行 |
+| **B2** | Goal 持久目标接线：持久目标跨 turn 续跑，token/轮次/时间预算计量，complete/pause/budget 退出 | prime persistent /goal | goal 模式实据续跑；预算耗尽如实停止；无 Histos 可用 |
+| **B3（=A1b）** | 每工具 `allow/prompt/deny` override + 档位热切换：规则持久库（user/project `.ravel`）+ 设置 UI + add/revoke IPC | opencode/kilocode permission rules | 规则重启后生效；safety floor 不可覆盖；规则命中是事实 |
+| **B4** | task/子代理：前台 task 工具、子代理继承权限 deny、结构化产出、深度上限 | omp task.*、prime rlm()、kilocode task | 子代理审批走同一 fail-closed 事实；权限只窄不宽 |
+| **B5** | MCP OAuth 登录闭环：needs_auth 状态、登录 UI 动作、callback、凭据入 vault | opencode oauth-callback、prime 登录门控 | 未登录如实显示 needs_auth；登录后可用；凭据不落明文 |
+| **B6** | 在线 skill registry：远端 index.json、并发下载、staging 原子刷新、SHA 展示、人审安装 | kilocode/opencode skill discovery | 不跑安装脚本；来源+SHA 可见；失败不伪装 |
+| **B7** | 会话导出/分享 + 图 diff：HTML 导出脱敏 pass、GraphRevision 结构化 diff | opencode export.ts | 导出可脱敏；diff 可解释 added/removed/changed |
+| **B8** | 定时 Flow + 无人值守预授权（最后做） | prime cron-jobs 记录形状 | 每次触发 = flow_trigger 事实；预授权工件引用 |
 
-这些仍可在差距分析里当候选项。要做时必须走本文剖面，不另起权威。
+仍维持不做：HTTP 多客户端服务面、第二权威存储、凝练 eval 产品化、crashReporter 上传（后两项单独立项）。本周期「不新增 artifact kind」继续有效；B8 触发器走事实不是新 kind。
 
 ---
 
