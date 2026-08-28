@@ -152,7 +152,8 @@ JSONL 仅追加 + revision DAG 天然支持「拖动时间轴看图演化」：�
 以下不是“竞品有、Ravel 永远没有”的简单清单，而是按不变量判断：
 
 - **与当前边界冲突，暂不引入**：云 VM/云任务、Wide Research 式百级并行、computer use/浏览器操作、跨项目记忆、OS 级沙箱宣称、Neo4j/图数据库、Monaco、第二 runtime/第二审批库、静默自动压缩记忆。
-- **当前明确排除但可重估**：子 agent worktree 编排、PR/gh 面板、MCP 网络传输、在线 skill 安装、OAuth、桌面远控。它们只有在安全边界、产品用户和运维能力同时成立时再单独立项。
+- **2026-08-28 已改为基线补齐（N7/N8）**：MCP 网络传输（http/sse）、MCP OAuth、在线 skill/plugin 获取。MCP/skills/plugin 是完整 Agent 的普遍能力，必须补；约束不变：工具仍走 Pi 审批管线，凭据只进 safeStorage，在线来源必须暂存 + hash 人审。
+- **当前明确排除但可重估**：子 agent worktree 编排、PR/gh 面板、桌面远控。它们只有在安全边界、产品用户和运维能力同时成立时再单独立项。
 - **不可退让的不变量**：三层权威分离、单一事实写者、Electron 隔离、路径 containment、语义图不得直接执行、压缩/记忆写入必须可见且可审查。
 
 Hermes 的“记忆超限报错、要求显式整理”与 Ravel 的 `budget_exceeded` 方向一致；这不是证明两者实现相同，而是说明“禁止静默有损压缩”是可解释的治理选择。

@@ -200,8 +200,10 @@ ModeProfile {
 | **N4** | `resource.distill` | 资源仍可安装/编辑 | 用户触发后得到 GraphRevision + 可选草稿 | 默认不执行；Convert 仍走 Validate + 审批 |
 | **N5** | `memory.suggest` + `memory.freeze` | prompt 不自动塞旧图 | 建议草稿 → 人审 → `context_attached` | 无命中可见；未 freeze 的检索结果不进模型 |
 | **N6** | `memory.import` | 不读外库磁盘 | 只接受外库 ContextSet hash，再预算一次 | 超窗 `budget_exceeded`；missing evidence 可见 |
+| **N7** | MCP 基线补齐：http/sse/streamable 传输 + OAuth 登录（借鉴 opencode/kilocode，见 [`ravel-example-agent-borrowing.md`](./ravel-example-agent-borrowing.md) §3 C1/C2） | 凭据只进 safeStorage | 网络 MCP 工具仍以 `mcp__server__tool` 注册进 Pi 审批管线（untrusted 档）；needs_auth/failed 状态进资源中心 | 断连如实降级可见；工具不得绕过 approval；凭据不落 JSONL |
+| **N8** | skill/plugin 在线获取（registry index.json 拉取，借鉴 kilocode discovery + omp 命名空间纪律，见 borrowing §3 C3） | 不装不执行 | 下载进暂存区，展示来源 + SHA-256，人审后走现有 installLocalResource；来源注册为资源事实 | 不跑安装脚本；未审来源不得进入 loader 路径 |
 
-N2 可与 N1 并行准备，但语义剖面不得在 N1 验收前对用户宣称可用。N3 不得做成画布专用假面板。
+N2 可与 N1 并行准备，但语义剖面不得在 N1 验收前对用户宣称可用。N3 不得做成画布专用假面板。N7/N8 是 2026-08-28 用户范围修正后的基线补齐项：MCP、skills、plugin 是完整 Agent 的普遍能力，此前的「按设计排除」已勘误为「补，但执行权威与审批管线不变」。
 
 ---
 
@@ -212,7 +214,7 @@ N2 可与 N1 并行准备，但语义剖面不得在 N1 验收前对用户宣称
 - 交互式嵌套 Sub Flow UI、超窗收缩 UX 的完整 Composer 引导
 - GraphRevision 结构化 diff / 时间轴回放
 - 定时 / 事件 Flow、无人值守预授权
-- 每工具 `allow/prompt/deny` override、档位热切换 UX
+- 每工具 override 的**持久规则库与设置 UI**（评估引擎与规则决策事实化已由 borrowing A1 落地，worker 尚传 `rules=[]`；store 装载、设置面板、动态 add/revoke IPC 待单列 A1b）
 - 加密分享、竞品会话导入、PR/gh 面板
 - Goal 实据续跑、模式可视化编辑器
 - 凝练 eval 回归、crashReporter 上传、跨工作区静默同步
