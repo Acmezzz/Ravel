@@ -2,7 +2,7 @@
 
 更新日期：2026-08-28
 状态：**当前执行入口。**
-进度：2026-08-29 — N0–N8 + A1 全部落地（见 git 历史）。包 B 进度：B1 计划文件 + 人审退出 fd5fb1301；B2 Goal 接线 23e12bcf6；B3 权限规则持久库 + 设置 UI fa902fdb6；B4 task 工具 + 只读子代理 4fb3e5489（同 worker 子会话、共享模型运行时与审批守卫、深度上限 2、10 分钟超时）；B5 MCP OAuth 登录闭环 3fd4cf7c7（PKCE + ravel://oauth/callback 深链、令牌入 safeStorage vault、needs_auth 状态与登录 UI）。桌面 336 测试绿，npm run check 绿。下一项：B6 在线 skill registry。本文冻结接入契约；包 A 已完成验收，包 B 按 §5 顺序推进。R0–R5 验收仍认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。产品不变量仍认 [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)；冲突时以核心设计为准，但核心设计 §1「记忆」行以本文勘误为准。
+进度：2026-08-29 — N0–N8 + A1 全部落地（见 git 历史）。包 B 进度：B1 计划文件 + 人审退出 fd5fb1301；B2 Goal 接线 23e12bcf6；B3 权限规则持久库 + 设置 UI fa902fdb6；B4 task 工具 + 只读子代理 4fb3e5489（同 worker 子会话、共享模型运行时与审批守卫、深度上限 2、10 分钟超时）；B5 MCP OAuth 登录闭环 3fd4cf7c7（PKCE + ravel://oauth/callback 深链、令牌入 safeStorage vault、needs_auth 状态与登录 UI）；B6 在线 skill registry e87428655（https index.json 拉取、并发下载进 sha256 暂存、来源+SHA 展示、逐条走 installLocalResource 人审安装）。桌面 340 测试绿，npm run check 绿。下一项：B7 会话导出脱敏 + 图 diff。本文冻结接入契约；包 A 已完成验收，包 B 按 §5 顺序推进。R0–R5 验收仍认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。产品不变量仍认 [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)；冲突时以核心设计为准，但核心设计 §1「记忆」行以本文勘误为准。
 
 没有备选架构。不换壳、不换 JSONL、不换 Pi 运行时、不新增第二套审批库、本周期不新增 artifact kind。
 
