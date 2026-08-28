@@ -131,6 +131,7 @@ function addNode(result, node, evidence = []) {
   if (!isObject(node)) return;
   const nodeRevisionId = string(node.nodeRevisionId ?? node.revisionId, "nodeRevisionId");
   const nodeId = string(node.nodeId, "nodeId");
+  const parentId = node.parentId === undefined || node.parentId === null ? node.parentId : string(node.parentId, "node.parentId", 512);
   const item = {
     nodeRevisionId,
     nodeId,
@@ -139,9 +140,32 @@ function addNode(result, node, evidence = []) {
     createdAt: Number.isSafeInteger(node.createdAt) ? node.createdAt : now(),
     artifactSha: node.artifactSha ?? null,
     anchor: traceAnchor(node.anchor ?? node.data),
+    ...(parentId === undefined ? {} : { parentId }),
   };
   result.nodes.set(nodeRevisionId, item);
   for (const itemEvidence of evidence) addEvidence(result, nodeRevisionId, itemEvidence.address ?? itemEvidence.factAddress ?? itemEvidence, itemEvidence.role ?? "supports");
+}
+
+function nodeAnchorPayload(item) {
+  if (!item.anchor && item.parentId === undefined) return null;
+  return {
+    ...(item.anchor ?? {}),
+    ...(item.parentId === undefined ? {} : { __histosParentId: item.parentId }),
+  };
+}
+
+function readNodeRow(row) {
+  const payload = row.anchorJson ? JSON.parse(row.anchorJson) : null;
+  const parentId = payload?.__histosParentId;
+  if (payload) delete payload.__histosParentId;
+  const hasAnchor = payload && Object.keys(payload).length > 0;
+  const node = { ...row };
+  delete node.anchorJson;
+  return {
+    ...node,
+    ...(hasAnchor ? { anchor: payload } : {}),
+    ...(typeof parentId === "string" ? { parentId } : {}),
+  };
 }
 
 function addEdge(result, edge, evidence = []) {
@@ -191,10 +215,11 @@ function graphAnchor(item) {
 }
 
 function resultFromStructuralGraph(graph, result) {
+  const revisionByNodeId = new Map((graph.nodes ?? []).map((node) => [node.id, hashId(`adapter-node:${node.id}`)]));
   for (const node of graph.nodes ?? []) {
-    const nodeRevisionId = hashId(`adapter-node:${node.id}`);
+    const nodeRevisionId = revisionByNodeId.get(node.id);
     const evidence = (node.evidence ?? []).map((item) => ({ ...item, revisionId: nodeRevisionId }));
-    addNode(result, { nodeRevisionId, nodeId: node.id, kind: node.kind, title: node.title, createdAt: 0, anchor: graphAnchor(node) }, evidence);
+    addNode(result, { nodeRevisionId, nodeId: node.id, kind: node.kind, title: node.title, createdAt: 0, anchor: graphAnchor(node), parentId: node.parentId ? revisionByNodeId.get(node.parentId) : undefined }, evidence);
   }
   for (const edge of graph.edges ?? []) {
     const edgeRevisionId = hashId(`adapter-edge:${edge.id}`);
@@ -263,7 +288,7 @@ function rowsFromResult(database, result) {
     }
   }
   for (const item of result.spans.values()) insertSpan.run(item.spanId, item.addressId, item.entryObjectId, item.start, item.length);
-  for (const item of result.nodes.values()) insertNode.run(item.nodeRevisionId, item.nodeId, item.kind, item.title, item.createdAt, item.artifactSha, item.anchor ? JSON.stringify(item.anchor) : null);
+  for (const item of result.nodes.values()) insertNode.run(item.nodeRevisionId, item.nodeId, item.kind, item.title, item.createdAt, item.artifactSha, nodeAnchorPayload(item) ? JSON.stringify(nodeAnchorPayload(item)) : null);
   for (const item of result.edges.values()) insertEdge.run(item.edgeRevisionId, item.edgeId, item.srcNodeId, item.dstNodeId, item.kind, item.createdAt, item.artifactSha, item.anchor ? JSON.stringify(item.anchor) : null);
   for (const item of result.evidence.values()) insertEvidence.run(item.revisionId, item.addressId, item.role);
   for (const pair of result.parents) { const [childId, parentId] = pair.split("\u0000"); insertParent.run(childId, parentId); }
@@ -349,7 +374,7 @@ function revisionLensMatches(database, artifactSha, lens) {
 }
 
 function graphRows(database, query) {
-  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query));
+  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map(readNodeRow).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query));
   const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query));
   const revisions = [...nodes.map((item) => item.nodeRevisionId), ...edges.map((item) => item.edgeRevisionId)];
   const evidence = revisions.length === 0 ? [] : database.prepare(`SELECT e.revision_id AS revisionId, e.address_id AS addressId, e.role, a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS addressRevisionId, a.selector_json AS selectorJson FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id IN (${revisions.map(() => "?").join(",")})`).all(...revisions).map((row) => ({ revisionId: row.revisionId, addressId: row.addressId, role: row.role, address: { sourceType: row.sourceType, objectId: row.objectId, revisionId: row.addressRevisionId, ...(row.selectorJson ? { selector: JSON.parse(row.selectorJson) } : {}) } }));
@@ -469,36 +494,40 @@ export class HistosEngine {
     if (query.lens === "structural") throw invalid("condenseGraph requires semantic or mixed lens");
     const budget = input.budget === undefined ? MAX_CONDENSE_BUDGET : input.budget;
     if (!Number.isSafeInteger(budget) || budget < 1 || budget > MAX_CONDENSE_BUDGET) throw invalid(`budget must be between 1 and ${MAX_CONDENSE_BUDGET}`);
+    const parentSha = typeof input.parentSha === "string" ? input.parentSha : null;
+    if (parentSha !== null && !/^[0-9a-f]{64}$/.test(parentSha)) throw invalid("parentSha must be a lowercase SHA-256 hash");
     const database = this.assertOpen();
     const structural = graphRows(database, { ...query, lens: "structural" });
-    const nodes = structural.nodes.slice(0, MAX_CONDENSE_NODES);
-    if (structural.nodes.length > MAX_CONDENSE_NODES) throw Object.assign(new Error(`semantic condensation exceeds ${MAX_CONDENSE_NODES} nodes`), { code: "cost_cap_exceeded" });
+    const nodes = structural.nodes;
+    if (nodes.length > MAX_CONDENSE_NODES) throw Object.assign(new Error(`semantic condensation exceeds ${MAX_CONDENSE_NODES} nodes`), { code: "cost_cap_exceeded" });
     if (!this.semanticProvider) {
       return { ok: false, code: "semantic_provider_unavailable", diagnostics: [{ code: "offline", message: "Semantic condensation requires an available model provider" }] };
     }
-    const estimated = nodes.reduce((total, node) => total + String(node.title ?? "").length, 0);
-    if (estimated > budget) throw Object.assign(new Error("semantic condensation budget exceeded"), { code: "cost_cap_exceeded" });
     const condensed = [];
     const condensedEvidence = [];
-    const revisionMap = new Map();
+    const revisionMap = new Map(nodes.map((node) => [node.nodeRevisionId, hashId(`semantic-node:${query.lens}:${node.nodeRevisionId}:${parentSha ?? "root"}`)]));
+    const semanticByNodeId = new Map(nodes.map((node) => [node.nodeId, revisionMap.get(node.nodeRevisionId)]));
+    let remainingBudget = budget;
     for (const node of nodes) {
       const sourceEvidence = structural.evidence.filter((item) => item.revisionId === node.nodeRevisionId);
-      const result = await this.semanticProvider({ node, evidence: sourceEvidence, budget });
+      const evidenceCost = sourceEvidence.reduce((total, item) => total + canonicalJson(item).length, 0);
+      const nodeCost = canonicalJson(node).length + evidenceCost;
+      if (nodeCost > MAX_CONDENSE_BUDGET) throw Object.assign(new Error("semantic condensation node exceeds maximum budget"), { code: "cost_cap_exceeded" });
+      if (nodeCost > remainingBudget) throw Object.assign(new Error("semantic condensation budget exceeded"), { code: "cost_cap_exceeded" });
+      const result = await this.semanticProvider({ node, evidence: sourceEvidence, budget: remainingBudget });
       if (typeof result !== "string" || result.length === 0) throw Object.assign(new Error("semantic provider returned no summary"), { code: "provider_invalid" });
-      const nodeRevisionId = hashId(`semantic-node:${query.lens}:${node.nodeRevisionId}:${input.parentSha ?? "root"}`);
-      revisionMap.set(node.nodeRevisionId, nodeRevisionId);
-      condensed.push({ ...node, nodeRevisionId, title: result.slice(0, 4096), artifactSha: null });
+      const nodeRevisionId = revisionMap.get(node.nodeRevisionId);
+      condensed.push({ ...node, nodeRevisionId, parentId: node.parentId ? revisionMap.get(node.parentId) ?? semanticByNodeId.get(node.parentId) ?? null : null, title: result.slice(0, 4096), artifactSha: null });
       for (const evidence of sourceEvidence) condensedEvidence.push({ ...evidence, revisionId: nodeRevisionId });
+      remainingBudget -= nodeCost;
     }
     const condensedEdges = structural.edges.filter((edge) => revisionMap.has(edge.srcNodeId) && revisionMap.has(edge.dstNodeId)).map((edge) => ({
       ...edge,
-      edgeRevisionId: hashId(`semantic-edge:${query.lens}:${edge.edgeRevisionId}:${input.parentSha ?? "root"}`),
+      edgeRevisionId: hashId(`semantic-edge:${query.lens}:${edge.edgeRevisionId}:${parentSha ?? "root"}`),
       srcNodeId: revisionMap.get(edge.srcNodeId),
       dstNodeId: revisionMap.get(edge.dstNodeId),
       artifactSha: null,
     }));
-    const parentSha = typeof input.parentSha === "string" ? input.parentSha : null;
-    if (parentSha !== null && !/^[0-9a-f]{64}$/.test(parentSha)) throw invalid("parentSha must be a lowercase SHA-256 hash");
     const artifact = validateArtifact({ schemaVersion: 1, workspaceId: this.workspaceId, kind: "graph_revision", sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity, nodes: condensed, edges: condensedEdges, evidence: condensedEvidence, parents: parentSha ? [parentSha] : [] }, { workspaceId: this.workspaceId, kind: "graph_revision" });
     const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "graph_revision" });
     const stored = { ...artifact, sha256 };

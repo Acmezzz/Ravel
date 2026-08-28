@@ -130,6 +130,8 @@ function validateNode(node, label) {
   if (node.kind !== undefined) boundedString(node.kind, `${label}.kind`, 64);
   if (node.title !== undefined) boundedString(node.title, `${label}.title`, MAX_TITLE_LENGTH, { allowEmpty: true });
   if (node.artifactSha !== undefined && node.artifactSha !== null) validateSha256(node.artifactSha, `${label}.artifactSha`);
+  if (node.parentId !== undefined && node.parentId !== null) boundedString(node.parentId, `${label}.parentId`, MAX_NODE_OR_EDGE_ID_LENGTH);
+  if (node.anchor !== undefined) requirePlainObject(node.anchor, `${label}.anchor`);
   return { ...node, nodeRevisionId };
 }
 
@@ -393,16 +395,20 @@ function nodeRow(node, options = {}) {
   const createdAt = revisionTimestamp(node.createdAt, options.createdAt ?? Date.now());
   const artifactSha = node.artifactSha ?? node.artifact_sha ?? options.artifactSha ?? null;
   if (artifactSha !== null) validateSha256(artifactSha, "node.artifactSha");
-  return { nodeRevisionId, values: [nodeId, kind, title, createdAt, artifactSha] };
+  const parentId = node.parentId ?? null;
+  if (parentId !== null) boundedString(parentId, "node.parentId", MAX_NODE_OR_EDGE_ID_LENGTH);
+  const anchor = node.anchor === undefined ? null : JSON.stringify(node.anchor);
+  const anchorJson = parentId === null ? anchor : JSON.stringify({ ...(node.anchor ?? {}), __histosParentId: parentId });
+  return { nodeRevisionId, values: [nodeId, kind, title, createdAt, artifactSha, anchorJson] };
 }
 
 /** Insert one immutable node revision without updating an existing revision. */
 export function insertNodeRevision(first, second, third) {
   const { database, value } = databaseAndValue(first, second, "insertNodeRevision");
   const row = nodeRow(value, third ?? {});
-  const columns = ["node_id", "kind", "title", "created_at", "artifact_sha"];
+  const columns = ["node_id", "kind", "title", "created_at", "artifact_sha", "anchor_json"];
   immutableRow(database, "node_revisions", "node_revision_id", row.nodeRevisionId, columns, row.values);
-  database.prepare("INSERT OR IGNORE INTO node_revisions (node_revision_id, node_id, kind, title, created_at, artifact_sha) VALUES (?, ?, ?, ?, ?, ?)").run(row.nodeRevisionId, ...row.values);
+  database.prepare("INSERT OR IGNORE INTO node_revisions (node_revision_id, node_id, kind, title, created_at, artifact_sha, anchor_json) VALUES (?, ?, ?, ?, ?, ?, ?)").run(row.nodeRevisionId, ...row.values);
   return row.nodeRevisionId;
 }
 

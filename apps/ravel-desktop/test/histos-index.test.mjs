@@ -206,6 +206,34 @@ test("HistosEngine enforces the semantic condensation cost cap", async () => {
   await fs.rm(root, { recursive: true, force: true });
 });
 
+test("HistosEngine preserves compound parents through rebuild", async (t) => {
+  const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-compound-"));
+  let engine;
+  t.after(async () => {
+    engine?.close();
+    await fs.rm(root, { recursive: true, force: true });
+  });
+  const sessionFile = join(root, "session.jsonl");
+  await fs.writeFile(sessionFile, [
+    JSON.stringify({ type: "session", version: 3, id: "session-compound", cwd: root }),
+    JSON.stringify({ type: "message", id: "parent", parentId: null, message: { role: "user", content: "parent" } }),
+    JSON.stringify({ type: "message", id: "child", parentId: "parent", message: { role: "assistant", content: "child" } }),
+  ].join("\n") + "\n");
+  engine = new HistosEngine({ workspaceId: "workspace-compound", databasePath: join(root, "index.sqlite"), artifactsDir: join(root, "artifacts"), sessionFiles: [sessionFile], semanticProvider: async () => "summary" });
+  await engine.rebuild({ granularity: "entry" });
+  const graph = engine.getGraph({ sourceSet: { sessionIds: ["session-compound"] }, lens: "structural", granularity: "entry" });
+  const child = graph.nodes.find((node) => node.nodeId === "entry:session-compound/child");
+  const parent = graph.nodes.find((node) => node.nodeId === "entry:session-compound/parent");
+  assert.equal(child?.parentId, parent?.nodeRevisionId);
+
+  const semantic = await engine.condenseGraph({ sourceSet: { sessionIds: ["session-compound"] }, lens: "semantic", granularity: "entry" });
+  assert.equal(semantic.ok, true);
+  const semanticChild = semantic.artifact.nodes.find((node) => node.nodeId === child.nodeId);
+  const semanticParent = semantic.artifact.nodes.find((node) => node.nodeId === parent.nodeId);
+  assert.equal(semanticChild?.parentId, semanticParent?.nodeRevisionId);
+  await assert.rejects(() => engine.freezeContext({ sourceSet: { sessionIds: ["session-compound"] }, lens: "structural", granularity: "entry", selection: [child.nodeRevisionId], budget: 1 }), (error) => error.code === "budget_exceeded");
+});
+
 test("HistosEngine rebuilds JSONL deterministically with trace anchors and spans", async (t) => {
   const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-engine-"));
   t.after(async () => fs.rm(root, { recursive: true, force: true }));

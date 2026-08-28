@@ -360,7 +360,7 @@ function addEvidence(target, address, role) {
   target.push({ address: address.address, addressId: address.addressId, role });
 }
 
-function makeNode(id, kind, title, address, data) {
+function makeNode(id, kind, title, address, data, parentId) {
   const evidence = [];
   addEvidence(evidence, address, "supports");
   return {
@@ -370,6 +370,7 @@ function makeNode(id, kind, title, address, data) {
     ...(nodeAddress({ address: address?.address ?? null, addressId: address?.addressId ?? null }) ?? {}),
     evidence,
     ...(data === undefined ? {} : { data }),
+    ...(parentId === undefined ? {} : { parentId }),
   };
 }
 
@@ -413,7 +414,7 @@ function projectOneSession(scan, nodes, edges, evidence) {
     }
     if (!nodes.has(entryNodeId)) {
       const title = entry.type === "message" ? entry.message?.role ?? "message" : entry.customType ?? entry.type;
-      nodes.set(entryNodeId, makeNode(entryNodeId, "entry", title, address, { sessionId: scan.sessionId, entryId: entry.id, type: entry.type }));
+      nodes.set(entryNodeId, makeNode(entryNodeId, "entry", title, address, { sessionId: scan.sessionId, entryId: entry.id, type: entry.type }, typeof entry.parentId === "string" ? `entry:${scan.sessionId}/${entry.parentId}` : undefined));
     }
     if (typeof entry.parentId === "string") {
       const parentNodeId = `entry:${scan.sessionId}/${entry.parentId}`;

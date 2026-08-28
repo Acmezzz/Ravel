@@ -2,9 +2,10 @@ import Elk from "elkjs/lib/elk.bundled";
 
 type LayoutNode = { id: string; width: number; height: number; parentId?: string | null };
 type LayoutEdge = { id: string; sources: string[]; targets: string[] };
-type LayoutChild = LayoutNode & { children?: LayoutChild[] };
+type LayoutChild = LayoutNode & { x?: number; y?: number; children?: LayoutChild[] };
 type LayoutRequest = { type: "layout"; requestId: number; nodes: LayoutNode[]; edges: LayoutEdge[] };
-type LayoutResponse = { type: "layout"; requestId: number; nodes: Array<{ id: string; x: number; y: number; width: number; height: number }>; error?: string };
+type LayoutPosition = { id: string; x: number; y: number; width: number; height: number; parentId?: string | null };
+type LayoutResponse = { type: "layout"; requestId: number; nodes: LayoutPosition[]; error?: string };
 
 const MAX_NODES = 500;
 const MAX_EDGES = 2_000;
@@ -20,12 +21,34 @@ self.onmessage = async (event: MessageEvent<LayoutRequest>) => {
   const nodes: LayoutNode[] = request.nodes.filter((node) => bounded(node.id, 512) && Number.isFinite(node.width) && Number.isFinite(node.height)).map((node) => ({ id: node.id, parentId: node.parentId ?? null, width: Math.max(80, Math.min(node.width, 480)), height: Math.max(36, Math.min(node.height, 240)) }));
   const nodeIds = new Set(nodes.map((node) => node.id));
   const childrenByParent = new Map<string, LayoutNode[]>();
-  for (const node of nodes) if (node.parentId && nodeIds.has(node.parentId)) childrenByParent.set(node.parentId, [...(childrenByParent.get(node.parentId) ?? []), node]);
-  const layoutNodes: LayoutChild[] = nodes.filter((node) => !node.parentId || !nodeIds.has(node.parentId)).map((node) => ({ ...node, ...(childrenByParent.has(node.id) ? { children: childrenByParent.get(node.id) } : {}) }));
+  for (const node of nodes) {
+    if (node.parentId && nodeIds.has(node.parentId)) childrenByParent.set(node.parentId, [...(childrenByParent.get(node.parentId) ?? []), node]);
+  }
+  const parentById = new Map(nodes.map((node) => [node.id, node.parentId ?? null]));
+  for (const node of nodes) {
+    const seen = new Set<string>();
+    let parentId = parentById.get(node.id);
+    while (parentId && nodeIds.has(parentId) && !seen.has(parentId)) {
+      seen.add(parentId);
+      parentId = parentById.get(parentId) ?? null;
+    }
+    if (parentId === node.id || (parentId && seen.has(parentId))) parentById.set(node.id, null);
+  }
+  const buildNode = (node: LayoutNode): LayoutChild => {
+    const children = (childrenByParent.get(node.id) ?? []).filter((candidate) => parentById.get(candidate.id) === node.id).map(buildNode);
+    return { ...node, parentId: parentById.get(node.id), ...(children.length > 0 ? { children } : {}) };
+  };
+  const layoutNodes: LayoutChild[] = nodes.filter((node) => !parentById.get(node.id) || !nodeIds.has(parentById.get(node.id) as string)).map(buildNode);
   const edges = request.edges.filter((edge) => bounded(edge.id, 512) && edge.sources.length === 1 && edge.targets.length === 1 && nodeIds.has(edge.sources[0]) && nodeIds.has(edge.targets[0])).map((edge) => ({ id: edge.id, sources: edge.sources, targets: edge.targets }));
   try {
     const result = await elk.layout({ id: "histos-graph", layoutOptions: { "elk.algorithm": "layered", "elk.direction": "RIGHT", "elk.spacing.nodeNode": "24", "elk.layered.spacing.nodeNodeBetweenLayers": "48", "elk.hierarchyHandling": "INCLUDE_CHILDREN" }, children: layoutNodes, edges });
-    const response: LayoutResponse = { type: "layout", requestId: request.requestId, nodes: (result.children ?? []).map((node) => ({ id: node.id, x: Number.isFinite(node.x) ? node.x ?? 0 : 0, y: Number.isFinite(node.y) ? node.y ?? 0 : 0, width: node.width ?? 160, height: node.height ?? 64 })) };
+    const response: LayoutResponse = { type: "layout", requestId: request.requestId, nodes: (result.children ?? []).flatMap((node) => {
+      const flatten = (item: LayoutChild, parentId: string | null): LayoutPosition[] => {
+        const position: LayoutPosition = { id: item.id, x: Number.isFinite(item.x) ? item.x ?? 0 : 0, y: Number.isFinite(item.y) ? item.y ?? 0 : 0, width: item.width ?? 160, height: item.height ?? 64, parentId };
+        return [position, ...(item.children ?? []).flatMap((child) => flatten(child, item.id))];
+      };
+      return flatten(node, null);
+    }) };
     self.postMessage(response);
   } catch (error) {
     self.postMessage({ type: "layout", requestId: request.requestId, nodes: [], error: error instanceof Error ? error.message.slice(0, 512) : "layout failed" } satisfies LayoutResponse);
