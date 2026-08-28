@@ -11,7 +11,9 @@ import { fileURLToPath } from "node:url";
 import * as electron from "electron";
 import {
   HISTOS_METHODS,
+  createHistosProviderResult,
   createHistosRequest,
+  isHistosProviderRequest,
   isHistosResponse,
 } from "./histos-protocol.js";
 import { normalizeUtilityProcessError, utilityProcessError } from "./process-log.js";
@@ -79,8 +81,10 @@ export class HistosHost {
     timers = { setTimeout, clearTimeout },
     onError = null,
     onStateChange = null,
+    onProviderRequest = null,
   } = {}) {
     if (typeof fork !== "function") throw hostError("fork must be a function", "invalid_args");
+    if (onProviderRequest !== null && typeof onProviderRequest !== "function") throw hostError("onProviderRequest must be a function", "invalid_args");
     this.workerPath = workerPath;
     this.timeout = Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_TIMEOUT;
     this.initTimeout = Number.isFinite(initTimeout) && initTimeout > 0 ? initTimeout : DEFAULT_INIT_TIMEOUT;
@@ -88,6 +92,7 @@ export class HistosHost {
     this.timers = timers;
     this.onError = onError;
     this.onStateChange = onStateChange;
+    this.onProviderRequest = onProviderRequest;
     this.child = null;
     this.pending = new Map();
     this.seq = 0;
@@ -145,6 +150,10 @@ export class HistosHost {
   _attach(child, generation) {
     const onMessage = (message) => {
       const wireMessage = message && typeof message.type === "string" ? message : message?.data;
+      if (isHistosProviderRequest(wireMessage)) {
+        this._handleProviderRequest(child, wireMessage);
+        return;
+      }
       this._handleMessage(child, generation, wireMessage);
     };
     const onError = (type, location, report) => this._handleDeath(child, generation, utilityProcessError(type, location, report));
@@ -155,6 +164,37 @@ export class HistosHost {
     child.on?.("message", onMessage);
     child.on?.("error", onError);
     child.on?.("exit", onExit);
+  }
+
+  /**
+   * Relay one provider request from the worker to Main's handler and post the
+   * result back. Without a handler (or after the child was replaced) the
+   * request fails closed with the canonical offline code, so a condensation
+   * never fabricates summaries.
+   */
+  _handleProviderRequest(child, message) {
+    if (child !== this.child) return;
+    const handler = this.onProviderRequest;
+    if (typeof handler !== "function") {
+      sendTo(child, createHistosProviderResult(message.reqId, null, "Semantic provider is not configured", "semantic_provider_unavailable"));
+      return;
+    }
+    let settled = false;
+    const reply = (result) => {
+      if (settled || child !== this.child) return;
+      settled = true;
+      try {
+        sendTo(child, result);
+      } catch {
+        /* child transport is gone; the worker-side timeout will surface */
+      }
+    };
+    Promise.resolve()
+      .then(() => handler(message.request ?? {}))
+      .then(
+        (data) => reply(createHistosProviderResult(message.reqId, data)),
+        (error) => reply(createHistosProviderResult(message.reqId, null, error instanceof Error ? error.message : String(error), error?.code)),
+      );
   }
 
   _request(method, args, generation, timeout, allowedStates = ["ready"]) {
@@ -228,8 +268,8 @@ export class HistosHost {
     return tracked;
   }
 
-  call(method, args = {}) {
-    return this._request(method, args, this.generation, this.timeout);
+  call(method, args = {}, timeout = this.timeout) {
+    return this._request(method, args, this.generation, timeout);
   }
 
   /** Wait for all requests issued before this call to settle. */

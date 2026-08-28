@@ -652,13 +652,44 @@ function workspaceIdForRoot(root) {
   return record.workspaceId;
 }
 
+/**
+ * Semantic provider relay: the Histos worker has no credentials of its own, so
+ * each condensation node becomes one standalone completion through an agent
+ * worker in the same workspace. Missing model/key failures keep their stable
+ * codes so the worker can map them to `semantic_provider_unavailable`.
+ */
+function createSemanticProviderRelay(authorizedRoot) {
+  return async (request) => {
+    const slots = workerPool.list().filter((slot) => slot.cwd === authorizedRoot && slot.host?.state === "ready");
+    const foregroundSlot = workerPool.foreground();
+    const ordered = [...(foregroundSlot ? [foregroundSlot] : []), ...slots.filter((slot) => slot !== foregroundSlot)];
+    if (ordered.length === 0) {
+      throw Object.assign(new Error("No agent runtime is available for semantic condensation"), { code: "semantic_provider_unavailable" });
+    }
+    const payload = { prompt: request.prompt, ...(Number.isSafeInteger(request.maxTokens) ? { maxTokens: request.maxTokens } : {}) };
+    const transportCodes = new Set(["stale_generation", "stale_runtime", "worker_unavailable", "not_ready"]);
+    let lastError = null;
+    for (const slot of ordered) {
+      try {
+        const data = await slot.host.call("semanticComplete", payload);
+        return { text: typeof data?.text === "string" ? data.text : "" };
+      } catch (error) {
+        lastError = error;
+        if (transportCodes.has(error?.code)) continue;
+        break;
+      }
+    }
+    throw lastError ?? Object.assign(new Error("Semantic provider relay failed"), { code: "semantic_provider_unavailable" });
+  };
+}
+
 async function ensureHistosHost(root = activeCwd) {
   if (!root) throw new Error("No active workspace");
   const authorizedRoot = authorizedWorkspace(root);
   const workspaceId = workspaceIdForRoot(authorizedRoot);
   let host = histosHosts.get(workspaceId);
   if (!host || host.state === "dead") {
-    host = new HistosHost({ timeout: WORKER_RPC_TIMEOUT });
+    host = new HistosHost({ timeout: WORKER_RPC_TIMEOUT, onProviderRequest: createSemanticProviderRelay(authorizedRoot) });
     histosHosts.set(workspaceId, host);
     host.onError = (diagnostic) => {
       if (histosHosts.get(workspaceId) === host && host.state === "dead") histosHosts.delete(workspaceId);
@@ -671,6 +702,7 @@ async function ensureHistosHost(root = activeCwd) {
         artifactsDir: histosArtifactsPathOf(workspaceId),
         sessionsRoot: piSessionsRoot(),
         workspaceRoot: authorizedRoot,
+        providerRelay: true,
       });
     } catch (error) {
       histosHosts.delete(workspaceId);
@@ -1735,7 +1767,9 @@ ipcMain.handle("omega:histosCondenseGraph", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = histosCondenseGraphRequest(req);
   if (!normalized) return errorResult("invalid_args", "semantic or mixed lens and a valid budget are required");
-  try { return okResult(await (await activeHistos()).call("condenseGraph", normalized)); }
+  // Semantic condensation runs one LLM completion per node; the generic RPC
+  // timeout is far too tight for that, so condense gets its own generous bound.
+  try { return okResult(await (await activeHistos()).call("condenseGraph", normalized, 10 * 60_000)); }
   catch (error) { return errorResult(error?.code ?? "condense_failed", error instanceof Error ? error.message : String(error)); }
 });
 

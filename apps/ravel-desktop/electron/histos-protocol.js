@@ -80,3 +80,41 @@ export function createHistosErrorResponse(id, generation, error, code) {
     ...(code ? { code: String(code).slice(0, 128) } : {}),
   };
 }
+
+/**
+ * Provider relay: the Histos worker has no model credentials of its own, so a
+ * semantic condensation asks the host (Main) to run one bounded completion
+ * through the agent worker's Pi model runtime. These envelopes are host↔worker
+ * only and never cross the renderer boundary.
+ */
+const MAX_PROVIDER_PROMPT = 262_144;
+const PROVIDER_DATA_LIMIT = 1_048_576;
+
+export function isHistosProviderRequest(value) {
+  return Boolean(
+    value && typeof value === "object" && value.type === "histos-provider" &&
+    boundedString(value.reqId, MAX_ID) &&
+    value.request !== null && typeof value.request === "object" && !Array.isArray(value.request) &&
+    boundedString(value.request.prompt, MAX_PROVIDER_PROMPT) &&
+    (value.request.maxTokens === undefined || (Number.isSafeInteger(value.request.maxTokens) && value.request.maxTokens >= 1 && value.request.maxTokens <= 8192)),
+  );
+}
+
+export function isHistosProviderResult(value) {
+  if (!(value && typeof value === "object" && value.type === "histos-provider-result" && boundedString(value.reqId, MAX_ID))) return false;
+  if (typeof value.error === "string") return value.error.length > 0 && value.error.length <= MAX_ERROR;
+  return value.error === undefined && value.data !== null && value.data !== undefined &&
+    typeof value.data === "object" && boundedString(value.data.text, PROVIDER_DATA_LIMIT);
+}
+
+export function createHistosProviderResult(reqId, data, error, code) {
+  if (error !== undefined) {
+    return {
+      type: "histos-provider-result",
+      reqId,
+      error: String(error).slice(0, MAX_ERROR),
+      ...(code ? { code: String(code).slice(0, 128) } : {}),
+    };
+  }
+  return { type: "histos-provider-result", reqId, data: data ?? null };
+}

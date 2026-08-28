@@ -17,6 +17,7 @@
 import { existsSync, lstatSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { DefaultPackageManager } from "@earendil-works/pi-coding-agent";
+import { completeSimple, contentText } from "@earendil-works/pi-ai/compat";
 import { processLog } from "./process-log.js";
 import * as bridge from "./agent-bridge.js";
 import {
@@ -662,10 +663,82 @@ async function recreateForWorkspace(workspace) {
   settleSessionFacts();
 }
 
+/**
+ * Resolve auth for a standalone (non-session) completion, mirroring the
+ * session's own pre-flight check: runtime key/headers first, then OAuth,
+ * otherwise a stable no-key code the caller can map to a visible failure.
+ */
+async function resolveSemanticAuth(session, model) {
+  const result = await session.modelRuntime.getAuth(model);
+  if (result && (result.auth.apiKey || result.auth.headers)) {
+    const requestModel = result.auth.baseUrl ? { ...model, baseUrl: result.auth.baseUrl } : model;
+    const headers = result.auth.headers ? Object.fromEntries(Object.entries(result.auth.headers).filter(([, value]) => value !== null && value !== undefined)) : undefined;
+    return { model: requestModel, apiKey: result.auth.apiKey, headers, env: result.env };
+  }
+  if (session.modelRuntime.isUsingOAuth(model.provider)) {
+    const error = new Error(`OAuth credentials for "${model.provider}" are unavailable`);
+    error.code = "oauth_unavailable";
+    throw error;
+  }
+  const error = new Error(`No API key configured for provider "${model.provider}"`);
+  error.code = "no_api_key";
+  throw error;
+}
+
+const MAX_SEMANTIC_PROMPT_CHARS = 262_144;
+const DEFAULT_SEMANTIC_MAX_TOKENS = 1024;
+
 const methods = {
   flush: async () => {
     if (!runtime?.session?.agent?.waitForIdle) return;
     await runtime.session.agent.waitForIdle();
+  },
+  /**
+   * One bounded, standalone LLM completion for the Histos semantic provider.
+   * Touches no session state, appends no facts, and joins no prompt queue;
+   * the workspace's currently selected model is the provider.
+   */
+  semanticComplete: async ({ prompt, maxTokens }) => {
+    if (!runtime) {
+      const error = new Error("Agent runtime is not initialized");
+      error.code = "no_model";
+      throw error;
+    }
+    const model = runtime.session.model;
+    if (!model) {
+      const error = new Error("No model is selected for this workspace");
+      error.code = "no_model";
+      throw error;
+    }
+    if (typeof prompt !== "string" || prompt.trim().length === 0 || prompt.length > MAX_SEMANTIC_PROMPT_CHARS) {
+      const error = new Error("Semantic prompt is invalid");
+      error.code = "invalid_args";
+      throw error;
+    }
+    const tokenBudget = maxTokens === undefined ? DEFAULT_SEMANTIC_MAX_TOKENS : maxTokens;
+    if (!Number.isSafeInteger(tokenBudget) || tokenBudget < 1 || tokenBudget > 8192) {
+      const error = new Error("Semantic maxTokens is invalid");
+      error.code = "invalid_args";
+      throw error;
+    }
+    const auth = await resolveSemanticAuth(runtime.session, model);
+    const message = await completeSimple(
+      auth.model,
+      { messages: [{ role: "user", content: [{ type: "text", text: prompt }], timestamp: Date.now() }], tools: [] },
+      { apiKey: auth.apiKey, headers: auth.headers, env: auth.env, maxTokens: tokenBudget, cacheRetention: "none", sessionId: randomUUID() },
+    );
+    if (message?.stopReason === "error" || message?.stopReason === "aborted") {
+      const error = new Error(message.errorMessage || `Semantic completion failed (${message.stopReason})`);
+      error.code = "provider_invalid";
+      throw error;
+    }
+    const text = contentText(message);
+    if (typeof text !== "string" || text.trim().length === 0) {
+      const error = new Error("Semantic provider returned no summary");
+      error.code = "provider_invalid";
+      throw error;
+    }
+    return { text };
   },
   prompt,
   executeFlow,

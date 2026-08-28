@@ -27,6 +27,7 @@
     "@base-ui/react": "1.7.0",
     "@codemirror/state": "6.7.1",
     "@codemirror/view": "6.43.9",
+    "@earendil-works/pi-ai": "0.84.2",
     "@earendil-works/pi-coding-agent": "0.84.2",
     "@tailwindcss/postcss": "4.3.3",
     "@tanstack/react-virtual": "3.13.12",
