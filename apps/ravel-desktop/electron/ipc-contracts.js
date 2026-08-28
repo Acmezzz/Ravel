@@ -53,6 +53,7 @@ export const IPC_CHANNELS = Object.freeze({
   mcpAdd: "omega:mcpAdd",
   mcpSetEnabled: "omega:mcpSetEnabled",
   mcpRemove: "omega:mcpRemove",
+  mcpLogin: "omega:mcpLogin",
   getSystemPrompt: "omega:getSystemPrompt",
   exportHtml: "omega:exportHtml",
   bash: "omega:bash",

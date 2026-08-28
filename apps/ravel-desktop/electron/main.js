@@ -50,7 +50,14 @@ import { validateCustomProvider } from "./custom-providers.js";
 import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 import { migrateOmegaUserData } from "./data-migration.js";
-import { DEEP_LINK_PROTOCOL, parseDeepLink, shouldRegisterProtocol } from "./deep-links.js";
+import { DEEP_LINK_PROTOCOL, OAUTH_CALLBACK_URL, parseDeepLink, shouldRegisterProtocol } from "./deep-links.js";
+import {
+  buildAuthorizeUrl,
+  createPkcePair,
+  exchangeAuthorizationCode,
+  newOauthState,
+  validateOAuthConfig,
+} from "./oauth-service.js";
 import { appRendererUrl, isAllowedAppUrl, registerAppProtocol, rendererAssetRoot } from "./app-protocol.js";
 import { WorkerHost } from "./worker-host.js";
 import { HistosHost } from "./histos-host.js";
@@ -2221,8 +2228,13 @@ ipcMain.handle("omega:mcpList", async (event) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
     const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
+    const items = listMcpRows(bundle.user, bundle.project).map((row) => ({
+      ...row,
+      // An OAuth-configured server without a vault token still needs login.
+      needsAuth: Boolean(row.auth) && !(credentialStore?.has(`mcp:${row.name}`) ?? false),
+    }));
     return okResult({
-      items: listMcpRows(bundle.user, bundle.project),
+      items,
       bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION),
     });
   } catch (error) {
@@ -2248,7 +2260,7 @@ ipcMain.handle("omega:mcpAdd", async (event, req) => {
     const name = validateMcpName(req?.name);
     if (req?.project === true) assertMcpProjectScopeAllowed();
     mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) =>
-      upsertMcpServer(config, { name, command: req?.command, args: req?.args, url: req?.url, headers: req?.headers, enabled: true }),
+      upsertMcpServer(config, { name, command: req?.command, args: req?.args, url: req?.url, headers: req?.headers, auth: req?.auth, enabled: true }),
     );
     const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
     return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
@@ -2285,6 +2297,73 @@ ipcMain.handle("omega:mcpRemove", async (event, req) => {
     return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
   } catch (error) {
     return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+// ----- MCP OAuth login (next-cycle B5): browser + ravel://oauth/callback -----
+
+const OAUTH_LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
+const pendingOauthLogins = new Map();
+
+/** Resolve a waiting mcpLogin with the deep-link code, then exchange + vault. */
+function resolveOauthCallback({ code, state }) {
+  const pending = pendingOauthLogins.get(state);
+  if (!pending) return;
+  pendingOauthLogins.delete(state);
+  clearTimeout(pending.timer);
+  void (async () => {
+    try {
+      const tokens = await exchangeAuthorizationCode({
+        tokenUrl: pending.tokenUrl,
+        clientId: pending.clientId,
+        ...(pending.clientSecret !== undefined ? { clientSecret: pending.clientSecret } : {}),
+        code,
+        verifier: pending.verifier,
+        redirectUri: OAUTH_CALLBACK_URL,
+      });
+      const credentialId = `mcp:${pending.name}`;
+      credentialStore.set(credentialId, tokens.accessToken);
+      pending.resolve({ name: pending.name, credentialId });
+    } catch (error) {
+      pending.reject(error);
+    }
+  })();
+}
+
+ipcMain.handle("omega:mcpLogin", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const name = validateMcpName(req?.name);
+    await assertDesktopOperation("provider.key.write", { name });
+    const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
+    const def = bundle.project?.mcpServers?.[name] ?? bundle.user?.mcpServers?.[name];
+    if (!def?.url || !def?.auth) {
+      throw errorLike("not_found", "该 MCP 服务器未配置 HTTP 地址或 OAuth auth 配置");
+    }
+    const auth = validateOAuthConfig(def.auth);
+    const state = newOauthState();
+    const { verifier, challenge } = createPkcePair();
+    const authorizeUrl = buildAuthorizeUrl({
+      authorizationUrl: auth.authorizationUrl,
+      clientId: auth.clientId,
+      scopes: auth.scopes ?? [],
+      redirectUri: OAUTH_CALLBACK_URL,
+      state,
+      codeChallenge: challenge,
+    });
+    const login = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pendingOauthLogins.delete(state);
+        reject(Object.assign(new Error("OAuth 登录超时，请重试"), { code: "oauth_timeout" }));
+      }, OAUTH_LOGIN_TIMEOUT_MS);
+      timer.unref?.();
+      pendingOauthLogins.set(state, { name, tokenUrl: auth.tokenUrl, clientId: auth.clientId, clientSecret: auth.clientSecret, verifier, resolve, reject, timer });
+    });
+    await shell.openExternal(authorizeUrl);
+    const result = await login;
+    return okResult(result);
+  } catch (error) {
+    return errorResult(error?.code ?? "oauth_failed", error instanceof Error ? error.message : String(error));
   }
 });
 
@@ -2785,6 +2864,12 @@ if (!singleInstancePrimary) {
 } else {
   registerRavelProtocol();
   app.on("second-instance", (_event, commandLine) => {
+    // OAuth callbacks (B5) arrive through the same protocol; route them first.
+    const oauthLink = commandLine.map((value) => (typeof value === "string" ? parseDeepLink(value) : null)).find((link) => link?.oauth);
+    if (oauthLink) {
+      resolveOauthCallback(oauthLink.oauth);
+      return;
+    }
     applyIncomingRequest(parseStartupRequest(commandLine));
   });
 }
@@ -2819,6 +2904,11 @@ function applyIncomingRequest(request) {
 // macOS hands protocol URLs through open-url instead of argv.
 app.on("open-url", (event, url) => {
   event.preventDefault();
+  const oauthLink = parseDeepLink(url);
+  if (oauthLink?.oauth) {
+    resolveOauthCallback(oauthLink.oauth);
+    return;
+  }
   const link = parseDeepLink(url);
   if (!link) return;
   if (!win || win.isDestroyed()) pendingDeepLinks.push(link);

@@ -32,6 +32,7 @@ interface McpServerDef {
 	args?: string[];
 	url?: string;
 	headers?: Record<string, string>;
+	auth?: { authorizationUrl?: string; tokenUrl?: string; clientId?: string };
 	enabled?: boolean;
 }
 
@@ -53,8 +54,8 @@ function sanitizeSegment(input: string): string {
 	return cleaned || "x";
 }
 
-function openPeer(def: McpServerDef, onNotify: (notification: JsonRpcResult) => void): Peer {
-	if (def.url) return new HttpPeer(def.url, def.headers ?? {}, onNotify);
+function openPeer(def: McpServerDef, onNotify: (notification: JsonRpcResult) => void, headers: Record<string, string>): Peer {
+	if (def.url) return new HttpPeer(def.url, headers, onNotify);
 	return new StdioPeer(def.command!, def.args ?? [], onNotify);
 }
 
@@ -76,7 +77,11 @@ export default function ravelMcpBridge(pi: ExtensionAPI) {
 				const def = (project[name] ?? user[name])!;
 				if (!NAME_SAFE.test(sanitizeSegment(name))) continue;
 				if (def.url ? !/^https?:\/\//.test(def.url) : !def.command) continue;
-				const peer = openPeer(def, () => {});
+				// OAuth login (B5): the desktop vault stores the access token under
+				// mcp:<name>; header values with "$cred:" resolve at connect time.
+				const headers = { ...(def.headers ?? {}) };
+				if (def.auth && !headers.Authorization) headers.Authorization = `Bearer $cred:mcp:${name}`;
+				const peer = openPeer(def, () => {}, headers);
 				peers.set(name, peer);
 				try {
 					await peer.request(

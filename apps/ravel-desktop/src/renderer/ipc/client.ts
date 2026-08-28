@@ -186,9 +186,10 @@ export interface RavelBridge {
   activitySnapshot(): Promise<IpcResult<ActivitySnapshotPage>>;
   onActivityChanged(callback: (data: unknown) => void): () => void;
   mcpList(): Promise<IpcResult<McpBundle>>;
-  mcpAdd(req: { name: string; command: string; args?: string[]; project?: boolean }): Promise<IpcResult<McpBundle>>;
+  mcpAdd(req: { name: string; command?: string; url?: string; args?: string[]; auth?: { authorizationUrl: string; tokenUrl: string; clientId: string; clientSecret?: string; scopes?: string[] }; project?: boolean }): Promise<IpcResult<McpBundle>>;
   mcpSetEnabled(req: { name: string; enabled: boolean; project?: boolean }): Promise<IpcResult<McpBundle>>;
   mcpRemove(req: { name: string; project?: boolean }): Promise<IpcResult<McpBundle>>;
+  mcpLogin(req: { name: string; project?: boolean }): Promise<IpcResult<{ name: string; credentialId: string }>>;
   readSessionMessages(req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>>;
   newSession(req: {
     projectKey?: string;
@@ -377,12 +378,14 @@ export const ipc = {
   onActivityChanged: (callback: (data: unknown) => void): (() => void) =>
     window.omega?.onActivityChanged?.(callback) ?? (() => {}),
   mcpList: async (): Promise<IpcResult<McpBundle>> => ok(await window.omega?.mcpList?.()),
-  mcpAdd: async (req: { name: string; command: string; args?: string[]; project?: boolean }): Promise<IpcResult<McpBundle>> =>
+  mcpAdd: async (req: { name: string; command?: string; url?: string; args?: string[]; auth?: { authorizationUrl: string; tokenUrl: string; clientId: string; clientSecret?: string; scopes?: string[] }; project?: boolean }): Promise<IpcResult<McpBundle>> =>
     ok(await window.omega?.mcpAdd?.(req)),
   mcpSetEnabled: async (req: { name: string; enabled: boolean; project?: boolean }): Promise<IpcResult<McpBundle>> =>
     ok(await window.omega?.mcpSetEnabled?.(req)),
   mcpRemove: async (req: { name: string; project?: boolean }): Promise<IpcResult<McpBundle>> =>
     ok(await window.omega?.mcpRemove?.(req)),
+  mcpLogin: async (req: { name: string; project?: boolean }): Promise<IpcResult<{ name: string; credentialId: string }>> =>
+    ok(await window.omega?.mcpLogin?.(req)),
   readSessionMessages: async (req: { sessionId: string; offset?: number; limit?: number }): Promise<IpcResult<{ items: SessionMessage[]; total: number; nextOffset: number | null }>> =>
     ok(await window.omega?.readSessionMessages?.(req)),
   newSession: async (req: {

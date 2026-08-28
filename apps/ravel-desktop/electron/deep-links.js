@@ -17,6 +17,9 @@ function sanitizeParam(value) {
   return value;
 }
 
+/** Path of the OAuth callback deep link (next-cycle B5). */
+export const OAUTH_CALLBACK_URL = `${DEEP_LINK_PROTOCOL}://oauth/callback`;
+
 /** Parse a ravel:// or omega:// deep link into { workspace, sessionId }. Returns null for anything not usable. */
 export function parseDeepLink(value) {
   if (typeof value !== "string") return null;
@@ -29,6 +32,13 @@ export function parseDeepLink(value) {
     url = new URL(trimmed);
   } catch {
     return null;
+  }
+  // OAuth callback (B5): ravel://oauth/callback?code=...&state=...
+  if (url.host === "oauth" && url.pathname === "/oauth/callback") {
+    const code = sanitizeParam(url.searchParams.get("code"));
+    const state = sanitizeParam(url.searchParams.get("state"));
+    if (!code || !state) return null;
+    return { oauth: { code, state } };
   }
   const workspace = sanitizeParam(url.searchParams.get("workspace"));
   const sessionId = sanitizeParam(url.searchParams.get("session"));

@@ -336,10 +336,16 @@ export interface ActivitySnapshotPage {
 /** One local stdio MCP server definition row (user or project scope). */
 export interface McpServerRow {
   name: string;
-  command: string;
-  args: string[];
   scope: "user" | "project";
   enabled: boolean;
+  transport: "http" | "stdio";
+  url?: string;
+  command?: string;
+  args?: string[];
+  hasAuth?: boolean;
+  /** OAuth login config (B5); needsAuth is computed against the credential vault. */
+  auth?: { clientId: string; scopes: string[] };
+  needsAuth?: boolean;
 }
 
 export interface McpBundle {

@@ -55,6 +55,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:mcpAdd",
   "omega:mcpSetEnabled",
   "omega:mcpRemove",
+  "omega:mcpLogin",
   "omega:getSystemPrompt",
   "omega:exportHtml",
   "omega:bash",

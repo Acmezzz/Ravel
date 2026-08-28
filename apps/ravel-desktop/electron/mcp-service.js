@@ -15,6 +15,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { writeJsonFileAtomic } from "./config-file.js";
+import { validateOAuthConfig } from "./oauth-service.js";
 
 export const MCP_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/;
 export const MAX_NAME = 64;
@@ -110,10 +111,16 @@ export function parseMcpConfig(rawText) {
 }
 
 /** Pure upsert; rejects duplicates only for renames that collide with another key. */
-export function upsertMcpServer(config, { name, command, args = [], url, headers = {}, enabled = true }) {
+export function upsertMcpServer(config, { name, command, args = [], url, headers = {}, auth, enabled = true }) {
   const nextServers = { ...config.mcpServers };
   if (url !== undefined) {
-    nextServers[name] = { url: validateMcpUrl(url), headers: validateMcpHeaders(headers), enabled: enabled !== false };
+    const validatedAuth = validateOAuthConfig(auth);
+    nextServers[name] = {
+      url: validateMcpUrl(url),
+      headers: validateMcpHeaders(headers),
+      ...(validatedAuth ? { auth: validatedAuth } : {}),
+      enabled: enabled !== false,
+    };
   } else {
     nextServers[name] = { command: validateMcpCommand(command), args: validateMcpArgs(args), enabled: enabled !== false };
   }
@@ -144,6 +151,8 @@ export function listMcpRows(userConfig, projectConfig) {
     transport: server.url ? "http" : "stdio",
     ...(server.url ? { url: server.url } : { command: server.command, args: server.args ?? [] }),
     hasAuth: server.url ? Object.values(server.headers ?? {}).some((value) => typeof value === "string" && value.startsWith("$cred:")) : false,
+    // OAuth login config (B5); whether a token exists is computed by main against the vault.
+    ...(server.auth ? { auth: { clientId: server.auth.clientId, scopes: server.auth.scopes ?? [] } } : {}),
   });
   for (const [name, server] of Object.entries(projectConfig?.mcpServers ?? {})) {
     rows.push(rowOf(name, server, "project"));

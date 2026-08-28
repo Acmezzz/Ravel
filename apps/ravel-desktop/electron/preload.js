@@ -599,10 +599,21 @@ contextBridge.exposeInMainWorld("omega", {
   mcpList: () => ipcRenderer.invoke("omega:mcpList", {}),
   mcpAdd: (req) => {
     if (!isPlainObject(req)) return Promise.resolve({ ok: false, code: "invalid_args", message: "req is required" });
+    const auth = isPlainObject(req.auth)
+      ? {
+          authorizationUrl: safeString(req.auth.authorizationUrl, 2048),
+          tokenUrl: safeString(req.auth.tokenUrl, 2048),
+          clientId: safeString(req.auth.clientId, 256),
+          ...(safeString(req.auth.clientSecret, 2048) ? { clientSecret: safeString(req.auth.clientSecret, 2048) } : {}),
+          ...(Array.isArray(req.auth.scopes) ? { scopes: req.auth.scopes.slice(0, 16).map((scope) => safeString(scope, 128) ?? "") } : {}),
+        }
+      : undefined;
     return ipcRenderer.invoke("omega:mcpAdd", {
       name: safeString(req.name, 128)?.trim(),
       command: safeString(req.command, 4096),
       args: Array.isArray(req.args) ? req.args.slice(0, 64).map((arg) => safeString(arg, 4096) ?? "") : [],
+      url: safeString(req.url, 2048),
+      auth,
       project: req.project === true,
     });
   },
@@ -613,6 +624,12 @@ contextBridge.exposeInMainWorld("omega", {
   mcpRemove: (req) => {
     if (!isPlainObject(req) || typeof req.name !== "string") return Promise.resolve({ ok: false, code: "invalid_args", message: "name is required" });
     return ipcRenderer.invoke("omega:mcpRemove", { name: req.name.slice(0, 128), project: req.project === true });
+  },
+  mcpLogin: (req) => {
+    if (!isPlainObject(req) || typeof req.name !== "string" || !req.name.trim()) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "name is required" });
+    }
+    return ipcRenderer.invoke("omega:mcpLogin", { name: req.name.slice(0, 128), project: req.project === true });
   },
 
   ptyCreate: (req) => {
