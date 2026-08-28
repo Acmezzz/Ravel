@@ -523,6 +523,13 @@ contextBridge.exposeInMainWorld("omega", {
   exportHtml: () => ipcRenderer.invoke("omega:exportHtml"),
   listResources: () => ipcRenderer.invoke("omega:listResources"),
   reloadResources: () => ipcRenderer.invoke("omega:reloadResources"),
+  stageRemoteResource: (req) => {
+    const url = req && typeof req.url === "string" ? req.url.trim() : "";
+    if (!url || url.length > 2048 || !url.startsWith("https://")) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "https url is required" });
+    }
+    return ipcRenderer.invoke("omega:stageRemoteResource", { url });
+  },
   installLocalResource: (req) => ipcRenderer.invoke("omega:installLocalResource", {
     source: safeString(req?.source, 4096),
     project: req?.project === true,

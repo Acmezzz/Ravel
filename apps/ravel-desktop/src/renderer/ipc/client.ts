@@ -114,6 +114,7 @@ export interface RavelBridge {
   exportHtml(): Promise<IpcResult<{ path: string }>>;
   listResources(): Promise<IpcResult<ResourceBundle>>;
   reloadResources(): Promise<IpcResult<ResourceBundle>>;
+  stageRemoteResource(req: { url: string }): Promise<IpcResult<{ path: string; sha256: string; bytes: number; filename: string }>>;
   installLocalResource(req?: { source?: string; project?: boolean }): Promise<IpcResult<ResourceBundle>>;
   removeLocalResource(req: { source: string; project?: boolean }): Promise<IpcResult<ResourceBundle>>;
   setResourceEnabled(req: {
@@ -265,6 +266,8 @@ export const ipc = {
   exportHtml: async (): Promise<IpcResult<{ path: string }>> => ok(await window.omega?.exportHtml?.()),
   listResources: async (): Promise<IpcResult<ResourceBundle>> => ok(await window.omega?.listResources?.()),
   reloadResources: async (): Promise<IpcResult<ResourceBundle>> => ok(await window.omega?.reloadResources?.()),
+  stageRemoteResource: async (req: { url: string }): Promise<IpcResult<{ path: string; sha256: string; bytes: number; filename: string }>> =>
+    ok(await window.omega?.stageRemoteResource?.(req)),
   installLocalResource: async (req?: { source?: string; project?: boolean }): Promise<IpcResult<ResourceBundle>> =>
     ok(await window.omega?.installLocalResource?.(req)),
   removeLocalResource: async (req: { source: string; project?: boolean }): Promise<IpcResult<ResourceBundle>> =>

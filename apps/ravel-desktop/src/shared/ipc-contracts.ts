@@ -43,6 +43,7 @@ export const IPC_CHANNELS = {
   listResources: "omega:listResources",
   reloadResources: "omega:reloadResources",
   installLocalResource: "omega:installLocalResource",
+  stageRemoteResource: "omega:stageRemoteResource",
   removeLocalResource: "omega:removeLocalResource",
   setResourceEnabled: "omega:setResourceEnabled",
   setSkillModelInvocation: "omega:setSkillModelInvocation",

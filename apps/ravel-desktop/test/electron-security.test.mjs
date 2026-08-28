@@ -30,7 +30,7 @@ test("main configures Electron isolation and navigation boundaries", async () =>
   assert.match(source, /rpc\("bash", \{ command, excludeFromContext/);
   assert.match(source, /createPermissionGuard|assertOperationAllowed/);
   assert.match(source, /pickedByDialog/);
-  assert.match(source, /只能安装用户选择的目录或已授权工作区内的本地资源/);
+  assert.match(source, /只能安装用户选择的目录、已授权工作区内的本地资源，或已审阅的暂存资源/);
   assert.match(source, /if \(closeHandling \|\| isAgentBusy\(\)\)/);
   assert.match(source, /forgetSessionEvents/);
   assert.match(source, /createNamedSession/);

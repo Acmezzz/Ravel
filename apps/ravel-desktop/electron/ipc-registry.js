@@ -46,6 +46,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:listResources",
   "omega:reloadResources",
   "omega:installLocalResource",
+  "omega:stageRemoteResource",
   "omega:removeLocalResource",
   "omega:setResourceEnabled",
   "omega:setSkillModelInvocation",

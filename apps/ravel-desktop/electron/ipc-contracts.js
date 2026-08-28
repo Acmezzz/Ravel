@@ -44,6 +44,7 @@ export const IPC_CHANNELS = Object.freeze({
   listResources: "omega:listResources",
   reloadResources: "omega:reloadResources",
   installLocalResource: "omega:installLocalResource",
+  stageRemoteResource: "omega:stageRemoteResource",
   removeLocalResource: "omega:removeLocalResource",
   setResourceEnabled: "omega:setResourceEnabled",
   setSkillModelInvocation: "omega:setSkillModelInvocation",

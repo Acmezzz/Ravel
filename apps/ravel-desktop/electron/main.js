@@ -36,6 +36,7 @@ import {
 } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
 import { createHistosFactForwarder } from "./histos-fact-forwarder.js";
+import { stageRemoteResource, validateRemoteResourceUrl } from "./remote-resource-service.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
@@ -867,6 +868,19 @@ function authorizedRoots() {
     /* best effort */
   }
   return roots;
+}
+
+function stagedResourcesRoot() {
+  return join(dataRoot(), "staged-resources");
+}
+
+function isStagedResource(candidate) {
+  if (typeof candidate !== "string" || !candidate.trim()) return false;
+  try {
+    return Boolean(canonicalInside(stagedResourcesRoot(), resolve(candidate)));
+  } catch {
+    return false;
+  }
 }
 
 function isUnderAuthorizedRoot(candidate) {
@@ -1962,6 +1976,17 @@ ipcMain.handle("omega:reloadResources", (event) => {
   return rpc("reloadResources", {}, "write_failed");
 });
 
+ipcMain.handle("omega:stageRemoteResource", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const url = validateRemoteResourceUrl(req?.url);
+    const staged = await stageRemoteResource(url, stagedResourcesRoot());
+    return okResult(staged);
+  } catch (error) {
+    return errorResult(error?.code ?? "stage_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
 ipcMain.handle("omega:installLocalResource", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
@@ -1982,8 +2007,8 @@ ipcMain.handle("omega:installLocalResource", async (event, req) => {
       pickedByDialog = true;
     }
     source = assertLocalSource(source);
-    if (!pickedByDialog && !isUnderAuthorizedRoot(source)) {
-      return errorResult("forbidden", "只能安装用户选择的目录或已授权工作区内的本地资源");
+    if (!pickedByDialog && !isUnderAuthorizedRoot(source) && !isStagedResource(source)) {
+      return errorResult("forbidden", "只能安装用户选择的目录、已授权工作区内的本地资源，或已审阅的暂存资源");
     }
     return rpc("installLocalResource", { source, project: req?.project === true }, "write_failed");
   } catch (error) {
