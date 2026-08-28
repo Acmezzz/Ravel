@@ -54,6 +54,14 @@ export async function createCheckpoint(cwd, label) {
     const safeLabel = String(label ?? "").slice(0, 200) || "checkpoint";
     const id = firstLine(await git(cwd, ["commit-tree", tree, "-m", safeLabel]));
     await git(cwd, ["update-ref", refFor(id), id]);
+    // Some broken git builds exit 0 yet silently skip three-segment ref
+    // creation; fail closed rather than return an unrecorded checkpoint id.
+    try {
+      const recorded = firstLine(await git(cwd, ["rev-parse", "--verify", refFor(id)]));
+      if (recorded !== id) throw new Error("ref points elsewhere");
+    } catch {
+      throw new Error(`git update-ref did not persist ${refFor(id)}`);
+    }
     await appendFile(join(cwd, ".git", "ravel-checkpoints.order"), `${id}\n`).catch(() => {});
     return { id, label: safeLabel };
   } finally {

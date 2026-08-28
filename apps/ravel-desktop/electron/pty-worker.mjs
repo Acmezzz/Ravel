@@ -43,7 +43,9 @@ export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage, kill
         resolveClose();
       };
       const timer = setTimeout(done, killWaitMs);
-      timer.unref?.();
+      // Intentionally not unref'd: a pending kill/dispose RPC must be
+      // answered even without other loop handles. The dispose path exits via
+      // process.exit(0) after replying, so a ref'd timer cannot hang shutdown.
       try { session.terminal.onExit(() => done()); } catch { /* already exited */ }
       try { session.terminal.kill(); } catch { done(); }
     });

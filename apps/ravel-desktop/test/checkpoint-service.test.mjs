@@ -5,6 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createCheckpoint, listCheckpoints, restoreCheckpoint, pruneCheckpoints } from "../electron/checkpoint-service.js";
 
+test("createCheckpoint verifies the ref after update-ref (fail-closed against silent git regressions)", async () => {
+  const source = await readFile(new URL("../electron/checkpoint-service.js", import.meta.url), "utf8");
+  assert.match(source, /rev-parse", "--verify", refFor\(id\)/);
+  assert.match(source, /did not persist/);
+});
+
 async function exec(command, args, cwd) {
   const { execFile } = await import("node:child_process");
   return new Promise((resolve, reject) => {
