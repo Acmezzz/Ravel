@@ -67,7 +67,7 @@ export function buildSessionHtml(record) {
 </head>
 <body>
 <h1>${escapeHtml(record.title)}</h1>
-<div class="meta">Ravel Desktop 导出 · ${escapeHtml(record.workspace)} · ${escapeHtml(record.updatedAt)}</div>
+<div class="meta">Ravel Desktop 导出${record.redacted ? " · 已做字段级脱敏 [redacted:*]" : ""} · ${escapeHtml(record.workspace)} · ${escapeHtml(record.updatedAt)}</div>
 ${body}
 </body>
 </html>`;

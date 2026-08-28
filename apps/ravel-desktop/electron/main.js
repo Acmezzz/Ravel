@@ -35,6 +35,8 @@ import {
   resolveSessionPath,
 } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
+import { redactSessionRecord } from "./export-redact.js";
+import { describeGraphDiff, diffGraphRevisions } from "./histos-graph-diff.js";
 import { createHistosFactForwarder } from "./histos-fact-forwarder.js";
 import { stageRemoteResource, validateRemoteResourceUrl } from "./remote-resource-service.js";
 import { downloadRegistryEntries, fetchRegistryIndex } from "./skill-registry-service.js";
@@ -2099,6 +2101,21 @@ ipcMain.handle("omega:histosGetArtifact", async (event, req) => {
   catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
 });
 
+// Structured GraphRevision diff (next-cycle B7): both artifacts must be
+// fetchable with their own source queries; the diff itself is pure.
+ipcMain.handle("omega:histosDiffGraphs", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const histos = await activeHistos();
+    const prev = await histos.call("getArtifact", req?.prev);
+    const next = await histos.call("getArtifact", req?.next);
+    const diff = diffGraphRevisions(prev, next);
+    return okResult({ diff, summary: describeGraphDiff(diff) });
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
 ipcMain.handle("omega:getThinking", (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.entryId !== "string" || !req.entryId.trim()) {
@@ -2418,10 +2435,14 @@ ipcMain.handle("omega:exportHtml", async (event) => {
   try {
     requireWorker();
     const record = await worker.call("sessionRecord");
+    // Redaction pass (B7): shape-based secrets become [redacted:<kind>] markers
+    // before anything is written to disk; the session record itself is untouched.
+    const redacted = redactSessionRecord(record);
+    redacted.redacted = true;
     const dir = join(app.getPath("userData"), "exports");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${record.id}-${Date.now()}.html`);
-    writeFileSync(file, buildSessionHtml(record), "utf8");
+    writeFileSync(file, buildSessionHtml(redacted), "utf8");
     void Promise.resolve(shell.showItemInFolder(file)).catch(() => {});
     return okResult({ path: file });
   } catch (error) {

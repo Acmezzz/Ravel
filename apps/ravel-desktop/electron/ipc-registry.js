@@ -97,6 +97,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:histosFreezeContext",
   "omega:histosConvertToFlow",
   "omega:histosGetArtifact",
+  "omega:histosDiffGraphs",
   "omega:histosDistillResource",
   "omega:histosSuggestContext",
   "omega:histosImportContext",

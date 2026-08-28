@@ -343,6 +343,16 @@ contextBridge.exposeInMainWorld("omega", {
     const sha256 = req?.sha256 ?? req?.hash;
     return query && typeof sha256 === "string" && HISTOS_SHA256.test(sha256) ? ipcRenderer.invoke("omega:histosGetArtifact", { ...query, sha256 }) : invalidHistos("sha256 and query are required");
   },
+  histosDiffGraphs: (req) => {
+    const prev = req && isPlainObject(req.prev) ? histosQuery(req.prev) : null;
+    const next = req && isPlainObject(req.next) ? histosQuery(req.next) : null;
+    const prevSha = req?.prev?.sha256 ?? req?.prev?.hash;
+    const nextSha = req?.next?.sha256 ?? req?.next?.hash;
+    if (!prev || !next || !HISTOS_SHA256.test(String(prevSha)) || !HISTOS_SHA256.test(String(nextSha))) {
+      return invalidHistos("prev and next need a sha256 and a query");
+    }
+    return ipcRenderer.invoke("omega:histosDiffGraphs", { prev: { ...prev, sha256: prevSha }, next: { ...next, sha256: nextSha } });
+  },
   setPermissionProfile: (req) => {
     const allowed = ["trusted", "workspace-only", "read-only", "ask-before-command"];
     if (!req || typeof req.profile !== "string" || !allowed.includes(req.profile)) {
