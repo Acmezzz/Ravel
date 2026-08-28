@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
@@ -298,6 +299,70 @@ function artifactRecord(artifact, sha256) {
   return { sha256, kind: artifact.kind, createdAt: now(), sourceSetJson: canonicalJson(artifact.sourceSet), lens: artifact.lens, granularity: artifact.granularity };
 }
 
+function contextBudgetResult(budget, minimumBytes, details) {
+  return {
+    ok: false,
+    code: "budget_exceeded",
+    message: `ContextSet budget exceeded: ${minimumBytes} bytes are required for the selected context; remove selected items or increase the budget`,
+    diagnostics: [
+      { code: "budget_exceeded", message: `Selected context requires ${minimumBytes} bytes, but the budget is ${budget} bytes.` },
+      { code: "selected_evidence_required", message: "Selected evidence is never discarded; reduce the selection or increase the budget before attaching this context." },
+    ],
+    result: {
+      action: "reduce_selection_or_increase_budget",
+      message: "Remove selected nodes or edges, or increase the ContextSet budget, then try again.",
+      budget,
+      minimumBudget: minimumBytes,
+      ...details,
+    },
+  };
+}
+
+function contextNeighborSummary(node) {
+  return {
+    nodeRevisionId: node.nodeRevisionId,
+    nodeId: node.nodeId,
+    kind: node.kind,
+    title: node.title,
+    createdAt: node.createdAt,
+    artifactSha: node.artifactSha,
+    ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
+  };
+}
+
+function contextPayload(query, workspaceId, nodes, edges, evidence, neighborSummaries = []) {
+  const selection = evidence.map((item) => ({ revisionId: item.revisionId, addressId: item.addressId, role: item.role, address: item.address }));
+  return {
+    schemaVersion: 1,
+    workspaceId,
+    kind: "context_set",
+    sourceSet: query.sourceSet,
+    lens: query.lens,
+    granularity: query.granularity,
+    selection,
+    nodes,
+    edges,
+    evidence,
+    ...(neighborSummaries.length > 0 ? { neighborSummaries } : {}),
+    parents: [],
+  };
+}
+
+function contextBytes(payload) {
+  return Buffer.byteLength(canonicalJson(payload), "utf8");
+}
+
+function contextBudgetDiagnostics(budget, requiredBytes, selectedCount, neighborCount, breakdown) {
+  return {
+    budget,
+    requiredBytes,
+    selectedCount,
+    neighborCount,
+    omittedNeighborCount: 0,
+    breakdown,
+  };
+}
+
 function insertArtifact(database, artifact, sha256) {
   const row = artifactRecord(artifact, sha256);
   database.prepare("INSERT OR IGNORE INTO artifacts (sha256, kind, created_at, source_set_json, lens, granularity) VALUES (?, ?, ?, ?, ?, ?)").run(row.sha256, row.kind, row.createdAt, row.sourceSetJson, row.lens, row.granularity);
@@ -589,18 +654,72 @@ export class HistosEngine {
     const database = this.assertOpen();
     if (!Array.isArray(input.selection) || input.selection.length === 0) throw invalid("freezeContext.selection must be a non-empty array");
     const graph = graphRows(database, query);
-    const selected = new Set(input.selection.map((item) => typeof item === "string" ? item : item.nodeRevisionId ?? item.edgeRevisionId ?? item.id));
+    const requestedSelection = input.selection.map((item) => {
+      if (typeof item === "string") return item;
+      if (!isObject(item)) throw invalid("freezeContext.selection entries must be strings or objects");
+      return item.nodeRevisionId ?? item.edgeRevisionId ?? item.id;
+    });
+    if (requestedSelection.some((item) => typeof item !== "string" || item.length === 0)) throw invalid("freezeContext.selection entries require an id");
+    const selected = new Set(requestedSelection);
     const nodes = graph.nodes.filter((item) => selected.has(item.nodeRevisionId) || selected.has(item.nodeId));
     const edges = graph.edges.filter((item) => selected.has(item.edgeRevisionId) || selected.has(item.edgeId));
-    const evidence = graph.evidence.filter((item) => nodes.some((node) => node.nodeRevisionId === item.revisionId) || edges.some((edge) => edge.edgeRevisionId === item.revisionId));
-    const size = canonicalJson({ nodes, edges, evidence }).length;
-    if (size > budget) throw Object.assign(new Error("ContextSet budget exceeded; choose fewer nodes or increase the budget"), { code: "budget_exceeded" });
-    const artifact = validateArtifact({ schemaVersion: 1, workspaceId: this.workspaceId, kind: "context_set", sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity, selection: evidence.map((item) => ({ revisionId: item.revisionId, addressId: item.addressId, role: item.role, address: item.address })), nodes, edges, evidence, parents: [] }, { workspaceId: this.workspaceId, kind: "context_set" });
+    const matchedSelection = new Set([...nodes.flatMap((node) => [node.nodeRevisionId, node.nodeId]), ...edges.flatMap((edge) => [edge.edgeRevisionId, edge.edgeId])]);
+    const missingSelection = [...new Set(requestedSelection)].filter((item) => !matchedSelection.has(item)).sort();
+    if (missingSelection.length > 0) {
+      throw Object.assign(new Error(`ContextSet selection contains ${missingSelection.length} item(s) not present in the requested graph`), {
+        code: "selection_not_found",
+        diagnostics: [{ code: "selection_not_found", message: `Selected item(s) were not found: ${missingSelection.join(", ")}` }],
+        result: { action: "refresh_or_adjust_selection", message: "Refresh the graph or remove selections that are no longer present, then try again.", missingSelection },
+      });
+    }
+    const selectedRevisionIds = new Set([...nodes.map((node) => node.nodeRevisionId), ...edges.map((edge) => edge.edgeRevisionId)]);
+    const evidence = graph.evidence.filter((item) => selectedRevisionIds.has(item.revisionId));
+
+    // The selected node text and every selected FactAddress are mandatory. Only
+    // one-hop neighbor summaries are optional, so a budget failure can never
+    // turn into a successful attachment with silently missing evidence.
+    const selectedPayload = contextPayload(query, this.workspaceId, nodes, edges, evidence);
+    const selectedBytes = contextBytes(selectedPayload);
+    const condensedTextBytes = contextBytes(contextPayload(query, this.workspaceId, nodes.map((node) => ({ nodeRevisionId: node.nodeRevisionId, nodeId: node.nodeId, title: node.title })), [], []));
+    const directEvidenceBytes = contextBytes(contextPayload(query, this.workspaceId, [], [], evidence));
+    const selectedStructureBytes = Math.max(0, selectedBytes - condensedTextBytes - directEvidenceBytes);
+    const selectedBreakdown = { condensedTextBytes, directEvidenceBytes, selectedStructureBytes };
+    const neighborNodeIds = new Set();
+    const selectedNodeIds = new Set(nodes.map((node) => node.nodeId));
+    for (const edge of edges) {
+      if (!selectedNodeIds.has(edge.srcNodeId)) neighborNodeIds.add(edge.srcNodeId);
+      if (!selectedNodeIds.has(edge.dstNodeId)) neighborNodeIds.add(edge.dstNodeId);
+    }
+    for (const edge of graph.edges) {
+      if (selectedNodeIds.has(edge.srcNodeId) && !selectedNodeIds.has(edge.dstNodeId)) neighborNodeIds.add(edge.dstNodeId);
+      if (selectedNodeIds.has(edge.dstNodeId) && !selectedNodeIds.has(edge.srcNodeId)) neighborNodeIds.add(edge.srcNodeId);
+    }
+    const neighbors = graph.nodes
+      .filter((node) => neighborNodeIds.has(node.nodeId) && !selectedRevisionIds.has(node.nodeRevisionId))
+      .map(contextNeighborSummary)
+      .sort((left, right) => left.nodeRevisionId.localeCompare(right.nodeRevisionId));
+    if (selectedBytes > budget) {
+      return contextBudgetResult(budget, selectedBytes, contextBudgetDiagnostics(budget, selectedBytes, selectedRevisionIds.size, neighbors.length, selectedBreakdown));
+    }
+
+    const includedNeighbors = [];
+    let payload = selectedPayload;
+    for (const neighbor of neighbors) {
+      const candidate = contextPayload(query, this.workspaceId, nodes, edges, evidence, [...includedNeighbors, neighbor]);
+      if (contextBytes(candidate) > budget) break;
+      includedNeighbors.push(neighbor);
+      payload = candidate;
+    }
+    const omittedNeighborCount = neighbors.length - includedNeighbors.length;
+    const diagnostics = omittedNeighborCount > 0
+      ? [{ code: "neighbors_omitted", message: `${omittedNeighborCount} neighbor summaries were omitted to stay within the ${budget}-byte budget.` }]
+      : [];
+    const artifact = validateArtifact(payload, { workspaceId: this.workspaceId, kind: "context_set" });
     const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "context_set" });
     const stored = { ...artifact, sha256 };
     database.exec("BEGIN IMMEDIATE");
     try { insertArtifact(database, stored, sha256); database.exec("COMMIT"); } catch (error) { database.exec("ROLLBACK"); throw error; }
-    return { sha256, artifact: stored, targetSessionId: input.targetSessionId ?? null };
+    return { sha256, artifact: stored, targetSessionId: input.targetSessionId ?? null, diagnostics, budget: { budget, selectedBytes, neighborCount: includedNeighbors.length, omittedNeighborCount } };
   }
 
   async convertToFlow(input = {}) {

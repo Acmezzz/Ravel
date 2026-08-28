@@ -32,6 +32,7 @@ export const MAX_ARTIFACT_BYTES = 8 * 1024 * 1024;
 export const MAX_ARTIFACT_ARRAY_ITEMS = 100_000;
 export const MAX_ARTIFACT_PARENTS = 256;
 export const MAX_EVIDENCE_ITEMS = 100_000;
+export const MAX_CONTEXT_NEIGHBOR_SUMMARIES = 100_000;
 export const MAX_NODE_OR_EDGE_ID_LENGTH = 512;
 export const MAX_TITLE_LENGTH = 4096;
 
@@ -122,6 +123,21 @@ function validateArtifactArray(items, label, validator) {
   return items.map((item, index) => validator(item, `${label}[${index}]`));
 }
 
+function validateContextNeighborSummaries(items) {
+  if (items === undefined) return [];
+  if (!Array.isArray(items) || items.length > MAX_CONTEXT_NEIGHBOR_SUMMARIES) throw invalid("artifact.neighborSummaries must be a bounded array");
+  return items.map((item, index) => {
+    requirePlainObject(item, `artifact.neighborSummaries[${index}]`);
+    boundedString(item.nodeRevisionId, `artifact.neighborSummaries[${index}].nodeRevisionId`, MAX_NODE_OR_EDGE_ID_LENGTH);
+    boundedString(item.nodeId, `artifact.neighborSummaries[${index}].nodeId`, MAX_NODE_OR_EDGE_ID_LENGTH);
+    if (item.kind !== undefined) boundedString(item.kind, `artifact.neighborSummaries[${index}].kind`, 64);
+    if (item.title !== undefined && item.title !== null) boundedString(item.title, `artifact.neighborSummaries[${index}].title`, MAX_TITLE_LENGTH, { allowEmpty: true });
+    if (item.artifactSha !== undefined && item.artifactSha !== null) validateSha256(item.artifactSha, `artifact.neighborSummaries[${index}].artifactSha`);
+    if (item.createdAt !== undefined && (!Number.isSafeInteger(item.createdAt) || item.createdAt < 0)) throw invalid(`artifact.neighborSummaries[${index}].createdAt must be a non-negative safe integer`);
+    return item;
+  });
+}
+
 function validateNode(node, label) {
   requirePlainObject(node, label);
   const nodeRevisionId = node.nodeRevisionId ?? node.revisionId;
@@ -174,6 +190,7 @@ export function validateArtifact(artifact, { workspaceId, kind } = {}) {
   const parents = validateArtifactArray(artifact.parents, "artifact.parents", (parent, label) => validateSha256(parent, label));
   if (parents.length > MAX_ARTIFACT_PARENTS) throw invalid("artifact.parents contains too many entries");
   const evidence = validateEvidenceArray(artifact.evidence, "artifact.evidence");
+  const neighborSummaries = validateContextNeighborSummaries(artifact.neighborSummaries);
   if (actualKind === "graph_revision" || kind === "graph_revision") {
     if (artifact.nodes === undefined || artifact.edges === undefined) throw invalid("graph_revision requires nodes and edges");
   }
@@ -189,7 +206,7 @@ export function validateArtifact(artifact, { workspaceId, kind } = {}) {
       if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) throw invalid(`artifact.positions[${index}] coordinates must be finite`);
     }
   }
-  const normalized = { ...artifact, workspaceId: actualWorkspaceId, nodes, edges, parents, evidence };
+  const normalized = { ...artifact, workspaceId: actualWorkspaceId, nodes, edges, parents, evidence, ...(neighborSummaries.length > 0 ? { neighborSummaries } : {}) };
   delete normalized.sha256;
   return normalized;
 }

@@ -115,8 +115,13 @@ export function GraphPanel(): React.ReactElement {
     if (!activeSessionId || freezing || (draft.nodeRevisionIds.length === 0 && draft.edgeRevisionIds.length === 0)) return;
     setFreezing(true); setFreezeResult(null);
     const result = await ipc.histosFreezeContext({ sourceSet: { sessionIds: [activeSessionId] }, lens: "structural", granularity: "entry", selection: [...draft.nodeRevisionIds, ...draft.edgeRevisionIds], targetSessionId: activeSessionId });
-    if (!result.ok) setFreezeResult(`${t("graph.freezeFailed")}: ${result.message}`);
-    else if (result.data.factAppend?.ok) setFreezeResult(t("graph.freezeSha", { sha: result.data.sha256 }));
+    if (!result.ok) {
+      const detail = result.message;
+      setFreezeResult(`${t("graph.freezeFailed")}: ${detail}`);
+    } else if (result.data.ok === false) {
+      const detail = result.data.result.message ?? result.data.diagnostics[0]?.message ?? result.data.message;
+      setFreezeResult(`${t("graph.freezeFailed")}: ${detail}`);
+    } else if (result.data.factAppend?.ok) setFreezeResult(t("graph.freezeSha", { sha: result.data.sha256 }));
     else setFreezeResult(`${t("graph.freezeFailed")}: ${result.data.factAppend?.error ?? t("graph.sessionNotActive")}`);
     setFreezing(false);
   }, [activeSessionId, draft, freezing, t]);

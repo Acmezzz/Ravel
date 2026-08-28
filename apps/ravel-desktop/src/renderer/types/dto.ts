@@ -169,6 +169,7 @@ export interface HistosArtifactDTO extends HistosQueryDTO {
   edges: HistosEdgeRevisionDTO[];
   evidence: HistosEvidenceDTO[];
   parents: HistosRevisionParentDTO[];
+  neighborSummaries?: Array<Pick<HistosNodeRevisionDTO, "nodeRevisionId" | "nodeId" | "kind" | "title" | "createdAt" | "artifactSha"> & { parentId?: string | null }>;
   selection?: HistosEvidenceDTO[];
   sha256?: string;
   positions?: Array<{ id: string; x: number; y: number }>;
@@ -186,12 +187,21 @@ export interface HistosRebuildResultDTO {
   artifactCount: number;
 }
 
-export interface HistosContextFreezeResultDTO {
+export type HistosContextFreezeResultDTO = {
+  ok?: true;
   sha256: string;
   artifact: HistosArtifactDTO;
   targetSessionId: string | null;
+  diagnostics?: Array<{ code: string; message: string }>;
+  budget?: { budget: number; selectedBytes: number; neighborCount: number; omittedNeighborCount: number };
   factAppend?: HistosFactAppendResultDTO;
-}
+} | {
+  ok: false;
+  code: "budget_exceeded" | "selection_not_found";
+  message: string;
+  diagnostics: Array<{ code: string; message: string }>;
+  result: { action: string; message: string; budget?: number; minimumBudget?: number; missingSelection?: string[]; breakdown?: { condensedTextBytes: number; directEvidenceBytes: number; selectedStructureBytes: number } };
+};
 
 export interface HistosFlowValidationDTO {
   ok: boolean;

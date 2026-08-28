@@ -1022,12 +1022,15 @@ async function createWindow() {
       });
     }
   });
+  // `win.webContents` throws "Object has been destroyed" inside "closed", so
+  // capture the owner identity while the window is still alive.
+  const closedOwnerContents = win.webContents;
   win.on("closed", () => {
     persistWindowBounds();
-    const host = ptyHosts.get(win.webContents);
+    const host = ptyHosts.get(closedOwnerContents);
     if (host) void host.dispose().catch(() => {});
-    ptyHosts.delete(win.webContents);
-    for (const [sessionId, owner] of ptyOwnerBySession) if (owner === win.webContents) ptyOwnerBySession.delete(sessionId);
+    ptyHosts.delete(closedOwnerContents);
+    for (const [sessionId, owner] of ptyOwnerBySession) if (owner === closedOwnerContents) ptyOwnerBySession.delete(sessionId);
     win = undefined;
   });
   if (desktopSettings?.get()?.windowBounds?.maximized) win.maximize();
@@ -1803,6 +1806,7 @@ ipcMain.handle("omega:histosFreezeContext", async (event, req) => {
   if (!normalized) return errorResult("invalid_args", "selection and query are required");
   try {
     const frozen = await (await activeHistos()).call("freezeContext", normalized);
+    if (frozen?.ok === false) return okResult(frozen);
     const targetSessionId = normalized.targetSessionId ?? worker?.sessionId;
     if (!targetSessionId) {
       return okResult({ ...frozen, targetSessionId: null, factAppend: { ok: false, error: "targetSessionId is required" } });

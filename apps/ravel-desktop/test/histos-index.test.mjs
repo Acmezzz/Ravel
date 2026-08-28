@@ -206,6 +206,57 @@ test("HistosEngine enforces the semantic condensation cost cap", async () => {
   await fs.rm(root, { recursive: true, force: true });
 });
 
+test("HistosEngine returns deterministic ContextSet budget diagnostics without writing artifacts", async (t) => {
+  const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-context-budget-"));
+  const sessionFile = join(root, "session.jsonl");
+  await fs.writeFile(sessionFile, [
+    JSON.stringify({ type: "session", version: 3, id: "session-budget", cwd: root }),
+    JSON.stringify({ type: "message", id: "selected", parentId: null, message: { role: "user", content: "selected evidence" } }),
+    JSON.stringify({ type: "message", id: "neighbor", parentId: "selected", message: { role: "assistant", content: "neighbor summary" } }),
+  ].join("\n") + "\n");
+  const engine = new HistosEngine({ workspaceId: "workspace-budget", databasePath: join(root, "index.sqlite"), artifactsDir: join(root, "artifacts"), sessionFiles: [sessionFile] });
+  t.after(async () => { engine.close(); await fs.rm(root, { recursive: true, force: true }); });
+  await engine.rebuild({ granularity: "entry" });
+  const graph = engine.getGraph({ sourceSet: { sessionIds: ["session-budget"] }, lens: "structural", granularity: "entry" });
+  const selected = graph.nodes.find((node) => node.nodeId === "entry:session-budget/selected");
+  assert.ok(selected);
+  const first = await engine.freezeContext({ sourceSet: { sessionIds: ["session-budget"] }, lens: "structural", granularity: "entry", selection: [selected.nodeRevisionId], budget: 1 });
+  const second = await engine.freezeContext({ sourceSet: { sessionIds: ["session-budget"] }, lens: "structural", granularity: "entry", selection: [selected.nodeRevisionId], budget: 1 });
+  assert.deepEqual(second, first);
+  assert.equal(first.ok, false);
+  assert.equal(first.code, "budget_exceeded");
+  assert.ok(first.result.minimumBudget > first.result.budget);
+  assert.equal((await fs.readdir(join(root, "artifacts"))).length, 0);
+});
+
+test("HistosEngine prioritizes selected content and deterministically fits neighbor summaries", async (t) => {
+  const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-context-neighbor-"));
+  const sessionFile = join(root, "session.jsonl");
+  await fs.writeFile(sessionFile, [
+    JSON.stringify({ type: "session", version: 3, id: "session-neighbor", cwd: root }),
+    JSON.stringify({ type: "message", id: "selected", parentId: null, message: { role: "user", content: "selected evidence" } }),
+    JSON.stringify({ type: "message", id: "neighbor-a", parentId: "selected", message: { role: "assistant", content: "neighbor A" } }),
+    JSON.stringify({ type: "message", id: "neighbor-b", parentId: "selected", message: { role: "assistant", content: "neighbor B" } }),
+  ].join("\n") + "\n");
+  const engine = new HistosEngine({ workspaceId: "workspace-neighbor", databasePath: join(root, "index.sqlite"), artifactsDir: join(root, "artifacts"), sessionFiles: [sessionFile] });
+  t.after(async () => { engine.close(); await fs.rm(root, { recursive: true, force: true }); });
+  await engine.rebuild({ granularity: "entry" });
+  const graph = engine.getGraph({ sourceSet: { sessionIds: ["session-neighbor"] }, lens: "structural", granularity: "entry" });
+  const selected = graph.nodes.find((node) => node.nodeId === "entry:session-neighbor/selected");
+  assert.ok(selected);
+  const full = await engine.freezeContext({ sourceSet: { sessionIds: ["session-neighbor"] }, lens: "structural", granularity: "entry", selection: [selected.nodeRevisionId], budget: 64000 });
+  assert.equal(full.artifact.neighborSummaries.length, 3);
+  const selectedOnly = await engine.freezeContext({ sourceSet: { sessionIds: ["session-neighbor"] }, lens: "structural", granularity: "entry", selection: [selected.nodeRevisionId], budget: full.budget.selectedBytes });
+  assert.equal(selectedOnly.artifact.neighborSummaries, undefined);
+  assert.equal(selectedOnly.artifact.evidence.length, full.artifact.evidence.length);
+  assert.deepEqual(full.artifact.neighborSummaries.map((item) => item.nodeId), [
+    "entry:session-neighbor/neighbor-a",
+    "entry:session-neighbor/neighbor-b",
+    "session:session-neighbor",
+  ]);
+  assert.equal(selectedOnly.budget.omittedNeighborCount, 3);
+});
+
 test("HistosEngine preserves compound parents through rebuild", async (t) => {
   const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-compound-"));
   let engine;
@@ -231,7 +282,11 @@ test("HistosEngine preserves compound parents through rebuild", async (t) => {
   const semanticChild = semantic.artifact.nodes.find((node) => node.nodeId === child.nodeId);
   const semanticParent = semantic.artifact.nodes.find((node) => node.nodeId === parent.nodeId);
   assert.equal(semanticChild?.parentId, semanticParent?.nodeRevisionId);
-  await assert.rejects(() => engine.freezeContext({ sourceSet: { sessionIds: ["session-compound"] }, lens: "structural", granularity: "entry", selection: [child.nodeRevisionId], budget: 1 }), (error) => error.code === "budget_exceeded");
+  const budgetFailure = await engine.freezeContext({ sourceSet: { sessionIds: ["session-compound"] }, lens: "structural", granularity: "entry", selection: [child.nodeRevisionId], budget: 1 });
+  assert.equal(budgetFailure.ok, false);
+  assert.equal(budgetFailure.code, "budget_exceeded");
+  assert.equal(budgetFailure.result.action, "reduce_selection_or_increase_budget");
+  assert.ok(budgetFailure.diagnostics.some((item) => item.code === "selected_evidence_required"));
 });
 
 test("HistosEngine rebuilds JSONL deterministically with trace anchors and spans", async (t) => {
