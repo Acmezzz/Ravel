@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,14 +43,26 @@ function executablePath() {
 async function closeApplication(app) {
   if (!app) return;
   try {
+    await Promise.race([app.close(), new Promise((resolveClose) => setTimeout(resolveClose, 5_000))]);
+  } catch {
+    /* The Electron channel may already be disposed after process exit. */
+  }
+  try {
     const child = app.process();
-    if (child.exitCode === null) {
+    if (child && child.exitCode === null) {
+      // Windows: SIGKILL on the main process orphans Electron utility
+      // processes (agent/histos/PTY) that keep inherited handles open, which
+      // stalls the Playwright worker teardown. Reap the whole tree.
+      if (process.platform === "win32") {
+        spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+      } else {
+        child.kill("SIGKILL");
+      }
       const exited = new Promise((resolveExit) => child.once("exit", resolveExit));
-      child.kill("SIGKILL");
       await Promise.race([exited, new Promise((resolveExit) => setTimeout(resolveExit, 5_000))]);
     }
   } catch {
-    /* The Electron channel may already be disposed after process exit. */
+    /* Process already gone. */
   }
 }
 
