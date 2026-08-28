@@ -24,28 +24,16 @@ export const TextField = React.forwardRef<HTMLInputElement | HTMLTextAreaElement
 	const inputId = id ?? `omega-field-${generatedId}`;
 	const message = error ?? hint;
 	const messageId = message ? `${inputId}-message` : undefined;
-	const commonProps = {
-		id: inputId,
-		className: cn("omega-input", error && "omega-input-error", className),
-		"aria-invalid": error ? true : undefined,
-		"aria-describedby": messageId,
-		name: props.name,
-		value: props.value,
-		defaultValue: props.defaultValue,
-		placeholder: props.placeholder,
-		disabled: props.disabled,
-		readOnly: props.readOnly,
-		required: props.required,
-		autoFocus: props.autoFocus,
-			autoComplete: props.autoComplete,
-			inputMode: props.inputMode,
-			min: props.min,
-		max: props.max,
-		step: props.step,
-	};
-	return <label className="omega-field" htmlFor={inputId}>
-		{label ? <span className="omega-field-label">{label}</span> : null}
-			{select ? <select ref={ref as React.Ref<HTMLSelectElement>} {...commonProps} onChange={onChange as React.ChangeEventHandler<HTMLSelectElement>} onBlur={onBlur as React.FocusEventHandler<HTMLSelectElement>} onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLSelectElement>}>{children}</select> : multiline ? <textarea ref={ref as React.Ref<HTMLTextAreaElement>} {...commonProps} rows={minRows} onChange={onChange as React.ChangeEventHandler<HTMLTextAreaElement>} onBlur={onBlur as React.FocusEventHandler<HTMLTextAreaElement>} onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>} /> : <input ref={ref as React.Ref<HTMLInputElement>} {...commonProps} type={props.type} onChange={onChange as React.ChangeEventHandler<HTMLInputElement>} onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>} onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLInputElement>} />}
-		{message ? <span id={messageId} className={cn("omega-field-message", error && "omega-field-message-error")}>{message}</span> : null}
-	</label>;
+		const commonProps = {
+			...props,
+			id: inputId,
+			className: cn("omega-input", error && "omega-input-error", className),
+			"aria-invalid": error ? true : undefined,
+			"aria-describedby": messageId,
+		};
+		return <label className="omega-field" htmlFor={inputId}>
+			{label ? <span className="omega-field-label">{label}</span> : null}
+				{select ? <select ref={ref as React.Ref<HTMLSelectElement>} {...commonProps as React.SelectHTMLAttributes<HTMLSelectElement>} onChange={onChange as React.ChangeEventHandler<HTMLSelectElement>} onBlur={onBlur as React.FocusEventHandler<HTMLSelectElement>} onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLSelectElement>}>{children}</select> : multiline ? <textarea ref={ref as React.Ref<HTMLTextAreaElement>} {...commonProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>} rows={minRows} onChange={onChange as React.ChangeEventHandler<HTMLTextAreaElement>} onBlur={onBlur as React.FocusEventHandler<HTMLTextAreaElement>} onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>} /> : <input ref={ref as React.Ref<HTMLInputElement>} {...commonProps} type={props.type} onChange={onChange as React.ChangeEventHandler<HTMLInputElement>} onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>} onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLInputElement>} />}
+			{message ? <span id={messageId} className={cn("omega-field-message", error && "omega-field-message-error")}>{message}</span> : null}
+		</label>;
 });

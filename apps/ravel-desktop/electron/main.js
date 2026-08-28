@@ -44,6 +44,7 @@ import { appendSessionInfo, readSessionActivity, readSessionMessages, readSessio
 import { createActivityTracker, isBlockingUiMethod } from "./activity-service.js";
 import { isIpcEnvelope } from "./ipc-contracts.js";
 import { assertLocalSource } from "./resource-center.js";
+import { validateCustomProvider } from "./custom-providers.js";
 import { isExtensionUIRequest, isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { CLOSE_DIALOG_BUTTONS, closeDecisionFromIndex } from "./close-lifecycle.js";
 import { migrateOmegaUserData } from "./data-migration.js";
@@ -667,13 +668,25 @@ function createBoundHost() {
   return bindHost(host);
 }
 
-async function sessionWorkspaceOf(sessionId) {
-  try {
-    const page = await readSessionSummaries(piSessionsRoot(), { offset: 0, limit: 5000 });
-    return page.items.find((item) => item.id === sessionId)?.workspace ?? null;
-  } catch {
-    return null;
+async function authorizedSessionOf(sessionId, requestedWorkspace) {
+  if (typeof sessionId !== "string" || !sessionId.trim()) return null;
+  const allowedWorkspaces = (workspaceRegistry?.list() ?? []).map((item) => item.realRoot);
+  if (allowedWorkspaces.length === 0) return null;
+  const page = await readSessionSummaries(piSessionsRoot(), { allowedWorkspaces, offset: 0, limit: 5000 });
+  const summary = page.items.find((item) => item.id === sessionId);
+  if (!summary) return null;
+  const workspace = authorizedWorkspace(requestedWorkspace ?? summary.workspace);
+  const normalize = (value) => {
+    const normalized = resolve(value);
+    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+  };
+  if (normalize(workspace) !== normalize(summary.workspace)) {
+    const error = new Error("Session does not belong to the requested workspace");
+    error.code = "workspace_mismatch";
+    throw error;
   }
+  const path = await resolveSessionPath(sessionId);
+  return path ? { path, workspace, summary } : null;
 }
 
 async function reuseIdleWorkspaceSlot(sessionId, cwd) {
@@ -709,6 +722,8 @@ async function createNamedSession({ workspace, title } = {}) {
 async function loadNamedSession({ sessionId, workspace } = {}) {
   if (!sessionId) return errorResult("invalid_args", "sessionId is required");
   try {
+    const target = await authorizedSessionOf(sessionId, workspace);
+    if (!target) return errorResult("not_found", "Session not found");
     const existing = workerPool.get(sessionId);
     if (existing) {
       await adoptSlot(workerPool.activate(sessionId));
@@ -717,7 +732,7 @@ async function loadNamedSession({ sessionId, workspace } = {}) {
       return okResult(record);
     }
     if (isForegroundBusy() && worker?.state === "ready") {
-      const nextWorkspace = workspace ? authorizedWorkspace(workspace) : (await sessionWorkspaceOf(sessionId)) ?? activeCwd ?? rootOf();
+      const nextWorkspace = target.workspace;
       const reused = await reuseIdleWorkspaceSlot(sessionId, nextWorkspace);
       if (reused) {
         const record = await worker.call("sessionRecord");
@@ -836,6 +851,16 @@ async function assertBashAllowed(command) {
   await guard({ toolCall: { name: "bash" }, args: { command } });
 }
 
+async function assertDesktopOperation(operation, input = {}) {
+  await assertOperationAllowed({
+    profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE,
+    cwd: activeCwd ?? rootOf(),
+    confirm: confirmPermission,
+    operation,
+    input,
+  });
+}
+
 async function bootstrap() {
   migrateOmegaUserData(app.getPath("userData"));
   desktopSettings = createDesktopSettingsStore(desktopSettingsFile());
@@ -849,8 +874,15 @@ async function bootstrap() {
   const prefs = desktopSettings.get();
   workerPool = createWorkerSlotPool({ cap: prefs.workerCap, idleTtlMs: prefs.workerIdleTtlMs });
   workspaceRegistry = createWorkspaceRegistry(workspaceRegistryFile());
-  const requested = startupRequest.workspace ? realRoot(resolve(startupRequest.workspace)) : realRoot(rootOf());
-  const cwd = workspaceRegistry.has(requested) ? workspaceRegistry.resolveAuthorized(requested) : workspaceRegistry.add(requested);
+  let cwd;
+  if (startupRequest.sessionId) {
+    const target = await authorizedSessionOf(startupRequest.sessionId, startupRequest.workspace ?? undefined);
+    if (!target) throw errorLike("session_not_found", "Startup session is not authorized");
+    cwd = target.workspace;
+  } else {
+    const requested = startupRequest.workspace ? realRoot(resolve(startupRequest.workspace)) : realRoot(rootOf());
+    cwd = workspaceRegistry.has(requested) ? workspaceRegistry.resolveAuthorized(requested) : workspaceRegistry.add(requested);
+  }
   activeCwd = cwd;
   process.stdout.write(`[main] cwd=${cwd}\n`);
   const slot = await acquireSlot({ sessionId: startupRequest.sessionId, cwd, projectTrusted: projectTrust.isTrusted(cwd) });
@@ -1454,10 +1486,17 @@ ipcMain.handle("omega:configureCustomProvider", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = customProviderRequest(req);
   if (!normalized) return errorResult("invalid_args", "provider config is required");
-  const result = await rpc("configureCustomProvider", normalized, "write_failed");
+  let provider;
+  try {
+    provider = validateCustomProvider(normalized);
+    await assertDesktopOperation("provider.config.write", { providerId: provider.id });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
+  const result = await rpc("configureCustomProvider", provider, "write_failed");
   if (!result.ok) return result;
   const current = desktopSettings.get().customProviders ?? {};
-  desktopSettings.update({ customProviders: { ...current, [result.data.provider.id]: result.data.provider } });
+  desktopSettings.update({ customProviders: { ...current, [provider.id]: provider } });
   return result;
 });
 
@@ -1507,18 +1546,19 @@ ipcMain.handle("omega:setProviderApiKey", async (event, req) => {
   if (typeof req.apiKey !== "string" || !req.apiKey.trim()) return errorResult("invalid_args", "apiKey is required");
   const providerId = req.providerId.trim().slice(0, 128);
   const apiKey = req.apiKey.trim().slice(0, 8192);
+  const previous = credentialStore?.read(providerId) ?? null;
+  const result = await rpc("setProviderApiKey", { providerId, apiKey }, "write_failed");
+  if (!result.ok) return result;
   try {
     credentialStore?.set(providerId, apiKey);
   } catch (error) {
-    return errorResult(error?.code ?? "encryption_unavailable", error instanceof Error ? error.message : String(error));
-  }
-  const result = await rpc("setProviderApiKey", { providerId, apiKey }, "write_failed");
-  if (!result.ok) {
     try {
-      credentialStore?.remove(providerId);
+      if (previous) await rpc("setProviderApiKey", { providerId, apiKey: previous }, "write_failed");
+      else await rpc("removeProviderApiKey", { providerId }, "write_failed");
     } catch {
-      /* best effort */
+      /* best effort rollback */
     }
+    return errorResult(error?.code ?? "encryption_unavailable", error instanceof Error ? error.message : String(error));
   }
   return result;
 });
@@ -1532,12 +1572,22 @@ ipcMain.handle("omega:removeProviderApiKey", async (event, req) => {
     return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
   }
   const providerId = req.providerId.trim().slice(0, 128);
+  const previous = credentialStore?.read(providerId) ?? null;
+  const result = await rpc("removeProviderApiKey", { providerId }, "write_failed");
+  if (!result.ok) return result;
   try {
     credentialStore?.remove(providerId);
-  } catch {
-    /* best effort */
+  } catch (error) {
+    if (previous) {
+      try {
+        await rpc("setProviderApiKey", { providerId, apiKey: previous }, "write_failed");
+      } catch {
+        /* best effort rollback */
+      }
+    }
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
   }
-  return rpc("removeProviderApiKey", { providerId }, "write_failed");
+  return result;
 });
 
 ipcMain.handle("omega:setSessionName", async (event, req) => {
@@ -1548,6 +1598,8 @@ ipcMain.handle("omega:setSessionName", async (event, req) => {
   const targetId = normalized.sessionId ?? currentId;
   if (!targetId) return errorResult("invalid_args", "sessionId is required");
   try {
+    const target = await authorizedSessionOf(targetId);
+    if (!target) return errorResult("not_found", "Session not found");
     if (targetId === currentId) {
       return rpc("setSessionName", { name: normalized.name }, "write_failed");
     }
@@ -1556,8 +1608,7 @@ ipcMain.handle("omega:setSessionName", async (event, req) => {
       await slot.host.call("setSessionName", { name: normalized.name });
       return rpc("getState", undefined, "read_failed");
     }
-    const sessionPath = await resolveSessionPath(targetId);
-    if (!sessionPath) return errorResult("not_found", "Session not found");
+    const sessionPath = target.path;
     const root = resolve(piSessionsRoot()).toLowerCase();
     const resolved = resolve(String(sessionPath)).toLowerCase();
     const inRoot = resolved === root || resolved.startsWith(`${root}\\`) || resolved.startsWith(`${root}/`);
@@ -1599,10 +1650,15 @@ ipcMain.handle("omega:checkpointList", (event) => {
   return listCheckpoints(cwd).then(okResult, (error) => errorResult("read_failed", error instanceof Error ? error.message : String(error)));
 });
 
-ipcMain.handle("omega:checkpointCreate", (event, req) => {
+ipcMain.handle("omega:checkpointCreate", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const cwd = activeCwd ?? rootOf();
   if (!cwd) return errorResult("unavailable", "No active workspace");
+  try {
+    await assertDesktopOperation("checkpoint.create", { path: cwd });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   const label = typeof req?.label === "string" && req.label.trim() ? req.label.trim().slice(0, 200) : "手动快照";
   void pruneCheckpoints(cwd).catch(() => {});
   return createCheckpoint(cwd, label).then(
@@ -1620,11 +1676,16 @@ ipcMain.handle("omega:checkpointCreate", (event, req) => {
   );
 });
 
-ipcMain.handle("omega:checkpointRestore", (event, req) => {
+ipcMain.handle("omega:checkpointRestore", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const cwd = activeCwd ?? rootOf();
   if (!cwd) return errorResult("unavailable", "No active workspace");
   if (typeof req?.id !== "string" || !/^[0-9a-f]{40}$/.test(req.id)) return errorResult("invalid_args", "id is required");
+  try {
+    await assertDesktopOperation("checkpoint.restore", { path: cwd, checkpointId: req.id });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   return restoreCheckpoint(cwd, req.id).then(
     async (data) => {
       if (worker && worker.cwd === cwd) {
@@ -1803,17 +1864,27 @@ ipcMain.handle("omega:setResourceEnabled", async (event, req) => {
   }, "write_failed");
 });
 
-ipcMain.handle("omega:setSkillModelInvocation", (event, req) => {
+ipcMain.handle("omega:setSkillModelInvocation", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.filePath !== "string" || !req.filePath.trim()) {
     return errorResult("invalid_args", "filePath is required");
+  }
+  try {
+    await assertDesktopOperation("skill.frontmatter", { filePath: req.filePath });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
   }
   if (!isUnderAuthorizedRoot(req.filePath)) return errorResult("forbidden", "只能修改已授权根目录内的 Skill");
   return rpc("setSkillModelInvocation", { filePath: req.filePath, disable: req.disable === true }, "write_failed");
 });
 
-ipcMain.handle("omega:setSkillCommandsEnabled", (event, req) => {
+ipcMain.handle("omega:setSkillCommandsEnabled", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    await assertDesktopOperation("skill.commands");
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   return rpc("setSkillCommandsEnabled", { enabled: req?.enabled !== false }, "write_failed");
 });
 
@@ -1853,6 +1924,7 @@ function errorLike(code, message) {
 ipcMain.handle("omega:mcpAdd", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
+    await assertDesktopOperation("mcp.write", { name: req?.name, path: req?.project === true ? mcpProjectFile() : MCP_USER_FILE });
     const name = validateMcpName(req?.name);
     const command = validateMcpCommand(req?.command);
     const args = validateMcpArgs(req?.args);
@@ -1870,6 +1942,7 @@ ipcMain.handle("omega:mcpAdd", async (event, req) => {
 ipcMain.handle("omega:mcpSetEnabled", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
+    await assertDesktopOperation("mcp.write", { name: req?.name, path: req?.project === true ? mcpProjectFile() : MCP_USER_FILE });
     const name = validateMcpName(req?.name);
     if (req?.project === true) assertMcpProjectScopeAllowed();
     mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) =>
@@ -1885,6 +1958,7 @@ ipcMain.handle("omega:mcpSetEnabled", async (event, req) => {
 ipcMain.handle("omega:mcpRemove", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
+    await assertDesktopOperation("mcp.write", { name: req?.name, path: req?.project === true ? mcpProjectFile() : MCP_USER_FILE });
     const name = validateMcpName(req?.name);
     if (req?.project === true) assertMcpProjectScopeAllowed();
     // Removal only deletes the definition key; nothing else in the file moves.
@@ -1953,11 +2027,11 @@ ipcMain.handle("omega:readSessionMessages", async (event, req) => {
   const normalized = sessionRequest(req);
   if (!normalized) return errorResult("invalid_args", "sessionId is required");
   try {
-    const sessionPath = await resolveSessionPath(normalized.sessionId);
-    if (!sessionPath) return errorResult("not_found", "Session not found");
-    return okResult(await readSessionMessages(sessionPath, { offset: req.offset, limit: req.limit }));
+    const target = await authorizedSessionOf(normalized.sessionId, req?.workspace);
+    if (!target) return errorResult("not_found", "Session not found");
+    return okResult(await readSessionMessages(target.path, { offset: req.offset, limit: req.limit }));
   } catch (error) {
-    return errorResult("read_failed", error instanceof Error ? error.message : String(error));
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
   }
 });
 
@@ -2027,7 +2101,10 @@ ipcMain.handle("omega:deleteSession", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = sessionRequest(req);
   if (!normalized) return errorResult("invalid_args", "sessionId is required");
+  let authorized;
   try {
+    authorized = await authorizedSessionOf(normalized.sessionId);
+    if (!authorized) return errorResult("not_found", "Session not found");
     await assertOperationAllowed({ profile: desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE, cwd: activeCwd ?? rootOf(), confirm: confirmPermission, operation: "session.delete", input: { sessionId: normalized.sessionId } });
   } catch (error) {
     return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
@@ -2043,7 +2120,7 @@ ipcMain.handle("omega:deleteSession", async (event, req) => {
     }
     await workerPool.dispose(target);
     forgetSessionEvents(target);
-    const sessionPath = await resolveSessionPath(target);
+    const sessionPath = authorized.path;
     if (sessionPath) {
       // Defense in depth: only ever delete files inside the pi sessions root.
       const root = resolve(piSessionsRoot()).toLowerCase();
@@ -2130,8 +2207,13 @@ ipcMain.handle("omega:chooseFileForWorkspace", async (event) => {
   return okResult({ selectionId, name: basename(picked.filePaths[0]) });
 });
 
-ipcMain.handle("omega:uploadFile", (event, req) => {
+ipcMain.handle("omega:uploadFile", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    await assertDesktopOperation("file.upload", { path: req?.path });
+  } catch (error) {
+    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
+  }
   pruneFileSelections();
   const selection = fileSelections.get(req?.selectionId);
   if (!selection) return errorResult("not_found", "文件选择已过期");
@@ -2193,6 +2275,7 @@ ipcMain.handle("omega:listWorktrees", (event) => {
 ipcMain.handle("omega:addWorktree", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
+    await assertDesktopOperation("worktree.add", { path: req?.path });
     const cwd = activeCwd ?? rootOf();
     let path = typeof req?.path === "string" ? req.path.trim() : "";
     if (!path && win) {
@@ -2235,22 +2318,24 @@ ipcMain.handle("omega:gitSnapshot", (event) => {
   }
 });
 
-ipcMain.handle("omega:gitStage", (event, req) => {
+ipcMain.handle("omega:gitStage", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
     const normalized = gitStageRequest(req);
     if (!normalized) return errorResult("invalid_args", "snapshotToken and items are required");
+    await assertDesktopOperation("git.stage", { path: activeCwd ?? rootOf(), items: normalized.items });
     return okResult(diffService.stageItems(activeCwd ?? rootOf(), normalized.items, normalized.snapshotToken));
   } catch (error) {
-    return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));
+    return errorResult(error?.code ?? "git_unavailable", error instanceof Error ? error.message : String(error));
   }
 });
 
-ipcMain.handle("omega:gitUnstage", (event, req) => {
+ipcMain.handle("omega:gitUnstage", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
     const normalized = gitStageRequest(req);
     if (!normalized) return errorResult("invalid_args", "snapshotToken and items are required");
+    await assertDesktopOperation("git.unstage", { path: activeCwd ?? rootOf(), items: normalized.items });
     return okResult(diffService.unstageItems(activeCwd ?? rootOf(), normalized.items, normalized.snapshotToken));
   } catch (error) {
     return errorResult("git_unavailable", error instanceof Error ? error.message : String(error));

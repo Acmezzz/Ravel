@@ -81,6 +81,7 @@ receive(async (message) => {
 });
 
 process.on("uncaughtException", (error) => {
-  try { post({ type: "error", error: error instanceof Error ? error.stack ?? error.message : String(error) }); } catch { /* best effort */ }
+  console.error("histos worker crashed", error);
+  try { post({ type: "error", error: "Histos worker failed" }); } catch { /* best effort */ }
   process.exit(1);
 });

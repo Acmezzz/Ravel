@@ -77,10 +77,13 @@ export function readFile(root, relPath) {
   if (media && size <= MAX_MEDIA_BYTES) return { path: relPath, size, binary: true, mimeType, dataUrl: `data:${mimeType};base64,${buffer.toString("base64")}` };
   if (media) return { path: relPath, size, binary: true, mimeType, truncated: true };
   if (head.includes(0)) return { path: relPath, size, binary: true, mimeType };
-  const content = buffer.toString("utf8", 0, Math.min(buffer.length, MAX_READ_BYTES));
+  const rawContent = buffer.toString("utf8", 0, Math.min(buffer.length, MAX_READ_BYTES));
   const truncated = size > MAX_READ_BYTES;
-  const lineCount = truncated ? content.split("\n").length : undefined;
-  return { path: relPath, size, binary: false, content, truncated, mimeType, offset: 0, nextOffset: truncated ? lineCount : null, totalLines: truncated ? lineCount : undefined };
+  if (!truncated) return { path: relPath, size, binary: false, content: rawContent, truncated: false, mimeType, offset: 0, nextOffset: null };
+  const lastNewline = rawContent.lastIndexOf("\n");
+  const content = lastNewline >= 0 ? rawContent.slice(0, lastNewline) : "";
+  const nextOffset = content ? content.split("\n").length : 0;
+  return { path: relPath, size, binary: false, content, truncated: true, mimeType, offset: 0, nextOffset };
 }
 
 export function readFilePage(root, relPath, offset = 0, limit = 200) {

@@ -32,6 +32,19 @@ test("workspace reader paginates large text by line", async () => {
   assert.match(second.content, /^line-100/);
 });
 
+test("workspace reader truncation advances only past complete lines", async () => {
+  const root = await mkdtemp(join(tmpdir(), "omega-viewer-"));
+  const prefix = "a".repeat(512 * 1024 - 20);
+  await writeFile(join(root, "truncated.txt"), `${prefix}\ncomplete\n${"b".repeat(100)}\nfinal`);
+  const first = readFile(root, "truncated.txt");
+  assert.equal(first.truncated, true);
+  assert.match(first.content, /complete/);
+  assert.doesNotMatch(first.content, /b{100}/);
+  assert.equal(first.nextOffset, 2);
+  const next = readFilePage(root, "truncated.txt", first.nextOffset, 10);
+  assert.match(next.content, /^bbbb/);
+});
+
 test("workspace reader rejects oversized paginated files before reading all content", async () => {
   const root = await mkdtemp(join(tmpdir(), "omega-viewer-"));
   await writeFile(join(root, "oversized.txt"), Buffer.alloc(8 * 1024 * 1024 + 1, 97));

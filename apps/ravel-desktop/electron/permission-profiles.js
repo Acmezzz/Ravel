@@ -28,12 +28,22 @@ function riskTierOf(toolName) {
 }
 const OPERATION_POLICIES = Object.freeze({
   "git.commit": { workspaceBound: true, confirmation: true },
+  "git.stage": { workspaceBound: true, confirmation: true },
+  "git.unstage": { workspaceBound: true, confirmation: true },
+  "worktree.add": { workspaceBound: true, confirmation: true },
   "worktree.remove": { workspaceBound: true, confirmation: true },
   "change.approve": { workspaceBound: true, confirmation: true },
+  "checkpoint.create": { workspaceBound: true, confirmation: true },
+  "checkpoint.restore": { workspaceBound: true, confirmation: true },
+  "skill.frontmatter": { workspaceBound: true, confirmation: true },
+  "skill.commands": { workspaceBound: true, confirmation: true },
+  "mcp.write": { workspaceBound: true, confirmation: true },
+  "file.upload": { workspaceBound: true, confirmation: true },
   "resource.install": { workspaceBound: true, confirmation: true },
   "resource.remove": { workspaceBound: true, confirmation: true },
   "resource.enable": { workspaceBound: true, confirmation: true },
   "session.delete": { workspaceBound: false, confirmation: true },
+  "provider.config.write": { workspaceBound: false, confirmation: true },
   "provider.key.write": { workspaceBound: false, confirmation: true },
   "provider.key.remove": { workspaceBound: false, confirmation: true },
 });

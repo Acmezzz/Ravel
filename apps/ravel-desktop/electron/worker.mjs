@@ -283,17 +283,16 @@ function attach(session) {
     /* best effort */
   }
   unsubscribe = session.subscribe((event) => {
-    const meta = {
-      sequence: ++eventSequence,
+    const baseMeta = {
       sessionId: runtime?.session?.sessionId ?? session?.sessionId,
       runId: activeRunId,
       generation,
       runtimeEpoch,
       clientMessageId: activeClientMessageIds.size === 1 ? activeClientMessageIds.values().next().value : null,
     };
-    if (event?.type === "agent_settled") post({ type: "settled", meta });
+    if (event?.type === "agent_settled") post({ type: "settled", meta: { ...baseMeta, sequence: ++eventSequence } });
     for (const projected of bridge.toRendererEvent(event)) {
-      if (projected) post({ type: "app-event", event: projected, meta });
+      if (projected) post({ type: "app-event", event: projected, meta: { ...baseMeta, sequence: ++eventSequence } });
     }
   });
 }
@@ -905,7 +904,8 @@ process.parentPort.on("message", async (event) => {
     try {
       await init(message);
     } catch (error) {
-      post({ type: "init-error", error: error instanceof Error ? error.stack ?? error.message : String(error) });
+      console.error("agent worker initialization failed", error);
+      post({ type: "init-error", error: "Agent worker initialization failed" });
     }
     return;
   }
@@ -942,8 +942,9 @@ process.parentPort.on("message", async (event) => {
 });
 
 process.on("uncaughtException", (error) => {
+  console.error("agent worker crashed", error);
   try {
-    post({ type: "worker-error", error: error instanceof Error ? error.stack ?? error.message : String(error) });
+    post({ type: "worker-error", error: "Agent worker failed" });
   } catch {
     /* best effort */
   }

@@ -258,6 +258,25 @@ test("custom window controls are guarded IPC behind senderAllowed", async () => 
   assert.match(preload, /onWindowStateChanged/);
 });
 
+test("session-targeted handlers authorize workspace ownership before access", async () => {
+  const main = await read("../electron/main.js");
+  assert.match(main, /authorizedSessionOf/);
+  assert.match(main, /allowedWorkspaces = \(workspaceRegistry\?\.list\(\) \?\? \[\]\)/);
+  for (const marker of [
+    'ipcMain.handle("omega:readSessionMessages"',
+    'ipcMain.handle("omega:setSessionName"',
+    'ipcMain.handle("omega:deleteSession"',
+  ]) {
+    const handler = main.slice(main.indexOf(marker));
+    assert.match(handler, /authorizedSessionOf/);
+  }
+  const load = main.slice(main.indexOf("async function loadNamedSession"));
+  assert.ok(load.indexOf("authorizedSessionOf") < load.indexOf("workerPool.get"));
+  const deletion = main.slice(main.indexOf('ipcMain.handle("omega:deleteSession"'));
+  assert.ok(deletion.indexOf("authorizedSessionOf") < deletion.indexOf("workerPool.dispose"));
+  assert.ok(deletion.indexOf("authorizedSessionOf") < deletion.indexOf("unlinkSync"));
+});
+
 test("deleteSession only removes files inside the pi sessions root", async () => {
   const main = await read("../electron/main.js");
   assert.match(main, /piSessionsRoot/);
@@ -285,6 +304,16 @@ test("first prompt auto-titles an unnamed session", async () => {
   const worker = await read("../electron/worker.mjs");
   assert.match(worker, /autoTitleFor/);
   assert.match(worker, /sessionName/);
+});
+
+test("utility workers do not forward stack traces across the process boundary", async () => {
+  const worker = await read("../electron/worker.mjs");
+  const histosWorker = await read("../electron/histos-worker.mjs");
+  assert.match(worker, /post\(\{ type: "init-error", error: "Agent worker initialization failed" \}\)/);
+  assert.match(worker, /post\(\{ type: "worker-error", error: "Agent worker failed" \}\)/);
+  assert.match(histosWorker, /post\(\{ type: "error", error: "Histos worker failed" \}\)/);
+  assert.doesNotMatch(worker, /post\(\{[^}]*error:\s*error\?\.stack/);
+  assert.doesNotMatch(histosWorker, /post\(\{[^}]*error:\s*error\?\.stack/);
 });
 
 test("node-pty stays in the isolated PTY worker and is unpacked for ConPTY", async () => {
