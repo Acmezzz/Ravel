@@ -1,8 +1,11 @@
 # Ravel 核心设计
 
 更新日期：2026-08-28
+状态：**不变量仍有效。** 下一刀执行认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。铬件换栈、R0–R5 数据契约仍见 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。
 
-本文只记录已经拍板的产品不变量。冲突时以本文为准。铬件换栈、Histos schema、剩余实施顺序见 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。
+**记忆勘误：** §1「先不设计跨项目记忆」不再读成「不做记忆」。记忆就是 Histos：同工作区默认可检索、可建议；跨工作区只能显式搬运已 freeze 的 ContextSet。不另做记忆产品。
+
+本文只记录已经拍板的产品不变量。冲突时以本文为准（记忆行以 next-cycle 勘误为准）。
 
 切片 0 / 1 与 Histos R0–R5 已在 `feat/histos-r2-renderer-migration` 落地。本文不再把画布、切分器、sqlite 写成「下一刀才允许」。R5 hang-fix（H0）与锁定栈 T1–T5 亦已提交。下一刀是剩余产品深度缺口，不是重开不变量。
 

@@ -1,7 +1,7 @@
 # 设计：动态视图、@session 引用、MCP 管理
 
 更新日期：2026-08-28
-状态：**已实现，不再作为待办。** 2026-08-26 落地（`7cf8a26f0`）。前置阅读：`ravel-core-design-and-next-slices.md`（不变量）。剩余工作只认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md) 与 [`ravel-roadmap.md`](./ravel-roadmap.md)。交互排布已消化进 Workbench / ActivityList，不再另存学习报告。
+状态：**已实现，不再作为待办。** 2026-08-26 落地（`7cf8a26f0`）。前置阅读：`ravel-core-design-and-next-slices.md`（不变量）。下一刀认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。R0–R5 档案认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。交互排布已消化进 Workbench / ActivityList，不再另存学习报告。
 
 三者的共同判据：每个功能要么新增带冻结 id 的事实对象，要么是对既有事实的派生投影；不新增第二权威、不新增看板式假面板。
 

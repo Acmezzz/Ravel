@@ -1,8 +1,7 @@
 # Ravel 未完成工作
 
 更新日期：2026-08-28
-
-已完成的迁移、切片 0/1、S2–S4、Histos R0–R5 不再列为待办。技术栈与切片定义只认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。发布策略认 [`ravel-release.md`](./ravel-release.md)。
+状态：**索引仍有效；当前执行顺序认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。** 已完成的迁移、切片 0/1、S2–S4、Histos R0–R5 不再列为待办。R0–R5 与锁定栈档案认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。发布策略认 [`ravel-release.md`](./ravel-release.md)。
 
 当前工作树：`main`（HEAD `9b98e529b`，已推送 origin；feat 分支已并入并删除）。H0、T1–T5、P1/P5/P6/P7/P8 与 P2/P3/P4 深化均已提交。不发 npm，暂不发安装器 / exe Release。
 
@@ -25,7 +24,7 @@
 
 ## 现在就该做
 
-剩余缺口全部在产品深度（P*），不在工具链：
+剩余缺口全部在产品深度，不在工具链。本周期切片（N0–N6：checkpoint、semanticProvider、会话结构入库、Plan 模式、资源蒸馏、同工作区记忆、跨库 ContextSet）只认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。下表是历史 P* 对照，其中 P3/P4/P8 与凝练 eval 已明确推迟。
 
 | 缺口 | 说明 |
 |---|---|

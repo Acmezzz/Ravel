@@ -1,6 +1,7 @@
 # Ravel 发布策略
 
 更新日期：2026-08-28
+状态：**有效。** 产品切片不在本文。下一刀认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。
 
 本文件明确 Ravel Desktop 的版本、产物和分发决策。不发任何 npm 包。开发未完成前不发安装包或 exe Release。
 

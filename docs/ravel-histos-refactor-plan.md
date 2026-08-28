@@ -1,10 +1,10 @@
 # Ravel × Histos 生产目标与实施计划
 
 更新日期：2026-08-28
-状态：**R0–R5 与 H0、T1–T5 已在 `feat/histos-r2-renderer-migration` 落地；锁定栈已全部装上；剩余是 P* 产品深度切片。无备选栈。**
+状态：**R0–R5 / H0 / T1–T5 已完成档案。** 锁定栈与 §7 数据契约仍有效。剩余产品切片不再以本文为执行入口，改认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。
 前置：[`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)
 
-本文是铬件、Histos 三层、进程边界与剩余切片的单一执行计划。核心不变量仍以核心设计文档为准。冲突时以那份为准；本文负责锁定栈、数据契约、怎么改、按什么顺序、验收什么。
+本文保留铬件、Histos 三层、进程边界与 R0–R5 验收。核心不变量仍以核心设计为准。不要把下一刀写回本文。
 
 没有备选方案。失败时修目标栈，不退回旧 major、不并行第二套库。
 
