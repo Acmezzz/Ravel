@@ -385,6 +385,8 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:setModeProfile", { mode: req.mode });
   },
+  planReview: () => ipcRenderer.invoke("omega:planReview", {}),
+  approvePlan: () => ipcRenderer.invoke("omega:approvePlan", {}),
   setProviderApiKey: (req) => {
     if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) {
       return Promise.resolve({ ok: false, code: "invalid_args", message: "providerId is required" });

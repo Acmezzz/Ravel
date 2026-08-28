@@ -1636,6 +1636,21 @@ ipcMain.handle("omega:setModeProfile", async (event, req) => {
   return okResult({ modeProfile: mode });
 });
 
+// Plan review (next-cycle B1): the plan file lives under the active worker's
+// workspace; the renderer never supplies paths.
+ipcMain.handle("omega:planReview", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  return rpc("getPlanFile", {}, "read_failed");
+});
+
+ipcMain.handle("omega:approvePlan", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const result = await rpc("approvePlan", {}, "write_failed");
+  if (!result.ok) return result;
+  desktopSettings.update({ modeProfile: "default" });
+  return result;
+});
+
 ipcMain.handle("omega:setProviderApiKey", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!req || typeof req.providerId !== "string" || !req.providerId.trim()) return errorResult("invalid_args", "providerId is required");

@@ -76,6 +76,8 @@ export const IPC_CHANNELS = Object.freeze({
   approveChange: "omega:approveChange",
   setPermissionProfile: "omega:setPermissionProfile",
   setModeProfile: "omega:setModeProfile",
+  planReview: "omega:planReview",
+  approvePlan: "omega:approvePlan",
   configureCustomProvider: "omega:configureCustomProvider",
   histosGetGraph: "omega:histosGetGraph",
   histosCondenseGraph: "omega:histosCondenseGraph",

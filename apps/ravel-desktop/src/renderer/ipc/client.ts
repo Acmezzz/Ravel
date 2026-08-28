@@ -20,6 +20,7 @@ import type {
   SlashCommandInfo,
   AuthStatus,
   DesktopSettings,
+  PlanReviewResult,
   PromptImage,
   PtyDataDTO,
   PtyExitDTO,
@@ -160,6 +161,8 @@ export interface RavelBridge {
   configureCustomProvider(req: Record<string, unknown>): Promise<IpcResult<{ provider: Record<string, unknown>; models: ModelInfo[] }>>;
   setPermissionProfile(req: { profile: DesktopSettings["permissionProfile"] }): Promise<IpcResult<DesktopSettings>>;
   setModeProfile(req: { mode: DesktopSettings["modeProfile"] }): Promise<IpcResult<{ modeProfile: DesktopSettings["modeProfile"] }>>;
+  planReview(): Promise<IpcResult<PlanReviewResult>>;
+  approvePlan(): Promise<IpcResult<{ mode: string }>>;
   histosGetGraph(req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>>;
   histosCondenseGraph(req: HistosCondenseGraphRequest): Promise<IpcResult<HistosCondenseGraphResultDTO>>;
   histosSaveViewState(req: HistosQueryDTO & { positions: Array<{ id: string; x: number; y: number }> }): Promise<IpcResult<{ sha256: string; artifact: HistosArtifactDTO }>>;
@@ -327,6 +330,8 @@ export const ipc = {
     ok(await window.omega?.setPermissionProfile?.(req)),
   setModeProfile: async (req: { mode: DesktopSettings["modeProfile"] }): Promise<IpcResult<{ modeProfile: DesktopSettings["modeProfile"] }>> =>
     ok(await window.omega?.setModeProfile?.(req)),
+  planReview: async (): Promise<IpcResult<PlanReviewResult>> => ok(await window.omega?.planReview?.()),
+  approvePlan: async (): Promise<IpcResult<{ mode: string }>> => ok(await window.omega?.approvePlan?.()),
   histosGetGraph: async (req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>> =>
     ok(await window.omega?.histosGetGraph?.(req)),
   histosCondenseGraph: async (req: HistosCondenseGraphRequest): Promise<IpcResult<HistosCondenseGraphResultDTO>> =>

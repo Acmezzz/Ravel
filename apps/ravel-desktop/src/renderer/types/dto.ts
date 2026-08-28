@@ -594,6 +594,13 @@ export interface DesktopSettings {
   windowBounds: DesktopWindowBounds | null;
 }
 
+/** Plan-mode review surface (next-cycle B1). The path is main-derived. */
+export interface PlanReviewResult {
+  path: string | null;
+  exists: boolean;
+  content: string;
+}
+
 export interface TreeNodeRow {
   id: string;
   parentId: string | null;

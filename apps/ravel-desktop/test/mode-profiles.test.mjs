@@ -2,11 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createPermissionGuard } from "../electron/permission-profiles.js";
 import {
+  MODE_DIRECTIVE_BEGIN,
   PLAN_MODE_TOOLS,
+  buildModeDirectiveBlock,
   getModeProfile,
   listModeProfiles,
   modeAllowsTool,
   sanitizeModeProfile,
+  stripModeDirectiveBlock,
 } from "../electron/mode-profiles.js";
 
 test("ModeProfile registry freezes the plan contract and marks goal unwired", () => {
@@ -86,4 +89,64 @@ test("mode allowlist denies before any profile confirm could grant access", asyn
     (error) => error.code === "permission_denied",
   );
   assert.equal(confirmCalled, 0, "a mode-denied tool must not reach the approval UI");
+});
+
+const PLAN_FILE = "/ws/.ravel/plans/s1.md";
+
+function planGuard(overrides = {}) {
+  return createPermissionGuard({
+    profile: "read-only",
+    cwd: "/ws",
+    allowTool: (toolName) => modeAllowsTool("plan", toolName),
+    planWritePath: PLAN_FILE,
+    ...overrides,
+  });
+}
+
+test("plan-mode carve-out lets the agent write only the designated plan file", async () => {
+  const guard = planGuard();
+  // Both write and edit pass when the target resolves exactly to the plan
+  // file (relative or absolute, not yet existing -> lexical match).
+  await guard({ toolCall: { name: "write", id: "w1" }, args: { path: ".ravel/plans/s1.md" } });
+  await guard({ toolCall: { name: "edit", id: "e1" }, args: { path: PLAN_FILE } });
+  // Any other target stays blocked, even a sibling inside .ravel.
+  await assert.rejects(
+    () => guard({ toolCall: { name: "write", id: "w2" }, args: { path: ".ravel/plans/other.md" } }),
+    (error) => error.code === "permission_denied",
+  );
+  await assert.rejects(
+    () => guard({ toolCall: { name: "write", id: "w3" }, args: { path: "plan.md" } }),
+    (error) => error.code === "permission_denied",
+  );
+  // A plan file that resolves to itself via a different spelling is still allowed.
+  await guard({ toolCall: { name: "write", id: "w4" }, args: { path: "/ws/.ravel/plans/../plans/s1.md" } });
+});
+
+test("a user deny rule blocks even the plan-file carve-out", async () => {
+  const guard = planGuard({
+    rules: [{ permission: "write", pattern: ".ravel/*", action: "deny" }],
+  });
+  await assert.rejects(
+    () => guard({ toolCall: { name: "write", id: "w5" }, args: { path: ".ravel/plans/s1.md" } }),
+    /权限规则/,
+  );
+});
+
+test("without planWritePath the carve-out never opens, matching the frozen N3 behavior", async () => {
+  const guard = planGuard({ planWritePath: null });
+  await assert.rejects(
+    () => guard({ toolCall: { name: "write", id: "w6" }, args: { path: ".ravel/plans/s1.md" } }),
+    (error) => error.code === "permission_denied",
+  );
+});
+
+test("mode directive block builds for plan mode and strips from the transcript", () => {
+  const block = buildModeDirectiveBlock(PLAN_FILE);
+  assert.ok(block.startsWith(`\n${MODE_DIRECTIVE_BEGIN}`));
+  const { text, block: stripped } = stripModeDirectiveBlock(`先探索代码${block}`);
+  assert.equal(text, "先探索代码");
+  assert.equal(stripped, block.slice(1), "strip returns the block without its leading newline");
+  // Non-plan modes produce no block; stripping a plain text is a no-op.
+  assert.equal(buildModeDirectiveBlock(null), "");
+  assert.deepEqual(stripModeDirectiveBlock("普通消息"), { text: "普通消息", block: "" });
 });

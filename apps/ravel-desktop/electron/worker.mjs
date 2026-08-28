@@ -15,7 +15,9 @@
  * window: the main process owns the UI and proxies every omega:* RPC here.
  */
 import { existsSync, lstatSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { stat, readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import { DefaultPackageManager } from "@earendil-works/pi-coding-agent";
 import { completeSimple, contentText } from "@earendil-works/pi-ai/compat";
 import { processLog } from "./process-log.js";
@@ -31,7 +33,7 @@ import {
 import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
-import { getModeProfile, modeAllowsTool, sanitizeModeProfile } from "./mode-profiles.js";
+import { getModeProfile, modeAllowsTool, sanitizeModeProfile, buildModeDirectiveBlock, PLAN_APPROVED_TEXT } from "./mode-profiles.js";
 import { validateCustomProvider } from "./custom-providers.js";
 import {
   appendCheckpointFacts,
@@ -171,6 +173,7 @@ async function bindSession(session) {
       profile: effectivePermissionProfile(),
       allowTool: (toolName) => modeAllowsTool(modeProfile, toolName),
       cwd: runtime.cwd,
+      planWritePath: planFilePath(),
       confirm: (title, message, onIssued) => uiContext.confirm(title, message, { onIssued }),
       facts: {
         runId: () => activeRunId ?? "",
@@ -330,6 +333,15 @@ let modeProfile = "default";
 
 function effectivePermissionProfile() {
   return getModeProfile(modeProfile)?.forcedPermissionProfile ?? permissionProfile;
+}
+
+/**
+ * The plan-mode deliverable (next-cycle B1): one file per session the agent
+ * may write while every other path stays read-only. Null outside plan mode.
+ */
+function planFilePath() {
+  if (modeProfile !== "plan" || !runtime?.cwd || !runtime?.session?.sessionId) return null;
+  return join(runtime.cwd, ".ravel", "plans", `${runtime.session.sessionId}.md`);
 }
 
 async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, modeProfile: mode, runtimeCredentials = {}, mcpCredentials = {}, customProviders = {} }) {
@@ -534,7 +546,9 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
   // user entry therefore holds exactly what the model saw, and the renderer
   // strips it for display.
   const referenceBlock = buildSessionReferenceBlock(refs);
-  const fullText = referenceBlock ? `${text}${referenceBlock}` : text;
+  const modeBlock = buildModeDirectiveBlock(planFilePath());
+  const suffix = [referenceBlock, modeBlock].filter(Boolean).join("");
+  const fullText = suffix ? `${text}${suffix}` : text;
   let leafBefore = null;
   if (refs.length > 0 && typeof session.sessionManager?.getLeafId === "function") {
     leafBefore = session.sessionManager.getLeafId();
@@ -772,7 +786,41 @@ const methods = {
     appendContextAttachedFact(runtime.session.sessionManager, { targetSessionId, contextSha, lane });
     return { targetSessionId, contextSha };
   },
-  getState: () => ({ ...bridge.snapshotOf(runtime), mode: modeProfile, effectiveProfile: effectivePermissionProfile() }),
+  getState: () => ({ ...bridge.snapshotOf(runtime), mode: modeProfile, effectiveProfile: effectivePermissionProfile(), planFile: planFilePath() }),
+  /** Plan review surface (B1): the plan file's content for the human gate. */
+  getPlanFile: async () => {
+    const planFile = planFilePath();
+    if (!planFile) return { path: null, exists: false, content: "" };
+    try {
+      const info = await stat(planFile);
+      if (!info.isFile()) return { path: planFile, exists: false, content: "" };
+      const content = info.size > 262_144 ? (await readFile(planFile, "utf8")).slice(0, 262_144) : await readFile(planFile, "utf8");
+      return { path: planFile, exists: content.trim().length > 0, content };
+    } catch {
+      return { path: planFile, exists: false, content: "" };
+    }
+  },
+  /**
+   * Human-review plan exit (B1): fail closed without a non-empty plan file,
+   * then switch to the default mode and inject the durable approval message.
+   */
+  approvePlan: async () => {
+    if (modeProfile !== "plan") {
+      const error = new Error("Not in plan mode");
+      error.code = "not_in_plan_mode";
+      throw error;
+    }
+    const planFile = planFilePath();
+    if (!planFile || !existsSync(planFile)) {
+      const error = new Error("Plan file is missing; nothing to approve");
+      error.code = "plan_file_missing";
+      throw error;
+    }
+    modeProfile = "default";
+    await bindSession(runtime.session);
+    await prompt({ text: PLAN_APPROVED_TEXT, behavior: "followUp", generation });
+    return { mode: modeProfile, snapshot: bridge.snapshotOf(runtime) };
+  },
   listModels: () => bridge.listModels(runtime),
   configureCustomProvider: async (input) => {
     const provider = validateCustomProvider(input);

@@ -20,6 +20,7 @@ import { existsSync, lstatSync, readdirSync, realpathSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FACT_CUSTOM_TYPE, stripSessionReferenceBlock } from "./session-facts.js";
+import { stripModeDirectiveBlock } from "./mode-profiles.js";
 import { computeTelemetry } from "./telemetry.js";
 
 export const AGENT_DIR = join(homedir(), ".pi", "agent");
@@ -381,10 +382,11 @@ export function sanitizeTranscript(messagesOrSession) {
     const message = entry.message;
     if (!message || typeof message !== "object") continue;
     if (message.role === "user") {
-      // The delimited reference block is model-facing routing metadata; the
-      // human transcript shows the original words with chips projected from
-      // the durable session_reference facts instead.
-      const { text: visibleText } = stripSessionReferenceBlock(cap(textFromContent(message.content)) ?? "");
+      // Delimited reference and mode-directive blocks are model-facing
+      // metadata; the human transcript shows the original words with chips
+      // projected from the durable session_reference facts instead.
+      const stripped = stripSessionReferenceBlock(cap(textFromContent(message.content)) ?? "");
+      const { text: visibleText } = stripModeDirectiveBlock(stripped.text);
       outMessages.push({
         role: "user",
         id: textValue(message.id) ?? `user-${outMessages.length}`,

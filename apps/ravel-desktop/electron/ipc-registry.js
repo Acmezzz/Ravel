@@ -78,6 +78,8 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:approveChange",
   "omega:setPermissionProfile",
   "omega:setModeProfile",
+  "omega:planReview",
+  "omega:approvePlan",
   "omega:configureCustomProvider",
   "omega:histosGetGraph",
   "omega:histosCondenseGraph",

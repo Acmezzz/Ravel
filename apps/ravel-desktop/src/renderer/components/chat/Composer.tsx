@@ -6,6 +6,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 import { userMessageKey } from "../../lib/prompt-recovery";
 import { clearDraft, getDraft, mergeDraftText, setDraft, type DraftImage } from "../../lib/draft-store";
+import { PlanReview } from "./PlanReview";
 import { useT } from "../../lib/i18n";
 import type { PromptImage } from "../../types/dto";
 
@@ -520,6 +521,7 @@ export function Composer(): React.ReactElement {
 
   return (
     <div className="omega-composer">
+      <PlanReview />
       {historyOpen && inputHistory.length > 0 ? (
         <div id="omega-history-list" role="listbox" aria-label="输入历史" className="omega-composer-suggest">
           <div className="overline-label">{t("composer.historyTitle")}</div>

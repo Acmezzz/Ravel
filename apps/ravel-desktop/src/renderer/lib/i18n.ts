@@ -125,6 +125,15 @@ const messages = {
     "composer.stopAria": "停止生成",
     "composer.sendAria": "发送消息",
 
+    "planReview.modeChip": "计划模式",
+    "planReview.open": "审阅计划",
+    "planReview.title": "审阅计划并执行",
+    "planReview.loading": "正在读取计划文件…",
+    "planReview.empty": "计划文件尚未生成。请让 Agent 把计划写入计划文件，再回来审阅。",
+    "planReview.refresh": "刷新",
+    "planReview.keepPlanning": "继续规划",
+    "planReview.approve": "批准并执行",
+
     "sessions.empty": "暂无会话，点击「新建」开始。",
     "sessions.search": "搜索会话",
     "sessions.matchCount": "匹配 {n} 个会话",
@@ -441,6 +450,15 @@ const messages = {
     "composer.steerAria": "Insert into current run",
     "composer.stopAria": "Stop generation",
     "composer.sendAria": "Send message",
+
+    "planReview.modeChip": "Plan mode",
+    "planReview.open": "Review plan",
+    "planReview.title": "Review plan and execute",
+    "planReview.loading": "Loading plan file…",
+    "planReview.empty": "The plan file has not been written yet. Ask the agent to write its plan there, then review again.",
+    "planReview.refresh": "Refresh",
+    "planReview.keepPlanning": "Keep planning",
+    "planReview.approve": "Approve and execute",
 
     "sessions.empty": "No sessions yet — click “New” to start.",
     "sessions.search": "Search sessions",

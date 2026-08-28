@@ -72,11 +72,35 @@ function isInsideWorkspace(value, cwd) {
 }
 
 function pathsFromInput(input) {
-  if (!input || typeof input !== "object") return [];
-  return PATH_KEYS.flatMap((key) => {
-    const value = input[key];
-    return Array.isArray(value) ? value : [value];
-  }).filter((value) => typeof value === "string" && value.trim());
+	if (!input || typeof input !== "object") return [];
+	return PATH_KEYS.flatMap((key) => {
+		const value = input[key];
+		return Array.isArray(value) ? value : [value];
+	}).filter((value) => typeof value === "string" && value.trim());
+}
+
+/** Tools the plan-mode carve-out may target; everything else stays blocked. */
+const PLAN_WRITE_TOOLS = new Set(["write", "edit"]);
+
+/**
+ * Whether a mutating call targets exactly the designated plan file. Lexical
+ * equality first, then canonical equality when both paths exist (symlink
+ * containment); a not-yet-created plan file passes lexically like any other
+ * new workspace path.
+ */
+function isPlanFileWrite(toolName, input, planWritePath, cwd) {
+	if (!PLAN_WRITE_TOOLS.has(toolName)) return false;
+	const paths = pathsFromInput(input);
+	if (paths.length === 0) return false;
+	const target = paths[0];
+	const resolved = target.startsWith("/") || /^[A-Za-z]:\//.test(target) ? resolve(target) : resolve(cwd, target);
+	const expected = resolve(planWritePath);
+	if (normalizePath(resolved) !== normalizePath(expected)) return false;
+	try {
+		return realpathSync.native(resolved) === realpathSync.native(expected);
+	} catch {
+		return true;
+	}
 }
 
 export function sanitizePermissionProfile(value) {
@@ -266,21 +290,13 @@ function recordRuleDecisionFacts({ facts, toolName, toolCallId, input, policyPro
 	});
 }
 
-export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, allowTool, rules = [] }) {
+export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, allowTool, rules = [], planWritePath = null }) {
 	const mode = sanitizePermissionProfile(profile);
 	const rulesets = Array.isArray(rules) ? rules : [rules].filter(Boolean);
 	return async (event) => {
 		const { toolCall, toolCallId, args } = permissionEventOf(event);
 		const toolName = String(toolCall?.name ?? "");
 		const input = args && typeof args === "object" ? args : {};
-		// Session-mode narrowing (e.g. plan mode) applies before any profile
-		// tier: a mode can only remove access, never grant it.
-		if (typeof allowTool === "function" && !allowTool(toolName)) {
-			const error = new Error(`当前会话模式已阻止工具 ${toolName}`);
-			error.code = "permission_denied";
-			throw error;
-		}
-		const tier = riskTierOf(toolName);
 		// Wildcard rules narrow access only: a deny stands in every mode,
 		// while an allow can skip the interactive confirm solely in
 		// ask-before-command mode (trusted needs no skip; restrictive modes
@@ -300,6 +316,22 @@ export function createPermissionGuard({ profile, cwd, confirm, facts, snapshot, 
 			}
 			denied(`权限规则 ${decision.ruleSource} 已拒绝 ${toolName}`);
 		}
+
+		// Plan-mode carve-out (next-cycle B1): the agent may write ONLY the
+		// designated plan file; every other mutating path stays blocked by the
+		// forced read-only profile below. The write itself is a durable JSONL
+		// tool entry, so no extra approval facts are needed. Checked after rule
+		// denies so a user-configured deny rule still blocks plan writes.
+		if (planWritePath && isPlanFileWrite(toolName, input, planWritePath, cwd)) return;
+
+		// Session-mode narrowing (e.g. plan mode) applies before any profile
+		// tier: a mode can only remove access, never grant it.
+		if (typeof allowTool === "function" && !allowTool(toolName)) {
+			const error = new Error(`当前会话模式已阻止工具 ${toolName}`);
+			error.code = "permission_denied";
+			throw error;
+		}
+		const tier = riskTierOf(toolName);
 
 		if (mode === "trusted") return;
 
