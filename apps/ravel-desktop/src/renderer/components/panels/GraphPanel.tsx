@@ -51,6 +51,8 @@ export function GraphPanel(): React.ReactElement {
   const [flow, setFlow] = React.useState<HistosConvertToFlowResultDTO | null>(null);
   const [convertResult, setConvertResult] = React.useState<string | null>(null);
   const [executingFlow, setExecutingFlow] = React.useState(false);
+  const [scheduling, setScheduling] = React.useState(false);
+  const [scheduleResult, setScheduleResult] = React.useState<string | null>(null);
   const [executeResult, setExecuteResult] = React.useState<string | null>(null);
   const [freezing, setFreezing] = React.useState(false);
   const [freezeResult, setFreezeResult] = React.useState<string | null>(null);
@@ -120,6 +122,16 @@ export function GraphPanel(): React.ReactElement {
       : `Flow execution failed: ${result.message}`);
     setExecutingFlow(false);
   }, [activeSessionId, executingFlow, flow]);
+
+  const createSchedule = React.useCallback(async () => {
+    if (!flow?.validation.ok || scheduling) return;
+    setScheduling(true); setScheduleResult(null);
+    const result = await ipc.flowScheduleCreate({ flowSha: flow.sha256, kind: "interval", intervalMinutes: 60, maxRuns: 10 });
+    setScheduleResult(result.ok
+      ? t("graph.scheduleCreated", { id: result.data.items[result.data.items.length - 1]?.id ?? "" })
+      : `${t("graph.scheduleFailed")}: ${result.message}`);
+    setScheduling(false);
+  }, [flow, scheduling, t]);
 
   const condenseGraph = React.useCallback(async () => {
     if (!activeSessionId || !graph || lens === "structural" || condensing) return;
@@ -206,10 +218,12 @@ export function GraphPanel(): React.ReactElement {
               <Button size="sm" variant="quiet" disabled={converting || projected.nodes.length === 0} onClick={() => void convertToFlow()}>{converting ? t("graph.converting") : t("graph.convert")}</Button>
               <Button size="sm" variant="quiet" disabled={condensing || lens === "structural" || projected.nodes.length === 0} onClick={() => void condenseGraph()}>{condensing ? "Condensing…" : "Condense"}</Button>
               <Button size="sm" variant="solid" disabled={!flow?.validation.ok || executingFlow || !activeSessionId} onClick={() => void executeFlow()}>{executingFlow ? "Executing…" : "Run Flow"}</Button>
+              <Button size="sm" variant="quiet" disabled={!flow?.validation.ok || scheduling} onClick={() => void createSchedule()}>{scheduling ? t("graph.scheduling") : t("graph.schedule")}</Button>
             </div>
             {freezeResult ? <span className="omega-muted-text" role="status">{freezeResult}</span> : null}
             {convertResult ? <span className="omega-muted-text" role="status">{convertResult}</span> : null}
             {executeResult ? <span className="omega-muted-text" role="status">{executeResult}</span> : null}
+            {scheduleResult ? <span className="omega-muted-text" role="status">{scheduleResult}</span> : null}
             {condenseResult ? <span className="omega-muted-text" role="status">{condenseResult}</span> : null}
           </div>
           {selected ? (

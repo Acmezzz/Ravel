@@ -344,6 +344,34 @@ export function appendContextAttachedFact(sessionManager, { targetSessionId, con
  * operationId, with targetId = the 40-char commit SHA. Fact failure must
  * never roll back or block the Git snapshot.
  */
+/**
+ * One firing of a scheduled Flow (next-cycle B8). Every attempt is recorded —
+ * started, skipped (busy) or errored — so the trigger history lives in the
+ * session facts, not in the schedule config file.
+ */
+export function appendFlowTriggerFact(sessionManager, { flowSha, scheduleId, outcome, detail } = {}) {
+	if (typeof flowSha !== "string" || !/^[0-9a-f]{64}$/.test(flowSha)) {
+		throw new Error("Invalid flow_trigger fact: flowSha must be a 64-char lowercase SHA-256");
+	}
+	if (typeof scheduleId !== "string" || scheduleId.length === 0 || scheduleId.length > 128) {
+		throw new Error("Invalid flow_trigger fact: scheduleId");
+	}
+	if (!["started", "skipped_busy", "error"].includes(outcome)) {
+		throw new Error("Invalid flow_trigger fact: outcome");
+	}
+	const record = {
+		type: "flow_trigger",
+		id: `trigger-${randomUUID()}`,
+		lane: "main",
+		flowSha,
+		scheduleId,
+		outcome,
+		...(detail ? { detail: String(detail).slice(0, 512) } : {}),
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
+}
+
 export function appendCheckpointFacts(sessionManager, { checkpointId, label, outcome = "completed", error } = {}) {
 	if (typeof checkpointId !== "string" || !/^[0-9a-f]{40}$/.test(checkpointId)) {
 		throw new Error("Invalid checkpoint fact: checkpointId must be a 40-char commit SHA");

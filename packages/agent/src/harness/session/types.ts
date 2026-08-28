@@ -267,6 +267,20 @@ export interface ContextAttachedRecord extends RecordBase {
 	contextSha: string;
 }
 
+/**
+ * One firing of a scheduled Flow (desktop, next-cycle B8). Appended by the
+ * scheduler through the desktop fact writer for every attempt, whether the
+ * flow actually ran, was skipped, or failed — the schedule file is config,
+ * the trigger history is facts.
+ */
+export interface FlowTriggerRecord extends RecordBase {
+	type: "flow_trigger";
+	flowSha: string;
+	scheduleId: string;
+	outcome: "started" | "skipped_busy" | "error";
+	detail?: string;
+}
+
 export type UsageRecord = RecordBase & { type: "usage"; usage: Usage } & (
 		| {
 				cause: "assistant" | "compaction" | "branch_summary" | "deferred_fetch";
@@ -293,7 +307,8 @@ export type LaneRecord =
 	| ApprovalAskedRecord
 	| ApprovalDecidedRecord
 	| SessionReferenceRecord
-	| ContextAttachedRecord;
+	| ContextAttachedRecord
+	| FlowTriggerRecord;
 export type NewRecord<TRecord extends LaneRecord = LaneRecord> = TRecord extends LaneRecord
 	? Omit<TRecord, "seq" | "timestamp">
 	: never;

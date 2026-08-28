@@ -28,6 +28,7 @@ const RECORD_TYPES = new Set<LaneRecord["type"]>([
 	"approval_decided",
 	"session_reference",
 	"context_attached",
+	"flow_trigger",
 ]);
 const OPERATION_KINDS = new Set(["run", "compaction", "navigation"]);
 
@@ -209,6 +210,16 @@ function parseRecordMutation(
 		const contextSha = requireString(value.contextSha, "contextSha");
 		if (!/^[0-9a-f]{64}$/.test(contextSha)) {
 			throw new JsonlDecodeError("schema", "has invalid contextSha");
+		}
+	}
+	if (type === "flow_trigger") {
+		const flowSha = requireString(value.flowSha, "flowSha");
+		if (!/^[0-9a-f]{64}$/.test(flowSha)) {
+			throw new JsonlDecodeError("schema", "has invalid flowSha");
+		}
+		requireNonEmptyString(value.scheduleId, "scheduleId");
+		if (!["started", "skipped_busy", "error"].includes(value.outcome as string)) {
+			throw new JsonlDecodeError("schema", "has invalid flow_trigger outcome");
 		}
 	}
 	const { kind: _kind, ...recordFields } = value;

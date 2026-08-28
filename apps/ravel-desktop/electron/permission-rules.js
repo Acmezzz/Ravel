@@ -57,8 +57,10 @@ function expandHome(value) {
 
 /**
  * Normalize one author-supplied rule. `permission` is the tool (or group);
- * `pattern` defaults to "*" (all calls of that tool). Invalid rules are
- * dropped by the store loader, never evaluated.
+ * `pattern` defaults to "*" (all calls of that tool). An optional `source`
+ * labels the rule's provenance in audit facts (e.g. "schedule:<id>" for
+ * unattended Flow pre-auth grants). Invalid rules are dropped by the store
+ * loader, never evaluated.
  */
 export function normalizeRule(rule) {
   if (!rule || typeof rule !== "object" || Array.isArray(rule)) return null;
@@ -66,7 +68,13 @@ export function normalizeRule(rule) {
   const action = PERMISSION_RULE_ACTIONS.includes(rule.action) ? rule.action : null;
   const pattern = rule.pattern === undefined ? "*" : typeof rule.pattern === "string" && rule.pattern.length <= 2048 ? expandHome(rule.pattern) : null;
   if (!permission || !action || pattern === null) return null;
-  return { permission, pattern, action };
+  const source = rule.source === undefined || rule.source === null
+    ? undefined
+    : typeof rule.source === "string" && rule.source.length > 0 && rule.source.length <= 128 && !/[\u0000-\u001f\u007f]/.test(rule.source)
+      ? rule.source
+      : null;
+  if (source === null) return null;
+  return { permission, pattern, action, ...(source !== undefined ? { source } : {}) };
 }
 
 export function normalizeRuleset(rules) {
@@ -154,6 +162,6 @@ export function evaluatePermissionRules(rulesets, permission, pattern) {
   const base = matched ? matched.action : "ask";
   const floor = safetyFloorActionFor(pattern ?? "");
   const action = floor ? escalate(base, floor) : base;
-  const ruleSource = matched ? `${matched.permission}:${matched.pattern}` : null;
+  const ruleSource = matched ? matched.source ?? `${matched.permission}:${matched.pattern}` : null;
   return { action, rule: matched, ruleSource, escalatedBySafetyFloor: Boolean(floor && (action !== base)) };
 }

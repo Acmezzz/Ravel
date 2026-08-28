@@ -40,6 +40,14 @@ import { describeGraphDiff, diffGraphRevisions } from "./histos-graph-diff.js";
 import { createHistosFactForwarder } from "./histos-fact-forwarder.js";
 import { stageRemoteResource, validateRemoteResourceUrl } from "./remote-resource-service.js";
 import { downloadRegistryEntries, fetchRegistryIndex } from "./skill-registry-service.js";
+import {
+  isDue,
+  loadSchedules,
+  mutateSchedules,
+  recordFire,
+  saveSchedules,
+  validateSchedule,
+} from "./flow-scheduler.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
@@ -2171,6 +2179,120 @@ ipcMain.handle("omega:registryStage", async (event, req) => {
   }
 });
 
+// ----- Scheduled Flow triggers (next-cycle B8): config store + fact-fired runs -----
+
+const FLOW_SCHEDULER_TICK_MS = 60_000;
+let flowSchedulerTimer = null;
+let firingSchedule = false;
+
+function flowSchedulesFile() {
+  if (!activeCwd) throw errorLike("invalid_args", "当前没有活动工作区，无法管理定时 Flow");
+  return join(activeCwd, ".ravel", "flow-schedules.json");
+}
+
+function assertFlowSchedulesAllowed() {
+  if (!activeCwd) throw errorLike("invalid_args", "当前没有活动工作区");
+  if (!projectTrust.isTrusted(activeCwd)) throw errorLike("trust_required", "项目未信任，无法管理定时 Flow");
+}
+
+/** Fire every due schedule once; outcomes land as flow_trigger facts. */
+async function fireDueSchedules(nowMs = Date.now()) {
+  if (firingSchedule || !activeCwd || !projectTrust.isTrusted(activeCwd)) return;
+  firingSchedule = true;
+  try {
+    const file = flowSchedulesFile();
+    const schedules = loadSchedules(file);
+    let changed = false;
+    for (const schedule of schedules) {
+      if (!isDue(schedule, nowMs)) continue;
+      let outcome = "started";
+      let detail;
+      try {
+        if (!worker || worker.state !== "ready" || !worker.sessionId || !activeCwd) {
+          outcome = "skipped_busy";
+          detail = "worker not ready";
+        } else if (isForegroundBusy()) {
+          outcome = "skipped_busy";
+          detail = "session busy";
+        } else {
+          const plan = await (await activeHistos()).call("executeFlow", { sha256: schedule.flowSha, targetSessionId: worker.sessionId });
+          if (!plan || plan.targetSessionId !== worker.sessionId || plan.flowSha !== schedule.flowSha || !Array.isArray(plan.steps) || plan.steps.length === 0) {
+            outcome = "error";
+            detail = "flow execution plan invalid";
+          } else {
+            await worker.call("executeFlow", {
+              flowSha: plan.flowSha,
+              targetSessionId: worker.sessionId,
+              steps: plan.steps,
+              preAuthSource: `schedule:${schedule.id}`,
+            });
+          }
+        }
+      } catch (error) {
+        outcome = "error";
+        detail = error instanceof Error ? error.message.slice(0, 400) : String(error);
+      }
+      try {
+        await worker?.call?.("recordFlowTrigger", { flowSha: schedule.flowSha, scheduleId: schedule.id, outcome, detail });
+      } catch {
+        /* the run itself already has operation facts; trigger fact is best effort here */
+      }
+      const index = schedules.findIndex((entry) => entry.id === schedule.id);
+      if (index >= 0) {
+        schedules[index] = recordFire(schedules[index], nowMs);
+        changed = true;
+      }
+    }
+    if (changed) saveSchedules(file, schedules);
+  } finally {
+    firingSchedule = false;
+  }
+}
+
+function startFlowScheduler() {
+  if (flowSchedulerTimer) return;
+  flowSchedulerTimer = setInterval(() => {
+    void fireDueSchedules().catch((error) => process.stderr.write(`[main] flow scheduler tick failed: ${error instanceof Error ? error.message : String(error)}\n`));
+  }, FLOW_SCHEDULER_TICK_MS);
+  flowSchedulerTimer.unref?.();
+}
+
+ipcMain.handle("omega:flowScheduleCreate", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    assertFlowSchedulesAllowed();
+    await assertDesktopOperation("flow.schedule.write", { flowSha: req?.flowSha, path: flowSchedulesFile() });
+    const schedule = validateSchedule({ ...req, enabled: true });
+    const items = mutateSchedules(flowSchedulesFile(), (current) => [...current.filter((entry) => entry.id !== schedule.id), schedule]);
+    return okResult({ items });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:flowScheduleList", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    assertFlowSchedulesAllowed();
+    return okResult({ items: loadSchedules(flowSchedulesFile()) });
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:flowScheduleRemove", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    assertFlowSchedulesAllowed();
+    await assertDesktopOperation("flow.schedule.write", { id: req?.id, path: flowSchedulesFile() });
+    const id = typeof req?.id === "string" ? req.id : "";
+    const items = mutateSchedules(flowSchedulesFile(), (current) => current.filter((entry) => entry.id !== id));
+    return okResult({ items });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
 ipcMain.handle("omega:installLocalResource", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   try {
@@ -3006,6 +3128,7 @@ app
       app.exit(1);
     }
     flushPendingDeepLinks();
+    startFlowScheduler();
     app.on("activate", () => {
       if (!BrowserWindow.getAllWindows().length) {
         void createWindow().catch((error) => {

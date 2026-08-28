@@ -584,6 +584,31 @@ contextBridge.exposeInMainWorld("omega", {
     const names = Array.isArray(req?.names) ? req.names.filter((name) => typeof name === "string" && name.trim()).slice(0, 64).map((name) => name.slice(0, 64)) : null;
     return ipcRenderer.invoke("omega:registryStage", names ? { url, names } : { url });
   },
+  flowScheduleCreate: (req) => {
+    if (!isPlainObject(req) || typeof req.flowSha !== "string" || !/^[0-9a-f]{64}$/.test(req.flowSha)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "a 64-hex flowSha is required" });
+    }
+    const kind = req.kind === "daily" ? "daily" : req.kind === "interval" ? "interval" : null;
+    if (!kind) return Promise.resolve({ ok: false, code: "invalid_args", message: "kind must be interval or daily" });
+    const out = { flowSha: req.flowSha, kind, maxRuns: Number.isSafeInteger(req.maxRuns) ? req.maxRuns : undefined, project: req.project === true };
+    if (kind === "interval") {
+      if (!Number.isSafeInteger(req.intervalMinutes)) return Promise.resolve({ ok: false, code: "invalid_args", message: "intervalMinutes is required" });
+      out.intervalMinutes = req.intervalMinutes;
+    } else {
+      if (typeof req.timeOfDay !== "string" || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(req.timeOfDay)) {
+        return Promise.resolve({ ok: false, code: "invalid_args", message: "timeOfDay must be HH:MM" });
+      }
+      out.timeOfDay = req.timeOfDay;
+    }
+    return ipcRenderer.invoke("omega:flowScheduleCreate", out);
+  },
+  flowScheduleList: () => ipcRenderer.invoke("omega:flowScheduleList", {}),
+  flowScheduleRemove: (req) => {
+    if (!isPlainObject(req) || typeof req.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/.test(req.id)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "a schedule id is required" });
+    }
+    return ipcRenderer.invoke("omega:flowScheduleRemove", { id: req.id });
+  },
   installLocalResource: (req) => ipcRenderer.invoke("omega:installLocalResource", {
     source: safeString(req?.source, 4096),
     project: req?.project === true,

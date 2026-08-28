@@ -40,6 +40,7 @@ import {
   appendCheckpointFacts,
   appendFact,
   appendContextAttachedFact,
+  appendFlowTriggerFact,
   setFactsAppendedListener,
   appendSessionReferenceFacts,
   buildSessionReferenceBlock,
@@ -273,11 +274,12 @@ async function runSubagent({ prompt }) {
  * operation instead of opening a second one (two open operations would be
  * reducer-level corruption). Best effort: fact failures never block prompts.
  */
-function createFlowApprovalGuard(session, flowSha, confirm) {
+function createFlowApprovalGuard(session, flowSha, confirm, rules = []) {
   return createPermissionGuard({
     profile: "ask-before-command",
     cwd: runtime.cwd,
     confirm,
+    rules,
     facts: {
       runId: () => activeRunId ?? `flow-${flowSha}`,
       appendAsked: (asked) => appendFact(session.sessionManager, asked),
@@ -533,7 +535,7 @@ function sanitizeReferences(references) {
   return out.slice(0, 16);
 }
 
-async function executeFlow({ flowSha, targetSessionId, steps, generation: requestGeneration }) {
+async function executeFlow({ flowSha, targetSessionId, steps, preAuthSource, generation: requestGeneration }) {
   const queuedGeneration = generation;
   const run = promptQueue.then(async () => {
     if (disposed || queuedGeneration !== generation) {
@@ -541,16 +543,21 @@ async function executeFlow({ flowSha, targetSessionId, steps, generation: reques
       error.code = "stale_generation";
       throw error;
     }
-    return executeFlowNow({ flowSha, targetSessionId, steps, generation: requestGeneration });
+    return executeFlowNow({ flowSha, targetSessionId, steps, preAuthSource, generation: requestGeneration });
   });
   promptQueue = run.catch(() => {});
   return run;
 }
 
-async function executeFlowNow({ flowSha, targetSessionId, steps, generation: requestGeneration }) {
+async function executeFlowNow({ flowSha, targetSessionId, steps, preAuthSource, generation: requestGeneration }) {
   if (disposed || requestGeneration !== generation) {
     const error = new Error("stale worker generation");
     error.code = "stale_generation";
+    throw error;
+  }
+  if (preAuthSource !== undefined && !/^schedule:[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/.test(preAuthSource)) {
+    const error = new Error("preAuthSource must be schedule:<id>");
+    error.code = "invalid_args";
     throw error;
   }
   if (typeof flowSha !== "string" || !/^[0-9a-f]{64}$/.test(flowSha)) {
@@ -595,8 +602,16 @@ async function executeFlowNow({ flowSha, targetSessionId, steps, generation: req
     throw error;
   }
   try {
+    // Unattended pre-auth (B8): a schedule-scoped allow rule skips the
+    // interactive confirm while still recording the paired approval facts
+    // with ruleSource schedule:<id> as provenance. The grant is per-call,
+    // never persisted as a general rule.
+    const guardOptions = preAuthSource
+      ? { rules: [[{ permission: "flow.execute", pattern: "*", action: "allow", source: preAuthSource }]] }
+      : {};
     const approve = createFlowApprovalGuard(runtime.session, flowSha, (title, message, onIssued) =>
       activeUiContext?.confirm(title, message, { onIssued }),
+      guardOptions.rules,
     );
     await approve({
       toolCall: { name: "flow.execute", id: `flow-${flowSha}` },
@@ -881,6 +896,11 @@ const methods = {
       console.error("checkpoint fact failed", factError);
       return { operationId: null };
     }
+  },
+  /** One scheduled-Flow firing, recorded as a durable flow_trigger fact (B8). */
+  recordFlowTrigger: async ({ flowSha, scheduleId, outcome, detail }) => {
+    const operationId = appendFlowTriggerFact(runtime.session.sessionManager, { flowSha, scheduleId, outcome, detail });
+    return { operationId };
   },
   appendContextAttached: async ({ targetSessionId, contextSha, lane = "main" }) => {
     if (targetSessionId !== runtime.session.sessionId) {

@@ -637,6 +637,20 @@ export interface RegistryStagedResult {
   code?: string;
 }
 
+/** Scheduled Flow trigger config (next-cycle B8); fires are flow_trigger facts. */
+export interface FlowScheduleRow {
+  id: string;
+  flowSha: string;
+  kind: "interval" | "daily";
+  intervalMinutes?: number;
+  timeOfDay?: string;
+  maxRuns: number;
+  runCount: number;
+  lastFiredAt: number | null;
+  enabled: boolean;
+  createdAt: number;
+}
+
 export interface TreeNodeRow {
   id: string;
   parentId: string | null;

@@ -24,6 +24,7 @@ import type {
   PermissionRuleRow,
   RegistryEntry,
   RegistryStagedResult,
+  FlowScheduleRow,
   PromptImage,
   PtyDataDTO,
   PtyExitDTO,
@@ -121,6 +122,9 @@ export interface RavelBridge {
   stageRemoteResource(req: { url: string }): Promise<IpcResult<{ path: string; sha256: string; bytes: number; filename: string }>>;
   registryFetch(req: { url: string }): Promise<IpcResult<{ entries: RegistryEntry[] }>>;
   registryStage(req: { url: string; names?: string[] }): Promise<IpcResult<{ results: RegistryStagedResult[] }>>;
+  flowScheduleCreate(req: { flowSha: string; kind: "interval" | "daily"; intervalMinutes?: number; timeOfDay?: string; maxRuns?: number }): Promise<IpcResult<{ items: FlowScheduleRow[] }>>;
+  flowScheduleList(): Promise<IpcResult<{ items: FlowScheduleRow[] }>>;
+  flowScheduleRemove(req: { id: string }): Promise<IpcResult<{ items: FlowScheduleRow[] }>>;
   installLocalResource(req?: { source?: string; project?: boolean }): Promise<IpcResult<ResourceBundle>>;
   removeLocalResource(req: { source: string; project?: boolean }): Promise<IpcResult<ResourceBundle>>;
   setResourceEnabled(req: {
@@ -286,6 +290,10 @@ export const ipc = {
     ok(await window.omega?.registryFetch?.(req)),
   registryStage: async (req: { url: string; names?: string[] }): Promise<IpcResult<{ results: RegistryStagedResult[] }>> =>
     ok(await window.omega?.registryStage?.(req)),
+  flowScheduleCreate: async (req: { flowSha: string; kind: "interval" | "daily"; intervalMinutes?: number; timeOfDay?: string; maxRuns?: number }): Promise<IpcResult<{ items: FlowScheduleRow[] }>> =>
+    ok(await window.omega?.flowScheduleCreate?.(req)),
+  flowScheduleList: async (): Promise<IpcResult<{ items: FlowScheduleRow[] }>> => ok(await window.omega?.flowScheduleList?.()),
+  flowScheduleRemove: async (req: { id: string }): Promise<IpcResult<{ items: FlowScheduleRow[] }>> => ok(await window.omega?.flowScheduleRemove?.(req)),
   installLocalResource: async (req?: { source?: string; project?: boolean }): Promise<IpcResult<ResourceBundle>> =>
     ok(await window.omega?.installLocalResource?.(req)),
   removeLocalResource: async (req: { source: string; project?: boolean }): Promise<IpcResult<ResourceBundle>> =>

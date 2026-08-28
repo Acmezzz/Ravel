@@ -42,6 +42,7 @@ const OPERATION_POLICIES = Object.freeze({
   "skill.commands": { workspaceBound: true, confirmation: true },
   "mcp.write": { workspaceBound: true, confirmation: true },
   "permission.rule.write": { workspaceBound: true, confirmation: true },
+  "flow.schedule.write": { workspaceBound: true, confirmation: true },
   "file.upload": { workspaceBound: true, confirmation: true },
   "resource.install": { workspaceBound: true, confirmation: true },
   "resource.remove": { workspaceBound: true, confirmation: true },
