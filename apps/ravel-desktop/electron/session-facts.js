@@ -70,32 +70,32 @@ export function appendFact(sessionManager, record) {
 	requireString(record, "id");
 	requireString(record, "lane");
 	switch (record.type) {
-			case "operation_started": {
-				if (record.flowSha !== undefined && (typeof record.flowSha !== "string" || !/^[0-9a-f]{64}$/.test(record.flowSha))) {
-					throw new Error("Invalid operation_started fact: flowSha must be a lowercase SHA-256 hex string");
-				}
-				if (record.sourceLeafId !== null && typeof record.sourceLeafId !== "string") {
+		case "operation_started": {
+			if (record.flowSha !== undefined && (typeof record.flowSha !== "string" || !/^[0-9a-f]{64}$/.test(record.flowSha))) {
+				throw new Error("Invalid operation_started fact: flowSha must be a lowercase SHA-256 hex string");
+			}
+			if (record.sourceLeafId !== null && typeof record.sourceLeafId !== "string") {
 				throw new Error("Invalid operation_started fact: sourceLeafId must be a string or null");
 			}
 			const intent = record.intent;
 			if (!intent || typeof intent !== "object") throw new Error("Invalid operation_started fact: intent missing");
-				if (intent.kind === "run") {
-					if (!Array.isArray(intent.originalPrompt) || !Array.isArray(intent.initialMessages)) {
-						throw new Error("Invalid operation_started fact: run intent arrays missing");
-					}
-				} else if (intent.kind === "compaction") {
-					requireString(intent, "resultEntryId");
-				} else if (intent.kind === "navigation") {
-					if (intent.targetId !== null && typeof intent.targetId !== "string") {
-						throw new Error("Invalid operation_started fact: navigation targetId must be a string or null");
-					}
-					if (typeof intent.summarize !== "boolean") {
-						throw new Error("Invalid operation_started fact: navigation summarize must be a boolean");
-					}
-					requireOptionalString(intent, "label");
-				} else {
-					throw new Error(`Invalid operation_started fact: unsupported intent kind ${intent.kind}`);
+			if (intent.kind === "run") {
+				if (!Array.isArray(intent.originalPrompt) || !Array.isArray(intent.initialMessages)) {
+					throw new Error("Invalid operation_started fact: run intent arrays missing");
 				}
+			} else if (intent.kind === "compaction") {
+				requireString(intent, "resultEntryId");
+			} else if (intent.kind === "navigation") {
+				if (intent.targetId !== null && typeof intent.targetId !== "string") {
+					throw new Error("Invalid operation_started fact: navigation targetId must be a string or null");
+				}
+				if (typeof intent.summarize !== "boolean") {
+					throw new Error("Invalid operation_started fact: navigation summarize must be a boolean");
+				}
+				requireOptionalString(intent, "label");
+			} else {
+				throw new Error(`Invalid operation_started fact: unsupported intent kind ${intent.kind}`);
+			}
 			break;
 		}
 		case "operation_finished": {
@@ -121,24 +121,24 @@ export function appendFact(sessionManager, record) {
 			}
 			break;
 		}
-			case "session_reference":
-				for (const field of ["sourceEntryId", "clientMessageId", "targetSessionId", "targetTitle"]) requireString(record, field);
-				break;
-			case "context_attached": {
-				requireString(record, "targetSessionId");
-				const contextSha = requireString(record, "contextSha");
-				if (!/^[0-9a-f]{64}$/.test(contextSha)) throw new Error("Invalid context_attached fact: contextSha must be a SHA-256 hex string");
-				break;
-			}
+		case "session_reference":
+			for (const field of ["sourceEntryId", "clientMessageId", "targetSessionId", "targetTitle"]) requireString(record, field);
+			break;
+		case "context_attached": {
+			requireString(record, "targetSessionId");
+			const contextSha = requireString(record, "contextSha");
+			if (!/^[0-9a-f]{64}$/.test(contextSha)) throw new Error("Invalid context_attached fact: contextSha must be a SHA-256 hex string");
+			break;
 		}
-		const appended = sessionManager.appendCustomEntry(FACT_CUSTOM_TYPE, record);
-		try {
-			const listener = factsAppendedListeners.get(sessionManager);
-			listener?.({ entryId: typeof appended === "string" ? appended : appended?.id ?? appended?.entryId ?? null, fact: { ...record } });
-		} catch {
-			/* Fact notifications are diagnostic only and never affect persistence. */
-		}
-		return appended;
+	}
+	const appended = sessionManager.appendCustomEntry(FACT_CUSTOM_TYPE, record);
+	try {
+		const listener = factsAppendedListeners.get(sessionManager);
+		listener?.({ entryId: typeof appended === "string" ? appended : appended?.id ?? appended?.entryId ?? null, fact: { ...record } });
+	} catch {
+		/* Fact notifications are diagnostic only and never affect persistence. */
+	}
+	return appended;
 }
 
 /** All durable facts of a session, oldest first (file order). */

@@ -6,6 +6,15 @@ import { ipc } from "../../ipc/client";
 import type { HistosQueryDTO } from "../../types/dto";
 import { cn } from "../../ui/utils";
 
+/**
+ * React Flow projection of a GraphRevision (docs/ravel-histos-refactor-plan.md §6).
+ * Canvas far-layer (Canvas 2D scene graph) upgrade requires ALL THREE measured
+ * criteria simultaneously — do not open that door otherwise:
+ *   1. visible simple nodes sustained > ~2000 on one canvas
+ *   2. interaction frame time (drag/zoom) P95 > 16ms
+ *   3. elkjs worker + viewport culling + node recycling are already not enough
+ * Until then this stays React Flow with bounded input (500 nodes / 2000 edges).
+ */
 interface LayoutPosition {
   id: string;
   x: number;
@@ -166,14 +175,23 @@ export function GraphCanvas({ graph, query, onSelect, onDraftChange }: {
     setPositions(nextPositions);
   }, [nodes]);
 
+  const [layoutSaveError, setLayoutSaveError] = React.useState<string | null>(null);
   const onNodeDragStop = React.useCallback(async () => {
     const snapshot = [...positionByIdRef.current.values()].map(({ id, x, y }) => ({ id, x, y }));
     if (snapshot.length === 0) return;
-    await ipc.histosSaveViewState({ ...query, positions: snapshot });
+    try {
+      const result = await ipc.histosSaveViewState({ ...query, positions: snapshot });
+      setLayoutSaveError(result.ok ? null : result.message);
+    } catch (error) {
+      setLayoutSaveError(error instanceof Error ? error.message : String(error));
+    }
   }, [query]);
 
   return (
     <div className="omega-graph-canvas" role="application" aria-label="Histos graph canvas">
+      {layoutSaveError ? (
+        <div className="omega-graph-canvas-save-error" role="alert">画布布局保存失败：{layoutSaveError}</div>
+      ) : null}
       <ReactFlow
         nodes={nodes}
         edges={edges}

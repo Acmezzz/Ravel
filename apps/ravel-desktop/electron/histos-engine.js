@@ -390,7 +390,7 @@ function listArtifacts(directory, check) {
 }
 
 function sourceMatches(sourceSet, address) {
-  const sessions = sourceSet.sessions ?? sourceSet.sessionIds ?? sourceSet.sessionIds;
+  const sessions = sourceSet.sessions ?? sourceSet.sessionIds;
   if (Array.isArray(sessions) && sessions.length > 0) {
     const session = address.objectId.split("/")[0];
     if (!sessions.includes(session) && !sessions.includes(address.objectId)) return false;
@@ -400,9 +400,13 @@ function sourceMatches(sourceSet, address) {
   return true;
 }
 
-function revisionMatches(database, revisionId, query) {
+function revisionMatches(database, revisionId, query, artifactSha = null) {
   const rows = database.prepare("SELECT a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS revisionId FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id = ?").all(revisionId);
-  return rows.length === 0 || rows.some((address) => sourceMatches(query.sourceSet, address));
+  // Zero-evidence revisions bypass the SourceSet filter, so they are only
+  // trusted when they carry no artifact (structural facts). A semantic
+  // artifact revision without evidence must never surface for any source set.
+  if (rows.length === 0) return artifactSha === null;
+  return rows.some((address) => sourceMatches(query.sourceSet, address));
 }
 
 function queryFromArgs(first, second, third) {
@@ -439,8 +443,8 @@ function revisionLensMatches(database, artifactSha, lens) {
 }
 
 function graphRows(database, query) {
-  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map(readNodeRow).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query));
-  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query));
+  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map(readNodeRow).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
+  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query, row.artifactSha));
   const revisions = [...nodes.map((item) => item.nodeRevisionId), ...edges.map((item) => item.edgeRevisionId)];
   const evidence = revisions.length === 0 ? [] : database.prepare(`SELECT e.revision_id AS revisionId, e.address_id AS addressId, e.role, a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS addressRevisionId, a.selector_json AS selectorJson FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id IN (${revisions.map(() => "?").join(",")})`).all(...revisions).map((row) => ({ revisionId: row.revisionId, addressId: row.addressId, role: row.role, address: { sourceType: row.sourceType, objectId: row.objectId, revisionId: row.addressRevisionId, ...(row.selectorJson ? { selector: JSON.parse(row.selectorJson) } : {}) } }));
   const withAnchors = (items, revisionKey) => items.map((item) => {
@@ -606,7 +610,7 @@ export class HistosEngine {
     const nodeId = typeof first === "string" ? first : first.nodeId ?? first.id;
     string(nodeId, "nodeId");
     const database = this.assertOpen();
-    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.nodeRevisionId, query));
+    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
     if (rows.length === 0) return null;
     const graph = graphRows(database, query);
     return { ...rows[0], evidence: graph.evidence.filter((item) => item.revisionId === rows[0].nodeRevisionId), parents: graph.parents.filter((item) => item.childId === rows[0].nodeRevisionId) };
