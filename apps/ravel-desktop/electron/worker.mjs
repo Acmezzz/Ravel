@@ -840,11 +840,39 @@ const methods = {
   getToolDetail: ({ toolCallId }) => bridge.getToolDetail(runtime, toolCallId),
   telemetry: () => bridge.telemetryOf(runtime),
   getSystemPrompt: () => ({ systemPrompt: runtime.session.systemPrompt ?? "" }),
-  bash: ({ command, excludeFromContext }) =>
-    runtime.session.executeBash(command, undefined, {
+  bash: async ({ command, excludeFromContext }) => {
+    // User !-bash goes through the same durable approval guard as tool calls
+    // and Flow execution: ask/decide facts are appended before and after the
+    // interactive confirm, and only `allowed-once` proceeds. Rejections and
+    // unavailable answers are visible in the audit trail.
+    const guard = createPermissionGuard({
+      profile: permissionProfile,
+      cwd: runtime.cwd,
+      confirm: (title, message, onIssued) => activeUiContext?.confirm(title, message, { onIssued }),
+      facts: {
+        runId: () => activeRunId ?? "",
+        appendAsked: (asked) => appendFact(runtime.session.sessionManager, asked),
+        appendDecided: (decided) => appendFact(runtime.session.sessionManager, decided),
+      },
+      snapshot: async () => {
+        try {
+          const created = await createCheckpoint(runtime.cwd, "auto bash");
+          try {
+            appendCheckpointFacts(runtime.session.sessionManager, { checkpointId: created.id, label: created.label });
+          } catch (error) {
+            console.error("checkpoint fact failed", error);
+          }
+        } catch (error) {
+          console.error("auto checkpoint failed", error);
+        }
+      },
+    });
+    await guard({ toolCall: { name: "bash", id: `user-bash-${Date.now()}` }, args: { command } });
+    return runtime.session.executeBash(command, undefined, {
       excludeFromContext: excludeFromContext === true,
       id: `user-bash-${Date.now()}`,
-    }),
+    });
+  },
   sessionRecord: () => bridge.sessionRecordOf(runtime),
   /** Extensions / skills / prompt templates discovered for the active cwd. */
   listResources: async () => listResourceBundle(),

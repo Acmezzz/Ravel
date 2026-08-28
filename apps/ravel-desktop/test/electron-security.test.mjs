@@ -27,8 +27,8 @@ test("main configures Electron isolation and navigation boundaries", async () =>
   assert.match(source, /abort/);
   assert.match(source, /worker-registry|workspace-registry/);
   assert.match(source, /if \(!app\.isPackaged\) win\?\.webContents\.toggleDevTools\(\)/);
-  assert.match(source, /await assertBashAllowed\(command\)/);
-  assert.match(source, /createPermissionGuard/);
+  assert.match(source, /rpc\("bash", \{ command, excludeFromContext/);
+  assert.match(source, /createPermissionGuard|assertOperationAllowed/);
   assert.match(source, /pickedByDialog/);
   assert.match(source, /只能安装用户选择的目录或已授权工作区内的本地资源/);
   assert.match(source, /if \(closeHandling \|\| isAgentBusy\(\)\)/);

@@ -59,7 +59,7 @@ import { createCheckpoint, listCheckpoints, pruneCheckpoints, restoreCheckpoint 
 import { createWorkerSlotPool } from "./worker-pool.js";
 import { createDesktopSettingsStore } from "./desktop-settings.js";
 import { createCredentialStore } from "./credential-store.js";
-import { DEFAULT_PERMISSION_PROFILE, PERMISSION_PROFILES, sanitizePermissionProfile, createPermissionGuard, assertOperationAllowed } from "./permission-profiles.js";
+import { DEFAULT_PERMISSION_PROFILE, PERMISSION_PROFILES, sanitizePermissionProfile, assertOperationAllowed } from "./permission-profiles.js";
 import {
   customProviderRequest,
   fileRequest,
@@ -861,16 +861,6 @@ async function confirmPermission(title, message) {
     noLink: true,
   });
   return choice.response === 1;
-}
-
-async function assertBashAllowed(command) {
-  const profile = desktopSettings?.get()?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE;
-  const guard = createPermissionGuard({
-    profile,
-    cwd: activeCwd ?? rootOf(),
-    confirm: confirmPermission,
-  });
-  await guard({ toolCall: { name: "bash" }, args: { command } });
 }
 
 async function assertDesktopOperation(operation, input = {}) {
@@ -2077,11 +2067,10 @@ ipcMain.handle("omega:bash", async (event, req) => {
   const command = typeof req?.command === "string" ? req.command.trim() : "";
   if (!command) return errorResult("invalid_args", "command is required");
   if (command.length > 8192) return errorResult("invalid_args", "command too long");
-  try {
-    await assertBashAllowed(command);
-  } catch (error) {
-    return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
-  }
+  // Approval (with durable ask/decide facts), fail-closed policy, and
+  // execution all happen in the worker's `bash` method so the audit trail
+  // matches tool-call approvals. A pending approval dialog can outlive the
+  // default RPC timeout, so bash gets the prompt timeout.
   const result = await rpc("bash", { command, excludeFromContext: req?.excludeFromContext === true }, "bash_failed");
   if (result.ok && result.data) {
     return okResult({ output: result.data.output, exitCode: result.data.exitCode, cancelled: result.data.cancelled });

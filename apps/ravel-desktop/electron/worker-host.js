@@ -197,7 +197,8 @@ export class WorkerHost {
     }
     const id = `req-${++this.seq}`;
     const generation = this.generation;
-    const timeout = method === "prompt" ? PROMPT_RPC_TIMEOUT : this.timeout;
+    // `bash` can block on a durable approval dialog like `prompt` can.
+    const timeout = method === "prompt" || method === "bash" ? PROMPT_RPC_TIMEOUT : this.timeout;
     return new Promise((resolvePromise, rejectPromise) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
