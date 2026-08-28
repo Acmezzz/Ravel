@@ -2,7 +2,7 @@
 
 更新日期：2026-08-28
 状态：**当前执行入口。**
-进度：2026-08-29 — N0–N8 已全部落地（N0 checkpoint 后置校验早前已交付；N1 semanticProvider 中继 bd9590000；N2 事实转发 57ecd2167；N3 ModeProfile/plan 5c0b07a07；N4 资源蒸馏 59c57b75c；N5 记忆建议 e24290bc9；A1 权限规则 89d0bf60c；N7 MCP 网络传输+OAuth 凭据 cba43eaf6；N8 URL 安装暂存 a2d284059；N6 跨库 ContextSet c6408496c）。桌面 320 测试绿，npm run check 绿。待办：A2 计划文件与人审退出、A1b 规则持久库与设置 UI、Goal 接线（均已升级为包 B 切片，见 §5）。本文冻结接入契约；包 A 已完成验收，包 B 按 §5 顺序推进。R0–R5 验收仍认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。产品不变量仍认 [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)；冲突时以核心设计为准，但核心设计 §1「记忆」行以本文勘误为准。
+进度：2026-08-29 — N0–N8 + A1 全部落地（见 git 历史）。包 B 已开跑：B1 计划文件 + 人审退出 fd5fb1301（plan 模式只能写 `.ravel/plans/<sessionId>.md`，plan_exit 是人审事件，批准注入「计划已批准，执行」）；B2 Goal 接线 23e12bcf6（round-cap 25 轮 / 30 分钟预算续跑，停止/错误/切模式即结束，不自判完成）；B3 权限规则持久库 + 设置 UI fa902fdb6（`~/.ravel/permission-rules.json` + 受信项目级，worker guard 实时刷新，safety floor 不可覆盖）。桌面 330 测试绿，npm run check 绿。下一项：B4 task/子代理。本文冻结接入契约；包 A 已完成验收，包 B 按 §5 顺序推进。R0–R5 验收仍认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。产品不变量仍认 [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)；冲突时以核心设计为准，但核心设计 §1「记忆」行以本文勘误为准。
 
 没有备选架构。不换壳、不换 JSONL、不换 Pi 运行时、不新增第二套审批库、本周期不新增 artifact kind。
 
