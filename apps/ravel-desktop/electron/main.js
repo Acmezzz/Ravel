@@ -35,6 +35,7 @@ import {
   resolveSessionPath,
 } from "./agent-bridge.js";
 import { buildSessionHtml } from "./export-html.js";
+import { createHistosFactForwarder } from "./histos-fact-forwarder.js";
 import * as diffService from "./diff-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { createWorkspaceRegistry } from "./workspace-registry.js";
@@ -587,21 +588,16 @@ function bindHost(host) {
       sendTransportState("diagnostic", { sessionId: host.sessionId, foreground: host === worker, error: message });
     }
   };
-  host.onFactsAppended = (message) => {
-    if (!message?.facts?.length || !host.cwd) return;
-    void ensureHistosHost(host.cwd)
-      .then((histos) => histos.call("applySessionFacts", {
-        sessionId: message.sessionId,
-        facts: message.facts,
-      }))
-      .catch((error) => {
-        sendTransportState("diagnostic", {
-          sessionId: message.sessionId,
-          subsystem: "histos",
-          error: error instanceof Error ? error.message : String(error),
-        });
+  host.onFactsAppended = createHistosFactForwarder({
+    ensureHost: () => (host.cwd ? ensureHistosHost(host.cwd) : Promise.reject(Object.assign(new Error("No active workspace"), { code: "workspace_not_authorized" }))),
+    onDiagnostic: (diagnostic) => {
+      sendTransportState("diagnostic", {
+        sessionId: diagnostic.sessionId,
+        subsystem: "histos",
+        error: diagnostic.error,
       });
-  };
+    },
+  });
   host.onExtensionUIRequest = (request) => {
     if (!isExtensionUIRequest(request)) return;
     if (isBlockingUiMethod(request.method)) {
