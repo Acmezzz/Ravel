@@ -10,7 +10,7 @@ Ravel 是一套本地优先的编码 Agent 产品：Electron 桌面端 + 基于 
 
 ## 产品入口
 
-* **[@ravel/desktop](apps/ravel-desktop)**：Electron 桌面工作台（React + MUI + Tailwind）。主进程沙箱、utilityProcess Worker、Pi JSONL session 权威源。
+* **[@ravel/desktop](apps/ravel-desktop)**：Electron 桌面工作台（React 19 + Base UI + Tailwind 4）。主进程沙箱、utilityProcess Worker、Pi JSONL session 权威源。
 * **[@earendil-works/pi-coding-agent](packages/coding-agent)**：编码 Agent CLI / SDK（桌面端 Worker 的运行时）
 * **[@earendil-works/pi-agent-core](packages/agent)**：Agent runtime（工具调用与状态）
 * **[@earendil-works/pi-ai](packages/ai)**：多供应商 LLM API

@@ -1,7 +1,7 @@
 # 设计：动态视图、@session 引用、MCP 管理
 
-更新日期：2026-08-26
-状态：**已实现**（2026-08-26，`npm run check` 全绿、桌面 node:test 204 通过、packages/agent codec+reducer 210 通过）。前置阅读：`ravel-core-design-and-next-slices.md`（不变量）。交互排布借鉴已消化进 Workbench / ActivityList，不再另存学习报告。
+更新日期：2026-08-28
+状态：**已实现，不再作为待办。** 2026-08-26 落地（`7cf8a26f0`）。前置阅读：`ravel-core-design-and-next-slices.md`（不变量）。剩余工作只认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md) 与 [`ravel-roadmap.md`](./ravel-roadmap.md)。交互排布已消化进 Workbench / ActivityList，不再另存学习报告。
 
 三者的共同判据：每个功能要么新增带冻结 id 的事实对象，要么是对既有事实的派生投影；不新增第二权威、不新增看板式假面板。
 
@@ -261,6 +261,6 @@ A 不依赖 B 可先行；B 未落地前 UI 不得暗示工具可用。
 - **S3 @session 引用**：packages/agent 新增 `SessionReferenceRecord`（types + codec 校验 + RECORD_TYPES）；桌面 `session-facts.js` 扩 FACT_TYPES 与字段校验，新增 routing 块构建/剥离、`resolveSourceEntryId`（leaf 链优先、文本匹配兜底）、`appendSessionReferenceFacts`（按 clientMessageId+target 幂等）。worker 在 prompt 落盘后补记（steer 场景有界重试 10×300ms）；模型可见块由 worker 追加进 prompt 正文，展示与 copy 经 `sanitizeTranscript` 剥离并投影 references。Composer 单一 @ 菜单合并会话候选（同工作区顶层 ≤6）+ 文件补全；MessageBubble 按 entryId 关联渲染可点击 chip。
 - **S4 MCP**：A 期 `electron/mcp-service.js`（校验边界 name≤64/command≤2048/args≤64×2048、mkdir+owner.json 目录锁带陈旧回收、temp+rename 原子写）+ 四条 IPC + ResourceCenter MCP 分区（添加表单/启停/移除确认；桥未加载时如实显示警示，enabled 不伪装生效）。B 期第一方扩展 `.pi/extensions/ravel-mcp-bridge/index.ts`：stdio JSON-RPC 握手、tools/list 动态注册为 `mcp__<server>__<tool>`、10s 启动超时按服务器隔离失败、session_shutdown 回收子进程。工具经 pi 原生管线 → riskTierOf untrusted 默认档 → ask-before-command 审批事实照旧落盘。
 
-验证记录：桌面 `npm test` 204 通过（含新增 activity-service/session-reference/mcp-service 三份测试文件）；packages/agent jsonl+reducer vitest 210 通过（含 session_reference round-trip 与损坏拒绝两例）；仓库根 `npm run check` EXIT=0。
+验证记录（2026-08-26 落地时快照）：桌面 `npm test` 204 通过（含新增 activity-service/session-reference/mcp-service 三份测试文件）；packages/agent jsonl+reducer vitest 210 通过（含 session_reference round-trip 与损坏拒绝两例）；仓库根 `npm run check` EXIT=0。桌面套件当前为 285 通过。
 
 已知边界（有意为之）：引用草稿不持久化（刷新后 @ 文本保留、结构化引用需重新选择）；Activity 徽标的 cleared 表是 UI 态不跨设备；MCP 仅 stdio，网络传输无入口；同名标题去重在 Composer 侧完成。

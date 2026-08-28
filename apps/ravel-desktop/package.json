@@ -2,7 +2,7 @@
   "name": "@ravel/desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Secure local Electron desktop shell for Ravel Agent (React + MUI + Tailwind workbench)",
+  "description": "Secure local Electron desktop shell for Ravel Agent (React 19 + Base UI + Tailwind 4 workbench)",
   "author": "Ravel",
   "type": "module",
   "main": "electron/main.js",

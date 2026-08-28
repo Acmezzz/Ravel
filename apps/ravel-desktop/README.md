@@ -6,7 +6,7 @@
 
 - 主进程只做窗口、IPC、fs/git 特权操作；Agent 跑在 `utilityProcess` Worker 里
 - 自动加载 monorepo `.pi/extensions` 下的通用扩展
-- React 18 + MUI 5 + Tailwind 三栏工作台：会话、对话、Diff / Worktree
+- React 19 + Base UI + Tailwind 4 三栏工作台：会话、对话、Diff / Worktree
 - 安全边界：`contextIsolation`、无 `nodeIntegration`、CSP、路径包含、IPC allowlist、permission profile
 
 ## 结构
