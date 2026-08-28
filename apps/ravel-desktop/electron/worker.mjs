@@ -332,7 +332,7 @@ function effectivePermissionProfile() {
   return getModeProfile(modeProfile)?.forcedPermissionProfile ?? permissionProfile;
 }
 
-async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, modeProfile: mode, runtimeCredentials = {}, customProviders = {} }) {
+async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGeneration, projectTrusted: trusted, permissionProfile: profile, modeProfile: mode, runtimeCredentials = {}, mcpCredentials = {}, customProviders = {} }) {
   permissionProfile = sanitizePermissionProfile(profile);
   try { modeProfile = sanitizeModeProfile(mode ?? "default"); } catch { modeProfile = "default"; }
   generation = Number.isInteger(nextGeneration) ? nextGeneration : generation + 1;
@@ -344,6 +344,8 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   extensionsRoot = root;
   projectTrusted = trusted !== false;
   runtime = await bridge.createRuntime({ cwd, extensionsRoot: root, projectTrusted });
+  // MCP server auth tokens for the bridge extension (vault-only, never on disk).
+  globalThis.__ravelMcpCredentials = { ...mcpCredentials };
   for (const [providerId, apiKey] of Object.entries(runtimeCredentials ?? {})) {
     if (typeof apiKey === "string" && apiKey.length > 0) await runtime.session.modelRuntime.setRuntimeApiKey(providerId, apiKey);
   }

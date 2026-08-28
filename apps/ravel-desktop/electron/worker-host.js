@@ -31,6 +31,7 @@ export class WorkerHost {
     this.permissionProfile = DEFAULT_PERMISSION_PROFILE;
     this.modeProfile = "default";
     this.runtimeCredentials = {};
+    this.mcpCredentials = {};
     this.customProviders = {};
     this.activating = false;
     this.onEvent = null;
@@ -78,6 +79,7 @@ export class WorkerHost {
       permissionProfile: this.permissionProfile,
       modeProfile: this.modeProfile,
       runtimeCredentials: this.runtimeCredentials,
+      mcpCredentials: this.mcpCredentials,
       customProviders: this.customProviders,
     });
     try {

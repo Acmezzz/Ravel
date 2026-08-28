@@ -5,9 +5,10 @@
  *   user scope    ~/.ravel/mcp.json
  *   project scope <workspace>/.ravel/mcp.json (requires a trusted project)
  *
- * stdio only. Network transports (http/sse) are deliberately out of scope —
- * Ravel has no harness-side credential story to lean on, and a read-only list
- * of servers it can never run would be a fake panel.
+ * Transports: stdio ({command, args}) and streamable-HTTP ({url, headers?}).
+ * Header values may reference the credential vault as "$cred:<id>"; the
+ * reference itself is stored, the secret never touches disk. Tools from every
+ * transport register through pi's approval pipeline unchanged.
  *
  * Pure transforms are exported separately from the file operations so tests
  * can exercise validation without touching disk.
@@ -20,6 +21,9 @@ export const MAX_NAME = 64;
 export const MAX_COMMAND = 2048;
 export const MAX_ARGS = 64;
 export const MAX_ARG = 2048;
+export const MAX_URL = 2048;
+export const MAX_HEADERS = 16;
+export const MAX_HEADER = 4096;
 const LOCK_STALE_MS = 10_000;
 
 export function validateMcpName(name) {
@@ -51,6 +55,36 @@ export function validateMcpArgs(args) {
   });
 }
 
+export function validateMcpUrl(url) {
+  if (typeof url !== "string" || !url.trim()) throw invalid("url is required for a network MCP server");
+  const trimmed = url.trim();
+  if (trimmed.length > MAX_URL) throw invalid(`url must be at most ${MAX_URL} characters`);
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw invalid("url must be an absolute http(s) URL");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw invalid("url must use http or https");
+  return trimmed;
+}
+
+export function validateMcpHeaders(headers) {
+  if (headers === undefined || headers === null) return {};
+  if (!headers || typeof headers !== "object" || Array.isArray(headers)) throw invalid("headers must be an object");
+  const entries = Object.entries(headers);
+  if (entries.length > MAX_HEADERS) throw invalid(`headers must have at most ${MAX_HEADERS} entries`);
+  const out = {};
+  for (const [key, value] of entries) {
+    if (typeof key !== "string" || !/^[A-Za-z0-9_-]+$/.test(key) || key.length > 128) throw invalid("header names must be tokens");
+    if (typeof value !== "string" || value.length === 0 || value.length > MAX_HEADER || /[\r\n\0]/.test(value)) {
+      throw invalid("header values must be non-empty strings without control characters");
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
 function invalid(message) {
   const error = new Error(message);
   error.code = "invalid_args";
@@ -77,9 +111,13 @@ export function parseMcpConfig(rawText) {
 }
 
 /** Pure upsert; rejects duplicates only for renames that collide with another key. */
-export function upsertMcpServer(config, { name, command, args = [], enabled = true }) {
+export function upsertMcpServer(config, { name, command, args = [], url, headers = {}, enabled = true }) {
   const nextServers = { ...config.mcpServers };
-  nextServers[name] = { command, args, enabled: enabled !== false };
+  if (url !== undefined) {
+    nextServers[name] = { url: validateMcpUrl(url), headers: validateMcpHeaders(headers), enabled: enabled !== false };
+  } else {
+    nextServers[name] = { command: validateMcpCommand(command), args: validateMcpArgs(args), enabled: enabled !== false };
+  }
   return { ...config, mcpServers: nextServers };
 }
 
@@ -100,12 +138,20 @@ export function removeMcpServer(config, name) {
 /** Rows for the resource center UI, project entries shadowing user ones. */
 export function listMcpRows(userConfig, projectConfig) {
   const rows = [];
+  const rowOf = (name, server, scope) => ({
+    name,
+    scope,
+    enabled: server.enabled !== false,
+    transport: server.url ? "http" : "stdio",
+    ...(server.url ? { url: server.url } : { command: server.command, args: server.args ?? [] }),
+    hasAuth: server.url ? Object.values(server.headers ?? {}).some((value) => typeof value === "string" && value.startsWith("$cred:")) : false,
+  });
   for (const [name, server] of Object.entries(projectConfig?.mcpServers ?? {})) {
-    rows.push({ name, command: server.command, args: server.args ?? [], scope: "project", enabled: server.enabled !== false });
+    rows.push(rowOf(name, server, "project"));
   }
   for (const [name, server] of Object.entries(userConfig?.mcpServers ?? {})) {
     if (projectConfig?.mcpServers?.[name]) continue; // project override wins; show one row
-    rows.push({ name, command: server.command, args: server.args ?? [], scope: "user", enabled: server.enabled !== false });
+    rows.push(rowOf(name, server, "user"));
   }
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }

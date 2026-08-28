@@ -1,35 +1,41 @@
 /**
- * Ravel MCP bridge — first-party execution bridge for local stdio MCP servers.
+ * Ravel MCP bridge — first-party execution bridge for MCP servers.
  *
  * Reads Ravel-owned definitions (~/.ravel/mcp.json plus <workspace>/.ravel/mcp.json,
- * project shadowing user by name), spawns only `enabled` servers, performs the
- * MCP initialize handshake over newline-delimited JSON-RPC, and registers every
- * remote tool through pi's native pipeline as `mcp__<server>__<tool>`.
+ * project shadowing user by name), connects only `enabled` servers — stdio
+ * ({command, args}) or streamable-HTTP ({url, headers?}) — performs the MCP
+ * initialize handshake, and registers every remote tool through pi's native
+ * pipeline as `mcp__<server>__<tool>`.
  *
  * Because tools flow through pi's own tool lifecycle, permission profiles,
  * approval facts, tool cards and risk tiering apply unchanged: an untrusted
  * profile rejects them outright, ask-before-command records durable decisions.
  *
+ * Header values of the form "$cred:<id>" resolve against the desktop
+ * credential vault (injected by the agent worker as globalThis.__ravelMcpCredentials);
+ * the secret never appears in any config file.
+ *
  * Failure policy is per-server and non-blocking: one broken server never stops
  * the others or the session. Startup is capped at 10s per server.
  */
-import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { CALL_TIMEOUT_MS, HttpPeer, PROTOCOL_VERSION, STARTUP_TIMEOUT_MS, StdioPeer, type JsonRpcResult } from "./transport.ts";
 
-const PROTOCOL_VERSION = "2024-11-05";
-const STARTUP_TIMEOUT_MS = 10_000;
-const CALL_TIMEOUT_MS = 120_000;
 const MAX_SERVERS = 32;
 const NAME_SAFE = /^[A-Za-z0-9_-]+$/;
 
 interface McpServerDef {
-	command: string;
+	command?: string;
 	args?: string[];
+	url?: string;
+	headers?: Record<string, string>;
 	enabled?: boolean;
 }
+
+type Peer = StdioPeer | HttpPeer;
 
 function readConfig(file: string): Record<string, McpServerDef> {
 	if (!existsSync(file)) return {};
@@ -47,89 +53,13 @@ function sanitizeSegment(input: string): string {
 	return cleaned || "x";
 }
 
-/** Minimal JSON-RPC peer over stdio: pending-request map plus notification sink. */
-interface JsonRpcResult {
-	[key: string]: unknown;
-}
-
-class StdioPeer {
-	private nextId = 1;
-	private readonly pending = new Map<number, { resolve: (value: JsonRpcResult) => void; reject: (error: Error) => void }>();
-	private buffer = "";
-	private readonly child;
-
-	constructor(command: string, args: string[], onNotify: (notification: JsonRpcResult) => void) {
-		this.child = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
-		this.child.stdout.setEncoding("utf8");
-		this.child.stdout.on("data", (chunk: string) => {
-			this.buffer += chunk;
-			for (;;) {
-				const newline = this.buffer.indexOf("\n");
-				if (newline < 0) break;
-				const line = this.buffer.slice(0, newline).trim();
-				this.buffer = this.buffer.slice(newline + 1);
-				if (!line) continue;
-				try {
-					const message = JSON.parse(line) as { id?: unknown; error?: { message?: unknown }; result?: JsonRpcResult; method?: unknown };
-					if (typeof message.id === "number" && this.pending.has(message.id)) {
-						const entry = this.pending.get(message.id)!;
-						this.pending.delete(message.id);
-						if (message.error) entry.reject(new Error(String(message.error.message ?? "MCP error")));
-						else entry.resolve(message.result ?? {});
-					} else if (message.method) {
-						onNotify(message as JsonRpcResult);
-					}
-				} catch {
-					// Malformed line from a third-party server: drop, keep the stream alive.
-				}
-			}
-		});
-		this.child.stderr.setEncoding("utf8");
-		this.child.stderr.on("data", () => {}); // drained; server logs never enter the transcript
-		this.child.on("exit", () => {
-			for (const [, entry] of this.pending) entry.reject(new Error("MCP server exited"));
-			this.pending.clear();
-		});
-	}
-
-	request(method: string, params: unknown, timeoutMs: number): Promise<JsonRpcResult> {
-		const id = this.nextId++;
-		const payload = `${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`;
-		return new Promise((resolve, reject) => {
-			const timer = setTimeout(() => {
-				this.pending.delete(id);
-				reject(new Error(`MCP ${method} timed out after ${timeoutMs}ms`));
-			}, timeoutMs);
-			timer.unref?.();
-			this.pending.set(id, {
-				resolve: (value) => {
-					clearTimeout(timer);
-					resolve(value);
-				},
-				reject: (error) => {
-					clearTimeout(timer);
-					reject(error);
-				},
-			});
-			this.child.stdin.write(payload);
-		});
-	}
-
-	notify(method: string, params: unknown): void {
-		this.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method, params })}\n`);
-	}
-
-	stop(): void {
-		try {
-			this.child.kill();
-		} catch {
-			/* best effort */
-		}
-	}
+function openPeer(def: McpServerDef, onNotify: (notification: JsonRpcResult) => void): Peer {
+	if (def.url) return new HttpPeer(def.url, def.headers ?? {}, onNotify);
+	return new StdioPeer(def.command!, def.args ?? [], onNotify);
 }
 
 export default function ravelMcpBridge(pi: ExtensionAPI) {
-	const peers = new Map<string, StdioPeer>();
+	const peers = new Map<string, Peer>();
 
 	pi.on("session_start", (_event, ctx) => {
 		void (async () => {
@@ -145,7 +75,8 @@ export default function ravelMcpBridge(pi: ExtensionAPI) {
 			for (const name of names) {
 				const def = (project[name] ?? user[name])!;
 				if (!NAME_SAFE.test(sanitizeSegment(name))) continue;
-				const peer = new StdioPeer(def.command, def.args ?? [], () => {});
+				if (def.url ? !/^https?:\/\//.test(def.url) : !def.command) continue;
+				const peer = openPeer(def, () => {});
 				peers.set(name, peer);
 				try {
 					await peer.request(
@@ -157,7 +88,7 @@ export default function ravelMcpBridge(pi: ExtensionAPI) {
 						},
 						STARTUP_TIMEOUT_MS,
 					);
-					peer.notify("notifications/initialized", {});
+					await peer.notify("notifications/initialized", {});
 					const listing = await peer.request("tools/list", {}, STARTUP_TIMEOUT_MS);
 					const tools: Array<{ name?: string; description?: string; inputSchema?: Record<string, unknown> }> = Array.isArray(listing?.tools)
 						? (listing.tools as Array<{ name?: string; description?: string; inputSchema?: Record<string, unknown> }>)
@@ -187,7 +118,7 @@ export default function ravelMcpBridge(pi: ExtensionAPI) {
 
 function registerRemoteTool(
 	pi: ExtensionAPI,
-	peers: Map<string, StdioPeer>,
+	peers: Map<string, Peer>,
 	serverName: string,
 	serverSegment: string,
 	tool: { name?: string; description?: string; inputSchema?: Record<string, unknown> },

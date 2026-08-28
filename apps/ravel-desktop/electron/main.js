@@ -96,8 +96,6 @@ import {
   removeMcpServer,
   setMcpServerEnabled,
   upsertMcpServer,
-  validateMcpArgs,
-  validateMcpCommand,
   validateMcpName,
 } from "./mcp-service.js";
 import * as fileTransfer from "./file-transfer-service.js";
@@ -717,6 +715,7 @@ function createBoundHost() {
   const host = new WorkerHost({ timeout: WORKER_RPC_TIMEOUT });
   if (credentialStore) {
     host.runtimeCredentials = Object.fromEntries(credentialStore.listIds().map((id) => [id, credentialStore.read(id)]).filter(([, value]) => typeof value === "string" && value.length > 0));
+    host.mcpCredentials = Object.fromEntries(credentialStore.listIds().filter((id) => id.startsWith("mcp:")).map((id) => [id, credentialStore.read(id)]).filter(([, value]) => typeof value === "string" && value.length > 0));
   }
   host.customProviders = desktopSettings?.get()?.customProviders ?? {};
   return bindHost(host);
@@ -2089,11 +2088,9 @@ ipcMain.handle("omega:mcpAdd", async (event, req) => {
   try {
     await assertDesktopOperation("mcp.write", { name: req?.name, path: req?.project === true ? mcpProjectFile() : MCP_USER_FILE });
     const name = validateMcpName(req?.name);
-    const command = validateMcpCommand(req?.command);
-    const args = validateMcpArgs(req?.args);
     if (req?.project === true) assertMcpProjectScopeAllowed();
     mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) =>
-      upsertMcpServer(config, { name, command, args, enabled: true }),
+      upsertMcpServer(config, { name, command: req?.command, args: req?.args, url: req?.url, headers: req?.headers, enabled: true }),
     );
     const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
     return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
