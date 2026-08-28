@@ -19,7 +19,7 @@ import {
 
 export { FACT_SOURCE_TYPES, canonicalFactAddress, canonicalJson, factAddressId, formatFactAddress, validateFactAddress };
 
-export const ARTIFACT_KINDS = Object.freeze(["graph_revision", "flow_revision", "context_set"]);
+export const ARTIFACT_KINDS = Object.freeze(["graph_revision", "flow_revision", "context_set", "view_state"]);
 export const FACT_SELECTOR_KINDS = Object.freeze(["span", "hunk", "json_path", "node", "edge"]);
 export const EVIDENCE_ROLES = Object.freeze(["supports", "quotes", "produces", "navigates"]);
 
@@ -178,6 +178,14 @@ export function validateArtifact(artifact, { workspaceId, kind } = {}) {
   if (actualKind === "context_set" || kind === "context_set") {
     const selection = artifact.selection ?? artifact.addresses;
     if (selection !== undefined) validateEvidenceArray(selection, "artifact.selection", { allowRevisionIdOnly: false });
+  }
+  if (actualKind === "view_state" || kind === "view_state") {
+    if (!Array.isArray(artifact.positions) || artifact.positions.length > 500) throw invalid("view_state requires bounded positions");
+    for (const [index, position] of artifact.positions.entries()) {
+      requirePlainObject(position, `artifact.positions[${index}]`);
+      boundedString(position.id, `artifact.positions[${index}].id`, MAX_NODE_OR_EDGE_ID_LENGTH);
+      if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) throw invalid(`artifact.positions[${index}] coordinates must be finite`);
+    }
   }
   const normalized = { ...artifact, workspaceId: actualWorkspaceId, nodes, edges, parents, evidence };
   delete normalized.sha256;

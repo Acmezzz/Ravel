@@ -24,6 +24,7 @@ export interface ProjectedGraphNode {
   anchor?: GraphTraceTarget;
   selected: boolean;
   isolated: boolean;
+  parentId?: string | null;
 }
 
 export interface ProjectedGraphEdge {
@@ -73,6 +74,7 @@ function projectNode(node: HistosNodeRevisionDTO, selected: GraphSelection | nul
     ...(anchor ? { anchor } : {}),
     selected: selected?.type === "node" && selected.nodeRevisionId === node.nodeRevisionId,
     isolated,
+    ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
   };
 }
 

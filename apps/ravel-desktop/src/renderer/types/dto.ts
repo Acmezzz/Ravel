@@ -81,6 +81,7 @@ export interface HistosNodeRevisionDTO {
   createdAt: number;
   artifactSha: string | null;
   anchor?: HistosTraceAnchorDTO;
+  parentId?: string | null;
 }
 
 export interface HistosEdgeRevisionDTO {
@@ -116,6 +117,19 @@ export type HistosSelection = string | {
 };
 
 export type HistosGetGraphRequest = HistosQueryDTO;
+export interface HistosCondenseGraphRequest extends HistosQueryDTO {
+  budget?: number;
+  parentSha?: string;
+}
+export interface HistosExecuteFlowRequest { sha256: string }
+export interface HistosExecuteFlowResultDTO { ok: false; code: "approval_required" | "validation_failed" }
+export interface HistosCondenseGraphResultDTO {
+  ok: boolean;
+  code?: string;
+  sha256?: string;
+  artifact?: HistosArtifactDTO;
+  diagnostics: Array<{ code: string; message: string }>;
+}
 export interface HistosRebuildRequest extends HistosQueryDTO {
   maxFiles?: number;
 }
@@ -125,6 +139,7 @@ export interface HistosGetNodeRequest extends HistosQueryDTO {
 export interface HistosFreezeContextRequest extends HistosQueryDTO {
   selection: HistosSelection[];
   targetSessionId?: string;
+  budget?: number;
 }
 export interface HistosConvertToFlowRequest extends HistosQueryDTO {
   selectedNodeRevisionIds?: string[];
@@ -138,13 +153,14 @@ export interface HistosGetArtifactRequest extends HistosQueryDTO {
 export interface HistosArtifactDTO extends HistosQueryDTO {
   schemaVersion: number;
   workspaceId: string;
-  kind: "graph_revision" | "flow_revision" | "context_set";
+  kind: "graph_revision" | "flow_revision" | "context_set" | "view_state";
   nodes: HistosNodeRevisionDTO[];
   edges: HistosEdgeRevisionDTO[];
   evidence: HistosEvidenceDTO[];
   parents: HistosRevisionParentDTO[];
   selection?: HistosEvidenceDTO[];
   sha256?: string;
+  positions?: Array<{ id: string; x: number; y: number }>;
 }
 
 export interface HistosFactAppendResultDTO {

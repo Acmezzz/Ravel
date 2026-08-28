@@ -17,6 +17,7 @@
 import { existsSync, lstatSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { DefaultPackageManager } from "@earendil-works/pi-coding-agent";
+import { processLog } from "./process-log.js";
 import * as bridge from "./agent-bridge.js";
 import {
   RESOURCE_ARRAY_KEYS,
@@ -942,7 +943,7 @@ process.parentPort.on("message", async (event) => {
 });
 
 process.on("uncaughtException", (error) => {
-  console.error("agent worker crashed", error);
+  processLog("agent-worker", "uncaught_exception", error);
   try {
     post({ type: "worker-error", error: "Agent worker failed" });
   } catch {

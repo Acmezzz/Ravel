@@ -13,6 +13,8 @@ const LENSES = new Set(["structural", "semantic", "mixed"]);
 const GRANULARITIES = new Set(["operation", "entry", "span", "file", "cluster"]);
 const MAX_JSONL_FILES = 4096;
 const MAX_ID = 1024;
+const MAX_CONDENSE_NODES = 128;
+const MAX_CONDENSE_BUDGET = 32_000;
 
 const initializeSchema = schema.initializeHistosSchema ?? schema.createHistosSchema;
 const validateSchema = schema.validateHistosSchema ?? schema.validateSchema;
@@ -275,8 +277,8 @@ function insertArtifact(database, artifact, sha256) {
   const row = artifactRecord(artifact, sha256);
   database.prepare("INSERT OR IGNORE INTO artifacts (sha256, kind, created_at, source_set_json, lens, granularity) VALUES (?, ?, ?, ?, ?, ?)").run(row.sha256, row.kind, row.createdAt, row.sourceSetJson, row.lens, row.granularity);
   const result = emptyResult(artifact.workspaceId);
-  for (const item of artifact.nodes ?? []) addNode(result, { ...item, artifactSha: sha256 }, artifact.evidence ?? []);
-  for (const item of artifact.edges ?? []) addEdge(result, { ...item, artifactSha: sha256 }, artifact.evidence ?? []);
+  for (const item of artifact.nodes ?? []) addNode(result, { ...item, artifactSha: sha256 }, (artifact.evidence ?? []).filter((evidence) => evidence.revisionId === item.nodeRevisionId));
+  for (const item of artifact.edges ?? []) addEdge(result, { ...item, artifactSha: sha256 }, (artifact.evidence ?? []).filter((evidence) => evidence.revisionId === item.edgeRevisionId));
   for (const parent of artifact.parents ?? []) {
     for (const item of artifact.nodes ?? []) addParent(result, item.nodeRevisionId, parent);
     for (const item of artifact.edges ?? []) addParent(result, item.edgeRevisionId, parent);
@@ -339,9 +341,16 @@ function traceAnchorFor(revision, evidence) {
   return undefined;
 }
 
+function revisionLensMatches(database, artifactSha, lens) {
+  if (lens === "mixed") return true;
+  if (!artifactSha) return lens === "structural";
+  const row = database.prepare("SELECT lens FROM artifacts WHERE sha256 = ?").get(artifactSha);
+  return lens === "semantic" && row?.lens === "semantic";
+}
+
 function graphRows(database, query) {
-  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.nodeRevisionId, query));
-  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.edgeRevisionId, query));
+  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query));
+  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query));
   const revisions = [...nodes.map((item) => item.nodeRevisionId), ...edges.map((item) => item.edgeRevisionId)];
   const evidence = revisions.length === 0 ? [] : database.prepare(`SELECT e.revision_id AS revisionId, e.address_id AS addressId, e.role, a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS addressRevisionId, a.selector_json AS selectorJson FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id IN (${revisions.map(() => "?").join(",")})`).all(...revisions).map((row) => ({ revisionId: row.revisionId, addressId: row.addressId, role: row.role, address: { sourceType: row.sourceType, objectId: row.objectId, revisionId: row.addressRevisionId, ...(row.selectorJson ? { selector: JSON.parse(row.selectorJson) } : {}) } }));
   const withAnchors = (items, revisionKey) => items.map((item) => {
@@ -359,6 +368,7 @@ export class HistosEngine {
     this.databasePath = resolve(options.databasePath ?? options.dbPath ?? options.indexPath ?? join(resolve(options.userDataDir ?? process.cwd()), "index.sqlite"));
     this.artifactsDir = resolve(options.artifactsDir ?? join(dirname(this.databasePath), "artifacts"));
     this.scanOptions = { ...options };
+    this.semanticProvider = typeof options.semanticProvider === "function" ? options.semanticProvider : null;
     this.database = null;
     this.closed = false;
     mkdirSync(dirname(this.databasePath), { recursive: true, mode: 0o700 });
@@ -454,6 +464,49 @@ export class HistosEngine {
     return graphRows(this.assertOpen(), queryOf(query));
   }
 
+  async condenseGraph(input = {}) {
+    const query = queryOf(input);
+    if (query.lens === "structural") throw invalid("condenseGraph requires semantic or mixed lens");
+    const budget = input.budget === undefined ? MAX_CONDENSE_BUDGET : input.budget;
+    if (!Number.isSafeInteger(budget) || budget < 1 || budget > MAX_CONDENSE_BUDGET) throw invalid(`budget must be between 1 and ${MAX_CONDENSE_BUDGET}`);
+    const database = this.assertOpen();
+    const structural = graphRows(database, { ...query, lens: "structural" });
+    const nodes = structural.nodes.slice(0, MAX_CONDENSE_NODES);
+    if (structural.nodes.length > MAX_CONDENSE_NODES) throw Object.assign(new Error(`semantic condensation exceeds ${MAX_CONDENSE_NODES} nodes`), { code: "cost_cap_exceeded" });
+    if (!this.semanticProvider) {
+      return { ok: false, code: "semantic_provider_unavailable", diagnostics: [{ code: "offline", message: "Semantic condensation requires an available model provider" }] };
+    }
+    const estimated = nodes.reduce((total, node) => total + String(node.title ?? "").length, 0);
+    if (estimated > budget) throw Object.assign(new Error("semantic condensation budget exceeded"), { code: "cost_cap_exceeded" });
+    const condensed = [];
+    const condensedEvidence = [];
+    const revisionMap = new Map();
+    for (const node of nodes) {
+      const sourceEvidence = structural.evidence.filter((item) => item.revisionId === node.nodeRevisionId);
+      const result = await this.semanticProvider({ node, evidence: sourceEvidence, budget });
+      if (typeof result !== "string" || result.length === 0) throw Object.assign(new Error("semantic provider returned no summary"), { code: "provider_invalid" });
+      const nodeRevisionId = hashId(`semantic-node:${query.lens}:${node.nodeRevisionId}:${input.parentSha ?? "root"}`);
+      revisionMap.set(node.nodeRevisionId, nodeRevisionId);
+      condensed.push({ ...node, nodeRevisionId, title: result.slice(0, 4096), artifactSha: null });
+      for (const evidence of sourceEvidence) condensedEvidence.push({ ...evidence, revisionId: nodeRevisionId });
+    }
+    const condensedEdges = structural.edges.filter((edge) => revisionMap.has(edge.srcNodeId) && revisionMap.has(edge.dstNodeId)).map((edge) => ({
+      ...edge,
+      edgeRevisionId: hashId(`semantic-edge:${query.lens}:${edge.edgeRevisionId}:${input.parentSha ?? "root"}`),
+      srcNodeId: revisionMap.get(edge.srcNodeId),
+      dstNodeId: revisionMap.get(edge.dstNodeId),
+      artifactSha: null,
+    }));
+    const parentSha = typeof input.parentSha === "string" ? input.parentSha : null;
+    if (parentSha !== null && !/^[0-9a-f]{64}$/.test(parentSha)) throw invalid("parentSha must be a lowercase SHA-256 hash");
+    const artifact = validateArtifact({ schemaVersion: 1, workspaceId: this.workspaceId, kind: "graph_revision", sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity, nodes: condensed, edges: condensedEdges, evidence: condensedEvidence, parents: parentSha ? [parentSha] : [] }, { workspaceId: this.workspaceId, kind: "graph_revision" });
+    const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "graph_revision" });
+    const stored = { ...artifact, sha256 };
+    database.exec("BEGIN IMMEDIATE");
+    try { insertArtifact(database, stored, sha256); database.exec("COMMIT"); } catch (error) { database.exec("ROLLBACK"); throw error; }
+    return { ok: true, sha256, artifact: stored, diagnostics: [] };
+  }
+
   getNode(first, second) {
     const query = queryFromArgs(first, second);
     const nodeId = typeof first === "string" ? first : first.nodeId ?? first.id;
@@ -465,8 +518,35 @@ export class HistosEngine {
     return { ...rows[0], evidence: graph.evidence.filter((item) => item.revisionId === rows[0].nodeRevisionId), parents: graph.parents.filter((item) => item.childId === rows[0].nodeRevisionId) };
   }
 
+  async executeFlow(input = {}) {
+    if (!isObject(input) || typeof input.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(input.sha256)) throw invalid("executeFlow requires a flow artifact SHA-256");
+    const artifact = await readArtifact(this.artifactsDir, input.sha256, { workspaceId: this.workspaceId, kind: "flow_revision" });
+    const validation = validateFlowSpec(artifact, { workspaceId: this.workspaceId });
+    if (!validation.ok) throw Object.assign(new Error("Flow validation failed"), { code: "validation_failed" });
+    throw Object.assign(new Error("Flow execution requires an explicit approval decision"), { code: "approval_required" });
+  }
+
+  async saveViewState(input = {}) {
+    const query = queryOf(input);
+    if (!isObject(input.viewState)) throw invalid("viewState must be an object");
+    const positions = Array.isArray(input.viewState.positions) ? input.viewState.positions : [];
+    if (positions.length > MAX_CONDENSE_NODES) throw invalid("viewState.positions exceeds the node limit");
+    const normalized = positions.map((position) => {
+      if (!isObject(position) || !Number.isFinite(position.x) || !Number.isFinite(position.y) || typeof position.id !== "string") throw invalid("viewState position is invalid");
+      return { id: string(position.id, "viewState position id", 512), x: position.x, y: position.y };
+    });
+    const artifact = validateArtifact({ schemaVersion: 1, workspaceId: this.workspaceId, kind: "view_state", sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity, positions: normalized, parents: [] }, { workspaceId: this.workspaceId, kind: "view_state" });
+    const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "view_state" });
+    const stored = { ...artifact, sha256 };
+    this.assertOpen().exec("BEGIN IMMEDIATE");
+    try { insertArtifact(this.database, stored, sha256); this.database.exec("COMMIT"); } catch (error) { this.database.exec("ROLLBACK"); throw error; }
+    return { sha256, artifact: stored };
+  }
+
   async freezeContext(input = {}) {
     const query = queryOf(input);
+    const budget = input.budget === undefined ? 64_000 : input.budget;
+    if (!Number.isSafeInteger(budget) || budget < 1 || budget > 64_000) throw invalid("freezeContext.budget must be between 1 and 64000");
     const database = this.assertOpen();
     if (!Array.isArray(input.selection) || input.selection.length === 0) throw invalid("freezeContext.selection must be a non-empty array");
     const graph = graphRows(database, query);
@@ -474,6 +554,8 @@ export class HistosEngine {
     const nodes = graph.nodes.filter((item) => selected.has(item.nodeRevisionId) || selected.has(item.nodeId));
     const edges = graph.edges.filter((item) => selected.has(item.edgeRevisionId) || selected.has(item.edgeId));
     const evidence = graph.evidence.filter((item) => nodes.some((node) => node.nodeRevisionId === item.revisionId) || edges.some((edge) => edge.edgeRevisionId === item.revisionId));
+    const size = canonicalJson({ nodes, edges, evidence }).length;
+    if (size > budget) throw Object.assign(new Error("ContextSet budget exceeded; choose fewer nodes or increase the budget"), { code: "budget_exceeded" });
     const artifact = validateArtifact({ schemaVersion: 1, workspaceId: this.workspaceId, kind: "context_set", sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity, selection: evidence.map((item) => ({ revisionId: item.revisionId, addressId: item.addressId, role: item.role, address: item.address })), nodes, edges, evidence, parents: [] }, { workspaceId: this.workspaceId, kind: "context_set" });
     const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "context_set" });
     const stored = { ...artifact, sha256 };

@@ -187,6 +187,25 @@ test("context_set artifact hash is written atomically, read, hydrated, and rejec
   await assert.rejects(() => readArtifact(artifactsDir, expectedHash), { code: "integrity_error" });
 });
 
+test("HistosEngine returns an explicit offline diagnostic for semantic condensation", async () => {
+  const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-condense-"));
+  const engine = new HistosEngine({ workspaceId: "workspace-1", databasePath: join(root, "index.sqlite"), artifactsDir: join(root, "artifacts") });
+  const result = await engine.condenseGraph({ sourceSet: {}, lens: "semantic", granularity: "entry" });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "semantic_provider_unavailable");
+  assert.equal(result.diagnostics[0].code, "offline");
+  engine.close();
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test("HistosEngine enforces the semantic condensation cost cap", async () => {
+  const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-cap-"));
+  const engine = new HistosEngine({ workspaceId: "workspace-1", databasePath: join(root, "index.sqlite"), artifactsDir: join(root, "artifacts"), semanticProvider: async () => "summary" });
+  await assert.rejects(() => engine.condenseGraph({ sourceSet: {}, lens: "semantic", granularity: "entry", budget: 0 }), (error) => error.code === "invalid_args");
+  engine.close();
+  await fs.rm(root, { recursive: true, force: true });
+});
+
 test("HistosEngine rebuilds JSONL deterministically with trace anchors and spans", async (t) => {
   const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-engine-"));
   t.after(async () => fs.rm(root, { recursive: true, force: true }));

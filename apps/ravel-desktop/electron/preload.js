@@ -279,6 +279,25 @@ contextBridge.exposeInMainWorld("omega", {
     const query = histosQuery(req);
     return query ? ipcRenderer.invoke("omega:histosGetGraph", query) : invalidHistos("sourceSet, lens, and granularity are required");
   },
+  histosCondenseGraph: (req) => {
+    const query = histosQuery(req);
+    if (!query || query.lens === "structural") return invalidHistos("semantic or mixed lens is required");
+    const budget = req?.budget;
+    if (budget !== undefined && (!Number.isSafeInteger(budget) || budget < 1 || budget > 32000)) return invalidHistos("budget is out of bounds");
+    const parentSha = req?.parentSha;
+    if (parentSha !== undefined && (typeof parentSha !== "string" || !HISTOS_SHA256.test(parentSha))) return invalidHistos("parentSha is invalid");
+    return ipcRenderer.invoke("omega:histosCondenseGraph", { ...query, ...(budget === undefined ? {} : { budget }), ...(parentSha === undefined ? {} : { parentSha }) });
+  },
+  histosExecuteFlow: (req) => {
+    const sha256 = req?.sha256;
+    return typeof sha256 === "string" && HISTOS_SHA256.test(sha256) ? ipcRenderer.invoke("omega:histosExecuteFlow", { sha256 }) : invalidHistos("flow artifact sha256 is required");
+  },
+  histosSaveViewState: (req) => {
+    const query = histosQuery(req);
+    const positions = Array.isArray(req?.positions) ? req.positions.slice(0, 500).map((position) => typeof position?.id === "string" && Number.isFinite(position.x) && Number.isFinite(position.y) ? { id: position.id, x: position.x, y: position.y } : null) : [];
+    if (!query || positions.some((position) => position === null) || (req?.positions?.length ?? 0) > 500) return invalidHistos("positions and query are required");
+    return ipcRenderer.invoke("omega:histosSaveViewState", { ...query, positions });
+  },
   histosRebuild: (req) => {
     const query = histosQuery(req);
     if (!query) return invalidHistos("sourceSet, lens, and granularity are required");
@@ -297,7 +316,8 @@ contextBridge.exposeInMainWorld("omega", {
     if (!query || selection.length === 0 || selection.some((item) => item === null)) return invalidHistos("selection and query are required");
     if (req?.selection?.length > 2000) return invalidHistos("selection is too large");
     if (req?.targetSessionId !== undefined && !histosString(req.targetSessionId, 128)) return invalidHistos("targetSessionId is invalid");
-    return ipcRenderer.invoke("omega:histosFreezeContext", { ...query, selection, ...(req?.targetSessionId === undefined ? {} : { targetSessionId: req.targetSessionId }) });
+    if (req?.budget !== undefined && (!Number.isSafeInteger(req.budget) || req.budget < 1 || req.budget > 64000)) return invalidHistos("budget is out of bounds");
+    return ipcRenderer.invoke("omega:histosFreezeContext", { ...query, selection, ...(req?.targetSessionId === undefined ? {} : { targetSessionId: req.targetSessionId }), ...(req?.budget === undefined ? {} : { budget: req.budget }) });
   },
   histosConvertToFlow: (req) => {
     const query = histosQuery(req);

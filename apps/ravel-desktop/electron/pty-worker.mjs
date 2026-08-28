@@ -1,5 +1,6 @@
 /** Isolated node-pty worker. The node-pty dependency is intentionally confined here. */
 import { createRequire } from "node:module";
+import { processLog } from "./process-log.js";
 import {
   MAX_PTY_SESSIONS,
   createPtyErrorResponse,
@@ -108,6 +109,11 @@ export function createPtyWorkerHandler({ pty = nodePty, send = sendMessage, kill
   };
   return Object.freeze({ handle, getGeneration: () => generation, getSessionCount: () => active.size });
 }
+
+process.on("uncaughtException", (error) => {
+  processLog("pty-worker", "uncaught_exception", error);
+  process.exit(1);
+});
 
 const handler = createPtyWorkerHandler();
 async function onWorkerMessage(message) {

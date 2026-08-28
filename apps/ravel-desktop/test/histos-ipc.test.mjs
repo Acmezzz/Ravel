@@ -137,9 +137,12 @@ test("all normalized Histos DTOs contain no private storage or absolute-path fie
   for (const value of values) assertSafeDto(value);
 });
 
-test("six Histos channels are present in the registry and preload invokes", async () => {
+test("Histos channels are present in the registry and preload invokes", async () => {
   const expected = [
     "omega:histosGetGraph",
+    "omega:histosCondenseGraph",
+    "omega:histosSaveViewState",
+    "omega:histosExecuteFlow",
     "omega:histosRebuild",
     "omega:histosGetNode",
     "omega:histosFreezeContext",
@@ -150,7 +153,7 @@ test("six Histos channels are present in the registry and preload invokes", asyn
   const preload = await readSource("../electron/preload.js");
   const invoked = uniqueSorted(extractInvokeChannels(preload).filter((channel) => channel.startsWith("omega:histos")));
   assert.deepEqual(registered, expected);
-  assert.equal(registered.length, 6);
+  assert.equal(registered.length, 9);
   assert.deepEqual(diffChannelSets(expected, invoked), { missing: [], extra: [] });
 });
 

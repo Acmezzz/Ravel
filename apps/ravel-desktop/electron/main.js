@@ -67,6 +67,9 @@ import {
   histosFreezeContextRequest,
   histosGetArtifactRequest,
   histosGetGraphRequest,
+  histosCondenseGraphRequest,
+  histosSaveViewStateRequest,
+  histosExecuteFlowRequest,
   histosGetNodeRequest,
   histosRebuildRequest,
   histosConvertToFlowRequest,
@@ -1714,6 +1717,30 @@ ipcMain.handle("omega:histosGetGraph", async (event, req) => {
   if (!normalized) return errorResult("invalid_args", "sourceSet, lens, and granularity are required");
   try { return okResult(await (await activeHistos()).call("getGraph", normalized)); }
   catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosCondenseGraph", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosCondenseGraphRequest(req);
+  if (!normalized) return errorResult("invalid_args", "semantic or mixed lens and a valid budget are required");
+  try { return okResult(await (await activeHistos()).call("condenseGraph", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "condense_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosExecuteFlow", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosExecuteFlowRequest(req);
+  if (!normalized) return errorResult("invalid_args", "flow artifact sha256 is required");
+  try { return okResult(await (await activeHistos()).call("executeFlow", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "execution_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosSaveViewState", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosSaveViewStateRequest(req);
+  if (!normalized) return errorResult("invalid_args", "positions and query are required");
+  try { return okResult(await (await activeHistos()).call("saveViewState", { ...normalized, viewState: { positions: normalized.positions } })); }
+  catch (error) { return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error)); }
 });
 
 ipcMain.handle("omega:histosRebuild", async (event, req) => {

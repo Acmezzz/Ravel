@@ -3,6 +3,7 @@
  * Node child_process IPC so the host can be tested without Electron.
  */
 import { createHistosEngine } from "./histos-engine.js";
+import { processLog } from "./process-log.js";
 import { createHistosErrorResponse, createHistosResponse, isHistosRequest } from "./histos-protocol.js";
 
 let engine = null;
@@ -49,6 +50,9 @@ async function invoke(method, args) {
   }
   const current = requireEngine();
   if (method === "getGraph") return current.getGraph(args?.query ?? args);
+  if (method === "condenseGraph") return current.condenseGraph(args ?? {});
+  if (method === "saveViewState") return current.saveViewState(args ?? {});
+  if (method === "executeFlow") return current.executeFlow(args ?? {});
   if (method === "getNode") return current.getNode(args);
   if (method === "getArtifact") return current.getArtifact(args);
   if (method === "rebuild") return current.rebuild(args ?? {});
@@ -81,7 +85,7 @@ receive(async (message) => {
 });
 
 process.on("uncaughtException", (error) => {
-  console.error("histos worker crashed", error);
+  processLog("histos-worker", "uncaught_exception", error);
   try { post({ type: "error", error: "Histos worker failed" }); } catch { /* best effort */ }
   process.exit(1);
 });

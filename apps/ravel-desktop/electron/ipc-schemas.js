@@ -200,6 +200,28 @@ export function histosGetGraphRequest(value) {
   return histosQuery(value);
 }
 
+export function histosCondenseGraphRequest(value) {
+  const query = histosQuery(value);
+  if (!query || query.lens === "structural") return null;
+  const budget = value?.budget === undefined ? undefined : Number.isSafeInteger(value.budget) && value.budget >= 1 && value.budget <= 32000 ? value.budget : null;
+  if (budget === null) return null;
+  const parentSha = value?.parentSha === undefined ? undefined : histosString(value.parentSha, "parentSha", 64);
+  if (parentSha !== undefined && (parentSha === null || !HISTOS_SHA256.test(parentSha))) return null;
+  return { ...query, ...(budget === undefined ? {} : { budget }), ...(parentSha === undefined ? {} : { parentSha }) };
+}
+
+export function histosExecuteFlowRequest(value) {
+  const sha256 = histosString(value?.sha256, "sha256", 64);
+  return sha256 && HISTOS_SHA256.test(sha256) ? { sha256 } : null;
+}
+
+export function histosSaveViewStateRequest(value) {
+  const query = histosQuery(value);
+  if (!query || !Array.isArray(value?.positions) || value.positions.length > 500) return null;
+  const positions = value.positions.map((position) => typeof position?.id === "string" && Number.isFinite(position.x) && Number.isFinite(position.y) ? { id: position.id, x: position.x, y: position.y } : null);
+  return positions.some((position) => position === null) ? null : { ...query, positions };
+}
+
 export function histosRebuildRequest(value) {
   const query = histosQuery(value);
   if (!query) return null;
@@ -219,7 +241,9 @@ export function histosFreezeContextRequest(value) {
   const selection = value.selection.map(histosSelection);
   if (selection.some((item) => item === null)) return null;
   const targetSessionId = value.targetSessionId === undefined ? undefined : histosString(value.targetSessionId, "targetSessionId", 128);
-  return targetSessionId === null ? null : { ...query, selection, ...(targetSessionId === undefined ? {} : { targetSessionId }) };
+  const budget = value.budget === undefined ? undefined : Number.isSafeInteger(value.budget) && value.budget >= 1 && value.budget <= 64000 ? value.budget : null;
+  if (budget === null) return null;
+  return targetSessionId === null ? null : { ...query, selection, ...(targetSessionId === undefined ? {} : { targetSessionId }), ...(budget === undefined ? {} : { budget }) };
 }
 
 export function histosConvertToFlowRequest(value) {

@@ -30,6 +30,7 @@ export function GraphPanel(): React.ReactElement {
   const workspaceEpoch = useAppStore((state) => state.workspaceEpoch);
   const requestTranscriptNavigation = useAppStore((state) => state.requestTranscriptNavigation);
   const [graph, setGraph] = React.useState<HistosGraphDTO | null>(null);
+  const [lens, setLens] = React.useState<HistosGraphDTO["lens"]>("structural");
   const [selection, setSelection] = React.useState<GraphSelection | null>(null);
   const [draft, setDraft] = React.useState<GraphDraftSelection>({ nodeRevisionIds: [], edgeRevisionIds: [] });
   const [loading, setLoading] = React.useState(false);
@@ -38,6 +39,8 @@ export function GraphPanel(): React.ReactElement {
   const [convertResult, setConvertResult] = React.useState<string | null>(null);
   const [freezing, setFreezing] = React.useState(false);
   const [freezeResult, setFreezeResult] = React.useState<string | null>(null);
+  const [condensing, setCondensing] = React.useState(false);
+  const [condenseResult, setCondenseResult] = React.useState<string | null>(null);
   const requestEpoch = React.useRef(0);
 
   const refresh = React.useCallback(async () => {
@@ -47,7 +50,7 @@ export function GraphPanel(): React.ReactElement {
     }
     const sessionId = activeSessionId;
     setLoading(true); setError(null);
-    const result = await ipc.histosGetGraph({ sourceSet: { sessionIds: [sessionId] }, lens: "structural", granularity: "entry" });
+    const result = await ipc.histosGetGraph({ sourceSet: { sessionIds: [sessionId] }, lens, granularity: "entry" });
     if (epoch !== requestEpoch.current || useAppStore.getState().activeSessionId !== sessionId) return;
     if (result.ok) {
       setGraph(result.data); setSelection(null); setDraft({ nodeRevisionIds: [], edgeRevisionIds: [] });
@@ -55,7 +58,7 @@ export function GraphPanel(): React.ReactElement {
       setGraph(null); setSelection(null); setDraft({ nodeRevisionIds: [], edgeRevisionIds: [] }); setError(result.message);
     }
     setLoading(false);
-  }, [activeSessionId]);
+  }, [activeSessionId, lens]);
 
   React.useEffect(() => { void refresh(); }, [refresh, workspaceEpoch]);
 
@@ -78,6 +81,16 @@ export function GraphPanel(): React.ReactElement {
     setConverting(false);
   }, [activeSessionId, converting, graph, selection, t]);
 
+  const condenseGraph = React.useCallback(async () => {
+    if (!activeSessionId || !graph || lens === "structural" || condensing) return;
+    setCondensing(true); setCondenseResult(null);
+    const result = await ipc.histosCondenseGraph({ sourceSet: { sessionIds: [activeSessionId] }, lens, granularity: "entry", budget: 32000 });
+    if (!result.ok) setCondenseResult(result.message);
+    else if (result.data.ok && result.data.sha256) setCondenseResult(result.data.sha256);
+    else setCondenseResult(result.data.diagnostics[0]?.message ?? "Semantic condensation unavailable");
+    setCondensing(false);
+  }, [activeSessionId, condensing, graph, lens]);
+
   const freezeContext = React.useCallback(async () => {
     if (!activeSessionId || freezing || (draft.nodeRevisionIds.length === 0 && draft.edgeRevisionIds.length === 0)) return;
     setFreezing(true); setFreezeResult(null);
@@ -92,6 +105,7 @@ export function GraphPanel(): React.ReactElement {
     <div className="omega-graph-panel">
       <div className="omega-graph-toolbar">
         <div><span className="overline-label">{t("graph.title")}</span><span className="omega-muted-text">{t("graph.query")}</span></div>
+        <label className="omega-muted-text">Lens <select value={lens} onChange={(event) => setLens(event.target.value as HistosGraphDTO["lens"])}><option value="structural">Structural</option><option value="semantic">Semantic</option><option value="mixed">Mixed</option></select></label>
         <div className="omega-graph-toolbar-actions">
           {projected ? <span className="mono-num">{projected.nodes.length}N · {projected.edges.length}E</span> : null}
           <IconButton size="sm" label={t("graph.refresh")} onClick={() => void refresh()} disabled={loading}>↻</IconButton>
@@ -108,9 +122,11 @@ export function GraphPanel(): React.ReactElement {
             <div className="omega-graph-toolbar-actions">
               <Button size="sm" variant="quiet" disabled={freezing || draft.nodeRevisionIds.length + draft.edgeRevisionIds.length === 0} onClick={() => void freezeContext()}>{freezing ? t("graph.freezing") : t("graph.freeze")}</Button>
               <Button size="sm" variant="quiet" disabled={converting || projected.nodes.length === 0} onClick={() => void convertToFlow()}>{converting ? t("graph.converting") : t("graph.convert")}</Button>
+              <Button size="sm" variant="quiet" disabled={condensing || lens === "structural" || projected.nodes.length === 0} onClick={() => void condenseGraph()}>{condensing ? "Condensing…" : "Condense"}</Button>
             </div>
             {freezeResult ? <span className="omega-muted-text" role="status">{freezeResult}</span> : null}
             {convertResult ? <span className="omega-muted-text" role="status">{convertResult}</span> : null}
+            {condenseResult ? <span className="omega-muted-text" role="status">{condenseResult}</span> : null}
           </div>
           {selected ? (
             <section className="omega-graph-detail" aria-label={t("graph.detailAria")}>

@@ -88,7 +88,7 @@ export function GraphCanvas({ graph, onSelect, onDraftChange }: {
     worker.postMessage({
       type: "layout",
       requestId: currentRequest,
-      nodes: graph.nodes.map((node) => ({ id: node.id, width: 180, height: node.isolated ? 72 : 64 })),
+      nodes: graph.nodes.map((node) => ({ id: node.id, parentId: node.parentId ?? null, width: 180, height: node.isolated ? 72 : 64 })),
       edges: graph.edges.flatMap((edge) => edge.sourceNodeRevisionId && edge.targetNodeRevisionId ? [{ id: edge.id, sources: [edge.sourceNodeRevisionId], targets: [edge.targetNodeRevisionId] }] : []),
     });
     return () => worker.removeEventListener("message", onMessage);
@@ -102,6 +102,7 @@ export function GraphCanvas({ graph, onSelect, onDraftChange }: {
       type: canvasType(node.kind),
       position: { x: position?.x ?? 0, y: position?.y ?? 0 },
       data: { kind: node.kind, title: node.title, isolated: node.isolated },
+      ...(node.parentId ? { parentId: node.parentId } : {}),
       selected: selectedNodes.has(node.id) || node.selected,
       draggable: false,
       connectable: false,
