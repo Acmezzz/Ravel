@@ -13,7 +13,7 @@ export const PERMISSION_PROFILES = Object.freeze([
 export const DEFAULT_PERMISSION_PROFILE = "workspace-only";
 /** Known read-only built-ins; every other tool name is treated as untrusted. */
 const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "ls"]);
-const MUTATING_TOOLS = new Set(["bash", "edit", "write"]);
+const MUTATING_TOOLS = new Set(["bash", "edit", "write", "flow.execute"]);
 
 /**
  * Risk tier per tool name. Unlike trust (the permission profile), this

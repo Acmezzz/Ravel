@@ -1740,8 +1740,17 @@ ipcMain.handle("omega:histosExecuteFlow", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = histosExecuteFlowRequest(req);
   if (!normalized) return errorResult("invalid_args", "flow artifact sha256 is required");
-  try { return okResult(await (await activeHistos()).call("executeFlow", normalized)); }
-  catch (error) { return errorResult(error?.code ?? "execution_failed", error instanceof Error ? error.message : String(error)); }
+  if (!worker || worker.state !== "ready" || !worker.sessionId || !activeCwd) return errorResult("not_ready", "The active Agent session is not ready");
+  if (isForegroundBusy()) return errorResult("session_busy", "生成中无法执行 Flow，请先停止或等待完成");
+  try {
+    const plan = await (await activeHistos()).call("executeFlow", { ...normalized, targetSessionId: worker.sessionId });
+    if (!plan || plan.targetSessionId !== worker.sessionId || plan.flowSha !== normalized.sha256 || !Array.isArray(plan.steps) || plan.steps.length === 0) return errorResult("validation_failed", "Flow execution plan is invalid");
+    return okResult(await worker.call("executeFlow", {
+      flowSha: plan.flowSha,
+      targetSessionId: worker.sessionId,
+      steps: plan.steps,
+    }));
+  } catch (error) { return errorResult(error?.code ?? "execution_failed", error instanceof Error ? error.message : String(error)); }
 });
 
 ipcMain.handle("omega:histosSaveViewState", async (event, req) => {

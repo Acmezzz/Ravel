@@ -122,7 +122,18 @@ export interface HistosCondenseGraphRequest extends HistosQueryDTO {
   parentSha?: string;
 }
 export interface HistosExecuteFlowRequest { sha256: string }
-export interface HistosExecuteFlowResultDTO { ok: false; code: "approval_required" | "validation_failed" }
+export type HistosExecuteFlowResultDTO = {
+  ok: true;
+  flowSha: string;
+  operationId: string;
+} | {
+  ok: false;
+  code:
+    | "approval_required"
+    | "validation_failed"
+    | "session_mismatch"
+    | "session_busy";
+};
 export interface HistosCondenseGraphResultDTO {
   ok: boolean;
   code?: string;

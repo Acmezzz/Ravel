@@ -70,8 +70,11 @@ export function appendFact(sessionManager, record) {
 	requireString(record, "id");
 	requireString(record, "lane");
 	switch (record.type) {
-		case "operation_started": {
-			if (record.sourceLeafId !== null && typeof record.sourceLeafId !== "string") {
+			case "operation_started": {
+				if (record.flowSha !== undefined && (typeof record.flowSha !== "string" || !/^[0-9a-f]{64}$/.test(record.flowSha))) {
+					throw new Error("Invalid operation_started fact: flowSha must be a lowercase SHA-256 hex string");
+				}
+				if (record.sourceLeafId !== null && typeof record.sourceLeafId !== "string") {
 				throw new Error("Invalid operation_started fact: sourceLeafId must be a string or null");
 			}
 			const intent = record.intent;

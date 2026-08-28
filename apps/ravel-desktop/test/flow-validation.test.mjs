@@ -47,6 +47,28 @@ test("convertGraphToFlowDraft builds flow_revision draft preserving evidence", (
   assert.equal(draft.nodes.length, 2);
   assert.equal(draft.edges.length, 1);
   assert.equal(draft.evidence.length, 3);
+  const selected = convertGraphToFlowDraft(sampleGraph(), {
+    workspaceId: "workspace-1",
+    selectedNodeRevisionIds: ["rev-node-1"],
+  });
+  assert.equal(selected.nodes.length, 1);
+  assert.equal(selected.edges.length, 0);
+});
+
+test("validateFlowSpec requires an entry and rejects cycles and invalid approval edges", () => {
+  const draft = convertGraphToFlowDraft(sampleGraph(), { workspaceId: "workspace-1" });
+  draft.nodes = draft.nodes.map((node) => ({ ...node, kind: node.kind === "entry" ? "tool" : node.kind }));
+  draft.edges = [{ ...draft.edges[0], kind: "approved" }];
+  let result = validateFlowSpec(draft, { workspaceId: "workspace-1" });
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((err) => err.includes("entry node")));
+  assert.ok(result.errors.some((err) => err.includes("must start at an approval node")));
+
+  const cyclic = convertGraphToFlowDraft(sampleGraph(), { workspaceId: "workspace-1" });
+  cyclic.edges.push({ ...cyclic.edges[0], edgeId: "edge:cycle", srcNodeId: "tool:1", dstNodeId: "entry:1" });
+  result = validateFlowSpec(cyclic, { workspaceId: "workspace-1" });
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((err) => err.includes("cycle")));
 });
 
 test("validateFlowSpec rejects missing endpoints and unsupported kinds (fail-closed)", () => {

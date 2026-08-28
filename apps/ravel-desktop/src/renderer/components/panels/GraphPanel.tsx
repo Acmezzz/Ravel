@@ -3,7 +3,7 @@ import { ipc } from "../../ipc/client";
 import { useT } from "../../lib/i18n";
 import { projectHistosGraph, type GraphSelection, type GraphTraceTarget } from "../../lib/graph-projection";
 import { useAppStore } from "../../store/useAppStore";
-import type { HistosGraphDTO } from "../../types/dto";
+import type { HistosConvertToFlowResultDTO, HistosGraphDTO } from "../../types/dto";
 import { Button, IconButton } from "../../ui/Button";
 import { SnippetEditor } from "../common/SnippetEditor";
 import { GraphCanvas, type GraphDraftSelection } from "./GraphCanvas";
@@ -36,7 +36,10 @@ export function GraphPanel(): React.ReactElement {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [converting, setConverting] = React.useState(false);
+  const [flow, setFlow] = React.useState<HistosConvertToFlowResultDTO | null>(null);
   const [convertResult, setConvertResult] = React.useState<string | null>(null);
+  const [executingFlow, setExecutingFlow] = React.useState(false);
+  const [executeResult, setExecuteResult] = React.useState<string | null>(null);
   const [freezing, setFreezing] = React.useState(false);
   const [freezeResult, setFreezeResult] = React.useState<string | null>(null);
   const [condensing, setCondensing] = React.useState(false);
@@ -78,9 +81,25 @@ export function GraphPanel(): React.ReactElement {
     if (!graph || !activeSessionId || converting) return;
     setConverting(true); setConvertResult(null);
     const result = await ipc.histosConvertToFlow({ sourceSet: { sessionIds: [activeSessionId] }, lens: "structural", granularity: "entry", ...(selection?.type === "node" ? { selectedNodeRevisionIds: [selection.nodeRevisionId] } : {}), ...(selection?.type === "edge" ? { selectedEdgeRevisionIds: [selection.edgeRevisionId] } : {}) });
-    setConvertResult(result.ok ? t("graph.convertSha", { sha: result.data.sha256 }) : `${t("graph.convertFailed")}: ${result.message}`);
+    if (result.ok) {
+      setFlow(result.data);
+      setConvertResult(t("graph.convertSha", { sha: result.data.sha256 }));
+    } else {
+      setFlow(null);
+      setConvertResult(`${t("graph.convertFailed")}: ${result.message}`);
+    }
     setConverting(false);
   }, [activeSessionId, converting, graph, selection, t]);
+
+  const executeFlow = React.useCallback(async () => {
+    if (!flow?.validation.ok || !activeSessionId || executingFlow) return;
+    setExecutingFlow(true); setExecuteResult(null);
+    const result = await ipc.histosExecuteFlow({ sha256: flow.sha256 });
+    setExecuteResult(result.ok
+      ? result.data.ok ? `Flow started: ${result.data.operationId}` : `Flow execution failed: ${result.data.code}`
+      : `Flow execution failed: ${result.message}`);
+    setExecutingFlow(false);
+  }, [activeSessionId, executingFlow, flow]);
 
   const condenseGraph = React.useCallback(async () => {
     if (!activeSessionId || !graph || lens === "structural" || condensing) return;
@@ -124,9 +143,11 @@ export function GraphPanel(): React.ReactElement {
               <Button size="sm" variant="quiet" disabled={freezing || draft.nodeRevisionIds.length + draft.edgeRevisionIds.length === 0} onClick={() => void freezeContext()}>{freezing ? t("graph.freezing") : t("graph.freeze")}</Button>
               <Button size="sm" variant="quiet" disabled={converting || projected.nodes.length === 0} onClick={() => void convertToFlow()}>{converting ? t("graph.converting") : t("graph.convert")}</Button>
               <Button size="sm" variant="quiet" disabled={condensing || lens === "structural" || projected.nodes.length === 0} onClick={() => void condenseGraph()}>{condensing ? "Condensing…" : "Condense"}</Button>
+              <Button size="sm" variant="solid" disabled={!flow?.validation.ok || executingFlow || !activeSessionId} onClick={() => void executeFlow()}>{executingFlow ? "Executing…" : "Run Flow"}</Button>
             </div>
             {freezeResult ? <span className="omega-muted-text" role="status">{freezeResult}</span> : null}
             {convertResult ? <span className="omega-muted-text" role="status">{convertResult}</span> : null}
+            {executeResult ? <span className="omega-muted-text" role="status">{executeResult}</span> : null}
             {condenseResult ? <span className="omega-muted-text" role="status">{condenseResult}</span> : null}
           </div>
           {selected ? (

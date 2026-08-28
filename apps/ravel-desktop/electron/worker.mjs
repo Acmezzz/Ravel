@@ -54,8 +54,13 @@ let disposed = false;
 let eventSequence = 0;
 let runtimeEpoch = 0;
 let activeRunId = null;
+let activeUiContext = null;
 const activeClientMessageIds = new Set();
 const pendingExtensionUI = new Map();
+const MAX_FLOW_STEPS = 128;
+const MAX_FLOW_FIELD = 4096;
+const MAX_FLOW_PROMPT_BYTES = 64 * 1024;
+const FLOW_STEP_KINDS = new Set(["entry", "operation", "tool"]);
 /** Serializes non-streaming prompts; streaming prompts bypass it (steer). */
 let promptQueue = Promise.resolve();
 
@@ -156,6 +161,7 @@ function createDesktopExtensionUIContext() {
 
 async function bindSession(session) {
   const uiContext = createDesktopExtensionUIContext();
+  activeUiContext = uiContext;
   await session.bindExtensions({
     uiContext,
     mode: "rpc",
@@ -191,14 +197,27 @@ async function bindSession(session) {
  * operation instead of opening a second one (two open operations would be
  * reducer-level corruption). Best effort: fact failures never block prompts.
  */
-function beginOperationFact(session, operationId, text) {
-  activeRunId = operationId;
+function createFlowApprovalGuard(session, flowSha, confirm) {
+  return createPermissionGuard({
+    profile: "ask-before-command",
+    cwd: runtime.cwd,
+    confirm,
+    facts: {
+      runId: () => activeRunId ?? `flow-${flowSha}`,
+      appendAsked: (asked) => appendFact(session.sessionManager, asked),
+      appendDecided: (decided) => appendFact(session.sessionManager, decided),
+    },
+  });
+}
+
+function beginOperationFact(session, operationId, text, flowSha = null) {
   try {
     appendFact(session.sessionManager, {
       type: "operation_started",
       id: operationId,
       lane: "main",
       sourceLeafId: session.sessionManager.getLeafId(),
+      ...(flowSha ? { flowSha } : {}),
       intent: {
         kind: "run",
         originalPrompt: [{ role: "user", content: [{ type: "text", text }], timestamp: Date.now() }],
@@ -206,8 +225,11 @@ function beginOperationFact(session, operationId, text) {
       },
       timestamp: Date.now(),
     });
+    activeRunId = operationId;
+    return true;
   } catch (error) {
     console.error("operation_started fact failed", error);
+    return false;
   }
 }
 
@@ -402,6 +424,88 @@ function sanitizeReferences(references) {
   return out.slice(0, 16);
 }
 
+async function executeFlow({ flowSha, targetSessionId, steps, generation: requestGeneration }) {
+  const queuedGeneration = generation;
+  const run = promptQueue.then(async () => {
+    if (disposed || queuedGeneration !== generation) {
+      const error = new Error("stale worker generation");
+      error.code = "stale_generation";
+      throw error;
+    }
+    return executeFlowNow({ flowSha, targetSessionId, steps, generation: requestGeneration });
+  });
+  promptQueue = run.catch(() => {});
+  return run;
+}
+
+async function executeFlowNow({ flowSha, targetSessionId, steps, generation: requestGeneration }) {
+  if (disposed || requestGeneration !== generation) {
+    const error = new Error("stale worker generation");
+    error.code = "stale_generation";
+    throw error;
+  }
+  if (typeof flowSha !== "string" || !/^[0-9a-f]{64}$/.test(flowSha)) {
+    const error = new Error("flowSha must be a lowercase SHA-256 hash");
+    error.code = "invalid_args";
+    throw error;
+  }
+  if (targetSessionId !== runtime.session.sessionId) {
+    const error = new Error("Flow target session must be active");
+    error.code = "session_mismatch";
+    throw error;
+  }
+  if (!Array.isArray(steps) || steps.length === 0 || steps.length > MAX_FLOW_STEPS) {
+    const error = new Error("Flow execution steps are invalid");
+    error.code = "invalid_args";
+    throw error;
+  }
+  const seenStepIds = new Set();
+  for (const step of steps) {
+    if (!step || typeof step.id !== "string" || step.id.length === 0 || step.id.length > MAX_FLOW_FIELD || /[\u0000-\u001f\u007f]/.test(step.id) || seenStepIds.has(step.id) || !FLOW_STEP_KINDS.has(step.kind) || typeof step.title !== "string" || step.title.length > MAX_FLOW_FIELD || /[\u0000-\u001f\u007f]/.test(step.title)) {
+      const error = new Error("Flow execution steps are invalid");
+      error.code = "invalid_args";
+      throw error;
+    }
+    seenStepIds.add(step.id);
+  }
+  if (Buffer.byteLength(steps.map((step, index) => `${index + 1}. [${step.kind}] ${step.title}`).join("\n"), "utf8") > MAX_FLOW_PROMPT_BYTES) {
+    const error = new Error("Flow execution plan exceeds the prompt limit");
+    error.code = "invalid_args";
+    throw error;
+  }
+  if (runtime.session.isStreaming) {
+    const error = new Error("Cannot execute a Flow while the session is streaming");
+    error.code = "session_busy";
+    throw error;
+  }
+  const promptText = `Execute the approved Flow ${flowSha} in order:\n${steps.map((step, index) => `${index + 1}. [${step.kind}] ${step.title}`).join("\n")}`;
+  const operationId = `flow-${randomUUID()}`;
+  if (!beginOperationFact(runtime.session, operationId, promptText, flowSha)) {
+    const error = new Error("Flow operation fact could not be persisted");
+    error.code = "facts_unavailable";
+    throw error;
+  }
+  try {
+    const approve = createFlowApprovalGuard(runtime.session, flowSha, (title, message, onIssued) =>
+      activeUiContext?.confirm(title, message, { onIssued }),
+    );
+    await approve({
+      toolCall: { name: "flow.execute", id: `flow-${flowSha}` },
+      args: { flowSha, stepCount: steps.length },
+    });
+    await runtime.session.prompt(promptText, { streamingBehavior: "followUp" });
+    endOperationFact(runtime.session, operationId, "completed");
+    return { ok: true, flowSha, operationId };
+  } catch (error) {
+    const aborted = error instanceof Error && (error.name === "AbortError" || /abort/i.test(error.message));
+    const declined = error instanceof Error && error.code === "permission_denied";
+    endOperationFact(runtime.session, operationId, declined ? "declined" : aborted ? "aborted" : "failed", error);
+    throw error;
+  } finally {
+    if (activeRunId === operationId) activeRunId = null;
+  }
+}
+
 async function prompt({ text, behavior, images, clientMessageId, generation: requestGeneration, references }) {
   if (disposed || requestGeneration !== generation) {
     const error = new Error("stale worker generation");
@@ -564,6 +668,7 @@ const methods = {
     await runtime.session.agent.waitForIdle();
   },
   prompt,
+  executeFlow,
   abort: () => runtime.session.abort(),
   recordCheckpoint: async ({ checkpointId, label, outcome, error }) => {
     try {

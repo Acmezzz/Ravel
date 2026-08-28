@@ -7,7 +7,7 @@ import * as addressModule from "./histos-address.js";
 import * as adapters from "./histos-adapters.js";
 import * as provenance from "./histos-provenance.js";
 import { chunkFactAddress } from "./histos-chunker.js";
-import { convertGraphToFlowDraft, validateFlowSpec } from "./flow-validation.js";
+import { convertGraphToFlowDraft, executionPlanOf, validateFlowSpec } from "./flow-validation.js";
 
 const LENSES = new Set(["structural", "semantic", "mixed"]);
 const GRANULARITIES = new Set(["operation", "entry", "span", "file", "cluster"]);
@@ -521,9 +521,7 @@ export class HistosEngine {
   async executeFlow(input = {}) {
     if (!isObject(input) || typeof input.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(input.sha256)) throw invalid("executeFlow requires a flow artifact SHA-256");
     const artifact = await readArtifact(this.artifactsDir, input.sha256, { workspaceId: this.workspaceId, kind: "flow_revision" });
-    const validation = validateFlowSpec(artifact, { workspaceId: this.workspaceId });
-    if (!validation.ok) throw Object.assign(new Error("Flow validation failed"), { code: "validation_failed" });
-    throw Object.assign(new Error("Flow execution requires an explicit approval decision"), { code: "approval_required" });
+    return executionPlanOf(artifact, input.sha256, { targetSessionId: input.targetSessionId });
   }
 
   async saveViewState(input = {}) {

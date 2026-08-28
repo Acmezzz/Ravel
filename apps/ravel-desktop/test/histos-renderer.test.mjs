@@ -21,7 +21,7 @@ test("Histos graph projection preserves identity, ordering, anchors, and missing
   assert.match(source, /knownKind/);
 });
 
-test("Graph panel and right rail expose the read-only graph surface", async () => {
+test("Graph panel and right rail expose the selectable graph and gated Flow surface", async () => {
   const panel = await read("components/panels/GraphPanel.tsx");
   const right = await read("components/layout/RightPanel.tsx");
   const workbench = await read("components/layout/Workbench.tsx");
@@ -35,7 +35,10 @@ test("Graph panel and right rail expose the read-only graph surface", async () =
   assert.match(panel, /granularity: "entry"/);
   assert.match(panel, /requestTranscriptNavigation/);
   assert.match(panel, /target\.sessionId !== activeSessionId/);
-  assert.doesNotMatch(panel, /Run|runSemanticGraph/);
+  assert.match(panel, /ipc\.histosConvertToFlow/);
+  assert.match(panel, /ipc\.histosExecuteFlow/);
+  assert.match(panel, /Run Flow/);
+  assert.match(panel, /flow\?\.validation\.ok/);
   assert.match(right, /value="graph"/);
   assert.match(right, /rightTab === "graph"/);
   assert.match(workbench, /label="打开 Graph 面板"/);
