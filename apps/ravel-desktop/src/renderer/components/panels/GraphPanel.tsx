@@ -61,6 +61,9 @@ export function GraphPanel(): React.ReactElement {
   const [suggestCandidates, setSuggestCandidates] = React.useState<SuggestCandidate[] | null>(null);
   const [suggestSelection, setSuggestSelection] = React.useState<string[]>([]);
   const [suggestStatus, setSuggestStatus] = React.useState<string | null>(null);
+  const [importWorkspaceId, setImportWorkspaceId] = React.useState("");
+  const [importSha, setImportSha] = React.useState("");
+  const [importing, setImporting] = React.useState(false);
   const requestEpoch = React.useRef(0);
 
   const refresh = React.useCallback(async () => {
@@ -167,6 +170,19 @@ export function GraphPanel(): React.ReactElement {
     setSuggesting(false);
   }, [activeSessionId, suggestSelection, t]);
 
+  const runImport = React.useCallback(async () => {
+    const workspaceId = importWorkspaceId.trim();
+    const sha = importSha.trim().toLowerCase();
+    if (importing || !activeSessionId) return;
+    if (!/^[0-9a-f]{64}$/.test(sha) || !workspaceId) { setSuggestStatus(t("graph.importInvalid")); return; }
+    setImporting(true); setSuggestStatus(null);
+    const result = await ipc.histosImportContext({ sourceWorkspaceId: workspaceId, sourceSha256: sha });
+    if (!result.ok) setSuggestStatus(result.message);
+    else if (result.data.factAppend?.ok) setSuggestStatus(t("graph.importAttached", { sha: result.data.sha256 }));
+    else setSuggestStatus(`${t("graph.freezeFailed")}: ${result.data.factAppend?.error ?? t("graph.sessionNotActive")}`);
+    setImporting(false);
+  }, [activeSessionId, importSha, importWorkspaceId, importing, t]);
+
   return (
     <div className="omega-graph-panel">
       <div className="omega-graph-toolbar">
@@ -224,6 +240,24 @@ export function GraphPanel(): React.ReactElement {
           <Button size="sm" variant="solid" disabled={suggesting || suggestSelection.length === 0 || !activeSessionId} onClick={() => void freezeSuggested()}>{t("graph.suggestFreeze")}</Button>
         </div>
         {suggestStatus ? <span className="omega-muted-text" role="status">{suggestStatus}</span> : null}
+        <span className="overline-label">{t("graph.importTitle")}</span>
+        <div className="omega-graph-toolbar-actions">
+          <input
+            className="omega-input"
+            type="text"
+            value={importWorkspaceId}
+            placeholder={t("graph.importWorkspace")}
+            onChange={(event) => setImportWorkspaceId(event.target.value)}
+          />
+          <input
+            className="omega-input"
+            type="text"
+            value={importSha}
+            placeholder={t("graph.importSha")}
+            onChange={(event) => setImportSha(event.target.value)}
+          />
+          <Button size="sm" variant="quiet" disabled={importing || !activeSessionId} onClick={() => void runImport()}>{importing ? t("graph.importing") : t("graph.importRun")}</Button>
+        </div>
         {suggestCandidates !== null && suggestCandidates.length > 0 ? (
           <ul className="omega-resource-list">
             {suggestCandidates.map((candidate) => (

@@ -231,6 +231,15 @@ export function histosSuggestContextRequest(value) {
   return { terms, ...(limit === undefined ? {} : { limit }) };
 }
 
+export function histosImportContextRequest(value) {
+  const sourceWorkspaceId = histosString(value?.sourceWorkspaceId, "sourceWorkspaceId", 128);
+  const sourceSha256 = histosString(value?.sourceSha256, "sourceSha256", 64);
+  if (!sourceWorkspaceId || !sourceSha256 || !HISTOS_SHA256.test(sourceSha256)) return null;
+  const budget = value?.budget === undefined ? undefined : Number.isSafeInteger(value.budget) && value.budget >= 1 && value.budget <= 64000 ? value.budget : null;
+  if (budget === null) return null;
+  return { sourceWorkspaceId, sourceSha256, ...(budget === undefined ? {} : { budget }) };
+}
+
 const HISTOS_DISTILL_KINDS = new Set(["skill", "extension", "prompt"]);
 
 export function histosDistillResourceRequest(value) {

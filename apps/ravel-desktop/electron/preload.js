@@ -369,6 +369,15 @@ contextBridge.exposeInMainWorld("omega", {
     const limit = Number.isSafeInteger(req?.limit) && req.limit >= 1 && req.limit <= 16 ? req.limit : undefined;
     return ipcRenderer.invoke("omega:histosSuggestContext", query ? { query, ...(limit === undefined ? {} : { limit }) } : { terms, ...(limit === undefined ? {} : { limit }) });
   },
+  histosImportContext: (req) => {
+    const sourceWorkspaceId = req && typeof req.sourceWorkspaceId === "string" ? req.sourceWorkspaceId.trim().slice(0, 128) : "";
+    const sourceSha256 = req && typeof req.sourceSha256 === "string" ? req.sourceSha256.trim().toLowerCase() : "";
+    if (!sourceWorkspaceId || !/^[0-9a-f]{64}$/.test(sourceSha256)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "sourceWorkspaceId and a 64-hex sourceSha256 are required" });
+    }
+    const budget = Number.isSafeInteger(req?.budget) && req.budget >= 1 && req.budget <= 64000 ? req.budget : undefined;
+    return ipcRenderer.invoke("omega:histosImportContext", budget === undefined ? { sourceWorkspaceId, sourceSha256 } : { sourceWorkspaceId, sourceSha256, budget });
+  },
   setModeProfile: (req) => {
     const allowed = ["default", "plan", "goal"];
     if (!req || typeof req.mode !== "string" || !allowed.includes(req.mode)) {

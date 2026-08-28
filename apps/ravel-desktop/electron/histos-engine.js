@@ -667,6 +667,39 @@ export class HistosEngine {
   }
 
   /**
+   * memory.import profile: attach a ContextSet frozen in ANOTHER workspace by
+   * its content-addressed sha. The only thing that crosses the boundary is
+   * the already-frozen, already-budgeted artifact file — never the foreign
+   * workspace's disk beyond its own artifacts dir, and never raw原文. The
+   * imported artifact is re-owned to this workspace, parents pin the source
+   * sha, and it must fit the current session budget or it fails closed
+   * (budget_exceeded) before any write. Unresolvable evidence stays as-is;
+   * rebuild marks it missing rather than silently filling gaps.
+   */
+  async importContext(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input)) throw invalid("importContext input must be an object");
+    const sourceWorkspaceId = string(input.sourceWorkspaceId, "importContext.sourceWorkspaceId", 128);
+    if (sourceWorkspaceId === this.workspaceId) throw invalid("source workspace must differ from the current workspace");
+    if (typeof input.sourceSha256 !== "string" || !/^[0-9a-f]{64}$/.test(input.sourceSha256)) throw invalid("importContext.sourceSha256 must be a lowercase SHA-256 hash");
+    const sourceArtifactsDir = string(input.sourceArtifactsDir, "importContext.sourceArtifactsDir", 4096);
+    const budget = input.budget === undefined ? MAX_DISTILL_CONTEXT_BUDGET : input.budget;
+    if (!Number.isSafeInteger(budget) || budget < 1 || budget > 64_000) throw invalid("importContext.budget must be between 1 and 64000");
+    const source = await readArtifact(sourceArtifactsDir, input.sourceSha256, { workspaceId: sourceWorkspaceId, kind: "context_set" });
+    const payload = { ...source, workspaceId: this.workspaceId, parents: [input.sourceSha256] };
+    const bytes = Buffer.byteLength(canonicalJson(payload), "utf8");
+    if (bytes > budget) {
+      throw Object.assign(new Error(`imported ContextSet is ${bytes} bytes and exceeds the ${budget}-byte session budget`), { code: "budget_exceeded" });
+    }
+    const artifact = validateArtifact(payload, { workspaceId: this.workspaceId, kind: "context_set" });
+    const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "context_set" });
+    const stored = { ...artifact, sha256 };
+    database.exec("BEGIN IMMEDIATE");
+    try { insertArtifact(database, stored, sha256); database.exec("COMMIT"); } catch (error) { database.exec("ROLLBACK"); throw error; }
+    return { sha256, sourceSha256: input.sourceSha256, artifact: stored };
+  }
+
+  /**
    * memory.suggest profile: deterministic, zero-LLM retrieval over durable
    * artifacts (node titles) for the workspace. This NEVER writes anything and
    * never injects into a session — it only proposes candidates the user may

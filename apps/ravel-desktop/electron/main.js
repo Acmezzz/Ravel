@@ -78,6 +78,7 @@ import {
   histosGetNodeRequest,
   histosDistillResourceRequest,
   histosSuggestContextRequest,
+  histosImportContextRequest,
   histosRebuildRequest,
   histosConvertToFlowRequest,
   replayRequest,
@@ -1933,6 +1934,29 @@ ipcMain.handle("omega:histosFreezeContext", async (event, req) => {
     }
     return okResult({ ...frozen, targetSessionId, factAppend: { ok: true } });
   } catch (error) { return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosImportContext", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosImportContextRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sourceWorkspaceId and sourceSha256 are required");
+  try {
+    // Only registered workspaces can be a source; the renderer never supplies paths.
+    const sourceRoot = workspaceRegistry?.list().find((item) => item.workspaceId === normalized.sourceWorkspaceId)?.realRoot;
+    if (!sourceRoot) return errorResult("not_found", "Source workspace is not registered");
+    const sourceArtifactsDir = histosArtifactsPathOf(normalized.sourceWorkspaceId);
+    const imported = await (await activeHistos()).call("importContext", { ...normalized, sourceArtifactsDir }, 120_000);
+    const targetSessionId = worker?.sessionId;
+    if (!targetSessionId) return okResult({ ...imported, factAppend: { ok: false, error: "targetSessionId is required" } });
+    try {
+      await worker.call("appendContextAttached", { targetSessionId, contextSha: imported.sha256 });
+      return okResult({ ...imported, targetSessionId, factAppend: { ok: true } });
+    } catch (error) {
+      return okResult({ ...imported, targetSessionId, factAppend: { ok: false, error: error instanceof Error ? error.message : String(error) } });
+    }
+  } catch (error) {
+    return errorResult(error?.code ?? "import_failed", error instanceof Error ? error.message : String(error));
+  }
 });
 
 ipcMain.handle("omega:histosConvertToFlow", async (event, req) => {

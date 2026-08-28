@@ -88,6 +88,7 @@ export const IPC_CHANNELS = {
   histosGetArtifact: "omega:histosGetArtifact",
   histosDistillResource: "omega:histosDistillResource",
   histosSuggestContext: "omega:histosSuggestContext",
+  histosImportContext: "omega:histosImportContext",
   extensionUiResponse: "omega:extensionUiResponse",
   extensionUiCancel: "omega:extensionUiCancel",
   prompt: "agent:prompt",
