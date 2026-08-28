@@ -65,7 +65,7 @@ Anything Addressable
 
 ## 2. 当前进度（2026-08-28）
 
-分支：`feat/histos-r2-renderer-migration`（HEAD `d8412f5a2`）。尚未合进 `main`（`9963212ee`）。
+分支：`main`（HEAD `9b98e529b`，已推送 origin）。feat 分支已全部快进并入 main 并删除；main 即完全体。
 
 ### 2.1 已落地、必须保留
 
@@ -653,7 +653,8 @@ MCP 网络传输、computer use、PR/gh 面板、跨项目记忆仍不在本计�
 apps/ravel-desktop/src/renderer/ui/
 apps/ravel-desktop/src/renderer/lib/stream-live.ts
 apps/ravel-desktop/src/renderer/lib/operation-timeline.ts
-apps/ravel-desktop/src/renderer/components/histos/
+apps/ravel-desktop/src/renderer/components/panels/GraphCanvas.tsx
+apps/ravel-desktop/src/renderer/components/panels/GraphPanel.tsx
 apps/ravel-desktop/electron/histos-host.js
 apps/ravel-desktop/electron/histos-engine.js
 apps/ravel-desktop/electron/histos-chunker.js
@@ -737,7 +738,7 @@ RAVEL_PTY_SMOKE=1 npm run --workspace @ravel/desktop electron:smoke
 
 | 阶段 | 测试 |
 |---|---|
-| 已完成 R0–R5 + H0 | 现有 histos / pty / electron-security / electron-smoke（桌面套件现 285 通过） |
+| 已完成 R0–R5 + H0 | 现有 histos / pty / electron-security / electron-smoke（桌面套件现 286 通过） |
 | T1–T5（已落地） | 无 `@radix-ui/`；原语键盘与 drawer inert；单 IIFE + 外部 CSS；erasable + 两个 typecheck；Electron 44 ABI `.node` 在 unpacked 路径；真实 spawn/write/resize/kill；child exit 0 |
 | P2 | 删 sqlite 保留 artifacts 后被用过的语义图仍在；非法 FactAddress 拒绝；无 provider 时 `semantic_provider_unavailable` |
 | P6 | Validate 失败不得审批放行；语义节点无执行路径 |
