@@ -80,6 +80,7 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:histosGetGraph",
   "omega:histosCondenseGraph",
   "omega:histosSaveViewState",
+  "omega:histosGetViewState",
   "omega:histosExecuteFlow",
   "omega:histosRebuild",
   "omega:histosGetNode",

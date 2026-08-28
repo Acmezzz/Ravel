@@ -222,6 +222,10 @@ export function histosSaveViewStateRequest(value) {
   return positions.some((position) => position === null) ? null : { ...query, positions };
 }
 
+export function histosGetViewStateRequest(value) {
+  return histosQuery(value);
+}
+
 export function histosRebuildRequest(value) {
   const query = histosQuery(value);
   if (!query) return null;

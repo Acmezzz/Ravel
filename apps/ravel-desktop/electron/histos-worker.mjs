@@ -52,6 +52,7 @@ async function invoke(method, args) {
   if (method === "getGraph") return current.getGraph(args?.query ?? args);
   if (method === "condenseGraph") return current.condenseGraph(args ?? {});
   if (method === "saveViewState") return current.saveViewState(args ?? {});
+  if (method === "getViewState") return current.getViewState(args ?? {});
   if (method === "executeFlow") return current.executeFlow(args ?? {});
   if (method === "getNode") return current.getNode(args);
   if (method === "getArtifact") return current.getArtifact(args);

@@ -69,6 +69,7 @@ import {
   histosGetGraphRequest,
   histosCondenseGraphRequest,
   histosSaveViewStateRequest,
+  histosGetViewStateRequest,
   histosExecuteFlowRequest,
   histosGetNodeRequest,
   histosRebuildRequest,
@@ -1725,6 +1726,14 @@ ipcMain.handle("omega:histosCondenseGraph", async (event, req) => {
   if (!normalized) return errorResult("invalid_args", "semantic or mixed lens and a valid budget are required");
   try { return okResult(await (await activeHistos()).call("condenseGraph", normalized)); }
   catch (error) { return errorResult(error?.code ?? "condense_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosGetViewState", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosGetViewStateRequest(req);
+  if (!normalized) return errorResult("invalid_args", "sourceSet, lens, and granularity are required");
+  try { return okResult(await (await activeHistos()).call("getViewState", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error)); }
 });
 
 ipcMain.handle("omega:histosExecuteFlow", async (event, req) => {

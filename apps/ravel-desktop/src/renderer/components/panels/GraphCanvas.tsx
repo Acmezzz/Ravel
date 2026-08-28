@@ -1,7 +1,9 @@
 import * as React from "react";
-import { ReactFlow, Background, Controls, Handle, Position, type Edge, type Node, type NodeProps, type NodeTypes, type OnSelectionChangeParams } from "@xyflow/react";
+import { applyNodeChanges, ReactFlow, Background, Controls, Handle, Position, type Edge, type Node, type NodeChange, type NodeProps, type NodeTypes, type OnSelectionChangeParams } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { GraphProjection, GraphSelection } from "../../lib/graph-projection";
+import { ipc } from "../../ipc/client";
+import type { HistosQueryDTO } from "../../types/dto";
 import { cn } from "../../ui/utils";
 
 interface LayoutPosition {
@@ -51,17 +53,20 @@ function createWorker(): Worker {
   return new Worker(new URL("../../workers/graph-layout.worker.ts", import.meta.url), { type: "module" });
 }
 
-export function GraphCanvas({ graph, onSelect, onDraftChange }: {
+export function GraphCanvas({ graph, query, onSelect, onDraftChange }: {
   graph: GraphProjection;
+  query: HistosQueryDTO;
   onSelect: (selection: GraphSelection | null) => void;
   onDraftChange?: (draft: GraphDraftSelection) => void;
 }): React.ReactElement {
   const [positions, setPositions] = React.useState<LayoutPosition[]>([]);
   const [draft, setDraft] = React.useState<GraphDraftSelection>({ nodeRevisionIds: [], edgeRevisionIds: [] });
+  const [viewStateLoaded, setViewStateLoaded] = React.useState(false);
   const workerRef = React.useRef<Worker | null>(null);
   const requestId = React.useRef(0);
   const selectedNodes = React.useMemo(() => new Set(draft.nodeRevisionIds), [draft.nodeRevisionIds]);
   const selectedEdges = React.useMemo(() => new Set(draft.edgeRevisionIds), [draft.edgeRevisionIds]);
+  const positionByIdRef = React.useRef(new Map<string, LayoutPosition>());
 
   React.useEffect(() => {
     const worker = createWorker();
@@ -72,17 +77,38 @@ export function GraphCanvas({ graph, onSelect, onDraftChange }: {
     };
   }, []);
 
+  const graphKey = React.useMemo(() => `${graph.nodes.map((node) => node.id).join("\u0000")}\u0001${graph.edges.map((edge) => edge.id).join("\u0000")}`, [graph.nodes, graph.edges]);
+
   React.useEffect(() => {
     setDraft({ nodeRevisionIds: [], edgeRevisionIds: [] });
     onDraftChange?.({ nodeRevisionIds: [], edgeRevisionIds: [] });
-  }, [graph, onDraftChange]);
+    setPositions([]);
+    setViewStateLoaded(false);
+    positionByIdRef.current = new Map();
+  }, [graphKey, onDraftChange]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void ipc.histosGetViewState(query).then((result) => {
+      if (cancelled) return;
+      const savedPositions = result.ok && result.data?.kind === "view_state" && Array.isArray(result.data.positions) ? result.data.positions : [];
+      const restored = savedPositions.map((position) => ({ ...position, width: 180, height: 64 }));
+      setPositions(restored);
+      positionByIdRef.current = new Map(restored.map((position) => [position.id, position]));
+      setViewStateLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [query]);
 
   React.useEffect(() => {
     const worker = workerRef.current;
-    if (!worker) return;
+    if (!worker || !viewStateLoaded || positions.length > 0) return;
     const currentRequest = ++requestId.current;
     const onMessage = (event: MessageEvent<{ type: "layout"; requestId: number; nodes: LayoutPosition[] }>) => {
-      if (event.data.type === "layout" && event.data.requestId === currentRequest) setPositions(event.data.nodes);
+      if (event.data.type === "layout" && event.data.requestId === currentRequest) {
+        setPositions(event.data.nodes);
+        positionByIdRef.current = new Map(event.data.nodes.map((position) => [position.id, position]));
+      }
     };
     worker.addEventListener("message", onMessage);
     worker.postMessage({
@@ -92,9 +118,9 @@ export function GraphCanvas({ graph, onSelect, onDraftChange }: {
       edges: graph.edges.flatMap((edge) => edge.sourceNodeRevisionId && edge.targetNodeRevisionId ? [{ id: edge.id, sources: [edge.sourceNodeRevisionId], targets: [edge.targetNodeRevisionId] }] : []),
     });
     return () => worker.removeEventListener("message", onMessage);
-  }, [graph]);
+  }, [graph, graphKey, positions.length, viewStateLoaded]);
 
-  const positionById = new Map(positions.map((position) => [position.id, position]));
+  const positionById = positionByIdRef.current;
   const nodes = graph.nodes.map((node): HistosFlowNode => {
     const position = positionById.get(node.id);
     return {
@@ -104,7 +130,7 @@ export function GraphCanvas({ graph, onSelect, onDraftChange }: {
       data: { kind: node.kind, title: node.title, isolated: node.isolated },
       ...(node.parentId ? { parentId: node.parentId } : {}),
       selected: selectedNodes.has(node.id) || node.selected,
-      draggable: false,
+      draggable: true,
       connectable: false,
     };
   });
@@ -133,6 +159,19 @@ export function GraphCanvas({ graph, onSelect, onDraftChange }: {
     });
   }, [applyDraft]);
 
+  const onNodesChange = React.useCallback((changes: NodeChange<HistosFlowNode>[]) => {
+    const next = applyNodeChanges(changes, nodes);
+    const nextPositions = next.map((node) => ({ id: node.id, x: node.position.x, y: node.position.y, width: 180, height: node.height ?? 64 }));
+    positionByIdRef.current = new Map(nextPositions.map((position) => [position.id, position]));
+    setPositions(nextPositions);
+  }, [nodes]);
+
+  const onNodeDragStop = React.useCallback(async () => {
+    const snapshot = [...positionByIdRef.current.values()].map(({ id, x, y }) => ({ id, x, y }));
+    if (snapshot.length === 0) return;
+    await ipc.histosSaveViewState({ ...query, positions: snapshot });
+  }, [query]);
+
   return (
     <div className="omega-graph-canvas" role="application" aria-label="Histos graph canvas">
       <ReactFlow
@@ -141,11 +180,13 @@ export function GraphCanvas({ graph, onSelect, onDraftChange }: {
         nodeTypes={nodeTypes}
         fitView
         onSelectionChange={onSelectionChange}
+        onNodesChange={onNodesChange}
+        onNodeDragStop={() => void onNodeDragStop()}
         onPaneClick={() => applyDraft({ nodeRevisionIds: [], edgeRevisionIds: [] })}
         selectionOnDrag
         panOnDrag={[1, 2]}
         deleteKeyCode={null}
-        nodesDraggable={false}
+        nodesDraggable
         nodesConnectable={false}
         elementsSelectable
       >

@@ -252,6 +252,22 @@ test("HistosEngine rebuilds JSONL deterministically with trace anchors and spans
   assert.deepEqual(rebuiltGraph, graph);
 });
 
+test("ViewState survives index rebuild and returns the newest matching layout", async (t) => {
+  const root = await fs.mkdtemp(join(os.tmpdir(), "ravel-histos-view-state-"));
+  t.after(async () => fs.rm(root, { recursive: true, force: true }));
+  const engine = new HistosEngine({ workspaceId: "workspace-view", databasePath: join(root, "index.sqlite"), artifactsDir: join(root, "artifacts") });
+  const query = { sourceSet: { sessionIds: ["session-view"] }, lens: "structural", granularity: "entry" };
+  const saved = await engine.saveViewState({ ...query, viewState: { positions: [{ id: "node-a", x: 42, y: 84 }] } });
+  assert.equal(saved.artifact.kind, "view_state");
+  assert.deepEqual((await engine.getViewState(query)).positions, [{ id: "node-a", x: 42, y: 84 }]);
+  engine.close();
+  await fs.rm(join(root, "index.sqlite"), { force: true });
+  const rebuilt = new HistosEngine({ workspaceId: "workspace-view", databasePath: join(root, "index.sqlite"), artifactsDir: join(root, "artifacts") });
+  await rebuilt.rebuild({ granularity: "entry" });
+  assert.deepEqual((await rebuilt.getViewState(query)).positions, [{ id: "node-a", x: 42, y: 84 }]);
+  rebuilt.close();
+});
+
 test("context_set validation requires valid selected evidence", () => {
   const artifact = contextArtifact();
   assert.equal(validateArtifact(artifact, { workspaceId: "workspace-1", kind: "context_set" }).kind, "context_set");

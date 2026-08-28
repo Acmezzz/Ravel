@@ -77,6 +77,7 @@ export const IPC_CHANNELS = {
   histosGetGraph: "omega:histosGetGraph",
   histosCondenseGraph: "omega:histosCondenseGraph",
   histosSaveViewState: "omega:histosSaveViewState",
+  histosGetViewState: "omega:histosGetViewState",
   histosExecuteFlow: "omega:histosExecuteFlow",
   histosRebuild: "omega:histosRebuild",
   histosGetNode: "omega:histosGetNode",

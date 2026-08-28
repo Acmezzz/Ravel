@@ -63,6 +63,7 @@ export function GraphPanel(): React.ReactElement {
   React.useEffect(() => { void refresh(); }, [refresh, workspaceEpoch]);
 
   const projected = React.useMemo(() => graph ? projectHistosGraph(graph, selection) : null, [graph, selection]);
+  const graphQuery = React.useMemo(() => ({ sourceSet: { sessionIds: activeSessionId ? [activeSessionId] : [] }, lens, granularity: "entry" as const }), [activeSessionId, lens]);
   const selected = projected ? selectedItem(projected, selection) : null;
   const evidenceCount = selected && graph ? graph.evidence.filter((item) => item.revisionId === selected.id).length : 0;
   const target = selected?.anchor;
@@ -117,7 +118,7 @@ export function GraphPanel(): React.ReactElement {
       {!loading && !error && projected && projected.nodes.length === 0 ? <p className="omega-graph-empty">{t("graph.empty")}</p> : null}
       {projected ? (
         <>
-          <GraphCanvas graph={projected} onSelect={setSelection} onDraftChange={setDraft} />
+          <GraphCanvas graph={projected} query={graphQuery} onSelect={setSelection} onDraftChange={setDraft} />
           <div className="omega-graph-detail">
             <div className="omega-graph-toolbar-actions">
               <Button size="sm" variant="quiet" disabled={freezing || draft.nodeRevisionIds.length + draft.edgeRevisionIds.length === 0} onClick={() => void freezeContext()}>{freezing ? t("graph.freezing") : t("graph.freeze")}</Button>

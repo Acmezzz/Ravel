@@ -298,6 +298,10 @@ contextBridge.exposeInMainWorld("omega", {
     if (!query || positions.some((position) => position === null) || (req?.positions?.length ?? 0) > 500) return invalidHistos("positions and query are required");
     return ipcRenderer.invoke("omega:histosSaveViewState", { ...query, positions });
   },
+  histosGetViewState: (req) => {
+    const query = histosQuery(req);
+    return query ? ipcRenderer.invoke("omega:histosGetViewState", query) : invalidHistos("sourceSet, lens, and granularity are required");
+  },
   histosRebuild: (req) => {
     const query = histosQuery(req);
     if (!query) return invalidHistos("sourceSet, lens, and granularity are required");

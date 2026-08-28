@@ -543,6 +543,18 @@ export class HistosEngine {
     return { sha256, artifact: stored };
   }
 
+  async getViewState(input = {}) {
+    const query = queryOf(input);
+    const database = this.assertOpen();
+    const row = database.prepare("SELECT sha256 FROM artifacts WHERE kind = 'view_state' AND source_set_json = ? AND lens = ? AND granularity = ? ORDER BY created_at DESC, sha256 DESC LIMIT 1").get(canonicalJson(query.sourceSet), query.lens, query.granularity);
+    if (!row?.sha256) return null;
+    const artifact = await readArtifact(this.artifactsDir, row.sha256, { workspaceId: this.workspaceId, kind: "view_state" });
+    if (canonicalJson(artifact.sourceSet) !== canonicalJson(query.sourceSet) || artifact.lens !== query.lens || artifact.granularity !== query.granularity) {
+      throw Object.assign(new Error("view state query does not match"), { code: "not_found" });
+    }
+    return { ...artifact, sha256: row.sha256 };
+  }
+
   async freezeContext(input = {}) {
     const query = queryOf(input);
     const budget = input.budget === undefined ? 64_000 : input.budget;

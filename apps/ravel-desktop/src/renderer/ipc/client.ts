@@ -161,6 +161,7 @@ export interface RavelBridge {
   histosGetGraph(req: HistosGetGraphRequest): Promise<IpcResult<HistosGraphDTO>>;
   histosCondenseGraph(req: HistosCondenseGraphRequest): Promise<IpcResult<HistosCondenseGraphResultDTO>>;
   histosSaveViewState(req: HistosQueryDTO & { positions: Array<{ id: string; x: number; y: number }> }): Promise<IpcResult<{ sha256: string; artifact: HistosArtifactDTO }>>;
+  histosGetViewState(req: HistosQueryDTO): Promise<IpcResult<HistosArtifactDTO | null>>;
   histosExecuteFlow(req: HistosExecuteFlowRequest): Promise<IpcResult<HistosExecuteFlowResultDTO>>;
   histosRebuild(req: HistosRebuildRequest): Promise<IpcResult<HistosRebuildResultDTO>>;
   histosGetNode(req: HistosGetNodeRequest): Promise<IpcResult<HistosNodeRevisionDTO | null>>;
@@ -323,6 +324,8 @@ export const ipc = {
     ok(await window.omega?.histosCondenseGraph?.(req)),
   histosSaveViewState: async (req: HistosQueryDTO & { positions: Array<{ id: string; x: number; y: number }> }): Promise<IpcResult<{ sha256: string; artifact: HistosArtifactDTO }>> =>
     ok(await window.omega?.histosSaveViewState?.(req)),
+  histosGetViewState: async (req: HistosQueryDTO): Promise<IpcResult<HistosArtifactDTO | null>> =>
+    ok(await window.omega?.histosGetViewState?.(req)),
   histosExecuteFlow: async (req: HistosExecuteFlowRequest): Promise<IpcResult<HistosExecuteFlowResultDTO>> =>
     ok(await window.omega?.histosExecuteFlow?.(req)),
   histosRebuild: async (req: HistosRebuildRequest): Promise<IpcResult<HistosRebuildResultDTO>> =>

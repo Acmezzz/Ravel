@@ -8,6 +8,7 @@ export const HISTOS_METHODS = Object.freeze([
   "getGraph",
   "condenseGraph",
   "saveViewState",
+  "getViewState",
   "executeFlow",
   "rebuild",
   "getNode",

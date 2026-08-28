@@ -6,6 +6,7 @@ import {
   histosFreezeContextRequest,
   histosGetArtifactRequest,
   histosGetGraphRequest,
+  histosGetViewStateRequest,
   histosGetNodeRequest,
   histosQueryRequest,
   histosRebuildRequest,
@@ -59,6 +60,7 @@ test("Histos query schemas reject every missing query dimension", () => {
     histosGetNodeRequest,
     histosFreezeContextRequest,
     histosGetArtifactRequest,
+    histosGetViewStateRequest,
   ];
   for (const normalizer of normalizers) {
     for (const field of ["sourceSet", "lens", "granularity"]) {
@@ -142,6 +144,7 @@ test("Histos channels are present in the registry and preload invokes", async ()
     "omega:histosGetGraph",
     "omega:histosCondenseGraph",
     "omega:histosSaveViewState",
+    "omega:histosGetViewState",
     "omega:histosExecuteFlow",
     "omega:histosRebuild",
     "omega:histosGetNode",
@@ -153,7 +156,7 @@ test("Histos channels are present in the registry and preload invokes", async ()
   const preload = await readSource("../electron/preload.js");
   const invoked = uniqueSorted(extractInvokeChannels(preload).filter((channel) => channel.startsWith("omega:histos")));
   assert.deepEqual(registered, expected);
-  assert.equal(registered.length, 9);
+  assert.equal(registered.length, 10);
   assert.deepEqual(diffChannelSets(expected, invoked), { missing: [], extra: [] });
 });
 

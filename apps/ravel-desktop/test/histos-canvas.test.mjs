@@ -16,20 +16,24 @@ test("ELK layout worker is bounded and renderer-safe", async () => {
   assert.doesNotMatch(worker, /fs|sqlite|ipc|process\./i);
 });
 
-test("GraphCanvas uses React Flow as a read-only projection surface", async () => {
+test("GraphCanvas uses React Flow as a selectable, persistable projection surface", async () => {
   const canvas = await read("components/panels/GraphCanvas.tsx");
   const panel = await read("components/panels/GraphPanel.tsx");
   assert.match(canvas, /from "@xyflow\/react"/);
   assert.match(canvas, /new URL\("\.\.\/\.\.\/workers\/graph-layout\.worker\.ts", import\.meta\.url\)/);
-  assert.match(canvas, /nodesDraggable=\{false\}/);
+  assert.match(canvas, /nodesDraggable/);
   assert.match(canvas, /nodesConnectable=\{false\}/);
   assert.match(canvas, /elementsSelectable/);
   assert.match(canvas, /nodeTypes: NodeTypes/);
   for (const kind of ["operation", "entry", "file", "skill", "approval", "cluster"]) assert.match(canvas, new RegExp(`${kind}: HistosNode`));
   assert.match(canvas, /selectionOnDrag/);
   assert.match(canvas, /onSelectionChange/);
-  assert.match(canvas, /draggable: false/);
+  assert.match(canvas, /draggable: true/);
+  assert.match(canvas, /onNodeDragStop/);
+  assert.match(canvas, /histosSaveViewState/);
   assert.match(canvas, /worker\.terminate\(\)/);
-  assert.doesNotMatch(canvas, /histosGetGraph|ipc\.|readFile|node:fs|node:sqlite/);
+  assert.doesNotMatch(canvas, /histosGetGraph|readFile|node:fs|node:sqlite/);
+  assert.match(canvas, /ipc\.histosGetViewState/);
+  assert.match(canvas, /ipc\.histosSaveViewState/);
   assert.match(panel, /<GraphCanvas graph=\{projected\}/);
 });
