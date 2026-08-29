@@ -25,8 +25,14 @@ function TreeRow({ name, rel, isDir, size, depth, expanded, onToggleDir, onOpenF
   </div>;
 }
 
-/** Lazy-expanding workspace file tree (loads one directory per IPC call). */
-export function FileTree(): React.ReactElement {
+/**
+ * Lazy-expanding workspace file tree (loads one directory per IPC call).
+ *
+ * `onOpenFile` optionally routes file-open clicks elsewhere (e.g. an IDE editor
+ * tab system). When omitted, files open in the global viewer dialog (existing
+ * behavior preserved).
+ */
+export function FileTree({ onOpenFile }: { onOpenFile?: (path: string) => void }): React.ReactElement {
   const openViewer = useAppStore((state) => state.openViewer);
   const workspaceEpoch = useAppStore((state) => state.workspaceEpoch);
   const reveal = React.useCallback((rel: string) => { void ipc.revealInFolder({ path: rel }); }, []);
@@ -59,7 +65,7 @@ export function FileTree(): React.ReactElement {
     if (rel !== "") rows.push(<TreeRow key={`d:${rel}`} name={rel.split("/").pop() ?? rel} rel={rel} isDir size={0} depth={depth - 1} expanded={expanded.has(rel)} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />);
     if (state?.loading && !listing) { rows.push(<p key={`l:${rel}`} className="omega-file-loading" style={{ paddingLeft: `calc(1rem + ${depth * 1.25}rem)` }}>加载中…</p>); return; }
     if (state?.error) { rows.push(<div key={`e:${rel}`} role="alert" className="omega-file-error" style={{ paddingLeft: `calc(1rem + ${depth * 1.25}rem)` }}><span>{state.error}</span><Button size="sm" variant="quiet" onClick={() => void loadDir(rel)}>重试</Button></div>); return; }
-    for (const entry of listing?.entries ?? []) { const childRel = rel ? `${rel}/${entry.name}` : entry.name; if (entry.isDir) { if (expanded.has(childRel)) renderDir(childRel, depth + 1); else rows.push(<TreeRow key={`d:${childRel}`} name={entry.name} rel={childRel} isDir size={0} depth={depth} expanded={false} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />); } else rows.push(<TreeRow key={`f:${childRel}`} name={entry.name} rel={childRel} isDir={false} size={entry.size} depth={depth} expanded={false} onToggleDir={() => undefined} onOpenFile={(path) => void openViewer(path)} onReveal={reveal} />); }
+    for (const entry of listing?.entries ?? []) { const childRel = rel ? `${rel}/${entry.name}` : entry.name; if (entry.isDir) { if (expanded.has(childRel)) renderDir(childRel, depth + 1); else rows.push(<TreeRow key={`d:${childRel}`} name={entry.name} rel={childRel} isDir size={0} depth={depth} expanded={false} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />); } else rows.push(<TreeRow key={`f:${childRel}`} name={entry.name} rel={childRel} isDir={false} size={entry.size} depth={depth} expanded={false} onToggleDir={() => undefined} onOpenFile={onOpenFile ?? ((path) => void openViewer(path))} onReveal={reveal} />); }
   };
   renderDir("", 0);
   const chooseUpload = async () => { setUploadError(null); const result = await ipc.chooseFileForWorkspace(); if (result.ok) { setUpload(result.data); setTarget(result.data.name); } else if (result.code !== "cancelled") setUploadError(result.message); };

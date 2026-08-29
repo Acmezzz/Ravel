@@ -6,8 +6,9 @@ import { useAppStore } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
 import type { SearchMatch } from "../../types/dto";
 
-/** Workspace-wide text search. Clicking a match opens the file in the viewer. */
-export function SearchPanel(): React.ReactElement {
+/** Workspace-wide text search. Clicking a match opens the file (viewer by default,
+ *  or the caller-provided `onOpenFile` handler when supplied, e.g. IDE editor tabs). */
+export function SearchPanel({ onOpenFile }: { onOpenFile?: (path: string) => void }): React.ReactElement {
   const t = useT();
   const [query, setQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchMatch[] | null>(null);
@@ -37,7 +38,7 @@ export function SearchPanel(): React.ReactElement {
     <TextField value={query} onChange={(event) => { setQuery(event.target.value); void run(event.target.value); }} placeholder={t("search.placeholder")} aria-label={t("search.aria")} hint={busy ? "搜索中…" : undefined} />
     {error ? <p className="omega-error-text">{error}</p> : null}
     {truncated && results ? <p className="omega-warning-text omega-search-note">{t("search.truncated")}</p> : null}
-    {matches.length > 0 ? <div ref={resultScrollRef} className="omega-search-results"><div className="omega-search-virtual" style={{ height: virtualizer.getTotalSize() }}>{virtualizer.getVirtualItems().map((virtualItem) => { const match = matches[virtualItem.index]; if (!match) return null; return <button key={virtualItem.key} ref={virtualizer.measureElement} data-index={virtualItem.index} type="button" className="omega-search-result" style={{ transform: `translateY(${virtualItem.start}px)` }} onClick={() => void openViewer(match.path)}><span className="mono-num omega-search-path">{match.path}:{match.line}</span><span className="mono-num omega-search-text">{match.text.trim()}</span></button>; })}</div></div> : null}
+    {matches.length > 0 ? <div ref={resultScrollRef} className="omega-search-results"><div className="omega-search-virtual" style={{ height: virtualizer.getTotalSize() }}>{virtualizer.getVirtualItems().map((virtualItem) => { const match = matches[virtualItem.index]; if (!match) return null; return <button key={virtualItem.key} ref={virtualizer.measureElement} data-index={virtualItem.index} type="button" className="omega-search-result" style={{ transform: `translateY(${virtualItem.start}px)` }} onClick={() => void (onOpenFile ? onOpenFile(match.path) : openViewer(match.path))}><span className="mono-num omega-search-path">{match.path}:{match.line}</span><span className="mono-num omega-search-text">{match.text.trim()}</span></button>; })}</div></div> : null}
     {results !== null && results.length === 0 && !busy && !error ? <p className="omega-muted-text">{t("search.noResults")}</p> : null}
   </div>;
 }

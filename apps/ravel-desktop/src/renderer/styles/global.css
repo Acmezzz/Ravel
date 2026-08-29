@@ -2136,3 +2136,138 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .ravel-surface-placeholder { color: var(--ravel-text-muted); }
 .ravel-surface-placeholder strong { display: block; margin-bottom: 0.5rem; color: var(--ravel-text); font-size: 0.9375rem; }
 .ravel-surface-placeholder p { margin: 0; font-size: 0.8125rem; line-height: 1.6; }
+
+/* ===== 任务六：IDE surface ===== */
+.ravel-ide-surface {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ravel-bg-panel);
+  color: var(--ravel-text);
+}
+.ravel-ide-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-rail);
+}
+.ravel-ide-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+}
+.ravel-ide-sidebar {
+  flex: 0 0 auto;
+  width: 240px;
+  min-width: 200px;
+  max-width: 60%;
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-code);
+}
+.ravel-ide-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ravel-selected);
+}
+.ravel-ide-search {
+  flex: 0 0 auto;
+  width: 300px;
+  min-width: 260px;
+  max-width: 45%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-panel);
+}
+.ravel-ide-search-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ravel-border);
+}
+.ravel-ide-search-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 10px; }
+.ravel-ide-tabbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-rail);
+}
+.ravel-ide-tabbar-empty { padding: 2px 8px; font-size: 0.75rem; color: var(--ravel-text-dim); }
+.ravel-ide-tabbar-spacer { flex: 1 1 auto; }
+.ravel-ide-tab {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 2px 2px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ravel-radius-sm);
+  color: var(--ravel-text-dim);
+  background: transparent;
+  font-size: 0.75rem;
+}
+.ravel-ide-tab:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-ide-tab-active { background: var(--ravel-selected); color: var(--ravel-text); border-color: var(--ravel-accent-line); }
+.ravel-ide-tab-label {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.ravel-ide-tab-dirty-dot { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 3px; background: var(--ravel-warning); }
+.ravel-ide-tab-close, .ravel-ide-tab-close-all { color: var(--ravel-text-dim); }
+.ravel-ide-editor-host { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.ravel-ide-editor { flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.ravel-ide-editor-empty {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--ravel-text-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+.ravel-ide-bottom {
+  flex: 0 0 auto;
+  height: 240px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-panel);
+}
+.ravel-ide-bottom-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-rail);
+}
+.ravel-ide-bottom-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px; }
