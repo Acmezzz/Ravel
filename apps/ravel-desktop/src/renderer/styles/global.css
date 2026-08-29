@@ -2271,3 +2271,120 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   background: var(--ravel-bg-rail);
 }
 .ravel-ide-bottom-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px; }
+
+/* ===== 任务七：Histos surface ===== */
+.ravel-histos-surface {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ravel-bg-panel);
+  color: var(--ravel-text);
+}
+.ravel-histos-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-rail);
+}
+.ravel-histos-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 26px;
+}
+.ravel-histos-toolbar-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ravel-histos-import-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--ravel-border);
+}
+.rail-spacer { flex: 1 1 auto; }
+.ravel-histos-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+}
+.ravel-histos-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ravel-bg-panel);
+}
+.ravel-histos-drawer {
+  flex: 0 0 auto;
+  width: 280px;
+  min-width: 240px;
+  max-width: 40%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-panel);
+}
+.ravel-histos-drawer-closed { width: 28px; min-width: 28px; max-width: 28px; align-items: stretch; }
+.ravel-histos-drawer-toggle {
+  flex: 1 1 auto;
+  border: 0;
+  background: var(--ravel-bg-rail);
+  color: var(--ravel-accent);
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+.ravel-histos-drawer-toggle:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-histos-drawer-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-rail);
+}
+.ravel-histos-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ravel-histos-step { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--ravel-border); }
+.ravel-histos-step:first-child { border-top: 0; padding-top: 0; }
+.ravel-histos-step input[type="number"] { width: 4.5rem; }
+.ravel-histos-approval {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  color: var(--ravel-text-muted);
+}
+.ravel-histos-inspector {
+  flex: 0 1 auto;
+  max-height: 42%;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-soft);
+}
+.ravel-histos-inspector-detail { display: flex; flex-direction: column; gap: 6px; }
+.ravel-histos-inspector-detail strong { color: var(--ravel-text); font-size: 0.8125rem; }
+.ravel-histos-edges { display: flex; flex-direction: column; gap: 4px; }
+.ravel-histos-suggest { display: flex; flex-direction: column; gap: 6px; }
