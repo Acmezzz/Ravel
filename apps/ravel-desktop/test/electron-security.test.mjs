@@ -39,13 +39,15 @@ test("main configures Electron isolation and navigation boundaries", async () =>
 
 test("worker and renderer use sequenced event envelopes for stale-event rejection", async () => {
   const worker = await read("../electron/worker.mjs");
-  const app = await read("../src/renderer/App.tsx");
   const main = await read("../electron/main.js");
+  const ordering = await read("../src/renderer/lib/events/event-ordering.ts");
+  const transport = await read("../src/renderer/lib/events/transport-event-reducer.ts");
+  const bridge = await read("../src/renderer/app/AppEventBridge.tsx");
   assert.match(worker, /sequence: \+\+eventSequence/);
   assert.match(worker, /sessionId:/);
   assert.match(worker, /generation/);
-  assert.match(app, /meta\.sequence <= lastSequence/);
-  assert.match(app, /meta\.generation < currentGeneration/);
+  assert.match(ordering, /meta\.sequence <= ref\.lastSequence/);
+  assert.match(ordering, /meta\.generation < ref\.currentGeneration/);
   assert.match(main, /recentEventsBySession/);
   assert.match(main, /runtimeEpoch/);
   assert.match(main, /firstMeta\?\.runtimeEpoch/);
@@ -54,10 +56,10 @@ test("worker and renderer use sequenced event envelopes for stale-event rejectio
   const host = await read("../electron/worker-host.js");
   assert.match(host, /canRetry: !this\.stopping/);
   assert.match(main, /omega:retryWorker/);
-  assert.match(app, /setShutdownPhase\("flushing"\)/);
-  assert.match(app, /state\?\.isStreaming !== true/);
-  assert.match(app, /setWorkerError/);
-  assert.match(app, /canRetry/);
+  assert.match(transport, /setShutdownPhase", phase: "flushing"/);
+  assert.match(bridge, /state\?\.isStreaming !== true/);
+  assert.match(transport, /setWorkerError/);
+  assert.match(transport, /canRetry/);
 });
 
 test("bridge filters raw agent events and does not forward sensitive payloads", async () => {

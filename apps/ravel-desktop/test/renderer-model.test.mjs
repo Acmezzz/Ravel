@@ -277,7 +277,8 @@ test("frontend harness mutations expose recovery feedback and stable decision bo
   const modelPicker = await read("../src/renderer/components/layout/ModelPicker.tsx");
   const trust = await read("../src/renderer/components/layout/ProjectTrustDialog.tsx");
   const approval = await read("../src/renderer/components/panels/ApprovalBar.tsx");
-  const app = await read("../src/renderer/App.tsx");
+  const bridge = await read("../src/renderer/app/AppEventBridge.tsx");
+  const reducer = await read("../src/renderer/lib/events/agent-event-reducer.ts");
   assert.match(settings, /applyDesktopPatch/);
   assert.match(settings, /setPermissionProfile/);
   assert.match(settings, /omega-settings-grid/);
@@ -289,9 +290,9 @@ test("frontend harness mutations expose recovery feedback and stable decision bo
   assert.match(trust, /aria-busy=\{busy \|\| undefined\}/);
   assert.match(approval, /snapshotToken/);
   assert.match(approval, /role="alert"/);
-  assert.match(app, /auto_retry_start/);
-  assert.match(app, /recentEvents/);
-  assert.match(app, /dropAllOptimistic/);
+  assert.match(reducer, /auto_retry_start/);
+  assert.match(bridge, /recentEvents/);
+  assert.match(bridge, /dropAllOptimistic/);
 });
 
 test("command palette discovers commands instead of hardcoding the V1 list", async () => {
@@ -313,9 +314,10 @@ test("prompt channel supports steering interrupts while streaming", async () => 
 });
 
 test("prompt identity survives the renderer-to-worker boundary", async () => {
-  const app = await read("../src/renderer/App.tsx");
   const composer = await read("../src/renderer/components/chat/Composer.tsx");
-  const client = await read("../src/renderer/ipc/client.ts");
+  const client = await read("../src/renderer/ipc/agent-client.ts");
+  const reducer = await read("../src/renderer/lib/events/agent-event-reducer.ts");
+  const ordering = await read("../src/renderer/lib/events/event-ordering.ts");
   const preload = await read("../electron/preload.js");
   const main = await read("../electron/main.js");
   const worker = await read("../electron/worker.mjs");
@@ -325,17 +327,17 @@ test("prompt identity survives the renderer-to-worker boundary", async () => {
   assert.match(main, /clientMessageId: clientMessageId\?\.slice\(0, 128\)/);
   assert.match(worker, /activeClientMessageIds/);
   assert.match(worker, /runtimeEpoch/);
-  assert.match(app, /meta\?\.clientMessageId/);
-  assert.match(app, /currentRuntimeEpoch/);
+  assert.match(reducer, /meta\?\.clientMessageId/);
+  assert.match(ordering, /currentRuntimeEpoch/);
 });
 
 test("optimistic state is cleared on transcript replacement and worker recovery", async () => {
   const store = await read("../src/renderer/store/useAppStore.ts");
-  const app = await read("../src/renderer/App.tsx");
+  const bridge = await read("../src/renderer/app/AppEventBridge.tsx");
   assert.match(store, /pendingOptimistic: \[\]/);
   assert.match(store, /dropAllOptimistic/);
-  assert.match(app, /store\.pendingOptimistic\.length > 0/);
-  assert.match(app, /store\.dropAllOptimistic\(\)/);
+  assert.match(bridge, /store\.pendingOptimistic\.length > 0/);
+  assert.match(bridge, /store\.dropAllOptimistic\(\)/);
 });
 
 test("session_busy is reported when fork/navigate hit a running turn", async () => {
@@ -388,7 +390,7 @@ test("session list supports search, rename, and delete affordances", async () =>
 });
 
 test("workbench registers Ctrl+K palette and Ctrl+Shift+N new-session shortcuts", async () => {
-  const source = await read("../src/renderer/App.tsx");
+  const source = await read("../src/renderer/app/AppKeyboardShortcuts.tsx");
   assert.match(source, /keydown/);
   assert.match(source, /matchesKeybinding/);
   assert.match(source, /keybindings\.newSession/);
@@ -475,15 +477,15 @@ test("git review backend applies hunk patches via stdin only", async () => {
 test("streaming deltas are attributed per session/epoch/run bucket", async () => {
   const lib = await read("../src/renderer/lib/stream-bucket.ts");
   assert.match(lib, /sessionId.*runtimeEpoch.*runId/s);
-  const app = await read("../src/renderer/App.tsx");
-  assert.match(app, /store\.setStreamingBucket\(streamBucketOf\(meta\), id\)/);
+  const reducer = await read("../src/renderer/lib/events/agent-event-reducer.ts");
+  assert.match(reducer, /store\.setStreamingBucket\(streamBucketOf\(meta\), id\)/);
   assert.match(
-    app,
-    /useAppStore\.getState\(\)\.streamingBuckets\[bucket\] \?\? store\.ensureStreamingAssistant\(bucket\)/,
+    reducer,
+    /ctx\.store\.streamingBuckets\[bucket\] \?\? store\.ensureStreamingAssistant\(bucket\)/,
   );
   // Closing a run deletes only its own bucket; a late delta from an old run
   // cannot feed a newer run's bubble.
-  assert.match(app, /delete nextBuckets\[bucket\]/);
+  assert.match(reducer, /delete nextBuckets\[bucket\]/);
   const store = await read("../src/renderer/store/useAppStore.ts");
   assert.match(store, /ensureStreamingAssistant: \(bucket\) =>/);
   assert.match(store, /clearStreamingBuckets: \(\) => set\(\{ streamingBuckets: \{\} \}\)/);
@@ -529,20 +531,22 @@ test("left nav exposes the files tab and viewer", async () => {
 
 test("Project Switcher, replay, and worker recovery reconcile surfaces exist", async () => {
   const switcher = await read("../src/renderer/components/layout/ProjectSwitcher.tsx");
-  const client = await read("../src/renderer/ipc/client.ts");
-  const app = await read("../src/renderer/App.tsx");
+  const client = await read("../src/renderer/ipc/agent-client.ts");
+  const bridge = await read("../src/renderer/app/AppEventBridge.tsx");
+  const bootstrap = await read("../src/renderer/app/AppBootstrap.tsx");
+  const reducer = await read("../src/renderer/lib/events/agent-event-reducer.ts");
   assert.match(switcher, /chooseWorkspace/);
   assert.match(switcher, /switchWorkspace/);
   assert.match(switcher, /workspaceId/);
   assert.match(client, /recentEvents/);
-  assert.match(app, /recentEvents/);
-  assert.match(app, /streamingBuckets: \{\}/);
-  assert.match(app, /streamBucketOf\(meta\)/);
-  assert.match(app, /queuedMessages/);
-  assert.match(app, /setSessionTree/);
-  assert.match(app, /未确认发送的消息没有自动重发/);
-  assert.match(app, /const reconciled = await refreshControlPlane\(\)/);
-  assert.match(app, /state\?\.isStreaming !== true/);
+  assert.match(bridge, /recentEvents/);
+  assert.match(bridge, /streamingBuckets: \{\}/);
+  assert.match(reducer, /streamBucketOf\(meta\)/);
+  assert.match(bootstrap, /queuedMessages/);
+  assert.match(bootstrap, /setSessionTree/);
+  assert.match(bridge, /未确认发送的消息没有自动重发/);
+  assert.match(bridge, /const reconciled = await refreshControlPlane\(\)/);
+  assert.match(bridge, /state\?\.isStreaming !== true/);
   assert.match(switcher, /bumpWorkspaceEpoch/);
   assert.match(switcher, /listModels/);
   assert.match(switcher, /ProjectTrustDialog/);
@@ -567,10 +571,10 @@ test("Project Switcher, replay, and worker recovery reconcile surfaces exist", a
   assert.match(main, /omega:removeWorkspace/);
   const worker = await read("../electron/worker.mjs");
   assert.match(worker, /projectTrusted/);
-  const bridge = await read("../electron/agent-bridge.js");
-  assert.match(bridge, /projectTrusted: session.settingsManager/);
-  assert.match(bridge, /queuedMessages: queueSnapshotOf/);
-  assert.match(bridge, /tree: sessionTreeOf/);
+  const bridgeSource = await read("../electron/agent-bridge.js");
+  assert.match(bridgeSource, /projectTrusted: session.settingsManager/);
+  assert.match(bridgeSource, /queuedMessages: queueSnapshotOf/);
+  assert.match(bridgeSource, /tree: sessionTreeOf/);
 });
 
 test("session worker pool is session-keyed with a cap and idle TTL", async () => {
@@ -643,7 +647,7 @@ test("stage 5 workbench keeps focus and narrow layouts explicit", async () => {
   assert.match(store, /leftPanelOpen/);
   assert.match(store, /toggleFocusMode/);
   assert.match(css, /message-reading-column/);
-  assert.match(css, /--omega-accent/);
+  assert.match(css, /--ravel-accent/);
 });
 
 test("stage 4 bounds large diff projections", async () => {

@@ -34,16 +34,21 @@ function useMediaQuery(query: string): boolean {
 
 function loadWidths(): { left: number; right: number } {
   try {
+    const current = localStorage.getItem("ravel-shell-layout-v1");
     const raw =
-      localStorage.getItem("ravel-shell-layout-v1") ??
-      localStorage.getItem("ravel-panel-widths") ?? // legacy alias (once)
-      localStorage.getItem("omega-panel-widths"); // pre-Ravel alias (once)
+      current ??
+      localStorage.getItem("ravel-panel-widths") ?? // legacy alias (migrated once)
+      localStorage.getItem("omega-panel-widths"); // pre-Ravel alias (migrated once)
     if (raw) {
       const parsed = JSON.parse(raw) as { left?: number; right?: number };
-      return {
+      const widths = {
         left: Math.min(MAX_SIDEBAR_PX, Math.max(MIN_SIDEBAR_PX, parsed.left ?? DEFAULT_SIDEBAR_PX)),
         right: Math.min(MAX_RIGHT_PX, Math.max(MIN_RIGHT_PX, parsed.right ?? DEFAULT_RIGHT_PX)),
       };
+      // Migration entry: legacy key was the only source — write it to the
+      // unified key once so subsequent startups read ravel-shell-layout-v1 only.
+      if (!current) localStorage.setItem("ravel-shell-layout-v1", JSON.stringify(widths));
+      return widths;
     }
   } catch {
     /* defaults */

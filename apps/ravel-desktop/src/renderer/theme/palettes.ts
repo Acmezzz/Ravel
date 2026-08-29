@@ -11,8 +11,11 @@ export { darkPalette, lightPalette, paletteForMode };
 /** Resolve the persisted preference before React renders (CSP-safe, no inline script). */
 export function initialResolvedMode(): "light" | "dark" {
 	try {
-		const raw = localStorage.getItem("ravel-theme") ?? localStorage.getItem("omega-theme");
+		const current = localStorage.getItem("ravel-theme");
+		const raw = current ?? localStorage.getItem("omega-theme");
 		const mode = raw ? (JSON.parse(raw) as ThemeMode) : "system";
+		// Migration entry: migrate the legacy key to the unified one only once.
+		if (!current && raw) localStorage.setItem("ravel-theme", raw);
 		if (mode === "dark") return "dark";
 		if (mode === "light") return "light";
 	} catch {
