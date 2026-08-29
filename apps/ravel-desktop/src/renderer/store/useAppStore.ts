@@ -5,185 +5,81 @@
  * high-frequency, append-only deltas. Selector subscriptions let granular
  * components (a single message bubble, a single tool card) re-render without
  * re-rendering the whole tree. See system_design.md §2.2.
+ *
+ * This file stays the single source of the `useAppStore` instance and the
+ * `AppState` type. The state *shape* and *defaults* are organized into logical
+ * slices under `./slices` (chrome / surface / session / ide / histos); this
+ * module composes those slice types + defaults and keeps every action inline so
+ * the public API (`useAppStore`, `AppState`, all existing method names) is
+ * unchanged. It remains exactly one Zustand instance.
+ *
+ * Precise per-surface selectors live in `./slices/selectors.ts`.
  */
 import { create } from "zustand";
 import { ipc } from "../ipc/client";
 import type {
-  SessionSummary,
   SessionListPage,
   SessionRecord,
   SessionMessage,
-  SessionTree,
-  AgentPermissionState,
-  AgentPlan,
   AgentStateSnapshot,
   ModelInfo,
-  ThinkingLevel,
   SlashCommandInfo,
   AuthStatus,
   DesktopSettings,
   UsageSnapshot,
   GitSnapshot,
-  FileReadResult,
+  SessionTree,
+  ActivityRow,
+  ThinkingLevel,
   ExtensionUIRequest,
   ExtensionUIStatus,
   ExtensionUIWidget,
-  ApprovalOutcome,
-  TimelineOperation,
-  TranscriptMarker,
-  ApprovalFact,
-  ActivityRow,
-  SessionReferenceFact,
 } from "../types/dto";
+import type { ToolExecutionSummaryEvent } from "../types/events";
 import type { ThemeMode } from "../theme/palettes";
 import { applyModeWithTransition } from "../theme/palettes";
 import type {
-  ToolExecutionSummaryEvent,
-} from "../types/events";
+  ChromeSliceState,
+  ConnectionState,
+  ShutdownPhase,
+  LayoutState,
+  ViewerState,
+} from "./slices/chromeSlice";
+import { createChromeDefaults } from "./slices/chromeSlice";
+import type { SurfaceSliceState, SurfaceMode } from "./slices/surfaceSlice";
+import { createSurfaceDefaults, SURFACE_MODES } from "./slices/surfaceSlice";
+import type {
+  SessionSliceState,
+  ToolCardState,
+  QueuedMessages,
+  PendingOptimisticMessage,
+  SessionActivity,
+  TranscriptNavigationRequest,
+} from "./slices/sessionSlice";
+import { createSessionDefaults } from "./slices/sessionSlice";
+import type { IdeSliceState } from "./slices/ideSlice";
+import { createIdeDefaults } from "./slices/ideSlice";
 
-export type ConnectionState = "connecting" | "ready" | "running" | "closing" | "error";
-export type ShutdownPhase = "idle" | "closing" | "flushing" | "exiting";
 /**
- * Product surface dimension — which top-level Surface tool is showing in the
- * center column (chat / IDE / histos). This is independent of `agent.mode`
- * (an agent capability/profile) and of the old `layout.rightTab` (a right-panel
- * view selector). Defaults to `"chat"`.
+ * Re-export slice types so existing external imports
+ * (`from "../store/useAppStore"`) keep compiling unchanged.
  */
-export type SurfaceMode = "chat" | "ide" | "histos";
-export const SURFACE_MODES: readonly SurfaceMode[] = ["chat", "ide", "histos"];
+export type { ConnectionState, ShutdownPhase, LayoutState, ViewerState } from "./slices/chromeSlice";
+export type { SurfaceMode } from "./slices/surfaceSlice";
+export { SURFACE_MODES } from "./slices/surfaceSlice";
+export type { ToolCardState } from "./slices/sessionSlice";
+export { createSurfaceDefaults, createChromeDefaults, createSessionDefaults, createIdeDefaults };
 
-export interface ToolCardState {
-  toolCallId: string;
-  toolName: string;
-  kind: ToolExecutionSummaryEvent["kind"];
-  target?: string;
-  op?: string;
-  status: "running" | "done" | "error";
-  startedAt?: string;
-  endedAt?: string;
-  argsJson?: string;
-  resultText?: string;
-  isError?: boolean;
-  afterMessageId?: string;
-  approval?: ApprovalOutcome;
-}
-
-export interface QueuedMessages {
-  steering: string[];
-  followUp: string[];
-}
-
-export interface PendingOptimisticMessage {
-  key: string;
-  clientMessageId: string;
-  messageId: string;
-  text: string;
-  createdAt: number;
-}
-
-export interface SessionActivity {
-  running: boolean;
-  unread: boolean;
-  compacting: boolean;
-  failed: boolean;
-}
-
-export interface TranscriptNavigationRequest {
-  sessionId: string;
-  entryId?: string;
-  toolCallId?: string;
-  nonce: number;
-}
-
-export interface LayoutState {
-  leftPanelOpen: boolean;
-  rightPanelOpen: boolean;
-  focusMode: boolean;
-  rightTab: "diff" | "graph" | "worktree" | "agent" | "telemetry" | "snapshots" | "terminal";
-  commandPaletteOpen: boolean;
-  treeOpen: boolean;
-  leftTab: "sessions" | "files" | "search" | "activity";
-  modelCenterOpen: boolean;
-  settingsOpen: boolean;
-  resourceCenterOpen: boolean;
-  trustCenterOpen: boolean;
-}
-
-export interface ViewerState {
-  open: boolean;
-  path: string | null;
-  loading: boolean;
-  error: string | null;
-  file: FileReadResult | null;
-}
-
-export interface AppState {
-  connection: ConnectionState;
-  shutdownPhase: ShutdownPhase;
-  bootstrapError: string | null;
-
-  themeMode: ThemeMode;
-  resolvedMode: "light" | "dark";
+export interface AppState
+  extends ChromeSliceState,
+    SurfaceSliceState,
+    SessionSliceState,
+    IdeSliceState {
   setThemeMode: (mode: ThemeMode, origin?: { x: number; y: number }) => void;
 
-  sessions: SessionSummary[];
-  sessionTotal: number;
-  sessionNextOffset: number | null;
-  sessionActivity: Record<string, SessionActivity>;
-  /** 动态视图 rows keyed by sessionId (live tracker + fact-derived merges). */
-  activityRows: Record<string, ActivityRow>;
   applyActivityRows: (rows: ActivityRow[]) => void;
-  activeSessionId: string | null;
-  messages: SessionMessage[];
-  toolCards: ToolCardState[];
-  /** Compaction boundaries projected from the authoritative transcript. */
-  markers: TranscriptMarker[];
-  approvals: ApprovalFact[];
-  /** Durable run operations (turns) projected from session facts. */
-  operations: TimelineOperation[];
-  /** Projected @session reference edges for the loaded transcript. */
-  references: SessionReferenceFact[];
-  queuedMessages: QueuedMessages;
-  /** Pending optimistic bubbles keyed by their client prompt identity. */
-  pendingOptimistic: PendingOptimisticMessage[];
-  /** Legacy latest key retained for recovery compatibility; new code uses pendingOptimistic. */
-  optimisticKey: string | null;
-  /** Streaming assistant bubble ids keyed by `${sessionId}:${epoch}:${runId}` bucket. */
-  streamingBuckets: Record<string, string>;
-  /** Epoch of the last agent_start — lets late prompt failures skip rollback. */
-  lastAgentStartAt: number;
-  transcriptNavigation: TranscriptNavigationRequest | null;
   requestTranscriptNavigation: (request: Omit<TranscriptNavigationRequest, "nonce">) => void;
   clearTranscriptNavigation: (nonce: number) => void;
-
-  agent: AgentStateSnapshot | null;
-  models: ModelInfo[];
-  commands: SlashCommandInfo[];
-  auth: AuthStatus | null;
-  desktopSettings: DesktopSettings | null;
-  thinkingActive: boolean;
-  compacting: boolean;
-  retrying: boolean;
-  composerError: string | null;
-  composerPrefill: string | null;
-  extensionUiRequest: ExtensionUIRequest | null;
-  extensionStatuses: ExtensionUIStatus[];
-  extensionWidgets: ExtensionUIWidget[];
-  extensionTitle: string | null;
-  bashTail: string;
-  workerError: string | null;
-  canRetryWorker: boolean;
-
-  gitSnapshot: GitSnapshot | null;
-  sessionTree: SessionTree | null;
-  workspaceEpoch: number;
-  viewer: ViewerState;
-
-  permission: AgentPermissionState | null;
-  plan: AgentPlan | null;
-
-  layout: LayoutState;
-  surfaceMode: SurfaceMode;
 
   setConnection: (state: ConnectionState) => void;
   setShutdownPhase: (phase: ShutdownPhase) => void;
@@ -211,7 +107,11 @@ export interface AppState {
   /** Add one locally rendered user message before the authoritative event arrives. */
   addOptimisticMessage: (pending: PendingOptimisticMessage, message: SessionMessage) => void;
   /** Replace the matching optimistic bubble with the authoritative user message. */
-  consumeOptimisticWith: (delivered: SessionMessage, key?: string, clientMessageId?: string | null) => void;
+  consumeOptimisticWith: (
+    delivered: SessionMessage,
+    key?: string,
+    clientMessageId?: string | null,
+  ) => void;
   /** Remove only the optimistic bubble belonging to this prompt key. */
   dropLastIfOptimistic: (key: string) => void;
   /** Remove all unconfirmed optimistic bubbles after a worker recovery boundary. */
@@ -264,24 +164,12 @@ const EMPTY_USAGE: UsageSnapshot = {
   cost: 0,
 };
 
-/** Lazily restore the persisted product surface; invalid/empty values fall back to "chat". */
-function readSurfaceMode(): SurfaceMode {
-  try {
-    const raw = localStorage.getItem("ravel-surface-mode");
-    if (raw === "chat" || raw === "ide" || raw === "histos") return raw;
-  } catch {
-    /* best effort */
-  }
-  return "chat";
-}
-
 export const useAppStore = create<AppState>((set, get) => ({
-  connection: "connecting",
-  shutdownPhase: "idle",
-  bootstrapError: null,
+  ...createChromeDefaults(),
+  ...createSurfaceDefaults(),
+  ...createSessionDefaults(),
+  ...createIdeDefaults(),
 
-  themeMode: "system",
-  resolvedMode: "dark",
   setThemeMode: (mode, origin) => {
     const systemDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
     const resolved = mode === "system" ? (systemDark ? "dark" : "light") : mode;
@@ -300,11 +188,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  sessions: [],
-  sessionTotal: 0,
-  sessionNextOffset: null,
-  sessionActivity: {},
-  activityRows: {},
   applyActivityRows: (rows) =>
     set((state) => {
       if (rows.length === 0) return {};
@@ -312,65 +195,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       for (const row of rows) next[row.sessionId] = row;
       return { activityRows: next };
     }),
-  activeSessionId: null,
-  messages: [],
-  toolCards: [],
-  markers: [],
-  approvals: [],
-  operations: [],
-  references: [],
-  queuedMessages: { steering: [], followUp: [] },
-  pendingOptimistic: [],
-  optimisticKey: null,
-  streamingBuckets: {},
-  lastAgentStartAt: 0,
-  transcriptNavigation: null,
-  requestTranscriptNavigation: (request) => set((state) => ({ transcriptNavigation: { ...request, nonce: (state.transcriptNavigation?.nonce ?? 0) + 1 } })),
-  clearTranscriptNavigation: (nonce) => set((state) => (state.transcriptNavigation?.nonce === nonce ? { transcriptNavigation: null } : {})),
-
-  agent: null,
-  models: [],
-  commands: [],
-  auth: null,
-  desktopSettings: null,
-  thinkingActive: false,
-  compacting: false,
-  retrying: false,
-  composerError: null,
-  composerPrefill: null,
-  extensionUiRequest: null,
-  extensionStatuses: [],
-  extensionWidgets: [],
-  extensionTitle: null,
-  bashTail: "",
-  workerError: null,
-  canRetryWorker: false,
-
-  gitSnapshot: null,
-  sessionTree: null,
-  workspaceEpoch: 0,
-  viewer: { open: false, path: null, loading: false, error: null, file: null },
-
-  permission: null,
-  plan: null,
-
-  layout: {
-    leftPanelOpen: true,
-    rightPanelOpen: true,
-    focusMode: false,
-    rightTab: "diff",
-    commandPaletteOpen: false,
-    treeOpen: false,
-    leftTab: "sessions",
-    modelCenterOpen: false,
-    settingsOpen: false,
-    resourceCenterOpen: false,
-    trustCenterOpen: false,
-  },
+  requestTranscriptNavigation: (request) =>
+    set((state) => ({
+      transcriptNavigation: { ...request, nonce: (state.transcriptNavigation?.nonce ?? 0) + 1 },
+    })),
+  clearTranscriptNavigation: (nonce) =>
+    set((state) => (state.transcriptNavigation?.nonce === nonce ? { transcriptNavigation: null } : {})),
 
   setConnection: (connection) => set({ connection }),
   setShutdownPhase: (shutdownPhase) => set({ shutdownPhase }),
-  surfaceMode: readSurfaceMode(),
   setSurfaceMode: (mode) => {
     const mode_ = SURFACE_MODES.includes(mode) ? mode : "chat";
     try {
@@ -384,19 +217,49 @@ export const useAppStore = create<AppState>((set, get) => ({
   setComposerError: (composerError) => set({ composerError }),
   setComposerPrefill: (composerPrefill) => set({ composerPrefill }),
   setExtensionUiRequest: (extensionUiRequest) => set({ extensionUiRequest }),
-  setExtensionStatus: (status) => set((state) => ({ extensionStatuses: [...state.extensionStatuses.filter((item) => !(item.sessionId === status.sessionId && item.key === status.key)), status] })),
-  clearExtensionStatus: (sessionId, key) => set((state) => ({ extensionStatuses: state.extensionStatuses.filter((item) => !(item.sessionId === sessionId && item.key === key)) })),
-  setExtensionWidget: (widget) => set((state) => ({ extensionWidgets: [...state.extensionWidgets.filter((item) => !(item.sessionId === widget.sessionId && item.key === widget.key)), widget] })),
-  clearExtensionWidget: (sessionId, key) => set((state) => ({ extensionWidgets: state.extensionWidgets.filter((item) => !(item.sessionId === sessionId && item.key === key)) })),
+  setExtensionStatus: (status) =>
+    set((state) => ({
+      extensionStatuses: [
+        ...state.extensionStatuses.filter(
+          (item) => !(item.sessionId === status.sessionId && item.key === status.key),
+        ),
+        status,
+      ],
+    })),
+  clearExtensionStatus: (sessionId, key) =>
+    set((state) => ({
+      extensionStatuses: state.extensionStatuses.filter(
+        (item) => !(item.sessionId === sessionId && item.key === key),
+      ),
+    })),
+  setExtensionWidget: (widget) =>
+    set((state) => ({
+      extensionWidgets: [
+        ...state.extensionWidgets.filter(
+          (item) => !(item.sessionId === widget.sessionId && item.key === widget.key),
+        ),
+        widget,
+      ],
+    })),
+  clearExtensionWidget: (sessionId, key) =>
+    set((state) => ({
+      extensionWidgets: state.extensionWidgets.filter(
+        (item) => !(item.sessionId === sessionId && item.key === key),
+      ),
+    })),
   setExtensionTitle: (extensionTitle) => set({ extensionTitle }),
-  setWorkerError: (workerError, canRetry = false) => set({ workerError, canRetryWorker: Boolean(workerError) && canRetry }),
+  setWorkerError: (workerError, canRetry = false) =>
+    set({ workerError, canRetryWorker: Boolean(workerError) && canRetry }),
 
   applySessionPage: (page, mode = "replace") =>
     set((state) => {
       const incoming = Array.isArray(page?.items) ? page.items : [];
       const merged =
         mode === "append"
-          ? [...state.sessions.filter((session) => !incoming.some((item) => item.id === session.id)), ...incoming]
+          ? [
+              ...state.sessions.filter((session) => !incoming.some((item) => item.id === session.id)),
+              ...incoming,
+            ]
           : incoming;
       return {
         sessions: merged,
@@ -406,7 +269,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   markSessionActivity: (sessionId, patch) =>
     set((state) => {
-      const current = state.sessionActivity[sessionId] ?? { running: false, unread: false, compacting: false, failed: false };
+      const current = state.sessionActivity[sessionId] ?? {
+        running: false,
+        unread: false,
+        compacting: false,
+        failed: false,
+      };
       return { sessionActivity: { ...state.sessionActivity, [sessionId]: { ...current, ...patch } } };
     }),
   setActiveSession: (activeSessionId) =>
@@ -416,7 +284,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!current?.unread) return { activeSessionId };
       return {
         activeSessionId,
-        sessionActivity: { ...state.sessionActivity, [activeSessionId]: { ...current, unread: false } },
+        sessionActivity: {
+          ...state.sessionActivity,
+          [activeSessionId]: { ...current, unread: false },
+        },
       };
     }),
   loadTranscript: (record) =>
@@ -487,9 +358,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   appendDelta: (messageId, delta) =>
     set((state) => ({
       messages: state.messages.map((message) =>
-        message.id === messageId
-          ? { ...message, text: message.text + delta }
-          : message,
+        message.id === messageId ? { ...message, text: message.text + delta } : message,
       ),
     })),
   addOptimisticMessage: (pending, message) =>
@@ -561,7 +430,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   dropAllOptimistic: () =>
     set((state) => ({
-      messages: state.messages.filter((message) => !state.pendingOptimistic.some((item) => item.messageId === message.id)),
+      messages: state.messages.filter(
+        (message) => !state.pendingOptimistic.some((item) => item.messageId === message.id),
+      ),
       pendingOptimistic: [],
       optimisticKey: null,
     })),
@@ -587,7 +458,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   upsertToolCard: (summary) =>
     set((state) => {
-      const lastAssistant = [...state.messages].reverse().find((message) => message.role === "assistant");
+      const lastAssistant = [...state.messages]
+        .reverse()
+        .find((message) => message.role === "assistant");
       const existing = state.toolCards.find((card) => card.toolCallId === summary.toolCallId);
       if (existing) {
         return {
@@ -667,8 +540,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   closeViewer: () => set({ viewer: { open: false, path: null, loading: false, error: null, file: null } }),
 
-  setLayout: (patch) =>
-    set((state) => ({ layout: { ...state.layout, ...patch } })),
+  setLayout: (patch) => set((state) => ({ layout: { ...state.layout, ...patch } })),
   toggleLeftPanel: () =>
     set((state) => ({ layout: { ...state.layout, leftPanelOpen: !state.layout.leftPanelOpen } })),
   toggleFocusMode: () =>
