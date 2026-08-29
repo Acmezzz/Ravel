@@ -8,7 +8,7 @@ import { TrustCenter } from "./components/layout/TrustCenter";
 import { TooltipProvider } from "./ui/Tooltip";
 import { useAppStore } from "./store/useAppStore";
 import { ipc } from "./ipc/client";
-import { matchesKeybinding } from "./lib/keybindings";
+import { DEFAULT_KEYBINDINGS, matchesKeybinding } from "./lib/keybindings";
 import { streamBucketOf } from "./lib/stream-bucket";
 import { appendStreamText, appendStreamThinking, getStreamLive, moveStreamLive, resetStreamLive, seedStreamLive } from "./lib/stream-live";
 import type { ActivityRow } from "./types/dto";
@@ -407,7 +407,9 @@ export function App(): React.ReactElement {
   React.useEffect(() => {
     document.documentElement.style.fontSize = textZoom === 1 ? "" : `${(16 * textZoom).toFixed(2)}px`;
   }, [textZoom]);
-  const keybindings = useAppStore((s) => s.desktopSettings?.keybindings ?? { commandPalette: "Ctrl+K", newSession: "Ctrl+Shift+N", abort: "Escape", zoomIn: "Ctrl+=", zoomOut: "Ctrl+-", zoomReset: "Ctrl+0" });
+  // Stable fallback reference: a fresh object literal here would make the
+  // zustand snapshot change on every render and loop forever (React #185).
+  const keybindings = useAppStore((s) => s.desktopSettings?.keybindings ?? DEFAULT_KEYBINDINGS);
 
   React.useEffect(() => {
     // Workbench shortcuts are stored in typed desktop settings.

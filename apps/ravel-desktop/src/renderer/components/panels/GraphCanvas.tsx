@@ -5,6 +5,7 @@ import type { GraphProjection, GraphSelection } from "../../lib/graph-projection
 import { ipc } from "../../ipc/client";
 import type { HistosQueryDTO } from "../../types/dto";
 import { cn } from "../../ui/utils";
+import GraphLayoutWorker from "../../workers/graph-layout.worker?worker";
 
 /**
  * React Flow projection of a GraphRevision (docs/ravel-histos-refactor-plan.md §6).
@@ -58,8 +59,13 @@ const nodeTypes: NodeTypes = {
   cluster: HistosNode,
 };
 
+/**
+ * `?worker` gives Vite a real worker entry and a generated constructor.
+ * The hand-rolled URL form cannot work here: `import.meta` is erased from the
+ * classic IIFE renderer bundle, so a module-relative URL has no base.
+ */
 function createWorker(): Worker {
-  return new Worker(new URL("../../workers/graph-layout.worker.ts", import.meta.url), { type: "module" });
+  return new GraphLayoutWorker();
 }
 
 export function GraphCanvas({ graph, query, onSelect, onDraftChange }: {

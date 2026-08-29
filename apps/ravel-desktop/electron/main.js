@@ -1221,10 +1221,18 @@ async function createWindow() {
               const cs = getComputedStyle(el);
               return Object.fromEntries(props.map((p) => [p, cs.getPropertyValue(p)]));
             };
+            const has = (sel) => ({ sel, present: Boolean(document.querySelector(sel)) });
             return JSON.stringify({
               htmlClass: document.documentElement.className,
               body: pick("body", ["color", "background-color"]),
-              tab: pick(".MuiTab-root", ["color"]),
+              // Base UI replaced MUI: probe the workbench right-rail tabs by role.
+              tab: pick('#omega-right-panel [role="tab"]', ["color"]),
+              shell: {
+                workbench: has(".ravel-workbench-center"),
+                rightPanel: has("#omega-right-panel"),
+                leftNav: has("#omega-left-rail, #omega-left-drawer"),
+                tabs: document.querySelectorAll('[role="tab"]').length,
+              },
             });
           })()`);
           process.stdout.write(`[main] domprobe ${probe}\n`);

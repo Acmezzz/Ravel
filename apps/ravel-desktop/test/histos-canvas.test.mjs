@@ -20,7 +20,11 @@ test("GraphCanvas uses React Flow as a selectable, persistable projection surfac
   const canvas = await read("components/panels/GraphCanvas.tsx");
   const panel = await read("components/panels/GraphPanel.tsx");
   assert.match(canvas, /from "@xyflow\/react"/);
-  assert.match(canvas, /new URL\("\.\.\/\.\.\/workers\/graph-layout\.worker\.ts", import\.meta\.url\)/);
+  // The renderer ships as a classic IIFE where `import.meta` is erased, so the
+  // layout worker must be a real Vite worker entry instead of a hand-rolled URL.
+  assert.match(canvas, /GraphLayoutWorker from "\.\.\/\.\.\/workers\/graph-layout\.worker\?worker"/);
+  assert.match(canvas, /new GraphLayoutWorker\(\)/);
+  assert.doesNotMatch(canvas, /import\.meta\.url/);
   assert.match(canvas, /nodesDraggable/);
   assert.match(canvas, /nodesConnectable=\{false\}/);
   assert.match(canvas, /elementsSelectable/);

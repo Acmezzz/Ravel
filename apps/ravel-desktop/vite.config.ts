@@ -35,6 +35,17 @@ export default defineConfig({
       },
     }),
   ],
+  // The layout worker is referenced by a stable URL at runtime: `import.meta`
+  // is erased in the IIFE bundle, so `new URL(..., import.meta.url)` cannot be
+  // used. Classic (non-module) output keeps the CSP constraint intact.
+  worker: {
+    format: "iife",
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/graph-layout.worker.js",
+      },
+    },
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

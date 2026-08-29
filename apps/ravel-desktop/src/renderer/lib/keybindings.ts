@@ -1,3 +1,13 @@
+/** Fallback shortcuts used before desktop settings arrive from Main. */
+export const DEFAULT_KEYBINDINGS: Readonly<Record<string, string>> = Object.freeze({
+  commandPalette: "Ctrl+K",
+  newSession: "Ctrl+Shift+N",
+  abort: "Escape",
+  zoomIn: "Ctrl+=",
+  zoomOut: "Ctrl+-",
+  zoomReset: "Ctrl+0",
+});
+
 /**
  * Match a sanitized shortcut such as `Ctrl+K` or `Ctrl+Shift+N` against a
  * keyboard event. Ctrl and Cmd are treated as the same modifier so Mac and

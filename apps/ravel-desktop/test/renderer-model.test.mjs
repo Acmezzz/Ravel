@@ -620,7 +620,11 @@ test("stage 4 isolates renderer subscriptions, scroll work, and stale reads", as
   assert.match(composer, /useAppStore\.getState\(\)\.messages/);
   assert.match(list, /requestAnimationFrame/);
   assert.match(list, /historyEpochRef/);
-  assert.match(surface, /shallow/);
+  // Per-session slices must be derived from stable store references: a
+  // `useShallow(...)` object selector changed the snapshot on every render and
+  // crashed the renderer with React error #185.
+  assert.doesNotMatch(surface, /useShallow/);
+  assert.match(surface, /React\.useMemo/);
   assert.match(tree, /requestEpochRef/);
   assert.match(viewer, /pageRequestEpochRef/);
   assert.match(sessions, /requestEpochRef/);
