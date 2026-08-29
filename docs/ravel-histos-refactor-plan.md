@@ -1,7 +1,7 @@
 # Ravel × Histos 生产目标与实施计划
 
-更新日期：2026-08-28
-状态：**R0–R5 / H0 / T1–T5 已完成档案。** 锁定栈与 §7 数据契约仍有效。剩余产品切片不再以本文为执行入口，改认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。
+更新日期：2026-08-29
+状态：**R0–R5 / H0 / T1–T5 已完成历史档案。** 锁定栈与 §7 数据契约供查阅；剩余产品切片和当前验证不以本文为执行入口，改认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。
 前置：[`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)
 
 本文保留铬件、Histos 三层、进程边界与 R0–R5 验收。核心不变量仍以核心设计为准。不要把下一刀写回本文。

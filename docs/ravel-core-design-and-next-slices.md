@@ -7,7 +7,7 @@
 
 本文只记录已经拍板的产品不变量。冲突时以本文为准（记忆行以 next-cycle 勘误为准）。
 
-切片 0 / 1 与 Histos R0–R5 已在 `feat/histos-r2-renderer-migration` 落地。本文不再把画布、切分器、sqlite 写成「下一刀才允许」。R5 hang-fix（H0）与锁定栈 T1–T5 亦已提交。下一刀是剩余产品深度缺口，不是重开不变量。
+切片 0 / 1、Histos R0–R5、H0 与锁定栈 T1–T5 已落地。本文不再把画布、切分器或 sqlite 写成「下一刀才允许」。当前实现状态与验证结果见 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)，下一刀只处理其中列出的剩余缺口。
 
 对标过 Codex Desktop、Claude Desktop / Cowork / Code、Hermes Desktop，以及 `D:\project\agent\omega\example\` 下五个项目。借鉴的是不变量和编码工作台表面，不是换架构。
 
@@ -25,7 +25,7 @@
 | 后续口子 | computer use、系统应用、浏览器操作、定时任务 |
 | 信任模型 | Electron 隔离 + `workspace-only` / `ask-before-command` + 事后 Git Review |
 | 不宣称 | OS / 容器 / VM 沙箱。Docker、WSL、VM 是更后阶段 |
-| 记忆 | 先不设计跨项目记忆。现有 journal 磁盘当备份留着，不在产品里运营 |
+| 记忆 | 记忆属于 Histos：同工作区可检索/可建议；跨工作区只能显式搬运已 freeze 的 ContextSet |
 | 架构 | 保持 Electron Main → utilityProcess Worker → preload → React。权威源是 Pi JSONL + Git 工作区 + skill/插件文件 |
 
 DeepSeek 的 Cordis「一切皆插件」只作组织原则的例子：边界清楚、可组合。Ravel 的对应物不是插件内核，而是**一切可寻址事实，关系是派生索引**。
