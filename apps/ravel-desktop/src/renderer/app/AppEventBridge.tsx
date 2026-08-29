@@ -84,7 +84,7 @@ function executeTransportCmds(cmds: TransportCmd[], handleEvent: (data: unknown)
  * pure reducers. Async IPC and connection-state effects are executed here from
  * the returned command lists.
  */
-export function AppEventBridge(): React.ReactElement {
+export function AppEventBridge(): React.ReactNode | null {
   React.useEffect(() => {
     let orderRef: EventOrderRef = initialEventOrderRef();
 
@@ -145,5 +145,5 @@ export function AppEventBridge(): React.ReactElement {
     };
   }, []);
 
-  return <></>;
+  return null;
 }

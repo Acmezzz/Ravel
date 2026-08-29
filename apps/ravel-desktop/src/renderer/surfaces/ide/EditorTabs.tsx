@@ -37,6 +37,7 @@ export function EditorTabs({ tabs, activePath, dirty, onActivate, onClose, onClo
             key={path}
             role="tab"
             aria-selected={isActive}
+            tabIndex={0}
             className={`ravel-ide-tab${isActive ? " ravel-ide-tab-active" : ""}${isDirty ? " ravel-ide-tab-dirty" : ""}`}
           >
             <button type="button" className="ravel-ide-tab-label" onClick={() => onActivate(path)} title={path}>

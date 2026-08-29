@@ -162,7 +162,8 @@ function ContextDrawer(): React.ReactElement {
 
   if (!open) {
     return (
-      <aside
+      <button
+        type="button"
         className="ravel-chat-context-rail"
         aria-label="展开上下文抽屉"
         style={{
@@ -173,9 +174,9 @@ function ContextDrawer(): React.ReactElement {
           borderLeft: `1px solid ${BORDER}`,
           background: "var(--ravel-bg-rail)",
           cursor: "pointer",
+          color: "inherit",
+          font: "inherit",
         }}
-        role="button"
-        tabIndex={0}
         onClick={() => setOpen(true)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -185,7 +186,7 @@ function ContextDrawer(): React.ReactElement {
         }}
       >
         <Database size={16} aria-hidden="true" style={{ color: ACCENT }} />
-      </aside>
+      </button>
     );
   }
 

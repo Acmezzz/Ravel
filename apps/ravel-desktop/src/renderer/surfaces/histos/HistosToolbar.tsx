@@ -66,7 +66,7 @@ export function HistosToolbar(props: HistosToolbarProps): React.ReactElement {
       {actions.freezeResult ? <p className="omega-muted-text" role="status">{actions.freezeResult}</p> : null}
 
       {/* 导入条：Workspace hash / URL / 构建(rebuild)进度 */}
-      <div className="ravel-histos-import-bar" aria-label="导入与构建">
+      <div className="ravel-histos-import-bar" role="group" aria-label="导入与构建">
         <span className="overline-label">{t("graph.importTitle")}</span>
         <div className="omega-graph-toolbar-actions">
           <input

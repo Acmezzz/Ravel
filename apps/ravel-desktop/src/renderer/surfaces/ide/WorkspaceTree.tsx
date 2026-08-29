@@ -8,7 +8,7 @@ import { FileTree } from "../../components/files/FileTree";
 
 export function WorkspaceTree({ onOpenFile }: { onOpenFile: (path: string) => void }): React.ReactElement {
   return (
-    <div className="ravel-ide-tree" aria-label="IDE 工作区文件树">
+    <div className="ravel-ide-tree" role="group" aria-label="IDE 工作区文件树">
       <FileTree onOpenFile={onOpenFile} />
     </div>
   );

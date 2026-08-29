@@ -12,7 +12,6 @@
  * shared via `./utils` (re-exported from here for backward compatibility).
  */
 import type { RavelBridge } from "./utils";
-import { unwrap } from "./utils";
 
 import { agentClient } from "./agent-client";
 import { sessionClient } from "./session-client";

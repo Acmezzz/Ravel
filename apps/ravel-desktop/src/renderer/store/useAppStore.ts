@@ -43,7 +43,6 @@ import type {
   ConnectionState,
   ShutdownPhase,
   LayoutState,
-  ViewerState,
 } from "./slices/chromeSlice";
 import { createChromeDefaults } from "./slices/chromeSlice";
 import type { SurfaceSliceState, SurfaceMode } from "./slices/surfaceSlice";

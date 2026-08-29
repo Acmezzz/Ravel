@@ -15,7 +15,7 @@ export interface AppKeyboardShortcutsProps {
  * hardcoded. Includes command-palette toggle, new session, text zoom, and
  * abort with the Esc-in-non-empty-input guard.
  */
-export function AppKeyboardShortcuts({ textZoom, onZoomChange }: AppKeyboardShortcutsProps): React.ReactElement {
+export function AppKeyboardShortcuts({ textZoom, onZoomChange }: AppKeyboardShortcutsProps): React.ReactNode | null {
   const keybindings = useAppStore((s) => s.desktopSettings?.keybindings ?? DEFAULT_KEYBINDINGS);
 
   React.useEffect(() => {
@@ -63,5 +63,5 @@ export function AppKeyboardShortcuts({ textZoom, onZoomChange }: AppKeyboardShor
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [keybindings, textZoom, onZoomChange]);
 
-  return <></>;
+  return null;
 }

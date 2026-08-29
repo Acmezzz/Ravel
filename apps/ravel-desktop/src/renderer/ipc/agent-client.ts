@@ -10,7 +10,6 @@ import type {
   PermissionRuleRow,
   TelemetrySnapshot,
   SearchResultBundle,
-  CheckpointInfo,
   ModelInfo,
 } from "../types/dto";
 import type { PromptSessionReference } from "./utils";

@@ -96,7 +96,7 @@ export async function startNewSession(): Promise<void> {
  * Drives the session-ready polling (up to 40 × 500ms) and applies desktop
  * settings + control-plane refresh once the session is ready.
  */
-export function AppBootstrap(): React.ReactElement {
+export function AppBootstrap(): React.ReactNode | null {
   const setConnection = useAppStore((s) => s.setConnection);
 
   React.useEffect(() => {
@@ -120,5 +120,5 @@ export function AppBootstrap(): React.ReactElement {
     };
   }, [setConnection]);
 
-  return <></>;
+  return null;
 }

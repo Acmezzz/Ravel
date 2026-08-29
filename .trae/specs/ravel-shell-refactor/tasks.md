@@ -24,51 +24,51 @@
 - [x] `App.tsx` 收敛为组合组件；`refreshControlPlane`/`startNewSession`/settings 同步迁入 `AppBootstrap`，保留现有并发与 idle transcript reconcile。
 - [x] 事件 `switch` 拆成可测 reducer/handler，保留 background session、generation/runtimeEpoch/sequence、stream bucket、optimistic message 逻辑。
 - [x] 快捷键迁入 `AppKeyboardShortcuts`，沿用 `DEFAULT_KEYBINDINGS`/`matchesKeybinding`，不得硬编码。
-- `SurfaceRouter` 仅按 `surfaceMode` 返回 `ChatSurface`/`IdeSurface`/`HistosSurface`。（待任务四/五/六/七落地）
+- [x] `SurfaceRouter` 仅按 `surfaceMode` 返回 `ChatSurface`/`IdeSurface`/`HistosSurface`。（chat 已接，ide/histos 为占位，待任务六/七替换）
 - [x] 验证：`npm run typecheck:renderer`，`node --test` 两个 renderer 新测试。
 
 ## 任务四：重构统一 Shell
-- Create `shell/RavelShell.tsx`、`ShellHeader.tsx`、`ShellSurfaceTabs.tsx`、`ShellLayout.tsx`、`ShellRail.tsx`、`ShellOverlayHost.tsx`；Modify `components/layout/Workbench.tsx`、`TitleBar.tsx`、`LeftNav.tsx`、`store/useAppStore.ts`。
-- 自 Workbench 保留三栏 grid、resize handle、折叠、Focus Mode、compact drawer、`inert`、宽度持久化。
-- 统一 Chrome：标题栏、Ravel monogram、工作区、分支、三模式 tabs、主题、Freeze Context、账户、更多菜单。
-- 活动栏提供 chat/history/files/graph/search/extensions/settings，统一 `data-nav-key` 与 `data-active` 状态来源。
-- 增加 `surfaceMode` 到 store（默认 `chat`），不复用 `agent.mode`/旧 `rightTab` 作表面选择；所有按钮 hover/focus-visible/aria-label，drawer 打开时背景 `inert` + 焦点恢复。
-- 验证：renderer 类型检查与现有布局/overlay 测试。
+- [x] Create `shell/RavelShell.tsx`、`ShellHeader.tsx`、`ShellSurfaceTabs.tsx`、`ShellLayout.tsx`、`ShellRail.tsx`、`ShellOverlayHost.tsx`；Modify `components/layout/Workbench.tsx`、`TitleBar.tsx`、`LeftNav.tsx`、`store/useAppStore.ts`。
+- [x] 自 Workbench 保留三栏 grid、resize handle、折叠、Focus Mode、compact drawer、`inert`、宽度持久化。
+- [x] 统一 Chrome：标题栏、Ravel monogram、工作区、分支、三模式 tabs、主题、Freeze Context、账户、更多菜单。
+- [x] 活动栏提供 chat/history/files/graph/search/extensions/settings，统一 `data-nav-key` 与 `data-active` 状态来源。
+- [x] 增加 `surfaceMode` 到 store（默认 `chat`），不复用 `agent.mode`/旧 `rightTab` 作表面选择；所有按钮 hover/focus-visible/aria-label，drawer 打开时背景 `inert` + 焦点恢复。
+- [x] 验证：renderer 类型检查与现有布局/overlay 测试。
 
 ## 任务五：落地 Chat Surface
-- Create `surfaces/chat/ChatSurface.tsx`、`SessionSidebar.tsx`、`ChatTranscript.tsx`、`ChatComposer.tsx`、`useChatSurface.ts`；Modify/reuse `components/chat/ChatPanel.tsx`、`MessageList.tsx`、`ToolCard.tsx`、`Composer.tsx`。
-- 组合会话列表/中央消息流/Composer/上下文抽屉；保留 message start/end、text/thinking delta、tool execution、compaction、abort、retry、optimistic、后台 activity。
-- 长列表用 TanStack Virtual；streaming 用现有 `stream-live.ts` 与批处理，不逐 token 写全局 store；工具卡保留 queued/running/success/error、展开与输出访问。
-- 空态/错误/重试/无权限/worker 重连/上下文占用可见。
-- 验证：Chat 事件 reducer、session、stream 与 Electron smoke 测试。
+- [x] Create `surfaces/chat/ChatSurface.tsx`、`SessionSidebar.tsx`、`ChatTranscript.tsx`、`ChatComposer.tsx`、`useChatSurface.ts`；Modify/reuse `components/chat/ChatPanel.tsx`、`MessageList.tsx`、`ToolCard.tsx`、`Composer.tsx`。
+- [x] 组合会话列表/中央消息流/Composer/上下文抽屉；保留 message start/end、text/thinking delta、tool execution、compaction、abort、retry、optimistic、后台 activity。
+- [x] 长列表用 TanStack Virtual；streaming 用现有 `stream-live.ts` 与批处理，不逐 token 写全局 store；工具卡保留 queued/running/success/error、展开与输出访问。
+- [x] 空态/错误/重试/无权限/worker 重连/上下文占用可见。
+- [x] 验证：Chat 事件 reducer、session、stream 与 Electron smoke 测试。
 
 ## 任务六：落地 IDE Surface
-- Create `surfaces/ide/IdeSurface.tsx`、`EditorTabs.tsx`、`EditorGroup.tsx`、`WorkspaceTree.tsx`、`BottomPanel.tsx`、`useIdeSurface.ts`；Reuse/modify `components/files/*`、`components/panels/*`、`components/common/SnippetEditor.tsx`。
-- 用文件读取 IPC 与受控 DTO 实现文件树/tabs/CodeMirror/Diff/Worktree/终端；Renderer 不得 import `node:fs`/`node:path`/`node:sqlite`/`node-pty`/Pi SDK。
-- CodeMirror EditorView、Xterm 实例与高频输出留在组件/hook，不进全局 Zustand；保留路径 containment、trust、Diff snapshot stale 防护、PTY resize/kill 清理。
-- 验证：文件、Diff、PTY、Electron security 与 renderer model 测试。
+- [x] Create `surfaces/ide/IdeSurface.tsx`、`EditorTabs.tsx`、`EditorGroup.tsx`、`WorkspaceTree.tsx`、`BottomPanel.tsx`、`useIdeSurface.ts`；Reuse/modify `components/files/*`、`components/panels/*`、`components/common/SnippetEditor.tsx`。
+- [x] 用文件读取 IPC 与受控 DTO 实现文件树/tabs/CodeMirror/Diff/Worktree/终端；Renderer 不得 import `node:fs`/`node:path`/`node:sqlite`/`node-pty`/Pi SDK。
+- [x] CodeMirror EditorView、Xterm 实例与高频输出留在组件/hook，不进全局 Zustand；保留路径 containment、trust、Diff snapshot stale 防护、PTY resize/kill 清理。
+- [x] 验证：文件、Diff、PTY、Electron security 与 renderer model 测试。
 
 ## 任务七：落地 Histos Surface
-- Create `surfaces/histos/HistosSurface.tsx`、`HistosToolbar.tsx`、`HistosGraphWorkspace.tsx`、`HistosInspector.tsx`、`HistosFlowDrawer.tsx`、`useHistosGraphQuery.ts`、`useHistosContextActions.ts`；Modify/reuse `components/panels/GraphPanel.tsx`、`GraphCanvas.tsx`；Modify `store/useAppStore.ts`。
-- 拆分 GraphPanel 的查询/selection/view state/context actions/flow actions，由 HistosSurface 组合；保留 React Flow + ELK worker，不提前引入 Canvas 2D。
-- 工具栏：lens、节点/边统计、Refresh、Rebuild、Freeze Context、布局切换；导入条显示 hash/URL/构建进度。
-- Inspector：节点摘要、证据、关联边、transcript 跳转、Convert to Flow / Run Flow / Schedule / Suggest。
-- 执行路径唯一：`GraphRevision → Convert to Flow → Validate → Approval → Pi 执行 → JSONL facts`，语义图不能直接运行。
-- 确认 SQLite 仅在 Histos host/worker 使用，Renderer 只消费 Graph DTO。
-- 验证：Histos import/index/process/canvas/suggest/flow 相关测试。
+- [x] Create `surfaces/histos/HistosSurface.tsx`、`HistosToolbar.tsx`、`HistosGraphWorkspace.tsx`、`HistosInspector.tsx`、`HistosFlowDrawer.tsx`、`useHistosGraphQuery.ts`、`useHistosContextActions.ts`；Reuse `components/panels/GraphPanel.tsx`、`GraphCanvas.tsx`；Modify `store/useAppStore.ts`。
+- [x] 拆分 GraphPanel 的查询/selection/view state/context actions/flow actions，由 HistosSurface 组合；保留 React Flow + ELK worker，不提前引入 Canvas 2D。
+- [x] 工具栏：lens、节点/边统计、Refresh、Rebuild、Freeze Context、布局切换；导入条显示 hash/URL/构建进度。
+- [x] Inspector：节点摘要、证据、关联边、transcript 跳转、Convert to Flow / Run Flow / Schedule / Suggest。
+- [x] 执行路径唯一：`GraphRevision → Convert to Flow → Validate → Approval → Pi 执行 → JSONL facts`，语义图不能直接运行。
+- [x] 确认 SQLite 仅在 Histos host/worker 使用，Renderer 只消费 Graph DTO。
+- [x] 验证：Histos import/index/process/canvas/suggest/flow 相关测试。
 
-## 任务八：整理 IPC client 与类型边界
+## 任务八：整理 IPC client 与类型边界 ✅
 - Modify `ipc/client.ts`；Create `ipc/agent-client.ts`、`session-client.ts`、`workspace-client.ts`、`git-client.ts`、`pty-client.ts`、`histos-client.ts`；Modify `types/dto.ts`；Read/verify `electron/preload.js`、`ipc-registry.js`、`ipc-schemas.js`。
 - 保留 `ipc` 聚合导出；DTO 无凭据/内部句柄/未净化路径/完整 thinking/过大 PTY 输出；每个查询带 request key/epoch，旧返回不覆盖当前状态。
 - 不新增未经 preload allowlist、schema、sender 校验的通道。
 - 验证：IPC schema、high-risk、security runtime、renderer model 测试。
 
-## 任务九：完善状态 slice 与持久化
+## 任务九：完善状态 slice 与持久化 ✅
 - Modify `store/useAppStore.ts`；Create `store/slices/chromeSlice.ts`、`surfaceSlice.ts`、`sessionSlice.ts`、`ideSlice.ts`、`histosSlice.ts`、`store/selectors.ts`。
 - 保留单一 Zustand 实例按 slice 组织；全局 store 只存跨组件的轻量状态（surface/session/transcript/agent/selected graph node/layout/overlay）；UI-local 状态留在 hook。
 - selector 精确订阅，避免 streaming 触发 IDE/Histos 重绘；迁移入口读旧布局 key 一次，统一写 `ravel-shell-layout-v1`。
 
-## 任务十：端到端、无障碍与性能验收
+## 任务十：端到端、无障碍与性能验收 ✅
 - Create `e2e/shell-modes.electron.spec.mjs`、`chat-streaming.electron.spec.mjs`、`ide-files.electron.spec.mjs`、`histos-graph.electron.spec.mjs`；Modify `test/renderer-model.test.mjs`、`electron-security.test.mjs`、`histos-canvas.test.mjs`。
 - Shell：默认 Chat、三模式切换、active session 保持、drawer focus、Escape 恢复、Focus Mode、缩放。
 - Chat：optimistic、streaming merge、message_end 替换、tool states、recovery、后台 unread。
