@@ -3,12 +3,12 @@ import { Activity, Bot, Camera, Diff, GitBranch, PanelLeftOpen, PanelRightOpen, 
 import { IconButton } from "../../ui/Button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
-import { TitleBar } from "./TitleBar";
 import { Header } from "./Header";
 import { LeftNav } from "./LeftNav";
-import { ChatPanel } from "../chat/ChatPanel";
 import { RightPanel } from "./RightPanel";
 import { PanelResizeHandle } from "./PanelResizeHandle";
+import { ShellLayout } from "../../shell/ShellLayout";
+import { SurfaceRouter } from "../../app/SurfaceRouter";
 
 const RIGHT_COLLAPSED_RAIL_PX = 44;
 const MIN_SIDEBAR_PX = 200;
@@ -153,15 +153,16 @@ export function Workbench(): React.ReactElement {
         "--ravel-left-panel-width": `${widths.left}px`,
         "--ravel-right-panel-width": `${widths.right}px`,
         display: "grid",
-        gridTemplateRows: "auto auto 1fr",
+        // The frameless title bar now lives in RavelShell via ShellHeader;
+        // this grid only hosts the header row + the three-column body.
+        gridTemplateRows: "auto 1fr",
         gridTemplateColumns: `${leftCol} minmax(0,1fr) ${rightCol}`,
-        height: "100vh",
+        height: "100%",
         gap: 0,
         padding: 0,
         transition: dragging ? "none" : "grid-template-columns var(--ravel-dur-slow) var(--ravel-ease-out)",
       } as React.CSSProperties}
     >
-      <TitleBar />
       <div className="ravel-workbench-header" style={{ gridColumn: "1 / -1" }}>
         <Header />
       </div>
@@ -203,7 +204,9 @@ export function Workbench(): React.ReactElement {
         ) : null}
       </div>
       <div ref={centerInertRef} className="ravel-workbench-center" style={{ minHeight: 0, overflow: "hidden", display: "flex" }}>
-        <ChatPanel />
+        <ShellLayout>
+          <SurfaceRouter />
+        </ShellLayout>
       </div>
       {compactLeftOpen ? (
         <>

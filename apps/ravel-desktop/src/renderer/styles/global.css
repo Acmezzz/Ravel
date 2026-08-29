@@ -2075,3 +2075,64 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   .omega-file-viewer-size { order: 2; }
   .omega-file-viewer-spacer { display: none; }
 }
+
+/* ============================================================
+ * Ravel unified shell (task four)
+ * ========================================================== */
+.ravel-shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--ravel-bg); }
+.ravel-shell-chrome { flex: 0 0 auto; display: flex; flex-direction: column; z-index: 10; }
+.ravel-shell-header { display: flex; align-items: stretch; background: var(--ravel-bg); }
+.ravel-shell-header .omega-titlebar { flex: 1 1 auto; width: auto; min-width: 0; }
+.ravel-shell-branch { display: inline-flex; align-items: center; gap: 0.35rem; flex: 0 0 auto; margin-right: 0.5rem; border: 1px solid var(--ravel-border); border-radius: var(--ravel-radius-sm); padding: 0.2rem 0.5rem; background: var(--ravel-bg-soft); color: var(--ravel-text-muted); font-size: 0.6875rem; box-shadow: var(--ravel-inset-highlight); }
+.ravel-shell-branch-label { color: var(--ravel-accent); font-weight: 700; }
+.ravel-shell-branch-name { min-width: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ravel-shell-tabs { display: flex; align-items: center; gap: 0.25rem; height: 40px; flex: 0 0 auto; padding: 0 1rem; background: var(--ravel-bg); border-bottom: 1px solid var(--ravel-border); }
+.ravel-shell-tab {
+  height: 26px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: var(--ravel-radius-sm);
+  padding: 0 0.75rem;
+  background: transparent;
+  color: var(--ravel-text-dim);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out), border-color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-shell-tab:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-shell-tab.is-active { border-color: var(--ravel-accent-line); background: var(--ravel-selected); color: var(--ravel-accent-strong); box-shadow: var(--ravel-inset-highlight); }
+.ravel-shell-body { flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; flex-direction: row; }
+.ravel-shell-rail {
+  flex: 0 0 auto;
+  width: 48px;
+  min-width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 8px;
+  background: var(--ravel-bg-rail);
+  border-right: 1px solid var(--ravel-border);
+}
+.ravel-shell-rail-item {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--ravel-radius-sm);
+  background: transparent;
+  color: var(--ravel-text-dim);
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-shell-rail-item:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-shell-rail-item.is-active { background: var(--ravel-selected); color: var(--ravel-accent); }
+
+/* Active product surface fills the middle column's hosted layout. */
+.ravel-surface { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; padding: 1.5rem; background: var(--ravel-bg-panel); }
+.ravel-surface-placeholder { color: var(--ravel-text-muted); }
+.ravel-surface-placeholder strong { display: block; margin-bottom: 0.5rem; color: var(--ravel-text); font-size: 0.9375rem; }
+.ravel-surface-placeholder p { margin: 0; font-size: 0.8125rem; line-height: 1.6; }

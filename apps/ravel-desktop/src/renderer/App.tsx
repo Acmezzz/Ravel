@@ -1,10 +1,5 @@
 import * as React from "react";
-import { Workbench } from "./components/layout/Workbench";
-import { CommandPalette } from "./components/layout/CommandPalette";
-import { TreeOverlay } from "./components/layout/TreeOverlay";
-import { FileViewer } from "./components/files/FileViewer";
-import { ExtensionUIHost } from "./components/layout/ExtensionUIHost";
-import { TrustCenter } from "./components/layout/TrustCenter";
+import { RavelShell } from "./shell/RavelShell";
 import { TooltipProvider } from "./ui/Tooltip";
 import { useAppStore } from "./store/useAppStore";
 import { AppBootstrap } from "./app/AppBootstrap";
@@ -17,6 +12,8 @@ import { AppKeyboardShortcuts } from "./app/AppKeyboardShortcuts";
  * Coordination (bootstrap, event bridging, keyboard shortcuts) is split into
  * single-responsibility sub-components; this component only follows the OS
  * theme in `system` mode, owns the text zoom state, and assembles the UI.
+ * The unified shell (`RavelShell`) owns the title bar, product-surface tabs,
+ * activity rail, workbench and modal/overlay layers.
  */
 export function App(): React.ReactElement {
   const themeMode = useAppStore((s) => s.themeMode);
@@ -46,12 +43,7 @@ export function App(): React.ReactElement {
       <AppBootstrap />
       <AppEventBridge />
       <AppKeyboardShortcuts textZoom={textZoom} onZoomChange={setTextZoom} />
-      <Workbench />
-      <CommandPalette />
-      <TreeOverlay />
-      <FileViewer />
-      <ExtensionUIHost />
-      <TrustCenter />
+      <RavelShell />
     </TooltipProvider>
   );
 }

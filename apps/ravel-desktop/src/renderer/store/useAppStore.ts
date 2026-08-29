@@ -43,6 +43,14 @@ import type {
 
 export type ConnectionState = "connecting" | "ready" | "running" | "closing" | "error";
 export type ShutdownPhase = "idle" | "closing" | "flushing" | "exiting";
+/**
+ * Product surface dimension — which top-level Surface tool is showing in the
+ * center column (chat / IDE / histos). This is independent of `agent.mode`
+ * (an agent capability/profile) and of the old `layout.rightTab` (a right-panel
+ * view selector). Defaults to `"chat"`.
+ */
+export type SurfaceMode = "chat" | "ide" | "histos";
+export const SURFACE_MODES: readonly SurfaceMode[] = ["chat", "ide", "histos"];
 
 export interface ToolCardState {
   toolCallId: string;
@@ -175,9 +183,11 @@ export interface AppState {
   plan: AgentPlan | null;
 
   layout: LayoutState;
+  surfaceMode: SurfaceMode;
 
   setConnection: (state: ConnectionState) => void;
   setShutdownPhase: (phase: ShutdownPhase) => void;
+  setSurfaceMode: (mode: SurfaceMode) => void;
   setBootstrapError: (message: string | null) => void;
   setComposerError: (message: string | null) => void;
   setComposerPrefill: (text: string | null) => void;
@@ -253,6 +263,17 @@ const EMPTY_USAGE: UsageSnapshot = {
   total: 0,
   cost: 0,
 };
+
+/** Lazily restore the persisted product surface; invalid/empty values fall back to "chat". */
+function readSurfaceMode(): SurfaceMode {
+  try {
+    const raw = localStorage.getItem("ravel-surface-mode");
+    if (raw === "chat" || raw === "ide" || raw === "histos") return raw;
+  } catch {
+    /* best effort */
+  }
+  return "chat";
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   connection: "connecting",
@@ -349,6 +370,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setConnection: (connection) => set({ connection }),
   setShutdownPhase: (shutdownPhase) => set({ shutdownPhase }),
+  surfaceMode: readSurfaceMode(),
+  setSurfaceMode: (mode) => {
+    const mode_ = SURFACE_MODES.includes(mode) ? mode : "chat";
+    try {
+      localStorage.setItem("ravel-surface-mode", mode_);
+    } catch {
+      /* best effort */
+    }
+    set({ surfaceMode: mode_ });
+  },
   setBootstrapError: (bootstrapError) => set({ bootstrapError }),
   setComposerError: (composerError) => set({ composerError }),
   setComposerPrefill: (composerPrefill) => set({ composerPrefill }),
