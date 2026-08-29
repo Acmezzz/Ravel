@@ -23,8 +23,7 @@ test("R1 keeps the single-file IIFE, CSP, and compiler build contract", async ()
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
   assert.ok(csp, "CSP meta tag is present");
   assert.match(csp[1], /script-src 'self'/);
-  assert.match(csp[1], /style-src 'self' app:(?:;|')/);
-  assert.doesNotMatch(csp[1], /nonce-/);
+  assert.match(csp[1], /style-src 'self' app: 'nonce-ravel-static-2026'/);
   assert.doesNotMatch(csp[1], /unsafe-inline/);
   assert.doesNotMatch(csp[1], /unsafe-eval/);
 });
@@ -59,8 +58,8 @@ test("R1 keeps the Header status thresholds and CSS-variable resize hot path", a
   assert.match(header, /clamped >= 85/);
   assert.match(header, /clamped >= 65/);
   assert.match(header, /INFINITY_PATH/);
-  assert.match(workbench, /--omega-left-panel-width/);
-  assert.match(workbench, /--omega-right-panel-width/);
+  assert.match(workbench, /--ravel-left-panel-width/);
+  assert.match(workbench, /--ravel-right-panel-width/);
   assert.match(workbench, /draggingRef/);
   assert.match(workbench, /ravel-panel-widths/);
   assert.match(resize, /lostpointercapture/);

@@ -8,7 +8,6 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 test("terminal renderer surface owns an xterm-backed PTY lifecycle", async () => {
   const panel = await read("components/panels/TerminalPanel.tsx");
   const right = await read("components/layout/RightPanel.tsx");
-  const store = await read("store/useAppStore.ts");
   assert.match(panel, /@xterm\/xterm/);
   assert.match(panel, /FitAddon/);
   assert.match(panel, /ptyCreate/);
@@ -23,6 +22,9 @@ test("terminal renderer surface owns an xterm-backed PTY lifecycle", async () =>
   assert.doesNotMatch(panel, /useAppStore\.setState|set\(.*output|terminalOutput/);
   assert.match(right, /value="terminal"/);
   assert.match(right, /rightTab === "terminal"/);
-  assert.match(store, /rightTab: .*"terminal"/);
-  assert.match(store, /rightTab: "diff",/);
+  // The rightTab union + default moved into the chrome slice when the store was
+  // split; assert against the file that now owns that state shape.
+  const chrome = await read("store/slices/chromeSlice.ts");
+  assert.match(chrome, /rightTab: .*"terminal"/);
+  assert.match(chrome, /rightTab: "diff",/);
 });

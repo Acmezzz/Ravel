@@ -18,15 +18,12 @@ import { useChatSurface } from "./useChatSurface";
 import { useAppStore } from "../../store/useAppStore";
 import { ipc } from "../../ipc/client";
 
-const BORDER = "var(--ravel-border)";
-const BG = "var(--ravel-bg-panel)";
 const MUTED = "var(--ravel-text-muted)";
 const DIM = "var(--ravel-text-dim)";
 const ACCENT = "var(--ravel-accent)";
 const WARNING = "var(--ravel-warning)";
 const DANGER = "var(--ravel-danger)";
 const SUCCESS = "var(--ravel-success)";
-const SELECTED = "var(--ravel-selected)";
 
 function connectionLabel(connection: string): string {
   switch (connection) {
@@ -88,23 +85,7 @@ function ChatStatusStrip(): React.ReactElement | null {
   if (chips.length === 0) return null;
 
   return (
-    <div
-      className="ravel-chat-status-strip"
-      role="status"
-      aria-live="polite"
-      style={{
-        flex: "0 0 auto",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        flexWrap: "wrap",
-        padding: "6px 12px",
-        borderBottom: `1px solid ${BORDER}`,
-        fontSize: "0.6875rem",
-        color: MUTED,
-        background: "var(--ravel-bg-rail)",
-      }}
-    >
+    <div className="ravel-chat-status-strip" role="status" aria-live="polite">
       {chips.map((chip) => (
         <span
           key={chip.key}
@@ -162,70 +143,22 @@ function ContextDrawer(): React.ReactElement {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        className="ravel-chat-context-rail"
-        aria-label="展开上下文抽屉"
-        style={{
-          flex: "0 0 auto",
-          display: "flex",
-          alignItems: "center",
-          paddingInline: 6,
-          borderLeft: `1px solid ${BORDER}`,
-          background: "var(--ravel-bg-rail)",
-          cursor: "pointer",
-          color: "inherit",
-          font: "inherit",
-        }}
-        onClick={() => setOpen(true)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            setOpen(true);
-          }
-        }}
-      >
-        <Database size={16} aria-hidden="true" style={{ color: ACCENT }} />
+      <button type="button" className="ravel-chat-context-rail" aria-label="展开上下文抽屉" onClick={() => setOpen(true)}>
+        <Database size={16} aria-hidden="true" />
       </button>
     );
   }
 
   return (
-    <aside
-      className="ravel-chat-context-drawer"
-      aria-label="上下文抽屉"
-      style={{
-        width: 264,
-        minWidth: 264,
-        flex: "0 0 auto",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        background: BG,
-        borderLeft: `1px solid ${BORDER}`,
-      }}
-    >
-      <div
-        className="ravel-chat-context-header"
-        style={{
-          flex: "0 0 auto",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "8px 10px",
-          borderBottom: `1px solid ${BORDER}`,
-          fontSize: "0.6875rem",
-          fontWeight: 600,
-          color: MUTED,
-        }}
-      >
+    <aside className="ravel-chat-context-drawer" aria-label="上下文抽屉">
+      <div className="ravel-chat-context-header">
         <span className="overline-label" style={{ margin: 0 }}>上下文</span>
         <Button size="sm" variant="quiet" onClick={() => setOpen(false)} aria-label="收起上下文抽屉">
           收起
         </Button>
       </div>
 
-      <div className="ravel-chat-context-body" style={{ minHeight: 0, flex: 1, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="ravel-chat-context-body">
         {/* 上下文占用 */}
         <section className="omega-context-section">
           <div className="overline-label" style={{ margin: 0 }}>上下文占用</div>
@@ -329,21 +262,12 @@ function ContextDrawer(): React.ReactElement {
 export function ChatSurface(): React.ReactElement {
   const v = useChatSurface();
   return (
-    <div
-      className="ravel-chat-surface"
-      data-surface="chat-chat"
-      data-busy={v.busy ? "true" : "false"}
-      data-empty={v.empty ? "true" : "false"}
-      style={{ display: "flex", width: "100%", minHeight: 0, minWidth: 0, overflow: "hidden", background: BG }}
-    >
+    <div className="ravel-chat-surface" data-surface="chat" data-busy={v.busy ? "true" : "false"} data-empty={v.empty ? "true" : "false"}>
       <SessionSidebar />
-      <div
-        className="ravel-chat-stage"
-        style={{ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, flex: "1 1 auto" }}
-      >
+      <div className="ravel-chat-stage">
         <ChatStatusStrip />
-        {/* ChatPanel 即中央流 + Composer（其内部为 ChatTranscript + ChatComposer）。 */}
-        <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, flex: "1 1 auto", background: SELECTED }}>
+        {/* ChatPanel owns the transcript + composer; the surface only frames it. */}
+        <div className="ravel-chat-panel-host">
           <ChatPanel />
         </div>
       </div>

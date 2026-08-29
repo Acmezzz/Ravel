@@ -59,12 +59,12 @@ function ProviderCard({
   return (
     <div
       className="omega-provider-card"
-      style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1px solid var(--omega-border)", borderRadius: "12px", padding: "0.625rem", minWidth: 0 }}
+      style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1px solid var(--ravel-border)", borderRadius: "12px", padding: "0.625rem", minWidth: 0 }}
     >
       <div className="omega-provider-card-header" style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
         <span
           className="omega-provider-card-name"
-          style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.8125rem", fontWeight: 700, color: "var(--omega-text)" }}
+          style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.8125rem", fontWeight: 700, color: "var(--ravel-text)" }}
         >
           {provider.name}
         </span>
@@ -72,8 +72,8 @@ function ProviderCard({
           className="omega-chip omega-provider-card-status"
           style={{
             flex: "0 0 auto",
-            background: provider.configured ? "var(--omega-accent-soft)" : "var(--omega-hover-fill)",
-            color: provider.configured ? "var(--omega-accent)" : "var(--omega-text-muted)",
+            background: provider.configured ? "var(--ravel-accent-soft)" : "var(--ravel-hover-fill)",
+            color: provider.configured ? "var(--ravel-accent)" : "var(--ravel-text-muted)",
           }}
         >
           {provider.configured ? "已配置" : "配置中"}
@@ -81,7 +81,7 @@ function ProviderCard({
         {provider.source ? (
           <span
             className="omega-provider-card-source"
-            style={{ marginLeft: "auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}
+            style={{ marginLeft: "auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.65625rem", color: "var(--ravel-text-dim)" }}
           >
             {provider.source}
           </span>
@@ -101,7 +101,7 @@ function ProviderCard({
       {error ? (
         <p className="omega-error-text omega-provider-card-error">{error}</p>
       ) : (
-        <p className="omega-provider-card-hint" style={{ margin: 0, fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>
+        <p className="omega-provider-card-hint" style={{ margin: 0, fontSize: "0.65625rem", color: "var(--ravel-text-dim)" }}>
           Key 只写入本机凭据库，界面不会读取或显示已保存的明文。
         </p>
       )}
@@ -266,9 +266,9 @@ export function ModelCenter(): React.ReactElement {
             </div>
             <p className={auth?.ready ? "omega-muted-text" : "omega-warning-text"}>{auth?.label ?? "正在读取认证状态"}</p>
             {visibleProviders.length === 0 ? (
-              <div className="omega-model-center-empty" style={{ border: "1px dashed var(--omega-border-strong)", borderRadius: "12px", padding: "0.75rem" }}>
+              <div className="omega-model-center-empty" style={{ border: "1px dashed var(--ravel-border-strong)", borderRadius: "12px", padding: "0.75rem" }}>
                 <p className="omega-muted-text">还没有配置提供商。</p>
-                <p className="omega-muted-text" style={{ marginTop: "0.25rem", color: "var(--omega-text-dim)" }}>用右上角「添加」从目录里选择供应商，再粘贴 API key。</p>
+                <p className="omega-muted-text" style={{ marginTop: "0.25rem", color: "var(--ravel-text-dim)" }}>用右上角「添加」从目录里选择供应商，再粘贴 API key。</p>
               </div>
             ) : (
               visibleProviders.map((provider) => (
@@ -278,13 +278,13 @@ export function ModelCenter(): React.ReactElement {
           </section>
           <section className="omega-model-center-models" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", minWidth: 0 }}>
             <h3 className="overline-label">模型</h3>
-            <p className="omega-model-center-note" style={{ margin: 0, fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>
+            <p className="omega-model-center-note" style={{ margin: 0, fontSize: "0.65625rem", color: "var(--ravel-text-dim)" }}>
               只列出当前可用模型。配置提供商后会刷新目录；本地 Provider 可离线使用。
             </p>
             <TextField placeholder="搜索模型…" value={query} onChange={(e) => setQuery(e.target.value)} />
             <div className="omega-model-center-list" style={{ overflowY: "auto", maxHeight: 420, paddingRight: "0.25rem", minWidth: 0 }}>
               {groups.length === 0 ? (
-                <p className="omega-model-center-no-match" style={{ padding: "0.75rem 0", margin: 0, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>
+                <p className="omega-model-center-no-match" style={{ padding: "0.75rem 0", margin: 0, fontSize: "0.75rem", color: "var(--ravel-text-dim)" }}>
                   无匹配模型。先添加并配置提供商。
                 </p>
               ) : (

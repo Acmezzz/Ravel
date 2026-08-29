@@ -1,6 +1,7 @@
 import * as React from "react";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { styleCspNonce } from "../../theme/tokens";
 
 const MAX_SNIPPET_CHARS = 4_096;
 
@@ -18,6 +19,7 @@ export function SnippetEditor({ value, readOnly = true }: { value: string; readO
           EditorState.readOnly.of(readOnly),
           EditorView.editable.of(!readOnly),
           EditorView.lineWrapping,
+          EditorView.cspNonce.of(styleCspNonce),
           EditorView.theme({
             "&": { fontSize: "12px", maxHeight: "160px", backgroundColor: "transparent" },
             ".cm-scroller": { overflow: "auto", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace" },

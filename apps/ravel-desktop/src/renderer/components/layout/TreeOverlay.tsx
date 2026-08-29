@@ -145,9 +145,9 @@ export function TreeOverlay(): React.ReactElement {
           ) : null}
           <div className="omega-tree-list" style={{ padding: "0 1.25rem 0.75rem", maxHeight: 380, overflowY: "auto" }}>
             {!tree ? (
-              <p role="status" aria-live="polite" style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>加载中…</p>
+              <p role="status" aria-live="polite" style={{ margin: 0, fontSize: "0.75rem", color: "var(--ravel-text-dim)" }}>加载中…</p>
             ) : tree.nodes.length === 0 ? (
-              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>当前会话还没有消息。</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--ravel-text-dim)" }}>当前会话还没有消息。</p>
             ) : (
               tree.nodes.map((node, index) => {
                 const onPath = activePath.has(node.id);
@@ -186,7 +186,7 @@ export function TreeOverlay(): React.ReactElement {
                     }}
                   >
                     <div className="omega-tree-rail" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                      <span className="omega-tree-rail-line" style={{ width: "1px", flex: 1, minHeight: 4, background: index === 0 ? "transparent" : "var(--omega-border-strong)" }} />
+                      <span className="omega-tree-rail-line" style={{ width: "1px", flex: 1, minHeight: 4, background: index === 0 ? "transparent" : "var(--ravel-border-strong)" }} />
                       <span
                         className="omega-tree-dot"
                         style={{
@@ -194,11 +194,11 @@ export function TreeOverlay(): React.ReactElement {
                           height: 9,
                           borderRadius: 999,
                           flex: "0 0 auto",
-                          border: isLeaf || isSelected ? "2px solid var(--omega-accent)" : "2px solid var(--omega-border-strong)",
-                          background: isLeaf ? "var(--omega-accent)" : onPath ? "var(--omega-text-muted)" : "var(--omega-bg-panel)",
+                          border: isLeaf || isSelected ? "2px solid var(--ravel-accent)" : "2px solid var(--ravel-border-strong)",
+                          background: isLeaf ? "var(--ravel-accent)" : onPath ? "var(--ravel-text-muted)" : "var(--ravel-bg-panel)",
                         }}
                       />
-                      <span className="omega-tree-rail-line" style={{ width: "1px", flex: 1, minHeight: 4, background: index === tree.nodes.length - 1 ? "transparent" : "var(--omega-border-strong)" }} />
+                      <span className="omega-tree-rail-line" style={{ width: "1px", flex: 1, minHeight: 4, background: index === tree.nodes.length - 1 ? "transparent" : "var(--ravel-border-strong)" }} />
                     </div>
                     <div
                       className="omega-tree-row-body"
@@ -216,8 +216,8 @@ export function TreeOverlay(): React.ReactElement {
                         marginTop: "1.2px",
                         marginBottom: "1.2px",
                         borderRadius: "8px",
-                        border: isLeaf || isSelected ? "1px solid var(--omega-accent-line)" : "1px solid transparent",
-                        background: isLeaf ? "var(--omega-accent-soft)" : isSelected || hoveredId === node.id ? "var(--omega-hover-fill)" : "transparent",
+                        border: isLeaf || isSelected ? "1px solid var(--ravel-accent-line)" : "1px solid transparent",
+                        background: isLeaf ? "var(--ravel-accent-soft)" : isSelected || hoveredId === node.id ? "var(--ravel-hover-fill)" : "transparent",
                       }}
                     >
                       <span
@@ -226,7 +226,7 @@ export function TreeOverlay(): React.ReactElement {
                           fontSize: "0.65625rem",
                           fontWeight: 700,
                           letterSpacing: "0.04em",
-                          color: node.role === "user" ? "var(--omega-accent)" : "var(--omega-text-dim)",
+                          color: node.role === "user" ? "var(--ravel-accent)" : "var(--ravel-text-dim)",
                           flex: "0 0 auto",
                           width: 28,
                         }}
@@ -240,7 +240,7 @@ export function TreeOverlay(): React.ReactElement {
                         className="omega-tree-label"
                         style={{
                           fontSize: "0.8125rem",
-                          color: onPath ? "var(--omega-text)" : "var(--omega-text-muted)",
+                          color: onPath ? "var(--ravel-text)" : "var(--ravel-text-muted)",
                           minWidth: 0,
                           flex: 1,
                           overflow: "hidden",
@@ -251,9 +251,9 @@ export function TreeOverlay(): React.ReactElement {
                         {node.label || node.preview || "（无预览）"}
                       </span>
                       {isLeaf ? (
-                        <span className="omega-tree-marker-current" style={{ fontSize: "0.65625rem", color: "var(--omega-accent-strong)", flex: "0 0 auto" }}>当前</span>
+                        <span className="omega-tree-marker-current" style={{ fontSize: "0.65625rem", color: "var(--ravel-accent-strong)", flex: "0 0 auto" }}>当前</span>
                       ) : node.isLeaf ? (
-                        <span className="omega-tree-marker-tip" style={{ fontSize: "0.65625rem", color: "var(--omega-text-dim)", flex: "0 0 auto" }}>支线</span>
+                        <span className="omega-tree-marker-tip" style={{ fontSize: "0.65625rem", color: "var(--ravel-text-dim)", flex: "0 0 auto" }}>支线</span>
                       ) : null}
                     </div>
                   </div>
@@ -261,13 +261,13 @@ export function TreeOverlay(): React.ReactElement {
               })
             )}
           </div>
-          <div className="omega-tree-preview" style={{ padding: "0.625rem 1.5rem 1rem", borderTop: "1px solid var(--omega-border)" }}>
-            <p style={{ margin: "0 0 0.45rem", fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}>
+          <div className="omega-tree-preview" style={{ padding: "0.625rem 1.5rem 1rem", borderTop: "1px solid var(--ravel-border)" }}>
+            <p style={{ margin: "0 0 0.45rem", fontSize: "0.65625rem", color: "var(--ravel-text-dim)" }}>
               单击预览将继承的上下文；双击或确认后才会破坏性回退。
             </p>
             {selected ? (
               <div className="omega-tree-preview-detail" style={{ display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-start" }}>
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text)" }}>
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--ravel-text)" }}>
                   将继承 {inherited.length} 条消息到「{selected.label || selected.preview || selected.id}」
                 </p>
                 <Button size="sm" disabled={busy || selected.id === tree?.leafId} onClick={() => setRewindTarget(selected)}>
@@ -275,7 +275,7 @@ export function TreeOverlay(): React.ReactElement {
                 </Button>
               </div>
             ) : (
-              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--omega-text-dim)" }}>选择一个节点查看 fork/rewind 预览。</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--ravel-text-dim)" }}>选择一个节点查看 fork/rewind 预览。</p>
             )}
           </div>
         </DialogContent>
@@ -284,7 +284,7 @@ export function TreeOverlay(): React.ReactElement {
         <DialogContent className="omega-dialog-narrow">
           <DialogTitle>回退到此节点？</DialogTitle>
           <DialogContentArea>
-            <p className="omega-tree-confirm-text" style={{ margin: 0, fontSize: "0.8125rem", color: "var(--omega-text)" }}>
+            <p className="omega-tree-confirm-text" style={{ margin: 0, fontSize: "0.8125rem", color: "var(--ravel-text)" }}>
               这会把当前会话叶子改到「{rewindTarget?.label || rewindTarget?.preview || rewindTarget?.id}」，当前分支之后的消息将不再是活动叶子。生成中无法执行。
             </p>
           </DialogContentArea>

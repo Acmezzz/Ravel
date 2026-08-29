@@ -232,7 +232,7 @@ export function SessionList(): React.ReactElement {
 
   if (sessions.length === 0) {
     return (
-      <div style={{ padding: "1rem", color: "var(--omega-text-dim)", fontSize: "0.75rem", textAlign: "center" }}>
+      <div style={{ padding: "1rem", color: "var(--ravel-text-dim)", fontSize: "0.75rem", textAlign: "center" }}>
         {t("sessions.empty")}
       </div>
     );
@@ -270,7 +270,7 @@ export function SessionList(): React.ReactElement {
           <p
             role="status"
             aria-live="polite"
-            style={{ margin: 0, padding: "4px 6px 0", fontSize: "0.65625rem", color: "var(--omega-text-dim)" }}
+            style={{ margin: 0, padding: "4px 6px 0", fontSize: "0.65625rem", color: "var(--ravel-text-dim)" }}
           >
             {filtered.length > 0 ? t("sessions.matchCount", { n: filtered.length }) : t("sessions.noMatch")}
           </p>
@@ -278,7 +278,7 @@ export function SessionList(): React.ReactElement {
       </div>
       {loadError ? (
         <div role="alert" style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 6, paddingRight: 6, paddingBottom: 8 }}>
-          <span style={{ fontSize: "0.75rem", color: "var(--omega-danger)", minWidth: 0 }}>{loadError}</span>
+          <span style={{ fontSize: "0.75rem", color: "var(--ravel-danger)", minWidth: 0 }}>{loadError}</span>
           {failedSessionId ? (
             <Button size="sm" variant="quiet" onClick={() => void handleLoad(failedSessionId)} disabled={loadingSessionId !== null}>
               {t("sessions.retryLoad")}
@@ -336,8 +336,8 @@ export function SessionList(): React.ReactElement {
                               width: 6,
                               height: 6,
                               borderRadius: "50%",
-                              background: "var(--omega-accent)",
-                              boxShadow: "0 0 6px var(--omega-accent)",
+                              background: "var(--ravel-accent)",
+                              boxShadow: "0 0 6px var(--ravel-accent)",
                               flex: "0 0 auto",
                             }}
                           />
@@ -452,7 +452,7 @@ export function SessionList(): React.ReactElement {
             variant="quiet"
             disabled={loadingMore}
             onClick={() => void loadMore()}
-            style={{ fontSize: "0.75rem", color: "var(--omega-text-muted)" }}
+            style={{ fontSize: "0.75rem", color: "var(--ravel-text-muted)" }}
           >
             {loadingMore ? t("sessions.loadingMore") : t("sessions.loadMore", { loaded: sessions.length, total: sessionTotal })}
           </Button>
@@ -486,7 +486,7 @@ export function SessionList(): React.ReactElement {
         <DialogContent>
           <DialogTitle>{t("sessions.deleteTitle")}</DialogTitle>
           <div className="omega-dialog-content-area">
-            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--omega-text-muted)" }}>
+            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--ravel-text-muted)" }}>
               {t("sessions.deleteBody", { title: deleting?.title ?? "" })}
             </p>
           </div>

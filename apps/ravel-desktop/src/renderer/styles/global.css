@@ -54,24 +54,25 @@ body,
   --ravel-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   --ravel-font-mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Consolas, "Liberation Mono", Menlo, "PingFang Mono", "Microsoft YaHei Mono", monospace;
 
-  /* Surfaces — L0 canvas → L4 overlay, ~4% luminance steps */
-  --ravel-bg: #f4f5f6;
-  --ravel-bg-rail: #eceeef;
-  --ravel-bg-panel: #ffffff;
-  --ravel-bg-soft: #f7f8f8;
-  --ravel-bg-elevated: #fbfbfa;
-  --ravel-bg-overlay: #ffffff;
-  --ravel-bg-code: #f1f2f3;
+  /* Surfaces — warm neutral ramp (L0 canvas → L4 overlay). The whole shell is
+   * warm-tinted so the single amber accent reads as the only chromatic signal. */
+  --ravel-bg: #faf8f5;
+  --ravel-bg-rail: #f2eee7;
+  --ravel-bg-panel: #fffdfa;
+  --ravel-bg-soft: #f5f1ea;
+  --ravel-bg-elevated: #fffdf9;
+  --ravel-bg-overlay: #fffdfa;
+  --ravel-bg-code: #f4efe6;
 
   /* Hairline borders — translucent, never solid swatches */
-  --ravel-border: rgba(28, 26, 22, 0.08);
-  --ravel-border-strong: rgba(28, 26, 22, 0.15);
+  --ravel-border: rgba(56, 45, 30, 0.10);
+  --ravel-border-strong: rgba(56, 45, 30, 0.18);
 
   /* Text — four-step hierarchy (dim ≥4.5:1 on rail/panel/canvas) */
-  --ravel-text: #1a1916;
-  --ravel-text-soft: #2c2a26;
-  --ravel-text-muted: #5e5b54;
-  --ravel-text-dim: #706b62;
+  --ravel-text: #241f19;
+  --ravel-text-soft: #3a332a;
+  --ravel-text-muted: #6d6459;
+  --ravel-text-dim: #8a8074;
 
   /* Accent — Amber */
   --ravel-accent: #c67d12;
@@ -86,10 +87,21 @@ body,
   --ravel-success: #13995b;
   --ravel-warning: #b07f10;
   --ravel-danger: #d84558;
+  --ravel-info: #3f74a5;
   --ravel-success-soft: rgba(19, 153, 91, 0.10);
   --ravel-warning-soft: rgba(176, 127, 16, 0.10);
   --ravel-danger-soft: rgba(216, 69, 88, 0.10);
+  --ravel-info-soft: rgba(63, 116, 165, 0.10);
   --ravel-error-text: #a81c2f;
+
+  /* Chart / code-token ramp — the only place these five hues live, so graph
+   * nodes and editor syntax colors never hardcode a swatch. Amber stays the
+   * UI accent and is deliberately absent here. */
+  --ravel-chart-1: #7b6ab5;
+  --ravel-chart-2: #3f8f6a;
+  --ravel-chart-3: #4a7ab8;
+  --ravel-chart-4: #b8624a;
+  --ravel-chart-5: #4f8ea3;
 
   /* Glass & fills */
   --ravel-panel-glass: rgba(255, 255, 255, 0.92);
@@ -133,21 +145,21 @@ body,
 html.dark {
   color-scheme: dark;
 
-  --ravel-bg: #0c0d10;
-  --ravel-bg-rail: #111318;
-  --ravel-bg-panel: #16181e;
-  --ravel-bg-soft: #1b1e26;
-  --ravel-bg-elevated: #20242d;
-  --ravel-bg-overlay: #262a35;
-  --ravel-bg-code: #0d0e12;
+  --ravel-bg: #17150f;
+  --ravel-bg-rail: #131108;
+  --ravel-bg-panel: #1e1b13;
+  --ravel-bg-soft: #262219;
+  --ravel-bg-elevated: #2d281e;
+  --ravel-bg-overlay: #332d22;
+  --ravel-bg-code: #14120c;
 
-  --ravel-border: rgba(196, 188, 168, 0.10);
-  --ravel-border-strong: rgba(196, 188, 168, 0.20);
+  --ravel-border: rgba(232, 220, 198, 0.11);
+  --ravel-border-strong: rgba(232, 220, 198, 0.22);
 
-  --ravel-text: #f3f0ea;
-  --ravel-text-soft: #e8e4dc;
-  --ravel-text-muted: #a8a295;
-  --ravel-text-dim: #938c7e;
+  --ravel-text: #f2ece1;
+  --ravel-text-soft: #e4dccd;
+  --ravel-text-muted: #a89e8c;
+  --ravel-text-dim: #8c8271;
 
   --ravel-accent: #e8b44a;
   --ravel-accent-strong: #f0c56a;
@@ -160,10 +172,18 @@ html.dark {
   --ravel-success: #52d495;
   --ravel-warning: #e8b85e;
   --ravel-danger: #f07584;
+  --ravel-info: #74b3e0;
   --ravel-success-soft: rgba(82, 212, 149, 0.12);
   --ravel-warning-soft: rgba(232, 184, 94, 0.12);
   --ravel-danger-soft: rgba(240, 117, 132, 0.12);
+  --ravel-info-soft: rgba(116, 179, 224, 0.14);
   --ravel-error-text: #ffd5da;
+
+  --ravel-chart-1: #b3a3ea;
+  --ravel-chart-2: #6ec79a;
+  --ravel-chart-3: #8fb4e8;
+  --ravel-chart-4: #e08a6e;
+  --ravel-chart-5: #74b8cf;
 
   --ravel-panel-glass: rgba(22, 24, 26, 0.86);
   --ravel-composer-bg: rgba(32, 34, 40, 0.90);
@@ -2077,50 +2097,231 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 }
 
 /* ============================================================
- * Ravel unified shell (task four)
+ * Ravel unified shell — one chrome row, one rail, one workspace
  * ========================================================== */
-.ravel-shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--ravel-bg); }
-.ravel-shell-chrome { flex: 0 0 auto; display: flex; flex-direction: column; z-index: 10; }
-.ravel-shell-header { display: flex; align-items: stretch; background: var(--ravel-bg); }
-.ravel-shell-header .omega-titlebar { flex: 1 1 auto; width: auto; min-width: 0; }
-.ravel-shell-branch { display: inline-flex; align-items: center; gap: 0.35rem; flex: 0 0 auto; margin-right: 0.5rem; border: 1px solid var(--ravel-border); border-radius: var(--ravel-radius-sm); padding: 0.2rem 0.5rem; background: var(--ravel-bg-soft); color: var(--ravel-text-muted); font-size: 0.6875rem; box-shadow: var(--ravel-inset-highlight); }
-.ravel-shell-branch-label { color: var(--ravel-accent); font-weight: 700; }
-.ravel-shell-branch-name { min-width: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ravel-shell-tabs { display: flex; align-items: center; gap: 0.25rem; height: 40px; flex: 0 0 auto; padding: 0 1rem; background: var(--ravel-bg); border-bottom: 1px solid var(--ravel-border); }
-.ravel-shell-tab {
+.ravel-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ravel-bg);
+}
+
+/* --- Title bar (44px): identity · surface tabs · agent controls · window --- */
+.ravel-titlebar {
+  position: relative;
+  flex: 0 0 auto;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline: 10px 4px;
+  background: var(--ravel-bg-rail);
+  border-bottom: 1px solid var(--ravel-border);
+  z-index: 20;
+}
+.ravel-titlebar-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.ravel-titlebar-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 5px;
+  background: var(--ravel-accent);
+  color: var(--ravel-accent-foreground);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+}
+.ravel-titlebar-brand {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  color: var(--ravel-text);
+}
+.ravel-titlebar-rule {
+  width: 1px;
+  height: 16px;
+  flex: 0 0 auto;
+  background: var(--ravel-border);
+}
+.ravel-titlebar-workspace {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 12px/1.4 var(--ravel-font-mono);
+  color: var(--ravel-text-muted);
+}
+.ravel-titlebar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  flex: 0 0 auto;
+  padding-inline: 6px;
+  border: 1px solid var(--ravel-border);
+  border-radius: var(--ravel-radius-pill);
+  background: var(--ravel-bg-soft);
+  color: var(--ravel-text-muted);
+  font-size: 11px;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.ravel-titlebar-chip.is-dirty { border-radius: var(--ravel-radius-sm); color: var(--ravel-warning); background: var(--ravel-warning-soft); border-color: transparent; }
+
+/* The segmented surface switcher sits between the identity and the agent
+ * cluster as a real flex item. It is deliberately NOT absolutely centred: an
+ * absolutely positioned control overlaps the right-hand cluster once the window
+ * narrows, and the overlap swallows the click. */
+.ravel-titlebar-center {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+.ravel-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ravel-border);
+  border-radius: var(--ravel-radius-md);
+  background: var(--ravel-bg-soft);
+  box-shadow: var(--ravel-inset-recessed);
+}
+.ravel-seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding-inline: 10px;
+  border: 0;
+  border-radius: var(--ravel-radius-sm);
+  background: transparent;
+  color: var(--ravel-text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out), box-shadow var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-seg-item:hover { color: var(--ravel-text); background: var(--ravel-hover-fill); }
+.ravel-seg-item[data-active="true"] {
+  background: var(--ravel-accent);
+  color: var(--ravel-accent-foreground);
+  font-weight: 600;
+  box-shadow: var(--ravel-shadow-sm);
+}
+.ravel-seg-item:focus-visible { outline: none; box-shadow: var(--ravel-focus-ring); }
+
+/* --- Agent control cluster --- */
+.ravel-titlebar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.ravel-titlebar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   height: 26px;
   flex: 0 0 auto;
-  border: 1px solid transparent;
+  padding-inline: 8px;
+  border: 1px solid var(--ravel-border);
   border-radius: var(--ravel-radius-sm);
-  padding: 0 0.75rem;
-  background: transparent;
-  color: var(--ravel-text-dim);
+  background: var(--ravel-bg-panel);
+  color: var(--ravel-text);
   font: inherit;
-  font-size: 0.75rem;
-  font-weight: 550;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out), border-color var(--ravel-dur-fast) var(--ravel-ease-out);
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), border-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out);
 }
-.ravel-shell-tab:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
-.ravel-shell-tab.is-active { border-color: var(--ravel-accent-line); background: var(--ravel-selected); color: var(--ravel-accent-strong); box-shadow: var(--ravel-inset-highlight); }
-.ravel-shell-body { flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; flex-direction: row; }
-.ravel-shell-rail {
+.ravel-titlebar-pill:hover { border-color: var(--ravel-border-strong); background: var(--ravel-bg-elevated); }
+.ravel-titlebar-pill:focus-visible { outline: none; box-shadow: var(--ravel-focus-ring); }
+.ravel-titlebar-pill.is-ghost { border-color: transparent; background: transparent; color: var(--ravel-text-muted); }
+.ravel-titlebar-pill.is-ghost:hover { color: var(--ravel-text); background: var(--ravel-hover-fill); border-color: transparent; }
+.ravel-titlebar-pill.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.ravel-titlebar-pill-label { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ravel-titlebar-usage { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.ravel-titlebar-usage-label { font-size: 11px; color: var(--ravel-text-dim); }
+.ravel-titlebar-icon { color: var(--ravel-text-muted); }
+.ravel-titlebar-danger { color: var(--ravel-danger); border-color: var(--ravel-danger-soft); background: var(--ravel-danger-soft); }
+.ravel-titlebar-menu { display: flex; flex-direction: column; gap: 1px; padding: 4px; min-width: 188px; }
+.ravel-titlebar-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--ravel-radius-sm);
+  background: transparent;
+  color: var(--ravel-text-soft);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-titlebar-menu-item:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-titlebar-menu-item[aria-pressed="true"] { color: var(--ravel-accent-strong); background: var(--ravel-selected); }
+.ravel-titlebar-menu-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.ravel-titlebar-menu-sep { height: 1px; margin: 4px 2px; background: var(--ravel-border); }
+
+/* --- Window controls (guarded IPC, never draggable) --- */
+.ravel-titlebar-window { display: inline-flex; align-items: center; gap: 2px; margin-left: 2px; }
+.ravel-window-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--ravel-radius-sm);
+  background: transparent;
+  color: var(--ravel-text-muted);
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-window-btn:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-window-btn.is-close:hover { background: var(--ravel-danger); color: #fffdfa; }
+
+/* --- Body: rail + workspace --- */
+.ravel-shell-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+}
+.ravel-rail {
   flex: 0 0 auto;
   width: 48px;
   min-width: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding-top: 8px;
+  padding: 8px 0;
   background: var(--ravel-bg-rail);
   border-right: 1px solid var(--ravel-border);
 }
-.ravel-shell-rail-item {
+.ravel-rail-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ravel-rail-item {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: 0;
   border-radius: var(--ravel-radius-sm);
   background: transparent;
@@ -2128,92 +2329,327 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   cursor: pointer;
   transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out);
 }
-.ravel-shell-rail-item:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
-.ravel-shell-rail-item.is-active { background: var(--ravel-selected); color: var(--ravel-accent); }
+.ravel-rail-item:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-rail-item[data-active="true"] { background: var(--ravel-selected); color: var(--ravel-accent); }
+.ravel-rail-item[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 18px;
+  border-radius: var(--ravel-radius-pill);
+  background: var(--ravel-accent);
+}
+.ravel-rail-item:focus-visible { outline: none; box-shadow: var(--ravel-focus-ring); }
+.ravel-rail-footer { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: auto; }
+.ravel-rail-rule { width: 22px; height: 1px; background: var(--ravel-border); }
+.ravel-rail-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  width: 32px;
+  border: 1px solid var(--ravel-border);
+  border-radius: var(--ravel-radius-sm);
+  background: transparent;
+  color: var(--ravel-text-dim);
+  font: 500 10px/1 var(--ravel-font-mono);
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-rail-kbd:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+.ravel-rail-avatar {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--ravel-radius-pill);
+  background: var(--ravel-bg-elevated);
+  color: var(--ravel-text-soft);
+  box-shadow: inset 0 0 0 1px var(--ravel-border);
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-rail-avatar:hover { box-shadow: inset 0 0 0 1px var(--ravel-accent-line); }
 
-/* Active product surface fills the middle column's hosted layout. */
-.ravel-surface { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; padding: 1.5rem; background: var(--ravel-bg-panel); }
-.ravel-surface-placeholder { color: var(--ravel-text-muted); }
-.ravel-surface-placeholder strong { display: block; margin-bottom: 0.5rem; color: var(--ravel-text); font-size: 0.9375rem; }
-.ravel-surface-placeholder p { margin: 0; font-size: 0.8125rem; line-height: 1.6; }
+/* The workspace column hosts exactly one Surface. */
+.ravel-shell-layout { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; overflow: hidden; }
 
-/* ===== 任务六：IDE surface ===== */
-.ravel-ide-surface {
+@media (max-width: 1320px) {
+  /* The agent cluster never shrinks, so drop its least essential members first
+     rather than letting the bar overflow and cover the surface switcher. */
+  .ravel-titlebar-usage-label { display: none; }
+}
+@media (max-width: 1180px) {
+  .ravel-titlebar-pill.is-ghost { display: none; }
+  .ravel-titlebar-workspace { max-width: 120px; }
+}
+@media (max-width: 1040px) {
+  .ravel-titlebar-chip { display: none; }
+  .ravel-titlebar-usage { display: none; }
+}
+
+/* ============================================================
+ * Chat Surface — session sidebar · reading column · context drawer
+ * ========================================================== */
+.ravel-chat-surface {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: var(--ravel-bg);
+}
+
+/* Session sidebar (280px) */
+.ravel-chat-sidebar {
+  flex: 0 0 auto;
+  width: 280px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ravel-bg-rail);
+  border-right: 1px solid var(--ravel-border);
+}
+.ravel-chat-sidebar-header {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+  padding: 8px;
+  border-bottom: 1px solid var(--ravel-border);
+}
+.ravel-chat-sidebar-tab {
+  position: relative;
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--ravel-radius-sm);
+  background: transparent;
+  color: var(--ravel-text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-chat-sidebar-tab:hover { color: var(--ravel-text); background: var(--ravel-hover-fill); }
+.ravel-chat-sidebar-tab[data-active="true"] { color: var(--ravel-accent-strong); background: var(--ravel-selected); }
+.ravel-chat-sidebar-tab:focus-visible { outline: none; box-shadow: var(--ravel-focus-ring); }
+.ravel-chat-sidebar-dot { width: 5px; height: 5px; border-radius: var(--ravel-radius-pill); background: var(--ravel-accent); }
+.ravel-chat-sidebar-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* Stage: status strip + the centred reading column */
+.ravel-chat-stage {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--ravel-bg-panel);
-  color: var(--ravel-text);
 }
-.ravel-ide-toolbar {
+.ravel-chat-status-strip {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 5px 12px;
   border-bottom: 1px solid var(--ravel-border);
-  background: var(--ravel-bg-rail);
+  background: var(--ravel-bg-soft);
+  font-size: 11px;
+  color: var(--ravel-text-muted);
 }
-.ravel-ide-body {
+.ravel-chat-panel-host {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  background: var(--ravel-bg);
 }
-.ravel-ide-sidebar {
+/* The transcript and composer share one 780px reading column. */
+.ravel-chat-panel-host > .omega-chat-panel {
+  width: 100%;
+  max-width: 780px;
+  margin-inline: auto;
+}
+/* `.omega-chat-panel` has no `flex`, so inside a column-flex host it collapses
+ * to content height — and because the empty state and the composer are both
+ * absolutely positioned inside it, the composer floated to the TOP of the
+ * column. Every host that embeds ChatPanel must give it real height. */
+.ravel-chat-panel-host > .omega-chat-panel,
+.ravel-ide-chat > .omega-chat-panel,
+.ravel-histos-chat > .omega-chat-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  border-right: 0;
+  border-left: 0;
+}
+
+/* Context drawer */
+.ravel-chat-context-rail {
   flex: 0 0 auto;
-  width: 240px;
-  min-width: 200px;
-  max-width: 60%;
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 6px;
+  border: 0;
+  border-left: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-rail);
+  color: var(--ravel-accent);
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-chat-context-rail:hover { background: var(--ravel-hover-fill); }
+.ravel-chat-context-drawer {
+  flex: 0 0 auto;
+  width: 280px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ravel-bg-panel);
+  border-left: 1px solid var(--ravel-border);
+}
+.ravel-chat-context-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ravel-border);
+  color: var(--ravel-text-muted);
+}
+.ravel-chat-context-body {
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  border-right: 1px solid var(--ravel-border);
-  background: var(--ravel-bg-code);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.ravel-ide-main {
+
+@media (max-width: 1180px) {
+  .ravel-chat-sidebar { width: 232px; min-width: 232px; }
+  .ravel-chat-context-drawer { width: 240px; min-width: 240px; }
+}
+@media (max-width: 980px) {
+  .ravel-chat-sidebar { display: none; }
+  .ravel-chat-context-drawer { display: none; }
+}
+
+
+
+/* ============================================================
+ * IDE Surface — 左对话 · 中代码阅读 · 右目录 · 底部面板
+ * ========================================================== */
+.ravel-ide-surface {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: var(--ravel-bg);
+  color: var(--ravel-text);
+}
+
+/* Conversation column (360px) — same ChatPanel as the chat surface. */
+.ravel-ide-chat {
+  flex: 0 0 auto;
+  width: 360px;
+  min-width: 300px;
+  max-width: 46%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-panel);
+}
+
+/* Centre column: tabs → reader → bottom dock */
+.ravel-ide-center {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--ravel-selected);
+  overflow: hidden;
+  background: var(--ravel-bg);
 }
-.ravel-ide-search {
+
+/* Right workspace tree (340px) */
+.ravel-ide-tree-col {
   flex: 0 0 auto;
-  width: 300px;
+  width: 340px;
   min-width: 260px;
-  max-width: 45%;
+  max-width: 42%;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   border-left: 1px solid var(--ravel-border);
-  background: var(--ravel-bg-panel);
+  background: var(--ravel-bg-rail);
 }
-.ravel-ide-search-header {
+.ravel-ide-tree-header {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  gap: 8px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--ravel-border);
 }
-.ravel-ide-search-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 10px; }
+.ravel-ide-tree-actions { display: inline-flex; align-items: center; gap: 2px; }
+.ravel-ide-tree-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ravel-ide-tree-restore {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 30px;
+  padding: 10px 0;
+  border: 0;
+  border-left: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-rail);
+  color: var(--ravel-text-dim);
+  font: inherit;
+  font-size: 10px;
+  writing-mode: vertical-rl;
+  cursor: pointer;
+  transition: background-color var(--ravel-dur-fast) var(--ravel-ease-out), color var(--ravel-dur-fast) var(--ravel-ease-out);
+}
+.ravel-ide-tree-restore:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
+
+.ravel-ide-search-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px; border-bottom: 1px solid var(--ravel-border); }
+
+/* Editor tabs */
 .ravel-ide-tabbar {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 2px;
+  min-height: 34px;
   overflow-x: auto;
   padding: 4px 6px;
   border-bottom: 1px solid var(--ravel-border);
   background: var(--ravel-bg-rail);
 }
-.ravel-ide-tabbar-empty { padding: 2px 8px; font-size: 0.75rem; color: var(--ravel-text-dim); }
+.ravel-ide-tabbar-empty { padding: 2px 8px; font-size: 12px; color: var(--ravel-text-dim); }
 .ravel-ide-tabbar-spacer { flex: 1 1 auto; }
 .ravel-ide-tab {
   display: flex;
@@ -2224,10 +2660,11 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   border-radius: var(--ravel-radius-sm);
   color: var(--ravel-text-dim);
   background: transparent;
-  font-size: 0.75rem;
+  font-size: 12px;
 }
 .ravel-ide-tab:hover { background: var(--ravel-hover-fill); color: var(--ravel-text); }
-.ravel-ide-tab-active { background: var(--ravel-selected); color: var(--ravel-text); border-color: var(--ravel-accent-line); }
+.ravel-ide-tab:focus-visible { outline: none; box-shadow: var(--ravel-focus-ring); }
+.ravel-ide-tab-active { background: var(--ravel-bg-panel); color: var(--ravel-text); border-color: var(--ravel-border); }
 .ravel-ide-tab-label {
   max-width: 180px;
   overflow: hidden;
@@ -2236,75 +2673,188 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 0.75rem;
+  font: 500 12px/1.4 var(--ravel-font-mono);
   cursor: pointer;
   padding: 2px 4px;
 }
-.ravel-ide-tab-dirty-dot { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 3px; background: var(--ravel-warning); }
 .ravel-ide-tab-close, .ravel-ide-tab-close-all { color: var(--ravel-text-dim); }
-.ravel-ide-editor-host { flex: 1 1 auto; min-height: 0; overflow: hidden; }
-.ravel-ide-editor { flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
-.ravel-ide-editor-empty {
+
+/* Reader */
+.ravel-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ravel-bg-code);
+}
+.ravel-editor-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-panel);
+}
+.ravel-editor-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 11.5px/1.4 var(--ravel-font-mono);
+  color: var(--ravel-text-muted);
+}
+.ravel-editor-toolbar-spacer { flex: 1 1 auto; }
+.ravel-editor-host { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.ravel-editor-host .cm-editor { height: 100%; }
+.ravel-editor-host .cm-scroller { height: 100%; }
+.ravel-editor-status {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border-top: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-panel);
+  font-size: 11px;
+  color: var(--ravel-text-dim);
+}
+.ravel-editor-status-sep { width: 1px; height: 10px; background: var(--ravel-border); }
+.ravel-editor-status-spacer { flex: 1 1 auto; }
+.ravel-editor-status-warn { color: var(--ravel-warning); }
+.ravel-editor-empty {
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 24px;
-  color: var(--ravel-text-muted);
-  font-size: 0.8125rem;
+  gap: 6px;
+  padding: 32px 24px;
+  background: var(--ravel-bg);
   text-align: center;
 }
+.ravel-editor-empty-mark { font: 600 22px/1 var(--ravel-font-mono); color: var(--ravel-accent-line); }
+.ravel-editor-empty-title { margin: 0; font-size: 13px; font-weight: 550; color: var(--ravel-text-soft); }
+.ravel-editor-empty-hint { margin: 0; font-size: 12px; color: var(--ravel-text-dim); }
+
+/* Syntax colors — chart tokens only, never raw hex. Amber stays the UI accent. */
+.cm-tok-comment { color: var(--ravel-text-dim); font-style: italic; }
+.cm-tok-keyword { color: var(--ravel-chart-3); }
+.cm-tok-string { color: var(--ravel-chart-2); }
+.cm-tok-number { color: var(--ravel-chart-4); }
+.cm-tok-type { color: var(--ravel-chart-5); }
+.cm-tok-func { color: var(--ravel-chart-1); }
+.cm-tok-decorator { color: var(--ravel-accent); }
+
+/* Bottom terminal dock — only execution I/O belongs below the editor. */
 .ravel-ide-bottom {
   flex: 0 0 auto;
-  height: 240px;
-  min-height: 120px;
+  height: 188px;
+  min-height: 34px;
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--ravel-border);
   background: var(--ravel-bg-panel);
 }
+.ravel-ide-bottom:not(.is-open) { height: 34px; }
 .ravel-ide-bottom-header {
-  flex: 0 0 auto;
+  flex: 0 0 34px;
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
   border-bottom: 1px solid var(--ravel-border);
   background: var(--ravel-bg-rail);
 }
-.ravel-ide-bottom-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px; }
+.ravel-ide-bottom-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ravel-text-soft); font-size: 12px; font-weight: 600; }
+.ravel-ide-bottom-title svg { color: var(--ravel-accent); }
+.ravel-ide-bottom-caption { color: var(--ravel-text-dim); font-size: 11px; font-weight: 400; }
+.ravel-ide-bottom-actions { display: inline-flex; align-items: center; }
+.ravel-ide-bottom-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px 10px; }
 
-/* ===== 任务七：Histos surface ===== */
+@media (max-width: 1240px) {
+  .ravel-ide-chat { width: 300px; }
+  .ravel-ide-tree-col { width: 280px; }
+}
+@media (max-width: 1024px) {
+  .ravel-ide-chat { display: none; }
+}
+
+
+/* ============================================================
+ * Histos Surface — 左对话 · 右图谱（工具条 / 画布 / Inspector / Flow 抽屉）
+ * ========================================================== */
 .ravel-histos-surface {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: var(--ravel-bg);
+  color: var(--ravel-text);
+}
+/* Conversation column (360px), shared ChatPanel instance semantics as IDE. */
+.ravel-histos-chat {
+  flex: 0 0 auto;
+  width: 360px;
+  min-width: 300px;
+  max-width: 44%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--ravel-border);
+  background: var(--ravel-bg-panel);
+}
+/* Graph column: toolbar above, body below. */
+.ravel-histos-column {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--ravel-bg-panel);
-  color: var(--ravel-text);
+}
+/* Toolbar / import-bar / inspector actions must never wrap their label into a
+ * vertical column when the graph column gets narrow — inputs shrink instead. */
+.ravel-histos-toolbar button,
+.ravel-histos-import-bar button,
+.ravel-histos-inspector button { flex: 0 0 auto; white-space: nowrap; }
+.ravel-histos-import-bar input { min-width: 0; flex: 1 1 auto; }
+.ravel-histos-toolbar-row { flex-wrap: wrap; }
+@media (max-width: 1120px) {
+  .ravel-histos-main { grid-template-columns: minmax(0, 1fr) 280px; }
+  .ravel-histos-import-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .ravel-histos-import-bar > .omega-graph-toolbar-actions:last-child { grid-column: 2 / -1; }
+}
+@media (max-width: 760px) {
+  .ravel-histos-main { display: flex; flex-direction: column; }
+  .ravel-histos-inspector { max-height: 42%; border-left: 0; border-top: 1px solid var(--ravel-border); }
+  .ravel-histos-import-bar { display: flex; flex-wrap: wrap; }
+  .ravel-histos-import-bar > .omega-graph-toolbar-actions { flex: 1 1 100%; }
 }
 .ravel-histos-toolbar {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 8px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--ravel-border);
-  background: var(--ravel-bg-rail);
+  background: var(--ravel-bg-panel);
 }
 .ravel-histos-toolbar-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  min-height: 26px;
+  gap: 14px;
+  min-height: 30px;
 }
-.ravel-histos-toolbar-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ravel-histos-toolbar-title { display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
 .ravel-histos-import-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding-top: 5px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding-top: 8px;
   border-top: 1px solid var(--ravel-border);
 }
 .rail-spacer { flex: 1 1 auto; }
@@ -2373,15 +2923,16 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   color: var(--ravel-text-muted);
 }
 .ravel-histos-inspector {
-  flex: 0 1 auto;
-  max-height: 42%;
+  min-width: 0;
   min-height: 0;
+  max-height: none;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border-top: 1px solid var(--ravel-border);
+  gap: 12px;
+  padding: 14px;
+  border-top: 0;
+  border-left: 1px solid var(--ravel-border);
   background: var(--ravel-bg-soft);
 }
 .ravel-histos-inspector-detail { display: flex; flex-direction: column; gap: 6px; }

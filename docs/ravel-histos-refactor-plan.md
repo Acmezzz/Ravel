@@ -83,7 +83,7 @@ Histos R0–R5：
 | 切片 | 状态 | 要点 |
 |---|---|---|
 | R0 | 完成 | TanStack Virtual、`stream-live.ts` rAF 批、skill SHA-256、checkpoint facts |
-| R1 | 完成 | React 19.2.8 + Compiler、Tailwind 4.3.3、`--omega-*`、自持原语、∞ 图腾、CSS 变量拖拽 |
+| R1 | 完成 | React 19.2.8 + Compiler、Tailwind 4.3.3、`--ravel-*`、自持原语、∞ 图腾、CSS 变量拖拽 |
 | R2 | 完成 | 绞杀 MUI / Emotion / nonce；CSP `style-src 'self' app:` |
 | R3 | 完成 | Histos Engine utilityProcess、工作区 `index.sqlite`、FactAddress、Evidence M:N、`revision_parents` DAG、durable artifacts、ContextSet / `context_attached` |
 | R4 | 完成 | `GraphCanvas.tsx`、六类节点、elkjs worker、框选 freeze、节点跳回 transcript；语义图无 Run |
@@ -109,7 +109,7 @@ H0 与 T* 落地提交：T1 Base UI `bf455eb7a`；T2 Vite 8.2.2 + Rolldown `b538
 | Lint | Biome 2 | Biome 2 | 不换 ESLint |
 | 包管理 | npm workspaces，精确 pin | 同左 | 不迁 pnpm；`npm install --ignore-scripts` |
 | UI | React 19.2.8 + Compiler | 同左 | 已对齐 |
-| CSS | Tailwind 4.3.3 + `--omega-*` | 同左 | 已对齐；不降到 4.1 |
+| CSS | Tailwind 4.3.3 + `--ravel-*` | 同左 | 已对齐；不降到 4.1 |
 | 原语 | `@base-ui/react` 1.7.0 + `src/renderer/ui/*` 包装 | Radix 四件套 | T1 `bf455eb7a`；Radix 已删除，无双轨 |
 | 动效 | CSS `transform` / `opacity` | 同左 | 不装 Motion |
 | 状态 | Zustand 5.0.8 铬件 | Zustand 4.5.5 | T4 `36cfd7b66` |
@@ -165,7 +165,7 @@ TypeScript 7 就是原来的 native `tsc`。不为过 TS 7 引入 `enum` / `name
 
 ```text
 React 19.2.x + React Compiler 1.x
-Tailwind 4 + CSS custom properties（--omega-* 唯一 token）
+Tailwind 4 + CSS custom properties（--ravel-* 唯一 token）
 @base-ui/react → src/renderer/ui/* 包装 → 业务只 import 包装
 Zustand 5：chrome / session / viewport / 选中 id
 TanStack Virtual：Message / Activity / Search / Diff
@@ -255,17 +255,17 @@ token 只活在 CSS 自定义属性里。TypeScript 只读 `getComputedStyle` �
 
 ### 5.1 Token 契约
 
-保留 `--omega-*` 命名：
+保留 `--ravel-*` 命名：
 
 ```text
-表面     --omega-bg / -rail / -panel / -soft / -elevated / -overlay / -code
-描边     --omega-border / -border-strong
-文字     --omega-text / -soft / -muted / -dim
-强调     --omega-accent / -strong / -soft / -line / -foreground / -gradient
-语义     --omega-success|warning|danger 及其 -soft
-触感     --omega-inset-highlight / -inset-recessed / -shadow-{sm,md,lg}
-运动     --omega-ease-out / --omega-dur-fast(120ms) / -normal(200ms) / -slow(320ms)
-几何     --omega-radius-{sm,md,lg,pill}  --omega-hairline  --omega-focus-ring
+表面     --ravel-bg / -rail / -panel / -soft / -elevated / -overlay / -code
+描边     --ravel-border / -border-strong
+文字     --ravel-text / -soft / -muted / -dim
+强调     --ravel-accent / -strong / -soft / -line / -foreground / -gradient
+语义     --ravel-success|warning|danger 及其 -soft
+触感     --ravel-inset-highlight / -inset-recessed / -shadow-{sm,md,lg}
+运动     --ravel-ease-out / --ravel-dur-fast(120ms) / -normal(200ms) / -slow(320ms)
+几何     --ravel-radius-{sm,md,lg,pill}  --ravel-hairline  --ravel-focus-ring
 ```
 
 暗色底板保持 `#0c0d10`–`#16181e`。暖色只出现在 accent、用户气泡、焦点环。
@@ -273,7 +273,7 @@ token 只活在 CSS 自定义属性里。TypeScript 只读 `getComputedStyle` �
 ### 5.2 触感与动效
 
 - 实体按钮 / Tab / Kbd：顶部微凸 `inset 0 1px 0`
-- 状态胶囊 / 仪表：内凹 `--omega-inset-recessed`
+- 状态胶囊 / 仪表：内凹 `--ravel-inset-recessed`
 - 面板：平整 hairline
 - 动画只碰 `transform` 与 `opacity`
 - 全局尊重 `prefers-reduced-motion: reduce`
@@ -296,7 +296,7 @@ token 只活在 CSS 自定义属性里。TypeScript 只读 `getComputedStyle` �
 
 西文：Inter + JetBrains Mono。
 
-中文（产品场景含小说/文档）：CJK fallback 已落地（P1 `65fcf42b0`），全部 sans/mono 声明走 `--omega-font-sans` / `--omega-font-mono`，系统栈
+中文（产品场景含小说/文档）：CJK fallback 已落地（P1 `65fcf42b0`），全部 sans/mono 声明走 `--ravel-font-sans` / `--ravel-font-mono`，系统栈
 
 ```text
 "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif

@@ -8,7 +8,7 @@ import { useT } from "../../lib/i18n";
 import { clearRow, filterRows, isAttention, readClearedMap, writeClearedMap, type ActivityFilter } from "../../lib/activity-projection";
 import type { ActivityRow } from "../../types/dto";
 
-function statusColor(status: ActivityRow["status"]): string { if (status === "waiting") return "var(--omega-warning)"; if (status === "failed") return "var(--omega-danger)"; if (status === "running") return "var(--omega-accent)"; return "var(--omega-text-dim)"; }
+function statusColor(status: ActivityRow["status"]): string { if (status === "waiting") return "var(--ravel-warning)"; if (status === "failed") return "var(--ravel-danger)"; if (status === "running") return "var(--ravel-accent)"; return "var(--ravel-text-dim)"; }
 function statusIcon(status: ActivityRow["status"]): React.ReactElement { if (status === "running") return <span className="omega-spinner omega-activity-spinner" />; if (status === "waiting") return <span aria-hidden="true">!</span>; if (status === "failed") return <span aria-hidden="true">×</span>; return <span aria-hidden="true">✓</span>; }
 
 /** Dynamic cross-session projection. Rows are virtualized; clearing remains UI state. */

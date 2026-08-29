@@ -135,12 +135,20 @@ test("P7 app protocol loading, Electron isolation, and runtime surfaces", async 
       hasOmega: typeof window.omega,
       contextIsolation: typeof window.omega === "object",
     }))).toMatchObject({ protocol: "app:", hasNode: "undefined", hasRequire: "undefined", hasProcess: "undefined", hasOmega: "object", contextIsolation: true });
-    await expect(page.getByRole("tab", { name: /图谱|Graph/ })).toBeVisible();
-    await expect(page.getByRole("tab", { name: /终端|Terminal/ })).toBeVisible();
-    await expect(page.getByRole("tab", { name: /遥测|Telemetry/ })).toBeVisible();
-    await page.getByRole("tab", { name: /图谱|Graph/ }).click();
-    await expect(page.locator(".omega-graph-panel")).toBeVisible();
-    await expect(page.getByText("Graph", { exact: true }).first()).toBeVisible();
+    // Runtime surfaces are reachable through the shell's product-surface tabs:
+    // Graph lives on the Histos surface, Terminal/Telemetry on the IDE bottom dock.
+    await expect(page.getByRole("tab", { name: /对话/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /Histos/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /IDE/ })).toBeVisible();
+    await page.getByRole("tab", { name: /Histos/ }).click();
+    await expect(page.locator('[data-surface="histos"]')).toBeVisible();
+    await expect(page.locator(".omega-graph-canvas")).toBeVisible();
+    await page.getByRole("tab", { name: /IDE/ }).click();
+    const dock = page.locator('.ravel-ide-bottom[aria-label="IDE 底部面板"]');
+    await expect(dock.getByRole("tab", { name: /终端/ })).toBeVisible();
+    await expect(dock.getByRole("tab", { name: /遥测/ })).toBeVisible();
+    await page.getByRole("tab", { name: /对话/ }).click();
+    await expect(page.locator("#omega-composer-input")).toBeVisible();
     expect(seed.sessionId).toBe("p7-seeded-session");
     await closeApplication(app);
     expect(pageErrors, diagnostics(new Error("renderer page error"), app, profileDir)).toEqual([]);
@@ -161,7 +169,7 @@ test("P7 best-effort PTY and ContextSet/approval surfaces", async () => {
     harness = await launchP7();
     const { page, app, profileDir } = harness;
     await expect(page.locator("#omega-composer-input")).toBeVisible();
-    await page.getByRole("tab", { name: /图谱|Graph/ }).click();
+    await page.getByRole("tab", { name: /Histos/ }).click();
     const canvas = page.locator(".omega-graph-canvas");
     await expect(canvas).toBeVisible();
     const nodes = canvas.locator(".react-flow__node");
@@ -173,7 +181,8 @@ test("P7 best-effort PTY and ContextSet/approval surfaces", async () => {
         await expect(page.getByRole("status").filter({ hasText: /ContextSet/ })).toBeVisible();
       }
     }
-    await page.getByRole("tab", { name: /终端|Terminal/ }).click();
+    await page.getByRole("tab", { name: /IDE/ }).click();
+    await page.locator('.ravel-ide-bottom[aria-label="IDE 底部面板"]').getByRole("tab", { name: /终端/ }).click();
     await expect(page.getByRole("region", { name: /终端|Terminal/ })).toBeVisible();
     await closeApplication(app);
   } catch (error) {

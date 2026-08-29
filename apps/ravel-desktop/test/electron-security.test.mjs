@@ -239,16 +239,19 @@ test("IPC registry stays in sync with main handlers and preload invokes", async 
   }
 });
 
-test("index.html CSP allows only external styles and no unsafe-inline / unsafe-eval", async () => {
+test("index.html CSP allows only external styles plus the CodeMirror style nonce, no unsafe-inline / unsafe-eval", async () => {
   const html = await read("../index.html");
+  const tokens = await read("../src/renderer/theme/tokens.ts");
   assert.match(html, /Content-Security-Policy/);
   // Scope the unsafe-* checks to the actual CSP directive, not the whole document
   // (the words legitimately appear inside a documentation comment).
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
   assert.ok(csp, "CSP meta tag is present");
   const cspContent = csp[1];
-  assert.match(cspContent, /style-src 'self' app:(?:;|')/);
-  assert.doesNotMatch(cspContent, /nonce-/);
+  assert.match(cspContent, /style-src 'self' app: 'nonce-ravel-static-2026'/);
+  // The nonce is a build-time constant shared with CodeMirror's EditorView.cspNonce;
+  // a drift between the two silently re-breaks editor styling, so pin both sides.
+  assert.match(tokens, /styleCspNonce = "ravel-static-2026"/);
   assert.match(cspContent, /script-src 'self'/);
   assert.doesNotMatch(cspContent, /unsafe-inline/);
   assert.doesNotMatch(cspContent, /unsafe-eval/);

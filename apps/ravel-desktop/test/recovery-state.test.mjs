@@ -13,9 +13,13 @@ test("desktop recovery state is bounded and does not store transcript content", 
 
 test("window activation requests authoritative reconcile", async () => {
   const main = await readFile(new URL("../electron/main.js", import.meta.url), "utf8");
-  const app = await readFile(new URL("../src/renderer/App.tsx", import.meta.url), "utf8");
+  // The transport switch and the refresh call moved out of App.tsx into the
+  // reducer + event bridge when App was split; assert against their owners.
+  const reducer = await readFile(new URL("../src/renderer/lib/events/transport-event-reducer.ts", import.meta.url), "utf8");
+  const bridge = await readFile(new URL("../src/renderer/app/AppEventBridge.tsx", import.meta.url), "utf8");
   assert.match(main, /win\.on\("focus"/);
   assert.match(main, /state: "reconcile"/);
-  assert.match(app, /data\.state === "reconcile"/);
-  assert.match(app, /refreshControlPlane\(\)/);
+  assert.match(reducer, /switch \(data\.state\)/);
+  assert.match(reducer, /case "reconcile":\s*\n\s*cmds\.push\(\{ kind: "refreshControlPlane" \}\)/);
+  assert.match(bridge, /await refreshControlPlane\(\)/);
 });

@@ -10,6 +10,23 @@ import { clickableRole } from "../../lib/a11y";
 import type { DirListing } from "../../types/dto";
 
 interface DirState { loading: boolean; error: string | null; listing: DirListing | null; }
+
+/**
+ * Build output and VCS noise never belong in a workspace navigator: the tree
+ * used to surface `dist/`, `node_modules/` and `.d.ts`/`.map` siblings, which
+ * buried the source the user actually wants to read.
+ */
+const IGNORED_DIRS = new Set(["node_modules", "dist", "build", "out", ".git", ".turbo", ".next", ".cache", "coverage", "test-results"]);
+const IGNORED_FILES = /\.(map|d\.ts|d\.cts|d\.mts|lockb)$/i;
+const IGNORED_NAMES = new Set(["package-lock.json", "npm-shrinkwrap.json", ".DS_Store"]);
+
+function isIgnoredDir(name: string): boolean {
+  return IGNORED_DIRS.has(name) || name.startsWith(".turbo");
+}
+function isIgnoredFile(name: string): boolean {
+  return IGNORED_NAMES.has(name) || IGNORED_FILES.test(name);
+}
+
 function formatSize(size: number): string { if (size < 1024) return `${size} B`; if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`; return `${(size / 1024 / 1024).toFixed(1)} MB`; }
 function FolderIcon({ open = false }: { open?: boolean }): React.ReactElement { return open ? <FolderOpen className="omega-file-icon" strokeWidth={1.5} aria-hidden="true" /> : <Folder className="omega-file-icon" strokeWidth={1.5} aria-hidden="true" />; }
 function FileIcon(): React.ReactElement { return <File className="omega-file-icon" strokeWidth={1.5} aria-hidden="true" />; }
@@ -65,7 +82,7 @@ export function FileTree({ onOpenFile }: { onOpenFile?: (path: string) => void }
     if (rel !== "") rows.push(<TreeRow key={`d:${rel}`} name={rel.split("/").pop() ?? rel} rel={rel} isDir size={0} depth={depth - 1} expanded={expanded.has(rel)} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />);
     if (state?.loading && !listing) { rows.push(<p key={`l:${rel}`} className="omega-file-loading" style={{ paddingLeft: `calc(1rem + ${depth * 1.25}rem)` }}>加载中…</p>); return; }
     if (state?.error) { rows.push(<div key={`e:${rel}`} role="alert" className="omega-file-error" style={{ paddingLeft: `calc(1rem + ${depth * 1.25}rem)` }}><span>{state.error}</span><Button size="sm" variant="quiet" onClick={() => void loadDir(rel)}>重试</Button></div>); return; }
-    for (const entry of listing?.entries ?? []) { const childRel = rel ? `${rel}/${entry.name}` : entry.name; if (entry.isDir) { if (expanded.has(childRel)) renderDir(childRel, depth + 1); else rows.push(<TreeRow key={`d:${childRel}`} name={entry.name} rel={childRel} isDir size={0} depth={depth} expanded={false} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />); } else rows.push(<TreeRow key={`f:${childRel}`} name={entry.name} rel={childRel} isDir={false} size={entry.size} depth={depth} expanded={false} onToggleDir={() => undefined} onOpenFile={onOpenFile ?? ((path) => void openViewer(path))} onReveal={reveal} />); }
+    for (const entry of listing?.entries ?? []) { if (entry.isDir ? isIgnoredDir(entry.name) : isIgnoredFile(entry.name)) continue; const childRel = rel ? `${rel}/${entry.name}` : entry.name; if (entry.isDir) { if (expanded.has(childRel)) renderDir(childRel, depth + 1); else rows.push(<TreeRow key={`d:${childRel}`} name={entry.name} rel={childRel} isDir size={0} depth={depth} expanded={false} onToggleDir={toggleDir} onOpenFile={() => undefined} onReveal={reveal} />); } else rows.push(<TreeRow key={`f:${childRel}`} name={entry.name} rel={childRel} isDir={false} size={entry.size} depth={depth} expanded={false} onToggleDir={() => undefined} onOpenFile={onOpenFile ?? ((path) => void openViewer(path))} onReveal={reveal} />); }
   };
   renderDir("", 0);
   const chooseUpload = async () => { setUploadError(null); const result = await ipc.chooseFileForWorkspace(); if (result.ok) { setUpload(result.data); setTarget(result.data.name); } else if (result.code !== "cancelled") setUploadError(result.message); };

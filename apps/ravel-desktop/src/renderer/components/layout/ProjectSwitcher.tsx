@@ -21,15 +21,15 @@ function trustChip(workspace: WorkspaceInfo): string | null {
 }
 
 function FolderOpenIcon(): React.ReactElement {
-  return <FolderOpen style={{ display: "block", width: "1rem", height: "1rem", flex: "0 0 auto", color: "var(--omega-accent)" }} strokeWidth={1.5} aria-hidden="true" />;
+  return <FolderOpen style={{ display: "block", width: "1rem", height: "1rem", flex: "0 0 auto", color: "var(--ravel-accent)" }} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function AddIcon(): React.ReactElement {
-  return <Plus style={{ display: "block", width: "1.0625rem", height: "1.0625rem", flex: "0 0 auto", color: "var(--omega-accent)" }} strokeWidth={1.5} aria-hidden="true" />;
+  return <Plus style={{ display: "block", width: "1.0625rem", height: "1.0625rem", flex: "0 0 auto", color: "var(--ravel-accent)" }} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function ExpandMoreIcon(): React.ReactElement {
-  return <ChevronDown style={{ display: "block", width: "0.9375rem", height: "0.9375rem", flex: "0 0 auto", marginLeft: "auto", color: "var(--omega-text-muted)" }} strokeWidth={1.5} aria-hidden="true" />;
+  return <ChevronDown style={{ display: "block", width: "0.9375rem", height: "0.9375rem", flex: "0 0 auto", marginLeft: "auto", color: "var(--ravel-text-muted)" }} strokeWidth={1.5} aria-hidden="true" />;
 }
 
 function CloseIcon(): React.ReactElement {
@@ -77,12 +77,12 @@ const TRIGGER_BASE_STYLE: React.CSSProperties = {
   minWidth: 0,
   maxWidth: 220,
   borderRadius: "9px",
-  border: "1px solid var(--omega-border)",
-  background: "var(--omega-bg-soft)",
+  border: "1px solid var(--ravel-border)",
+  background: "var(--ravel-bg-soft)",
   font: "inherit",
   textAlign: "left",
   transition:
-    "background-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1))",
+    "background-color 140ms var(--ravel-ease-out, cubic-bezier(0.22,1,0.36,1)), border-color 140ms var(--ravel-ease-out, cubic-bezier(0.22,1,0.36,1)), color 140ms var(--ravel-ease-out, cubic-bezier(0.22,1,0.36,1)), opacity 140ms var(--ravel-ease-out, cubic-bezier(0.22,1,0.36,1))",
 };
 
 export function ProjectSwitcher(): React.ReactElement {
@@ -212,14 +212,14 @@ export function ProjectSwitcher(): React.ReactElement {
         <FolderOpenIcon />
         <span
           title={current}
-          style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.8125rem", fontWeight: 600, color: "var(--omega-text)" }}
+          style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.8125rem", fontWeight: 600, color: "var(--ravel-text)" }}
         >
           {labelFor(current)}
         </span>
         {dormant ? (
           <span
             className="omega-chip omega-chip-warning omega-switcher-chip"
-            style={{ flex: "0 0 auto", background: "var(--omega-warning-soft)", border: "none" }}
+            style={{ flex: "0 0 auto", background: "var(--ravel-warning-soft)", border: "none" }}
           >
             <ShieldIcon size="0.75rem" />
             未信任
@@ -245,7 +245,7 @@ export function ProjectSwitcher(): React.ReactElement {
                 className="omega-menu-item"
                 aria-current={isCurrent ? "true" : undefined}
                 disabled={busy}
-                style={{ minWidth: 0, flex: 1, fontWeight: isCurrent ? 600 : undefined, ...(isCurrent ? { background: "var(--omega-accent-soft)", color: "var(--omega-accent-strong)" } : {}) }}
+                style={{ minWidth: 0, flex: 1, fontWeight: isCurrent ? 600 : undefined, ...(isCurrent ? { background: "var(--ravel-accent-soft)", color: "var(--ravel-accent-strong)" } : {}) }}
                 onClick={() => void switchTo(workspace.realRoot)}
               >
                 <span style={{ minWidth: 0, flex: 1 }}>
@@ -261,7 +261,7 @@ export function ProjectSwitcher(): React.ReactElement {
                       whiteSpace: "nowrap",
                       fontSize: "0.65625rem",
                       fontWeight: 400,
-                      color: "var(--omega-text-dim)",
+                      color: "var(--ravel-text-dim)",
                       fontFamily: "ui-monospace, Consolas, monospace",
                     }}
                   >
@@ -276,9 +276,9 @@ export function ProjectSwitcher(): React.ReactElement {
                       size="sm"
                       label={`从列表中移除 ${labelFor(workspace.displayPath)}`}
                       onClick={(event) => void removeWorkspace(workspace, event)}
-                      style={{ color: "var(--omega-text-dim)", flex: "0 0 auto" }}
-                      onMouseEnter={(event) => { event.currentTarget.style.color = "var(--omega-danger)"; }}
-                      onMouseLeave={(event) => { event.currentTarget.style.color = "var(--omega-text-dim)"; }}
+                      style={{ color: "var(--ravel-text-dim)", flex: "0 0 auto" }}
+                      onMouseEnter={(event) => { event.currentTarget.style.color = "var(--ravel-danger)"; }}
+                      onMouseLeave={(event) => { event.currentTarget.style.color = "var(--ravel-text-dim)"; }}
                     >
                       <CloseIcon />
                     </IconButton>
@@ -310,7 +310,7 @@ export function ProjectSwitcher(): React.ReactElement {
           </button>
         ) : null}
         {error ? (
-          <div role="alert" style={{ padding: "6px 16px", maxWidth: 280, color: "var(--omega-danger)", fontSize: "0.65625rem" }}>{error}</div>
+          <div role="alert" style={{ padding: "6px 16px", maxWidth: 280, color: "var(--ravel-danger)", fontSize: "0.65625rem" }}>{error}</div>
         ) : null}
       </Popover>
 

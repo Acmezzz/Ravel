@@ -19,10 +19,10 @@ const STATUS_KEY: Record<DiffFile["status"], MessageKey> = {
 };
 
 const STATUS_TONE: Record<DiffFile["status"], { bg: string; fg: string }> = {
-  added: { bg: "var(--omega-success-soft)", fg: "var(--omega-success)" },
-  modified: { bg: "var(--omega-warning-soft)", fg: "var(--omega-warning)" },
-  deleted: { bg: "var(--omega-danger-soft)", fg: "var(--omega-danger)" },
-  renamed: { bg: "var(--omega-accent-soft)", fg: "var(--omega-accent)" },
+  added: { bg: "var(--ravel-success-soft)", fg: "var(--ravel-success)" },
+  modified: { bg: "var(--ravel-warning-soft)", fg: "var(--ravel-warning)" },
+  deleted: { bg: "var(--ravel-danger-soft)", fg: "var(--ravel-danger)" },
+  renamed: { bg: "var(--ravel-accent-soft)", fg: "var(--ravel-accent)" },
 };
 
 function HunkLine({ line }: { line: DiffFile["hunks"][number]["lines"][number] }): React.ReactElement {

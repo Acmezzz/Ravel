@@ -51,9 +51,10 @@ test("R0 lists virtualize and streaming deltas bypass the Zustand message array"
   const messageList = await readFile(new URL("../src/renderer/components/chat/MessageList.tsx", import.meta.url), "utf8");
   const activityList = await readFile(new URL("../src/renderer/components/sessions/ActivityList.tsx", import.meta.url), "utf8");
   const searchPanel = await readFile(new URL("../src/renderer/components/files/SearchPanel.tsx", import.meta.url), "utf8");
-  const app = await readFile(new URL("../src/renderer/App.tsx", import.meta.url), "utf8");
+  // Streaming deltas are folded by the agent event reducer since the App split.
+  const reducer = await readFile(new URL("../src/renderer/lib/events/agent-event-reducer.ts", import.meta.url), "utf8");
   for (const source of [messageList, activityList, searchPanel]) assert.match(source, /useVirtualizer/);
-  assert.match(app, /appendStreamText/);
-  assert.match(app, /appendStreamThinking/);
-  assert.doesNotMatch(app, /store\.appendDelta\(id, update\.delta\)/);
+  assert.match(reducer, /appendStreamText/);
+  assert.match(reducer, /appendStreamThinking/);
+  assert.doesNotMatch(reducer, /store\.appendDelta\(id, update\.delta\)/);
 });

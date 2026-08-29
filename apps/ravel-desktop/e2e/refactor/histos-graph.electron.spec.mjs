@@ -14,7 +14,7 @@ import { test, expect } from "@playwright/test";
 import { launchRavel, closeApplication, removeTempDirectory, diagnostics } from "./harness.mjs";
 
 async function enterHistos(page) {
-  await expect(page.locator('[data-surface="chat-chat"]')).toBeVisible();
+  await expect(page.locator('[data-surface="chat"]')).toBeVisible();
   await page.locator('[data-surface-tab="histos"]').click();
   await expect(page.locator('[data-surface="histos"]')).toBeVisible();
 }

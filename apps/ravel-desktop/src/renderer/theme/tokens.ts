@@ -10,6 +10,17 @@ export const motion = {
 	durSlowMs: 320,
 } as const;
 
+/**
+ * Build-time constant CSP nonce for runtime-injected styles.
+ *
+ * CodeMirror mounts its base theme through a `<style>` element, which
+ * `style-src 'self' app:` alone would block. Rather than relaxing to
+ * `'unsafe-inline'`, `index.html` carries this nonce and every CodeMirror
+ * surface passes it through `EditorView.cspNonce`. The two values must stay in
+ * sync — `electron-security.test.mjs` guards the CSP side.
+ */
+export const styleCspNonce = "ravel-static-2026";
+
 export type ThemeMode = "light" | "dark" | "system";
 
 export interface Palette {

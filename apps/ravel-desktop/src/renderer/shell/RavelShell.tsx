@@ -1,35 +1,38 @@
 import * as React from "react";
-import { Workbench } from "../components/layout/Workbench";
 import { ShellHeader } from "./ShellHeader";
 import { ShellRail } from "./ShellRail";
-import { ShellSurfaceTabs } from "./ShellSurfaceTabs";
+import { ShellLayout } from "./ShellLayout";
 import { ShellOverlayHost } from "./ShellOverlayHost";
+import { SurfaceRouter } from "../app/SurfaceRouter";
+import { useAppStore } from "../store/useAppStore";
 
 /**
- * Unified Ravel shell — the single top-level composition, providing the app
- * landmark. It lays out, from top to bottom:
- *   - chrome: ShellHeader (frameless title bar + git branch) then ShellSurfaceTabs
- *     (Chat / IDE / Histos), so the three product surfaces are switchable inline;
- *   - a body row of ShellRail (activity rail) beside the Workbench three-column
- *     grid, whose center column is the active Surface (see Workbench);
- *   - the ShellOverlayHost, which owns the modal/overlay layers.
+ * The one and only application shell.
  *
- * It only assembles existing units; each is a composition point extended by
- * later surface tasks. Declaring `<main aria-label>` here gives the window a
- * single stable region for AT users.
+ * Before this refactor the shell was a thin wrapper *around* the legacy
+ * `Workbench`, so both rendered their own chrome at once: two header bars, two
+ * icon rails and three stacked session lists. `RavelShell` now owns the layout
+ * directly:
+ *
+ *   ShellHeader (44px: identity · surface tabs · agent controls · window btns)
+ *   body: ShellRail (48px) | ShellLayout → SurfaceRouter → Chat | IDE | Histos
+ *   ShellOverlayHost (palette, branch tree, file viewer, extension UI, trust)
+ *
+ * Each Surface renders its own side panels (session list, context drawer,
+ * workspace tree, inspector), so nothing here duplicates them. Focus mode
+ * removes the rail; below the compact breakpoint the rail stays but surfaces
+ * collapse their secondary columns through CSS.
  */
 export function RavelShell(): React.ReactElement {
+  const focusMode = useAppStore((s) => s.layout.focusMode);
   return (
     <main className="ravel-shell" aria-label="Ravel 工作区" data-shell-root>
-      <div className="ravel-shell-chrome">
-        <ShellHeader />
-        <ShellSurfaceTabs />
-      </div>
-      <div className="ravel-shell-body">
-        <ShellRail />
-        <div className="ravel-shell-workspace" style={{ flex: "1 1 auto", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          <Workbench />
-        </div>
+      <ShellHeader />
+      <div className="ravel-shell-body" data-focus-mode={focusMode ? "true" : "false"}>
+        {focusMode ? null : <ShellRail />}
+        <ShellLayout>
+          <SurfaceRouter />
+        </ShellLayout>
       </div>
       <ShellOverlayHost />
     </main>

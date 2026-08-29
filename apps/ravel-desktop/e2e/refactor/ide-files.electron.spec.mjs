@@ -14,7 +14,7 @@ import { test, expect } from "@playwright/test";
 import { launchRavel, closeApplication, removeTempDirectory, diagnostics } from "./harness.mjs";
 
 async function enterIde(page) {
-  await expect(page.locator('[data-surface="chat-chat"]')).toBeVisible();
+  await expect(page.locator('[data-surface="chat"]')).toBeVisible();
   await page.locator('[data-surface-tab="ide"]').click();
   await expect(page.locator('[data-surface="ide"]')).toBeVisible();
 }
@@ -50,7 +50,8 @@ test("打开 seed.txt 进入编辑 tab 与搜索抽屉", async () => {
     const { page, app } = h;
     await enterIde(page);
 
-    // 打开文件 → 编辑器 tab。
+    // 打开文件 → 编辑器 tab → CodeMirror 必须真的渲染出正文。
+    // （回归点：曾经只出现行号、正文一片空白，所以这里断言 .cm-content 非空。）
     const seedRow = page.locator(".omega-file-name", { hasText: "seed.txt" });
     try {
       await seedRow.click();
@@ -58,23 +59,23 @@ test("打开 seed.txt 进入编辑 tab 与搜索抽屉", async () => {
       await expect(tabbar).toBeVisible();
       const seedTab = tabbar.locator(".ravel-ide-tab", { hasText: "seed.txt" });
       await expect(seedTab).toBeVisible();
-      test.info().annotations.push({ type: "verified", description: "seed.txt 打开进入编辑 tab" });
-    } catch {
+      await expect(page.locator(".ravel-editor-host .cm-content")).not.toHaveText("", { timeout: 10_000 });
+      test.info().annotations.push({ type: "verified", description: "seed.txt 打开进入编辑 tab，且编辑器渲染出正文" });
+    } catch (error) {
       test.info().annotations.push({
         type: "best-effort",
-        description: "编辑 tab 未出现（编辑器依赖 IPC readFile + CodeMirror，provider-free 下可能不可用），跳过",
+        description: `编辑 tab / 编辑器正文未就绪（readFile 受项目信任门约束）：${error instanceof Error ? error.message : String(error)}`,
       });
     }
 
-    // 搜索抽屉开关。
-    const searchOpen = page.getByRole("button", { name: "在工作区中搜索" });
-    await expect(searchOpen).toBeVisible();
-    await searchOpen.click();
-    await expect(page.locator('.ravel-ide-search[aria-label="搜索抽屉"]')).toBeVisible();
-    // 「收起搜索」按钮并不位于 .ravel-ide-search 容器内，故不作用域限定；用 exact 名称精确匹配，
-    // 避免与「收起左栏/拉起右栏/收起」等其他「收起」按钮冲突（strict mode）。
-    await page.getByRole("button", { name: "收起搜索", exact: true }).click();
-    await expect(page.locator(".ravel-ide-search")).toHaveCount(0);
+    // 目录树按设计位于右栏；搜索面板在同一栏内展开，由同一个图标按钮开合。
+    await expect(page.locator('.ravel-ide-tree-col[aria-label="工作区目录"]')).toBeVisible();
+    const searchToggle = page.getByRole("button", { name: "在工作区中搜索" });
+    await expect(searchToggle).toBeVisible();
+    await searchToggle.click();
+    await expect(page.locator(".ravel-ide-search-body")).toBeVisible();
+    await page.getByRole("button", { name: "关闭搜索" }).click();
+    await expect(page.locator(".ravel-ide-search-body")).toHaveCount(0);
 
     await expect(h.pageErrors, diagnostics(new Error("renderer page error"), h)).toEqual([]);
     await closeApplication(app);

@@ -42,10 +42,12 @@ test("Graph panel and right rail expose the selectable graph and gated Flow surf
   assert.match(right, /value="graph"/);
   assert.match(right, /rightTab === "graph"/);
   assert.match(workbench, /label="打开 Graph 面板"/);
-  assert.match(store, /rightTab: "diff" \| "graph"/);
+  // rightTab's union/default live in the chrome slice after the store split.
+  const chrome = await read("store/slices/chromeSlice.ts");
+  assert.match(chrome, /rightTab: "diff" \| "graph"/);
   assert.match(store, /transcriptNavigation/);
   assert.match(await read("components/chat/MessageBubble.tsx"), /data-entry-id/);
   assert.match(await read("components/chat/ToolCard.tsx"), /data-tool-call-id/);
   assert.match(await read("components/chat/MessageList.tsx"), /CSS\.escape/);
-  assert.match(store, /rightTab: "diff",/);
+  assert.match(chrome, /rightTab: "diff",/);
 });

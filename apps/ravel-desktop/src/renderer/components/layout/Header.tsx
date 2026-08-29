@@ -126,7 +126,7 @@ function ThemeIcon({ mode }: { mode: ThemeMode }): React.ReactElement {
  * breathes while the model thinks; idle is perfectly still. Reduced motion
  * freezes everything. The core sits in a recessed instrument well.
  */
-function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): React.ReactElement {
+export function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): React.ReactElement {
   const connection = useAppStore((s) => s.connection);
   const shutdownPhase = useAppStore((s) => s.shutdownPhase);
   const thinkingActive = useAppStore((s) => s.thinkingActive);
@@ -138,12 +138,12 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
   const language = useLanguage();
   const liveColor =
     failed
-      ? "var(--omega-danger)"
+      ? "var(--ravel-danger)"
       : shutdownPhase !== "idle"
-        ? "var(--omega-warning)"
+        ? "var(--ravel-warning)"
         : compacting
-          ? "var(--omega-warning)"
-          : "var(--omega-accent)";
+          ? "var(--ravel-warning)"
+          : "var(--ravel-accent)";
   const label = statusLabelOf({ bootstrapError, workerError, canRetryWorker, shutdownPhase, compacting, thinkingActive, connection }, language);
 
   const retryWorker = React.useCallback(async () => {
@@ -167,7 +167,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
       <TooltipTrigger asChild>
         <div className="omega-status-glyph" data-omega-glyph={label}>
           <svg width="40" height="40" viewBox="0 0 40 40" style={{ position: "absolute", inset: 0 }}>
-            <circle cx="20" cy="20" r="18" fill="none" stroke={failed ? "var(--omega-danger)" : "var(--omega-border)"} strokeWidth="1.5" opacity={failed ? 0.9 : 0.7} />
+            <circle cx="20" cy="20" r="18" fill="none" stroke={failed ? "var(--ravel-danger)" : "var(--ravel-border)"} strokeWidth="1.5" opacity={failed ? 0.9 : 0.7} />
             {(connection === "running" || compacting || shutdownPhase !== "idle") && !failed && (
               <circle
                 className={`status-ring ${compacting ? "is-compacting" : "is-running"}`}
@@ -200,7 +200,7 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
                 filter: thinkingActive && !failed ? "drop-shadow(0 0 4px rgba(232, 180, 74, 0.55))" : undefined,
               }}
             >
-              <path d={INFINITY_PATH} fill="none" stroke={failed ? "var(--omega-danger)" : thinkingActive || connection === "running" || compacting ? liveColor : "var(--omega-text-muted)"} strokeWidth="2.6" strokeLinecap="round" />
+              <path d={INFINITY_PATH} fill="none" stroke={failed ? "var(--ravel-danger)" : thinkingActive || connection === "running" || compacting ? liveColor : "var(--ravel-text-muted)"} strokeWidth="2.6" strokeLinecap="round" />
             </svg>
           </div>
         </div>
@@ -211,11 +211,11 @@ function StatusGlyph({ bootstrapError }: { bootstrapError: string | null }): Rea
 }
 
 /** Compact context gauge: recessed instrument dial with threshold ticks. */
-function ContextDonut({ percent }: { percent: number }): React.ReactElement {
+export function ContextDonut({ percent }: { percent: number }): React.ReactElement {
   const clamped = Math.max(0, Math.min(100, percent));
   const radius = 8;
   const circumference = 2 * Math.PI * radius;
-  const color = clamped >= 85 ? "var(--omega-danger)" : clamped >= 65 ? "var(--omega-warning)" : "var(--omega-accent)";
+  const color = clamped >= 85 ? "var(--ravel-danger)" : clamped >= 65 ? "var(--ravel-warning)" : "var(--ravel-accent)";
   // Threshold ticks at 65% (warning) and 85% (danger) — the dial carries its own redlines.
   const tickAngle = (pct: number) => (pct / 100) * 360 - 90;
   const tickPoint = (pct: number, r1: number, r2: number) => {
@@ -234,9 +234,9 @@ function ContextDonut({ percent }: { percent: number }): React.ReactElement {
       <TooltipTrigger asChild>
         <div className="omega-donut">
           <svg width="24" height="24" viewBox="0 0 24 24">
-            <line {...warnTick} stroke="var(--omega-border-strong)" strokeWidth="1" strokeLinecap="round" opacity={clamped < 65 ? 0.9 : 0.35} />
-            <line {...dangerTick} stroke="var(--omega-danger)" strokeWidth="1" strokeLinecap="round" opacity={clamped < 85 ? 0.55 : 1} />
-            <circle cx="12" cy="12" r={radius} fill="none" stroke="var(--omega-border)" strokeWidth="3" opacity="0.9" />
+            <line {...warnTick} stroke="var(--ravel-border-strong)" strokeWidth="1" strokeLinecap="round" opacity={clamped < 65 ? 0.9 : 0.35} />
+            <line {...dangerTick} stroke="var(--ravel-danger)" strokeWidth="1" strokeLinecap="round" opacity={clamped < 85 ? 0.55 : 1} />
+            <circle cx="12" cy="12" r={radius} fill="none" stroke="var(--ravel-border)" strokeWidth="3" opacity="0.9" />
             <circle
               cx="12"
               cy="12"
@@ -247,7 +247,7 @@ function ContextDonut({ percent }: { percent: number }): React.ReactElement {
               strokeLinecap="round"
               strokeDasharray={`${(clamped / 100) * circumference} ${circumference}`}
               transform="rotate(-90 12 12)"
-              style={{ transition: "stroke-dasharray var(--omega-dur-slow) var(--omega-ease-out, cubic-bezier(0.22,1,0.36,1)), stroke var(--omega-dur-normal) var(--omega-ease-out)" }}
+              style={{ transition: "stroke-dasharray var(--ravel-dur-slow) var(--ravel-ease-out, cubic-bezier(0.22,1,0.36,1)), stroke var(--ravel-dur-normal) var(--ravel-ease-out)" }}
             />
           </svg>
           <span className="mono-num omega-donut-label">{Math.round(clamped)}</span>

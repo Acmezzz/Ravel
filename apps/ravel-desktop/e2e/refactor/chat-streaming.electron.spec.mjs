@@ -19,7 +19,7 @@ test("Chat 表面骨架：surface / composer / 会话侧栏", async () => {
   try {
     h = await launchRavel();
     const { page, app } = h;
-    await expect(page.locator('[data-surface="chat-chat"]')).toBeVisible();
+    await expect(page.locator('[data-surface="chat"]')).toBeVisible();
     await expect(page.locator("#omega-composer-input")).toBeVisible();
     await expect(page.locator(".ravel-chat-sidebar")).toHaveAttribute("aria-label", "会话侧栏");
     await expect(page.locator('.ravel-chat-sidebar').getByRole("tab", { name: "会话" }).first()).toBeVisible();
@@ -48,7 +48,7 @@ test("基于 seed 会话断言消息渲染与工具卡状态（best-effort）", 
   try {
     h = await launchRavel();
     const { page, app, seed } = h;
-    await expect(page.locator('[data-surface="chat-chat"]')).toBeVisible();
+    await expect(page.locator('[data-surface="chat"]')).toBeVisible();
 
     // seed 会话若被 P7 runtime 自动挂载为 active，则 transcript 中能等到该 user 消息。
     const seededMessage = page.getByText("Provider-free P7 smoke session", { exact: false }).first();
@@ -98,7 +98,7 @@ test("optimistic/streaming-merge/message_end/worker-recovery/后台-unread（bes
   try {
     h = await launchRavel();
     const { page, app } = h;
-    await expect(page.locator('[data-surface="chat-chat"]')).toBeVisible();
+    await expect(page.locator('[data-surface="chat"]')).toBeVisible();
 
     test.info().annotations.push({
       type: "best-effort",
@@ -123,7 +123,7 @@ test("optimistic/streaming-merge/message_end/worker-recovery/后台-unread（bes
 
     // 后台 unread：会话侧栏「活动 •」徽标由 sessionActivity.unread 点亮。
     try {
-      await page.getByRole("tab", { name: /活动\s*•/ }).waitFor({ timeout: 3_000 });
+      await page.getByRole("tab", { name: /活动（有未读）/ }).waitFor({ timeout: 3_000 });
       test.info().annotations.push({ type: "verified", description: "活动徽标（后台 unread/failed）点亮" });
     } catch {
       test.info().annotations.push({

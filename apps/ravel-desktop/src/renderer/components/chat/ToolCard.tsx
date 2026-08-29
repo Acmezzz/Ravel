@@ -6,16 +6,16 @@ import { useT, type MessageKey } from "../../lib/i18n";
 import { lineDiff, parseToolEdits, type ToolDiffBlock } from "../../lib/tool-diff";
 
 const STATUS_COLOR: Record<string, string> = {
-  running: "var(--omega-warning)",
-  done: "var(--omega-success)",
-  error: "var(--omega-danger)",
+  running: "var(--ravel-warning)",
+  done: "var(--ravel-success)",
+  error: "var(--ravel-danger)",
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
-  "allowed-once": "var(--omega-success)",
-  rejected: "var(--omega-danger)",
-  cancelled: "var(--omega-warning)",
-  unavailable: "var(--omega-warning)",
+  "allowed-once": "var(--ravel-success)",
+  rejected: "var(--ravel-danger)",
+  cancelled: "var(--ravel-warning)",
+  unavailable: "var(--ravel-warning)",
 };
 
 const KIND_KEY: Record<string, MessageKey> = {
@@ -93,7 +93,7 @@ export interface ToolCardProps {
  */
 function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
   const t = useT();
-  const color = STATUS_COLOR[card.status] ?? "var(--omega-text-muted)";
+  const color = STATUS_COLOR[card.status] ?? "var(--ravel-text-muted)";
   const [detail, setDetail] = React.useState<{ argsJson?: string; resultText?: string; isError?: boolean } | null>(null);
   const [expanded, setExpanded] = React.useState(false);
 
@@ -113,7 +113,7 @@ function ToolCardInner({ card }: ToolCardProps): React.ReactElement {
   const rawStat = diffBlocks.length > 0 ? totalDiff : card.kind === "edit" || card.kind === "write" ? diffStat(detail?.resultText ?? card.resultText) : null;
   const stat = rawStat ? { added: "additions" in rawStat ? rawStat.additions : rawStat.added, removed: "deletions" in rawStat ? rawStat.deletions : rawStat.removed } : null;
   const duration = formatDuration(card.startedAt, card.endedAt);
-  const approvalColor = card.approval ? APPROVAL_COLOR[card.approval] ?? "var(--omega-text-muted)" : undefined;
+  const approvalColor = card.approval ? APPROVAL_COLOR[card.approval] ?? "var(--ravel-text-muted)" : undefined;
 
   const loadDetail = React.useCallback(async () => {
     if (detail || !card.toolCallId) return;

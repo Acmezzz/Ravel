@@ -11,10 +11,10 @@ async function readSource(path) {
 
 test("P1 font stacks carry CJK fallbacks through tokens", async () => {
   const css = await readFile(resolve(root, "src", "renderer", "styles", "global.css"), "utf8");
-  assert.match(css, /--omega-font-sans:[^;]*"PingFang SC"[^;]*"Microsoft YaHei"[^;]*"Noto Sans CJK SC"[^;]*sans-serif/);
-  assert.match(css, /--omega-font-mono:[^;]*"JetBrains Mono"[^;]*monospace/);
+  assert.match(css, /--ravel-font-sans:[^;]*"PingFang SC"[^;]*"Microsoft YaHei"[^;]*"Noto Sans CJK SC"[^;]*sans-serif/);
+  assert.match(css, /--ravel-font-mono:[^;]*"JetBrains Mono"[^;]*monospace/);
   // Inline stacks are gone: body and mono rules must resolve through the tokens.
-  assert.match(css, /font: 0\.875rem\/1\.6 var\(--omega-font-sans\);/);
+  assert.match(css, /font: 0\.875rem\/1\.6 var\(--ravel-font-sans\);/);
   assert.equal(css.match(/font-family: ui-monospace/g), null);
   assert.doesNotMatch(css, /"Segoe UI", sans-serif;/);
 });

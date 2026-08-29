@@ -12,6 +12,7 @@
  */
 import * as React from "react";
 import { useAppStore } from "../../store/useAppStore";
+import { ChatPanel } from "../../components/chat/ChatPanel";
 import { projectHistosGraph, type GraphSelection } from "../../lib/graph-projection";
 import type { GraphDraftSelection } from "../../components/panels/GraphCanvas";
 import { HistosToolbar } from "./HistosToolbar";
@@ -64,47 +65,55 @@ export function HistosSurface(): React.ReactElement {
       aria-label="历史数据库图谱表面"
       data-surface="histos"
     >
-      <HistosToolbar
-        lens={q.lens}
-        onLensChange={q.setLens}
-        nodeCount={nodeCount}
-        edgeCount={edgeCount}
-        loading={q.loading}
-        layoutMode={layoutMode}
-        onLayoutModeChange={setLayoutMode}
-        freezeDisabled={freezeDisabled}
-        onRefresh={q.refresh}
-        actions={actions}
-      />
+      {/* 设计的 Histos 形态是「左对话 + 右图谱」：对话栏与另两个表面共用同一个
+          ChatPanel 与同一份会话状态，图谱追问与回答因此始终接得上。 */}
+      <aside className="ravel-histos-chat" aria-label="对话栏">
+        <ChatPanel />
+      </aside>
 
-      <div className="ravel-histos-body">
-        <div className="ravel-histos-main">
-          <HistosGraphWorkspace
-            requestKey={q.requestKey}
-            query={q.query}
-            projected={projected}
-            loading={q.loading}
-            error={q.error}
-            onSelect={setSelection}
-            onDraftChange={setDraft}
-            layoutMode={layoutMode}
-          />
-          <HistosInspector
-            projected={projected}
-            graph={q.graph}
-            selection={selection}
+      <div className="ravel-histos-column">
+        <HistosToolbar
+          lens={q.lens}
+          onLensChange={q.setLens}
+          nodeCount={nodeCount}
+          edgeCount={edgeCount}
+          loading={q.loading}
+          layoutMode={layoutMode}
+          onLayoutModeChange={setLayoutMode}
+          freezeDisabled={freezeDisabled}
+          onRefresh={q.refresh}
+          actions={actions}
+        />
+
+        <div className="ravel-histos-body">
+          <div className="ravel-histos-main">
+            <HistosGraphWorkspace
+              requestKey={q.requestKey}
+              query={q.query}
+              projected={projected}
+              loading={q.loading}
+              error={q.error}
+              onSelect={setSelection}
+              onDraftChange={setDraft}
+              layoutMode={layoutMode}
+            />
+            <HistosInspector
+              projected={projected}
+              graph={q.graph}
+              selection={selection}
+              flowApproved={flowApproved}
+              onOpenFlowDrawer={() => setFlowDrawerOpen(true)}
+              actions={actions}
+            />
+          </div>
+          <HistosFlowDrawer
+            open={flowDrawerOpen}
+            onToggle={() => setFlowDrawerOpen((current) => !current)}
             flowApproved={flowApproved}
-            onOpenFlowDrawer={() => setFlowDrawerOpen(true)}
+            onFlowApproved={setFlowApproved}
             actions={actions}
           />
         </div>
-        <HistosFlowDrawer
-          open={flowDrawerOpen}
-          onToggle={() => setFlowDrawerOpen((current) => !current)}
-          flowApproved={flowApproved}
-          onFlowApproved={setFlowApproved}
-          actions={actions}
-        />
       </div>
     </section>
   );
