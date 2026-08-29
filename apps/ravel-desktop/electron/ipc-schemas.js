@@ -93,6 +93,10 @@ const HISTOS_SOURCE_TYPES = new Set([
   "graph_revision",
   "flow_revision",
   "context_set",
+  "web_resource",
+  "agent_spec",
+  "agent_run",
+  "eval_result",
 ]);
 const HISTOS_SELECTOR_KINDS = new Set(["span", "hunk", "json_path", "node", "edge"]);
 const HISTOS_MAX_DEPTH = 12;
@@ -251,6 +255,82 @@ export function histosDistillResourceRequest(value) {
   const contentHash = histosString(value?.contentHash, "contentHash", 64);
   if (contentHash !== null && !HISTOS_SHA256.test(contentHash)) return null;
   return { kind, name, filePath, ...(contentHash ? { contentHash } : {}) };
+}
+
+/**
+ * Web ingestion request. URLs are re-validated here as well as in the adapter:
+ * the renderer is untrusted input, and a rejected URL must never reach the
+ * network stack.
+ */
+export function histosApplyWebResourcesRequest(value) {
+  if (!value || typeof value !== "object") return null;
+  const granularity = value.granularity === undefined ? "entry" : value.granularity;
+  if (granularity !== "entry" && granularity !== "span") return null;
+  const urls = [];
+  if (Array.isArray(value.urls)) {
+    if (value.urls.length === 0 || value.urls.length > 64) return null;
+    for (const url of value.urls) {
+      if (typeof url !== "string" || url.length === 0 || url.length > 2_048) return null;
+      let parsed;
+      try {
+        parsed = new URL(url);
+      } catch {
+        return null;
+      }
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+      if (parsed.username || parsed.password) return null;
+      urls.push(url);
+    }
+  } else if (!Array.isArray(value.resources)) {
+    return null;
+  }
+  if (value.resources !== undefined && (!Array.isArray(value.resources) || value.resources.length > 64)) return null;
+  const payload = { granularity };
+  if (urls.length) payload.urls = urls;
+  if (Array.isArray(value.resources)) payload.resources = value.resources;
+  if (Number.isSafeInteger(value.timeoutMs)) payload.timeoutMs = Math.min(value.timeoutMs, 120_000);
+  if (Number.isSafeInteger(value.chunkLength)) payload.chunkLength = Math.min(value.chunkLength, 65_536);
+  return payload;
+}
+
+/**
+ * Agent orchestration activity. Only shape is checked here; the engine owns
+ * semantic validation (fail-closed) so a malformed spec can never widen the
+ * child's tool surface just because the renderer sent it.
+ */
+export function histosListCapabilitiesRequest(value) {
+  if (value === undefined || value === null) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if (value.names !== undefined && (!Array.isArray(value.names) || value.names.length > 64 || value.names.some((name) => !histosString(name, 128)))) return null;
+  return value.names ? { names: [...value.names] } : {};
+}
+
+export function histosInvokeNodeRequest(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const nodeId = histosString(value.nodeId, 512);
+  if (!nodeId) return null;
+  if (value.revisionId !== undefined && !HISTOS_SHA256.test(value.revisionId)) return null;
+  if (value.prompt !== undefined && (typeof value.prompt !== "string" || value.prompt.length > 40_000)) return null;
+  if (value.args !== undefined && !histosJson(value.args)) return null;
+  return { nodeId, ...(value.revisionId ? { revisionId: value.revisionId } : {}), ...(value.prompt !== undefined ? { prompt: value.prompt } : {}), ...(value.args !== undefined ? { args: value.args } : {}), ...(value.dryRun === true ? { dryRun: true } : {}) };
+}
+
+export function histosApplyAgentActivityRequest(value) {
+  if (!value || typeof value !== "object") return null;
+  const specs = Array.isArray(value.specs) ? value.specs.filter((spec) => spec && typeof spec === "object") : [];
+  const runs = Array.isArray(value.runs) ? value.runs.filter((run) => run && typeof run === "object") : [];
+  if (specs.length === 0 && runs.length === 0) return null;
+  if (specs.length > 32 || runs.length > 64) return null;
+  const payload = {};
+  if (specs.length) payload.specs = specs;
+  if (runs.length) payload.runs = runs;
+  return payload;
+}
+
+export function histosApplyEvalResultsRequest(value) {
+  if (!value || typeof value !== "object" || !Array.isArray(value.results) || value.results.length === 0 || value.results.length > 256) return null;
+  if (value.results.some((result) => !result || typeof result !== "object" || Array.isArray(result))) return null;
+  return { results: [...value.results] };
 }
 
 export function histosSaveViewStateRequest(value) {

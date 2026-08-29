@@ -5,6 +5,7 @@ import {
   SUBAGENT_TOOLS,
   buildTaskPrompt,
   finalAssistantTextOf,
+  taskToAgentSpec,
   validateTaskInput,
 } from "../electron/task-service.js";
 
@@ -15,6 +16,21 @@ test("task input validation fails closed and bounds the prompt", () => {
   const validated = validateTaskInput({ prompt: "  梳理 auth 模块  ", description: "调研" });
   assert.equal(validated.prompt, "梳理 auth 模块");
   assert.equal(validated.description, "调研");
+});
+
+test("task declarations map to a bounded draft agent_spec", () => {
+  const spec = taskToAgentSpec({ prompt: "  inspect files  ", description: "调查" });
+  assert.deepEqual(spec, {
+    name: "subagent.task",
+    description: "调查",
+    surface: "child",
+    executor: "agent-loop",
+    trust: "draft",
+    strategy: "single",
+    tools: ["find", "grep", "ls", "read"],
+    prompt: "inspect files",
+  });
+  assert.throws(() => taskToAgentSpec({ prompt: "" }), (error) => error.code === "invalid_args");
 });
 
 test("subagent surface stays inside the read-only family with a depth cap", () => {

@@ -16,6 +16,11 @@ export const HISTOS_METHODS = Object.freeze([
   "convertToFlow",
   "getArtifact",
   "applySessionFacts",
+  "applyWebResources",
+  "applyAgentActivity",
+  "applyEvalResults",
+  "listCapabilities",
+  "invokeNode",
   "distillResource",
   "dispose",
 ]);

@@ -45,6 +45,10 @@ import type {
   SearchResultBundle,
   CheckpointInfo,
   HistosGetGraphRequest,
+  HistosListCapabilitiesRequest,
+  HistosCapabilityDTO,
+  HistosInvokeNodeRequest,
+  HistosInvokeNodeResultDTO,
   HistosQueryDTO,
   HistosCondenseGraphRequest,
   HistosCondenseGraphResultDTO,
@@ -55,6 +59,12 @@ import type {
   HistosFreezeContextRequest,
   HistosConvertToFlowRequest,
   HistosGetArtifactRequest,
+  HistosApplyWebResourcesRequest,
+  HistosApplyWebResourcesResultDTO,
+  HistosApplyAgentActivityRequest,
+  HistosApplyAgentActivityResultDTO,
+  HistosApplyEvalResultsRequest,
+  HistosApplyEvalResultsResultDTO,
   HistosGraphDTO,
   HistosRebuildResultDTO,
   HistosNodeRevisionDTO,
@@ -181,6 +191,11 @@ export interface RavelBridge {
   histosGetViewState(req: HistosQueryDTO): Promise<IpcResult<HistosArtifactDTO | null>>;
   histosExecuteFlow(req: HistosExecuteFlowRequest): Promise<IpcResult<HistosExecuteFlowResultDTO>>;
   histosRebuild(req: HistosRebuildRequest): Promise<IpcResult<HistosRebuildResultDTO>>;
+  histosApplyWebResources(req: HistosApplyWebResourcesRequest): Promise<IpcResult<HistosApplyWebResourcesResultDTO>>;
+  histosApplyAgentActivity(req: HistosApplyAgentActivityRequest): Promise<IpcResult<HistosApplyAgentActivityResultDTO>>;
+  histosApplyEvalResults(req: HistosApplyEvalResultsRequest): Promise<IpcResult<HistosApplyEvalResultsResultDTO>>;
+  histosListCapabilities(req?: HistosListCapabilitiesRequest): Promise<IpcResult<HistosCapabilityDTO[]>>;
+  histosInvokeNode(req: HistosInvokeNodeRequest): Promise<IpcResult<HistosInvokeNodeResultDTO>>;
   histosGetNode(req: HistosGetNodeRequest): Promise<IpcResult<HistosNodeRevisionDTO | null>>;
   histosFreezeContext(req: HistosFreezeContextRequest): Promise<IpcResult<HistosContextFreezeResultDTO>>;
   histosConvertToFlow(req: HistosConvertToFlowRequest): Promise<IpcResult<HistosConvertToFlowResultDTO>>;
@@ -371,6 +386,16 @@ export const ipc = {
     ok(await window.omega?.histosExecuteFlow?.(req)),
   histosRebuild: async (req: HistosRebuildRequest): Promise<IpcResult<HistosRebuildResultDTO>> =>
     ok(await window.omega?.histosRebuild?.(req)),
+  histosApplyWebResources: async (req: HistosApplyWebResourcesRequest): Promise<IpcResult<HistosApplyWebResourcesResultDTO>> =>
+    ok(await window.omega?.histosApplyWebResources?.(req)),
+  histosApplyAgentActivity: async (req: HistosApplyAgentActivityRequest): Promise<IpcResult<HistosApplyAgentActivityResultDTO>> =>
+    ok(await window.omega?.histosApplyAgentActivity?.(req)),
+  histosApplyEvalResults: async (req: HistosApplyEvalResultsRequest): Promise<IpcResult<HistosApplyEvalResultsResultDTO>> =>
+    ok(await window.omega?.histosApplyEvalResults?.(req)),
+  histosListCapabilities: async (req?: HistosListCapabilitiesRequest): Promise<IpcResult<HistosCapabilityDTO[]>> =>
+    ok(await window.omega?.histosListCapabilities?.(req)),
+  histosInvokeNode: async (req: HistosInvokeNodeRequest): Promise<IpcResult<HistosInvokeNodeResultDTO>> =>
+    ok(await window.omega?.histosInvokeNode?.(req)),
   histosGetNode: async (req: HistosGetNodeRequest): Promise<IpcResult<HistosNodeRevisionDTO | null>> =>
     ok(await window.omega?.histosGetNode?.(req)),
   histosFreezeContext: async (req: HistosFreezeContextRequest): Promise<IpcResult<HistosContextFreezeResultDTO>> =>

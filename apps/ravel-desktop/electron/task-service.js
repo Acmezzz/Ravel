@@ -30,6 +30,23 @@ export function validateTaskInput(input) {
   return { prompt, ...(description ? { description } : {}) };
 }
 
+/** Return a bounded, read-only declaration suitable for Histos agent_spec. */
+export function taskToAgentSpec(task, options = {}) {
+  const validated = validateTaskInput(task);
+  return {
+    name: options.name ?? "subagent.task",
+    description: options.description ?? validated.description ?? "只读子代理任务",
+    surface: "child",
+    executor: "agent-loop",
+    trust: "draft",
+    strategy: "single",
+    tools: [...SUBAGENT_TOOLS].sort(),
+    prompt: validated.prompt,
+  };
+}
+
+export const subagentToAgentSpec = taskToAgentSpec;
+
 /** The child's system context: role, scope and the read-only boundary. */
 export function buildTaskPrompt(validated) {
   const lines = [

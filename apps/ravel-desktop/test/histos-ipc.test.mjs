@@ -10,6 +10,8 @@ import {
   histosGetNodeRequest,
   histosQueryRequest,
   histosRebuildRequest,
+  histosApplyAgentActivityRequest,
+  histosApplyEvalResultsRequest,
 } from "../electron/ipc-schemas.js";
 import {
   diffChannelSets,
@@ -147,6 +149,11 @@ test("Histos channels are present in the registry and preload invokes", async ()
     "omega:histosGetViewState",
     "omega:histosExecuteFlow",
     "omega:histosRebuild",
+    "omega:histosApplyWebResources",
+    "omega:histosApplyAgentActivity",
+    "omega:histosApplyEvalResults",
+    "omega:histosListCapabilities",
+    "omega:histosInvokeNode",
     "omega:histosGetNode",
     "omega:histosFreezeContext",
     "omega:histosConvertToFlow",
@@ -160,8 +167,28 @@ test("Histos channels are present in the registry and preload invokes", async ()
   const preload = await readSource("../electron/preload.js");
   const invoked = uniqueSorted(extractInvokeChannels(preload).filter((channel) => channel.startsWith("omega:histos")));
   assert.deepEqual(registered, expected);
-  assert.equal(registered.length, 14);
+  assert.equal(registered.length, 19);
   assert.deepEqual(diffChannelSets(expected, invoked), { missing: [], extra: [] });
+});
+
+test("applyAgentActivity request keeps specs/runs shape and rejects empty payloads", () => {
+  assert.equal(histosApplyAgentActivityRequest(null), null);
+  assert.equal(histosApplyAgentActivityRequest({}), null);
+  assert.equal(histosApplyAgentActivityRequest({ specs: [], runs: [] }), null);
+  const spec = { name: "reviewer", description: "Reviews a diff" };
+  const run = { specName: "reviewer", specRevisionId: "a".repeat(64), strategy: "single", ok: true, units: [] };
+  assert.deepEqual(histosApplyAgentActivityRequest({ specs: [spec] }), { specs: [spec] });
+  assert.deepEqual(histosApplyAgentActivityRequest({ runs: [run] }), { runs: [run] });
+  assert.deepEqual(histosApplyAgentActivityRequest({ specs: [spec], runs: [run], junk: "drop" }), { specs: [spec], runs: [run] });
+  assert.equal(histosApplyAgentActivityRequest({ specs: Array(33).fill(spec) }), null);
+  assert.equal(histosApplyAgentActivityRequest({ runs: Array(65).fill(run) }), null);
+});
+
+test("eval result requests remain bounded and preserve result fields", () => {
+  const result = { evalSet: "set", groupKey: "group", testName: "test", file: "eval.js", harness: "h", baseline: "b", candidates: ["c"], repetition: 1, outcome: "unscored" };
+  assert.deepEqual(histosApplyEvalResultsRequest({ results: [result], junk: true }), { results: [result] });
+  assert.equal(histosApplyEvalResultsRequest({}), null);
+  assert.equal(histosApplyEvalResultsRequest({ results: Array(257).fill(result) }), null);
 });
 
 test("preload and schema sources expose no private Histos DTO fields", async () => {

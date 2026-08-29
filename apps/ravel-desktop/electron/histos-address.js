@@ -13,9 +13,27 @@ export const FACT_SOURCE_TYPES = Object.freeze([
   "graph_revision",
   "flow_revision",
   "context_set",
+  "web_resource",
+  "agent_spec",
+  "agent_run",
+  "eval_result",
 ]);
 
 const SOURCE_TYPES = new Set(FACT_SOURCE_TYPES);
+/**
+ * Source types whose revisionId is a content address. Keeping these on SHA-256
+ * is what makes re-fetching a page or re-running a spec idempotent: identical
+ * bytes collapse onto the same revision instead of appending a duplicate.
+ */
+const REVISION_SHA_TYPES = new Set([
+  "graph_revision",
+  "flow_revision",
+  "context_set",
+  "web_resource",
+  "agent_spec",
+  "agent_run",
+  "eval_result",
+]);
 const SELECTOR_KINDS = new Set(["span", "hunk", "json_path", "node", "edge"]);
 const MAX_ID_LENGTH = 4096;
 const MAX_SELECTOR_PATH_LENGTH = 16_384;
@@ -92,7 +110,7 @@ export function normalizeFactAddress(address) {
   const revisionId = bounded(address.revisionId, "revisionId");
   if (sourceType === "file") validateFileObjectId(objectId.includes("/") ? objectId.slice(objectId.indexOf("/") + 1) : objectId);
   if (sourceType === "checkpoint" && !SHA1.test(revisionId)) invalid("checkpoint revisionId must be a Git SHA");
-  if (["graph_revision", "flow_revision", "context_set"].includes(sourceType) && !SHA256.test(revisionId)) invalid(`${sourceType} revisionId must be a SHA-256`);
+  if (REVISION_SHA_TYPES.has(sourceType) && !SHA256.test(revisionId)) invalid(`${sourceType} revisionId must be a SHA-256`);
   const selector = validateSelector(address.selector);
   return selector === undefined ? { sourceType, objectId, revisionId } : { sourceType, objectId, revisionId, selector };
 }
@@ -150,6 +168,10 @@ export function formatFactAddress(address) {
   else if (value.sourceType === "file") base = `ws:${value.objectId}`;
   else if (value.sourceType === "skill") base = `skill:${value.objectId}`;
   else if (value.sourceType === "checkpoint") base = `git:${value.objectId}`;
+  else if (value.sourceType === "web_resource") base = `web:${value.objectId}`;
+  else if (value.sourceType === "agent_spec") base = `agent-spec:${value.objectId}`;
+  else if (value.sourceType === "agent_run") base = `agent-run:${value.objectId}`;
+  else if (value.sourceType === "eval_result") base = `eval:${value.objectId}`;
   else base = `histos:${value.objectId}/${value.sourceType}`;
   return `${base}@${value.revisionId}${suffix}`;
 }

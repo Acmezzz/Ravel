@@ -34,7 +34,11 @@ export type HistosFactSourceType =
   | "checkpoint"
   | "graph_revision"
   | "flow_revision"
-  | "context_set";
+  | "context_set"
+  | "web_resource"
+  | "agent_spec"
+  | "agent_run"
+  | "eval_result";
 export type HistosLens = "structural" | "semantic" | "mixed";
 export type HistosGranularity = "operation" | "entry" | "span" | "file" | "cluster";
 
@@ -117,6 +121,132 @@ export type HistosSelection = string | {
 };
 
 export type HistosGetGraphRequest = HistosQueryDTO;
+
+export type HistosSpecSurface = "session" | "invocation" | "child" | "workflow";
+export type HistosSpecExecutor = "agent-loop" | "skill-inject" | "orchestrator" | "flow-engine";
+export type HistosSpecTrust = "draft" | "reviewed" | "approved";
+
+export interface HistosListCapabilitiesRequest {
+  names?: string[];
+}
+
+/** Public projection of a materialized agent capability/spec node. */
+export interface HistosCapabilityDTO {
+  name: string;
+  nodeId: string;
+  revisionId: string;
+  surface: HistosSpecSurface;
+  executor: HistosSpecExecutor;
+  trust: HistosSpecTrust;
+  wired: boolean;
+}
+
+export interface HistosInvokeNodeRequest {
+  nodeId: string;
+  revisionId?: string;
+  prompt?: string;
+  args?: HistosJsonValue;
+  dryRun?: boolean;
+}
+
+export interface HistosInvocationPlanUnit {
+  key: string;
+  spec: string;
+  tools: string[];
+  model?: string;
+  prompt: string;
+  dependsOn?: string[];
+  maxConcurrency?: number;
+}
+
+export interface HistosInvocationPlanDTO {
+  specName: string;
+  specRevisionId: string | null;
+  surface: HistosSpecSurface;
+  executor: HistosSpecExecutor;
+  trust: HistosSpecTrust;
+  wired: boolean;
+  dryRun: boolean;
+  tools: string[];
+  droppedTools: string[];
+  budget: Partial<Record<"maxSteps" | "maxRuntimeMs" | "maxTokens", number>>;
+  completion: "human-review" | "evidence" | "round-cap" | null;
+  maxConcurrency: number;
+  maxDepth: number;
+  units: HistosInvocationPlanUnit[] | null;
+  waves: HistosInvocationPlanUnit[][] | null;
+  memoKey: string;
+}
+
+export type HistosInvokeNodeResultDTO =
+  | { ok: true; plan: HistosInvocationPlanDTO; nodeId: string }
+  | { ok: false; code: string; message: string; diagnostics: Array<{ code: string; message: string }> };
+
+export interface HistosAgentSpecInput {
+  name: string;
+  description: string;
+  strategy?: "single" | "parallel" | "chain";
+  model?: string;
+  prompt?: string;
+  tools?: string[];
+  maxConcurrency?: number;
+  maxDepth?: number;
+  steps?: Array<{ spec: string; prompt?: string; maxConcurrency?: number }>;
+}
+export interface HistosAgentRunInput {
+  specName: string;
+  specRevisionId: string;
+  strategy: string;
+  input?: string;
+  ok?: boolean;
+  aborted?: boolean;
+  timedOut?: boolean;
+  completedCount?: number;
+  unitCount?: number;
+  units?: Array<{ key?: string; sessionId?: string; text?: string; endedAt?: number }>;
+}
+export interface HistosApplyWebResourcesRequest {
+  urls?: string[];
+  resources?: Array<Record<string, unknown>>;
+  granularity?: "entry" | "span";
+  timeoutMs?: number;
+  chunkLength?: number;
+}
+export interface HistosApplyWebResourcesResultDTO {
+  nodeCount: number;
+  edgeCount: number;
+  diagnostics: Array<{ code: string; message: string }>;
+}
+export interface HistosApplyAgentActivityRequest {
+  specs?: HistosAgentSpecInput[];
+  runs?: HistosAgentRunInput[];
+}
+export interface HistosApplyAgentActivityResultDTO {
+  nodeCount: number;
+  edgeCount: number;
+}
+export interface HistosEvalResultInput {
+  evalSet: string;
+  groupKey: string;
+  testName: string;
+  file: string;
+  harness: string;
+  baseline: string;
+  candidates: string[];
+  repetition: number;
+  outcome: "scored" | "unscored" | "skipped" | "pending" | "errored";
+  score?: number;
+  totalTokens?: number;
+  totalMs?: number;
+  estimatedCostUsd?: number;
+}
+export interface HistosApplyEvalResultsRequest { results: HistosEvalResultInput[] }
+export interface HistosApplyEvalResultsResultDTO {
+  nodeCount: number;
+  edgeCount: number;
+  artifactCount: number;
+  sha256s: string[];
+}
 export interface HistosCondenseGraphRequest extends HistosQueryDTO {
   budget?: number;
   parentSha?: string;

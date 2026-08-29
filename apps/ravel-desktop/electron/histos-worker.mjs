@@ -146,6 +146,11 @@ async function invoke(method, args) {
   if (method === "freezeContext") return current.freezeContext(args ?? {});
   if (method === "convertToFlow") return current.convertToFlow(args ?? {});
   if (method === "applySessionFacts") return current.applySessionFacts(args ?? {});
+  if (method === "applyWebResources") return current.applyWebResources(args ?? {});
+  if (method === "applyAgentActivity") return current.applyAgentActivity(args ?? {});
+  if (method === "applyEvalResults") return current.applyEvalResults(args ?? {});
+  if (method === "listCapabilities") return current.listCapabilities(args ?? {});
+  if (method === "invokeNode") return current.invokeNode(args ?? {});
   if (method === "distillResource") return current.distillResource(args ?? {});
   if (method === "suggestContext") return current.suggestContext(args ?? {});
   if (method === "importContext") return current.importContext(args ?? {});

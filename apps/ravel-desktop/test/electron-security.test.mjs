@@ -206,6 +206,7 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "histosSaveViewState",
     "histosGetViewState",
     "histosExecuteFlow",
+    "histosApplyEvalResults",
   ]) {
     assert.match(source, new RegExp(`ipcRenderer\\.invoke\\("omega:${method}"`), `${method} invoke present`);
   }

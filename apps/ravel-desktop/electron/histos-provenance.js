@@ -344,7 +344,7 @@ export async function readArtifact(first, second, third) {
 
 export const readArtifactAtomic = readArtifact;
 
-const NODE_KINDS = new Set(["entry", "span", "file", "skill", "operation", "tool", "approval", "cluster"]);
+const NODE_KINDS = new Set(["entry", "span", "file", "skill", "operation", "tool", "approval", "cluster", "eval_result"]);
 const EDGE_KINDS = new Set(["references", "contains", "produced", "approved", "derived_from", "session_ref", "context"]);
 
 function isDatabase(value) {

@@ -6,9 +6,13 @@ import { dirname, join, resolve } from "node:path";
 import * as schema from "./histos-schema.js";
 import * as addressModule from "./histos-address.js";
 import * as adapters from "./histos-adapters.js";
+import * as webSource from "./histos-web-source.js";
+import { agentSpecGraph, agentRunGraph, agentSpecRevisionId, normalizeAgentSpec, seedSpecs } from "./histos-agent-spec.js";
+import { normalizeInvocationRequest, planInvocationFromRequest } from "./histos-capability.js";
 import * as provenance from "./histos-provenance.js";
 import { chunkFactAddress } from "./histos-chunker.js";
 import { convertGraphToFlowDraft, executionPlanOf, validateFlowSpec } from "./flow-validation.js";
+import { evalResultGraph, normalizeEvalResult } from "./histos-eval.js";
 
 const LENSES = new Set(["structural", "semantic", "mixed"]);
 const GRANULARITIES = new Set(["operation", "entry", "span", "file", "cluster"]);
@@ -143,6 +147,8 @@ function addNode(result, node, evidence = []) {
     createdAt: Number.isSafeInteger(node.createdAt) ? node.createdAt : now(),
     artifactSha: node.artifactSha ?? null,
     anchor: traceAnchor(node.anchor ?? node.data),
+    ...(isObject(node.metadata) ? { metadata: jsonValue(node.metadata, "node.metadata") } : {}),
+    ...(isObject(node.spec) ? { spec: normalizeAgentSpec(node.spec) } : {}),
     ...(parentId === undefined ? {} : { parentId }),
   };
   result.nodes.set(nodeRevisionId, item);
@@ -150,17 +156,25 @@ function addNode(result, node, evidence = []) {
 }
 
 function nodeAnchorPayload(item) {
-  if (!item.anchor && item.parentId === undefined) return null;
+  if (!item.anchor && item.parentId === undefined && !item.spec && !item.metadata) return null;
   return {
     ...(item.anchor ?? {}),
     ...(item.parentId === undefined ? {} : { __histosParentId: item.parentId }),
+    ...(item.spec ? { __histosSpec: item.spec } : {}),
+    ...(item.metadata ? { __histosMetadata: item.metadata } : {}),
   };
 }
 
 function readNodeRow(row) {
   const payload = row.anchorJson ? JSON.parse(row.anchorJson) : null;
   const parentId = payload?.__histosParentId;
-  if (payload) delete payload.__histosParentId;
+  const spec = payload?.__histosSpec;
+  const metadata = payload?.__histosMetadata;
+  if (payload) {
+    delete payload.__histosParentId;
+    delete payload.__histosSpec;
+    delete payload.__histosMetadata;
+  }
   const hasAnchor = payload && Object.keys(payload).length > 0;
   const node = { ...row };
   delete node.anchorJson;
@@ -168,6 +182,8 @@ function readNodeRow(row) {
     ...node,
     ...(hasAnchor ? { anchor: payload } : {}),
     ...(typeof parentId === "string" ? { parentId } : {}),
+    ...(isObject(spec) ? { spec: normalizeAgentSpec(spec) } : {}),
+    ...(isObject(metadata) ? { metadata: jsonValue(metadata, "node.metadata") } : {}),
   };
 }
 
@@ -228,6 +244,63 @@ function resultFromStructuralGraph(graph, result) {
     const edgeRevisionId = hashId(`adapter-edge:${edge.id}`);
     const evidence = (edge.evidence ?? []).map((item) => ({ ...item, revisionId: edgeRevisionId }));
     addEdge(result, { edgeRevisionId, edgeId: edge.id, srcNodeId: edge.srcNodeId, dstNodeId: edge.dstNodeId, kind: edge.kind, createdAt: 0, anchor: graphAnchor(edge) }, evidence);
+  }
+}
+
+/**
+ * Project a web graph into the index.
+ *
+ * Unlike session graphs the revision id is not derived from the node id alone:
+ * a web adapter supplies both a stable `nodeId` (the URL) and a content
+ * addressed `nodeRevisionId`, so re-fetching a changed page appends a revision
+ * instead of overwriting the previous reading.
+ */
+function resultFromWebGraph(graph, result) {
+  for (const node of graph.nodes ?? []) {
+    if (!isObject(node) || typeof node.nodeRevisionId !== "string") continue;
+    const evidence = (node.evidence ?? []).map((item) => ({ ...item, revisionId: node.nodeRevisionId }));
+    addNode(result, {
+      nodeRevisionId: node.nodeRevisionId,
+      nodeId: node.nodeId ?? node.id,
+      kind: node.kind ?? "web_resource",
+      title: node.title,
+      createdAt: node.createdAt,
+      parentId: node.parentId,
+      spec: node.spec,
+      metadata: node.metadata,
+    }, evidence);
+  }
+  for (const edge of graph.edges ?? []) {
+    if (!isObject(edge)) continue;
+    const edgeRevisionId = typeof edge.edgeRevisionId === "string" ? edge.edgeRevisionId : hashId(`web-edge:${edge.id}`);
+    const evidence = (edge.evidence ?? []).map((item) => ({ ...item, revisionId: edgeRevisionId }));
+    addEdge(result, {
+      edgeRevisionId,
+      edgeId: edge.edgeId ?? edge.id,
+      srcNodeId: edge.srcNodeId,
+      dstNodeId: edge.dstNodeId,
+      kind: edge.kind,
+      createdAt: edge.createdAt,
+    }, evidence);
+  }
+}
+
+/**
+ * Chain each incoming node revision onto the newest revision of the same node
+ * already in the index. This is what turns repeated fetches of one URL into a
+ * temporal chain rather than a pile of unrelated rows.
+ */
+function linkNodeRevisionParents(database, result) {
+  if (result.nodes.size === 0) return;
+  const select = database.prepare(
+    "SELECT node_revision_id AS nodeRevisionId FROM node_revisions WHERE node_id = ? ORDER BY created_at DESC, node_revision_id DESC LIMIT 1",
+  );
+  for (const item of result.nodes.values()) {
+    if (typeof item.nodeId !== "string") continue;
+    const previous = select.get(item.nodeId);
+    if (previous && previous.nodeRevisionId !== item.nodeRevisionId) {
+      result.parents.add(`${item.nodeRevisionId}\u0000${previous.nodeRevisionId}`);
+    }
   }
 }
 
@@ -441,7 +514,7 @@ function revisionLensMatches(database, artifactSha, lens) {
   if (lens === "mixed") return true;
   if (!artifactSha) return lens === "structural";
   const row = database.prepare("SELECT lens FROM artifacts WHERE sha256 = ?").get(artifactSha);
-  return lens === "semantic" && row?.lens === "semantic";
+  return row?.lens === lens;
 }
 
 function graphRows(database, query) {
@@ -465,11 +538,18 @@ export class HistosEngine {
     this.artifactsDir = resolve(options.artifactsDir ?? join(dirname(this.databasePath), "artifacts"));
     this.scanOptions = { ...options };
     this.semanticProvider = typeof options.semanticProvider === "function" ? options.semanticProvider : null;
+    // Specs are loaded from the durable graph after the database opens. Seeds are
+    // materialized only for names that have no persisted node, so a user
+    // revision is never replaced by the built-in defaults.
+    this.agentSpecs = new Map();
     this.database = null;
     this.closed = false;
     mkdirSync(dirname(this.databasePath), { recursive: true, mode: 0o700 });
     mkdirSync(this.artifactsDir, { recursive: true, mode: 0o700 });
-    try { this.database = this.openDatabase(this.databasePath); } catch (error) { this.initializationError = error; }
+    try {
+      this.database = this.openDatabase(this.databasePath);
+      this.loadAgentSpecs();
+    } catch (error) { this.initializationError = error; }
   }
 
   openDatabase(file) {
@@ -482,6 +562,41 @@ export class HistosEngine {
     return this.database;
   }
 
+  loadAgentSpecs() {
+    const database = this.database;
+    if (!database) return;
+    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, created_at AS createdAt, anchor_json AS anchorJson FROM node_revisions WHERE kind = 'agent_spec' ORDER BY created_at DESC, node_revision_id DESC").all();
+    const existingNames = new Set(rows.map((row) => typeof row.nodeId === "string" && row.nodeId.startsWith("agent-spec:") ? row.nodeId.slice("agent-spec:".length) : null).filter(Boolean));
+    const revisionIds = new Set(rows.map((row) => row.nodeRevisionId));
+    const parentIds = revisionIds.size === 0 ? new Set() : new Set(database.prepare("SELECT parent_id AS parentId FROM revision_parents WHERE parent_id IN (" + [...revisionIds].map(() => "?").join(",") + ")").all(...revisionIds).map((row) => row.parentId));
+    const loaded = new Map();
+    for (const row of rows) {
+      if (parentIds.has(row.nodeRevisionId) || !row.anchorJson) continue;
+      let payload;
+      try { payload = JSON.parse(row.anchorJson); } catch { continue; }
+      if (!isObject(payload?.__histosSpec)) continue;
+      try {
+        const spec = normalizeAgentSpec(payload.__histosSpec);
+        if (!loaded.has(spec.name)) loaded.set(spec.name, { spec, nodeId: row.nodeId, nodeRevisionId: row.nodeRevisionId });
+      } catch { /* malformed persisted specs are ignored until explicitly repaired */ }
+    }
+    for (const spec of seedSpecs()) {
+      if (!existingNames.has(spec.name)) {
+        const graph = agentSpecGraph(spec);
+        this.agentSpecs.set(spec.name, spec);
+        this.persistAgentSeed(graph);
+      }
+    }
+    for (const [name, item] of loaded) this.agentSpecs.set(name, item.spec);
+  }
+
+  persistAgentSeed(graph) {
+    const result = emptyResult(this.workspaceId);
+    resultFromWebGraph(graph, result);
+    this.database.exec("BEGIN IMMEDIATE");
+    try { rowsFromResult(this.database, result); this.database.exec("COMMIT"); } catch (error) { this.database.exec("ROLLBACK"); throw error; }
+  }
+
   async rebuild(options = {}) {
     if (!isObject(options)) throw invalid("rebuild options must be an object");
     if (this.closed) throw notReady();
@@ -491,6 +606,10 @@ export class HistosEngine {
     try {
       const result = emptyResult(this.workspaceId);
       await scanSources({ ...this.scanOptions, ...options }, result, check);
+      // Agent specs are durable graph data, not process-local defaults. Carry the
+      // currently resolved revisions into a rebuilt index so restart/rebuild
+      // cannot erase user-authored capability definitions.
+      for (const spec of this.agentSpecs.values()) resultFromWebGraph(agentSpecGraph(spec), result);
       check();
       replacement = this.openDatabase(temporary);
       replacement.exec("BEGIN IMMEDIATE");
@@ -556,8 +675,220 @@ export class HistosEngine {
     return { nodeCount: result.nodes.size, edgeCount: result.edges.size };
   }
 
+  /**
+   * Index fetched web pages. Accepts either already-fetched `resources` or a
+   * list of `urls` to fetch here. A single unreachable URL is recorded as a
+   * diagnostic instead of failing the whole batch — one bad link should not
+   * discard the pages that did load.
+   */
+  async applyWebResources(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input)) throw invalid("applyWebResources input must be an object");
+    const check = () => checkAbort(input.signal, input.isCancelled ?? input.cancelled);
+    const diagnostics = [];
+
+    let resources = Array.isArray(input.resources) ? input.resources : null;
+    if (!resources) {
+      const urls = Array.isArray(input.urls) ? input.urls : [];
+      if (urls.length === 0) throw invalid("applyWebResources requires resources or urls");
+      resources = [];
+      for (const url of urls) {
+        check();
+        try {
+          resources.push(
+            await webSource.fetchWebResource({
+              url,
+              ...(Number.isSafeInteger(input.timeoutMs) ? { timeoutMs: input.timeoutMs } : {}),
+              ...(Number.isSafeInteger(input.maxBytes) ? { maxBytes: input.maxBytes } : {}),
+              ...(typeof input.fetchImpl === "function" ? { fetchImpl: input.fetchImpl } : {}),
+            }),
+          );
+        } catch (error) {
+          diagnostics.push({
+            code: typeof error?.code === "string" ? error.code : "fetch_failed",
+            message: `failed to fetch ${String(url).slice(0, 512)}: ${error instanceof Error ? error.message : String(error)}`,
+          });
+        }
+      }
+    }
+    if (resources.length === 0) return { nodeCount: 0, edgeCount: 0, diagnostics };
+
+    const result = emptyResult(this.workspaceId);
+    const graph = webSource.projectWebGraph(resources, {
+      workspaceId: this.workspaceId,
+      granularity: input.granularity === "span" ? "span" : "entry",
+      ...(Number.isSafeInteger(input.chunkLength) ? { chunkLength: input.chunkLength } : {}),
+    });
+    resultFromWebGraph(graph, result);
+    linkNodeRevisionParents(database, result);
+
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      rowsFromResult(database, result);
+      database
+        .prepare("INSERT INTO meta (key, value) VALUES ('last_apply_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .run(String(now()));
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return {
+      nodeCount: result.nodes.size,
+      edgeCount: result.edges.size,
+      diagnostics: [...diagnostics, ...(graph.diagnostics ?? [])],
+    };
+  }
+
+  /**
+   * Persist evaluator observations as content-addressed GraphRevision artifacts.
+   * Invalid batches are normalized before any artifact or database write, and
+   * repeated observations collapse by their deterministic node revision id.
+   */
+  async applyEvalResults(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input)) throw invalid("applyEvalResults input must be an object");
+    if (!Array.isArray(input.results) || input.results.length === 0) throw invalid("applyEvalResults requires results");
+
+    // Normalize and validate the complete batch first: malformed evaluator data
+    // must fail closed without partially materializing an otherwise valid prefix.
+    const entries = input.results.map((item) => {
+      const graph = evalResultGraph(normalizeEvalResult(item));
+      const artifact = validateArtifact({ workspaceId: this.workspaceId, ...graph }, { workspaceId: this.workspaceId, kind: "graph_revision" });
+      return { graph: artifact };
+    });
+
+    const stored = [];
+    for (const { graph } of entries) {
+      const sha256 = await writeArtifact(this.artifactsDir, graph, { workspaceId: this.workspaceId, kind: "graph_revision" });
+      stored.push({ ...graph, sha256 });
+    }
+
+    const result = emptyResult(this.workspaceId);
+    for (const artifact of stored) {
+      // insertArtifact adds the artifact sha to its indexed rows; this second
+      // projection carries that same sha while preserving the shared row path.
+      resultFromWebGraph({
+        ...artifact,
+        nodes: artifact.nodes.map((node) => ({ ...node, artifactSha: artifact.sha256 })),
+        edges: artifact.edges.map((edge) => ({ ...edge, artifactSha: artifact.sha256 })),
+      }, result);
+    }
+    linkNodeRevisionParents(database, result);
+    const latestIncoming = new Map();
+    for (const item of result.nodes.values()) {
+      const previous = latestIncoming.get(item.nodeId);
+      if (previous && previous.nodeRevisionId !== item.nodeRevisionId) addParent(result, item.nodeRevisionId, previous.nodeRevisionId);
+      latestIncoming.set(item.nodeId, item);
+    }
+
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      for (const artifact of stored) insertArtifact(database, artifact, artifact.sha256);
+      rowsFromResult(database, result);
+      database
+        .prepare("INSERT INTO meta (key, value) VALUES ('last_apply_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .run(String(now()));
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return {
+      nodeCount: result.nodes.size,
+      edgeCount: result.edges.size,
+      artifactCount: stored.length,
+      sha256s: stored.map((artifact) => artifact.sha256),
+    };
+  }
+
+  /**
+   * Index agent orchestration activity: specs (configurations) and runs
+   * (executions). Both reuse the web graph reader because a spec and a run are
+   * nodes with content addressed revisions exactly like a fetched page — the
+   * only difference is what the evidence addresses point at.
+   */
+  applyAgentActivity(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input)) throw invalid("applyAgentActivity input must be an object");
+    const result = emptyResult(this.workspaceId);
+    const specs = Array.isArray(input.specs) ? input.specs : [];
+    const runs = Array.isArray(input.runs) ? input.runs : [];
+    if (specs.length === 0 && runs.length === 0) throw invalid("applyAgentActivity requires specs or runs");
+    for (const spec of specs) {
+      const normalized = normalizeAgentSpec(spec);
+      this.agentSpecs.set(normalized.name, normalized);
+      resultFromWebGraph(agentSpecGraph(normalized), result);
+    }
+    for (const run of runs) resultFromWebGraph(agentRunGraph(run), result);
+    linkNodeRevisionParents(database, result);
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      rowsFromResult(database, result);
+      database
+        .prepare("INSERT INTO meta (key, value) VALUES ('last_apply_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .run(String(now()));
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return { nodeCount: result.nodes.size, edgeCount: result.edges.size };
+  }
+
   getGraph(query) {
     return graphRows(this.assertOpen(), queryOf(query));
+  }
+
+  /** Return the currently materialized capability specs and their revisions. */
+  listCapabilities(input = {}) {
+    this.assertOpen();
+    if (!isObject(input)) throw invalid("listCapabilities input must be an object");
+    const names = Array.isArray(input.names) ? new Set(input.names.map((name) => string(name, "capability name", 128))) : null;
+    return [...this.agentSpecs.values()]
+      .filter((spec) => !names || names.has(spec.name))
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((spec) => {
+        const graph = agentSpecGraph(spec);
+        const node = graph.nodes[0];
+        return { name: spec.name, nodeId: node.nodeId, revisionId: agentSpecRevisionId(spec), surface: spec.surface, executor: spec.executor, trust: spec.trust, wired: spec.executor === "agent-loop" || spec.executor === "flow-engine" };
+      });
+  }
+
+  /** Resolve a graph-addressed spec and produce a safe dry-run/invocation plan. */
+  invokeNode(input = {}) {
+    const database = this.assertOpen();
+    const request = normalizeInvocationRequest(input);
+    if (!request) throw invalid("invokeNode requires a valid agent spec node request");
+    const prefix = "agent-spec:";
+    const name = request.nodeId.startsWith(prefix) ? request.nodeId.slice(prefix.length) : request.nodeId;
+    if (!name || name.length > 128) return { ok: false, code: "not_found", message: "agent spec was not found" };
+
+    const rows = database.prepare("SELECT n.node_revision_id AS nodeRevisionId, n.node_id AS nodeId, n.anchor_json AS anchorJson, a.revision_id AS specRevisionId FROM node_revisions n JOIN evidence e ON e.revision_id = n.node_revision_id JOIN addresses a ON a.address_id = e.address_id WHERE n.kind = 'agent_spec' AND n.node_id = ? AND a.source_type = 'agent_spec' AND a.object_id = ? AND e.role = 'produces' ORDER BY n.created_at DESC, n.node_revision_id DESC").all(`agent-spec:${name}`, name);
+    if (rows.length === 0) return { ok: false, code: "not_found", message: `agent spec "${name}" was not found` };
+    const selected = request.revisionId ? rows.find((row) => row.specRevisionId === request.revisionId) : rows[0];
+    if (!selected) return { ok: false, code: "revision_mismatch", message: `agent spec "${name}" has no persisted revision "${request.revisionId}"` };
+    if (!selected.anchorJson) return { ok: false, code: "revision_mismatch", message: `agent spec "${name}" revision is missing its persisted content` };
+    let spec;
+    try {
+      const payload = JSON.parse(selected.anchorJson);
+      spec = normalizeAgentSpec(payload?.__histosSpec);
+      if (agentSpecRevisionId(spec) !== selected.specRevisionId) throw new Error("spec revision mismatch");
+    } catch {
+      return { ok: false, code: "not_found", message: `agent spec "${name}" has no usable persisted revision` };
+    }
+    const result = planInvocationFromRequest(request, spec, { options: { specRevisionId: selected.specRevisionId } });
+    return {
+      ...result,
+      nodeId: `agent-spec:${spec.name}`,
+      ...(result.ok && result.plan?.executionRequest ? {
+        executionRequest: {
+          ...result.plan.executionRequest,
+          ...(request.prompt !== undefined ? { prompt: request.prompt } : {}),
+          ...(request.args !== undefined ? { args: request.args } : {}),
+        },
+      } : {}),
+    };
   }
 
   async condenseGraph(input = {}) {

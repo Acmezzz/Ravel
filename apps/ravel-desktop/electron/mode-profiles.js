@@ -127,3 +127,18 @@ export function goalCapExceeded(state, now = Date.now()) {
   if (state.rounds >= GOAL_ROUND_CAP) return true;
   return now - state.startedAt >= GOAL_ELAPSED_CAP_MS;
 }
+
+/** Return a serializable mode declaration for the Histos agent_spec adapter. */
+export function modeProfileDeclaration(modeId) {
+  const profile = getModeProfile(modeId);
+  if (!profile) throw Object.assign(new Error("Unsupported mode profile"), { code: "invalid_args" });
+  return {
+    id: profile.id,
+    title: profile.title,
+    writeAccess: profile.writeAccess,
+    tools: profile.tools ? [...profile.tools] : null,
+    budget: profile.budget ? { ...profile.budget } : null,
+    completion: profile.completion,
+    histosProfile: profile.histosProfile,
+  };
+}

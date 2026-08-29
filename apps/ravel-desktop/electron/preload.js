@@ -309,6 +309,44 @@ contextBridge.exposeInMainWorld("omega", {
     if (maxFiles !== undefined && (!Number.isSafeInteger(maxFiles) || maxFiles < 1 || maxFiles > 100000)) return invalidHistos("maxFiles is out of bounds");
     return ipcRenderer.invoke("omega:histosRebuild", { ...query, ...(maxFiles === undefined ? {} : { maxFiles }) });
   },
+  histosApplyWebResources: (req) => {
+    const urls = Array.isArray(req?.urls) ? req.urls : undefined;
+    const resources = Array.isArray(req?.resources) ? req.resources : undefined;
+    if (!urls && !resources) return invalidHistos("urls or resources are required");
+    const granularity = req?.granularity === "span" ? "span" : "entry";
+    return ipcRenderer.invoke("omega:histosApplyWebResources", {
+      granularity,
+      ...(urls ? { urls } : {}),
+      ...(resources ? { resources } : {}),
+      ...(Number.isSafeInteger(req?.timeoutMs) ? { timeoutMs: req.timeoutMs } : {}),
+      ...(Number.isSafeInteger(req?.chunkLength) ? { chunkLength: req.chunkLength } : {}),
+    });
+  },
+  histosApplyAgentActivity: (req) => {
+    const specs = Array.isArray(req?.specs) ? req.specs : [];
+    const runs = Array.isArray(req?.runs) ? req.runs : [];
+    if (specs.length === 0 && runs.length === 0) return invalidHistos("specs or runs are required");
+    return ipcRenderer.invoke("omega:histosApplyAgentActivity", {
+      ...(specs.length ? { specs } : {}),
+      ...(runs.length ? { runs } : {}),
+    });
+  },
+  histosApplyEvalResults: (req) => {
+    const results = Array.isArray(req?.results) ? req.results : [];
+    if (results.length === 0 || results.length > 256 || results.some((result) => !isPlainObject(result))) return invalidHistos("results are required");
+    return ipcRenderer.invoke("omega:histosApplyEvalResults", { results });
+  },
+  histosListCapabilities: (req) => ipcRenderer.invoke("omega:histosListCapabilities", req && isPlainObject(req) ? { names: Array.isArray(req.names) ? req.names.slice(0, 64) : undefined } : {}),
+  histosInvokeNode: (req) => {
+    if (!isPlainObject(req) || !histosString(req.nodeId, 512)) return invalidHistos("nodeId is required");
+    const payload = { nodeId: req.nodeId.slice(0, 512) };
+    if (typeof req.revisionId === "string") payload.revisionId = req.revisionId;
+    if (typeof req.prompt === "string") payload.prompt = req.prompt.slice(0, MAX_PROMPT_CHARS);
+    if (req.args !== undefined && !histosJson(req.args)) return invalidHistos("args must be JSON values");
+    if (req.args !== undefined) payload.args = req.args;
+    if (req.dryRun === true) payload.dryRun = true;
+    return ipcRenderer.invoke("omega:histosInvokeNode", payload);
+  },
   histosGetNode: (req) => {
     const query = histosQuery(req);
     const nodeId = req?.nodeId ?? req?.id;

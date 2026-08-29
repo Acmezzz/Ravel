@@ -373,3 +373,36 @@ function relativeEnvPath(root: string, path: string): string {
 		? normalizedPath.slice(normalizedRoot.length + 1)
 		: normalizedPath.replace(/^\/+/, "");
 }
+
+/**
+ * The serializable shape used by the Histos agent_spec adapter. This is only a
+ * declaration: it never turns skill text into executable code.
+ */
+export interface SkillAgentSpecDraft {
+	name: string;
+	description: string;
+	surface: "invocation";
+	executor: "skill-inject";
+	trust: "draft";
+	strategy: "single";
+	tools: string[];
+	prompt: string;
+}
+
+/** Map a loaded skill to a reviewable invocation agent_spec draft. */
+export function skillToAgentSpec(skill: Skill, options?: { name?: string }): SkillAgentSpecDraft {
+	const name = options?.name ?? `skill.${skill.name}`;
+	return {
+		name,
+		description: skill.description,
+		surface: "invocation",
+		executor: "skill-inject",
+		trust: "draft",
+		strategy: "single",
+		tools: ["find", "grep", "ls", "read"],
+		prompt: skill.content,
+	};
+}
+
+/** Explicit alias for callers that name this conversion an adapter. */
+export const skillAgentSpec = skillToAgentSpec;

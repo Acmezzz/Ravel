@@ -211,13 +211,18 @@ let taskDepth = 0;
  * approval facts. Narrowing invariant: read-only tool family + same permission
  * rules + depth cap; the child never gains access the parent lacks.
  */
-async function runSubagent({ prompt }) {
+async function runSubagent({ prompt, tools }) {
   if (disposed || !runtime?.session) {
     const error = new Error("Agent runtime is not initialized");
     error.code = "no_model";
     throw error;
   }
   const validated = validateTaskInput({ prompt });
+  if (tools !== undefined && (!Array.isArray(tools) || tools.some((tool) => !SUBAGENT_TOOLS.includes(tool)))) {
+    const error = new Error("agent-loop child tools must stay inside the read-only subagent family");
+    error.code = "tools_empty";
+    throw error;
+  }
   if (taskDepth >= MAX_TASK_DEPTH) {
     const error = new Error(`task nesting exceeds the depth cap (${MAX_TASK_DEPTH})`);
     error.code = "task_depth_exceeded";
@@ -231,7 +236,8 @@ async function runSubagent({ prompt }) {
     settingsManager: SettingsManager.create(runtime.cwd, AGENT_DIR, { projectTrusted }),
   });
   const sessionManager = SessionManager.create(runtime.cwd, undefined, { parentSession: parent.sessionId });
-  const { session: child } = await createAgentSessionFromServices({ services, sessionManager, tools: [...SUBAGENT_TOOLS] });
+  const childTools = Array.isArray(tools) && tools.length > 0 ? [...new Set(tools)] : [...SUBAGENT_TOOLS];
+  const { session: child } = await createAgentSessionFromServices({ services, sessionManager, tools: childTools });
   const childRunId = `task-${child.sessionId}`;
   await child.bindExtensions({
     uiContext: createDesktopExtensionUIContext(),
@@ -886,6 +892,8 @@ const methods = {
     return { text };
   },
   prompt,
+  /** Internal agent-loop child surface used by the Histos executor adapter. */
+  runSubagent: async ({ prompt: taskPrompt, tools }) => runSubagent({ prompt: taskPrompt, tools }),
   executeFlow,
   abort: () => runtime.session.abort(),
   recordCheckpoint: async ({ checkpointId, label, outcome, error }) => {

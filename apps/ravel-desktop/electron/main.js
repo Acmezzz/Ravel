@@ -72,6 +72,7 @@ import {
 import { appRendererUrl, isAllowedAppUrl, registerAppProtocol, rendererAssetRoot } from "./app-protocol.js";
 import { WorkerHost } from "./worker-host.js";
 import { HistosHost } from "./histos-host.js";
+import { buildAgentRunRecord, createAgentLoopExecutor } from "./histos-agent-loop-executor.js";
 import { createPtyHost } from "./pty-host.js";
 import { normalizeUtilityProcessError } from "./process-log.js";
 import { sanitizeSearchQuery, searchWorkspace } from "./search-service.js";
@@ -99,6 +100,11 @@ import {
   histosImportContextRequest,
   histosRebuildRequest,
   histosConvertToFlowRequest,
+  histosApplyWebResourcesRequest,
+  histosApplyAgentActivityRequest,
+  histosApplyEvalResultsRequest,
+  histosListCapabilitiesRequest,
+  histosInvokeNodeRequest,
   replayRequest,
   sessionNameRequest,
   sessionRequest,
@@ -2027,6 +2033,85 @@ ipcMain.handle("omega:histosRebuild", async (event, req) => {
     const host = await activeHistos();
     return okResult(await host.call("rebuild", { ...normalized, sessionsRoot: piSessionsRoot(), workspaceRoot: activeCwd }));
   } catch (error) { return errorResult(error?.code ?? "rebuild_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosApplyWebResources", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosApplyWebResourcesRequest(req);
+  if (!normalized) return errorResult("invalid_args", "urls or resources are required and must be http(s)");
+  try {
+    const host = await activeHistos();
+    return okResult(await host.call("applyWebResources", normalized));
+  } catch (error) {
+    return errorResult(error?.code ?? "apply_web_resources_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosApplyAgentActivity", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosApplyAgentActivityRequest(req);
+  if (!normalized) return errorResult("invalid_args", "specs or runs are required");
+  try {
+    const host = await activeHistos();
+    return okResult(await host.call("applyAgentActivity", normalized));
+  } catch (error) {
+    return errorResult(error?.code ?? "apply_agent_activity_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosApplyEvalResults", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosApplyEvalResultsRequest(req);
+  if (!normalized) return errorResult("invalid_args", "results are required");
+  try {
+    const host = await activeHistos();
+    return okResult(await host.call("applyEvalResults", normalized));
+  } catch (error) {
+    return errorResult(error?.code ?? "apply_eval_results_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosListCapabilities", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosListCapabilitiesRequest(req);
+  if (!normalized) return errorResult("invalid_args", "capability names must be bounded strings");
+  try { return okResult(await (await activeHistos()).call("listCapabilities", normalized)); }
+  catch (error) { return errorResult(error?.code ?? "list_capabilities_failed", error instanceof Error ? error.message : String(error)); }
+});
+
+ipcMain.handle("omega:histosInvokeNode", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosInvokeNodeRequest(req);
+  if (!normalized) return errorResult("invalid_args", "a valid agent spec nodeId is required");
+  const histos = await activeHistos();
+  let plan;
+  try {
+    plan = await histos.call("invokeNode", normalized);
+  } catch (error) {
+    return errorResult(error?.code ?? "invoke_node_failed", error instanceof Error ? error.message : String(error));
+  }
+  if (!plan?.ok || normalized.dryRun === true || !plan.executionRequest) return okResult(plan);
+  const startedAt = Date.now();
+  let execution;
+  let runError = null;
+  try {
+    const executor = createAgentLoopExecutor({ getWorker: () => worker, isBusy: isForegroundBusy });
+    execution = await executor.execute({
+      plan: { ...plan.plan, executionRequest: plan.executionRequest },
+      dryRun: false,
+    });
+  } catch (error) {
+    runError = error;
+  }
+  const endedAt = Date.now();
+  const run = buildAgentRunRecord({ plan, execution, error: runError, input: normalized.prompt ?? "", sessionId: worker?.sessionId ?? null, startedAt, endedAt });
+  try {
+    await histos.call("applyAgentActivity", { runs: [run] });
+  } catch (persistError) {
+    sendTransportState("diagnostic", { subsystem: "histos", error: persistError instanceof Error ? persistError.message : String(persistError) });
+  }
+  if (runError) return errorResult(runError?.code ?? "invoke_node_failed", runError instanceof Error ? runError.message : String(runError));
+  return okResult({ ...plan, execution });
 });
 
 ipcMain.handle("omega:histosGetNode", async (event, req) => {
