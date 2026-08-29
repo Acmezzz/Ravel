@@ -34,7 +34,10 @@ function useMediaQuery(query: string): boolean {
 
 function loadWidths(): { left: number; right: number } {
   try {
-    const raw = localStorage.getItem("ravel-panel-widths") ?? localStorage.getItem("omega-panel-widths");
+    const raw =
+      localStorage.getItem("ravel-shell-layout-v1") ??
+      localStorage.getItem("ravel-panel-widths") ?? // legacy alias (once)
+      localStorage.getItem("omega-panel-widths"); // pre-Ravel alias (once)
     if (raw) {
       const parsed = JSON.parse(raw) as { left?: number; right?: number };
       return {
@@ -80,7 +83,7 @@ export function Workbench(): React.ReactElement {
 
   const persist = React.useCallback((next: { left: number; right: number }) => {
     try {
-      localStorage.setItem("ravel-panel-widths", JSON.stringify(next));
+      localStorage.setItem("ravel-shell-layout-v1", JSON.stringify(next));
     } catch {
       /* best effort */
     }
@@ -90,7 +93,7 @@ export function Workbench(): React.ReactElement {
     (side: "left" | "right") => (value: number) => {
       widthsRef.current = { ...widthsRef.current, [side]: value };
       if (draggingRef.current === side) {
-        workbenchRef.current?.style.setProperty(`--omega-${side}-panel-width`, `${value}px`);
+        workbenchRef.current?.style.setProperty(`--ravel-${side}-panel-width`, `${value}px`);
         return;
       }
       setWidths(widthsRef.current);
@@ -102,8 +105,8 @@ export function Workbench(): React.ReactElement {
   const compactLeftOpen = leftOpen && !focusMode && compactViewport;
   const compactRightOpen = rightOpen && !focusMode && compactViewport && !compactLeftOpen;
   const effectiveRightOpen = rightOpen && !focusMode && !compactViewport;
-  const leftCol = focusMode ? "0px" : effectiveLeftOpen ? "var(--omega-left-panel-width)" : `${RIGHT_COLLAPSED_RAIL_PX}px`;
-  const rightCol = focusMode ? "0px" : effectiveRightOpen ? "var(--omega-right-panel-width)" : `${RIGHT_COLLAPSED_RAIL_PX}px`;
+  const leftCol = focusMode ? "0px" : effectiveLeftOpen ? "var(--ravel-left-panel-width)" : `${RIGHT_COLLAPSED_RAIL_PX}px`;
+  const rightCol = focusMode ? "0px" : effectiveRightOpen ? "var(--ravel-right-panel-width)" : `${RIGHT_COLLAPSED_RAIL_PX}px`;
 
   React.useEffect(() => {
     const isOpen = compactLeftOpen || compactRightOpen;
@@ -147,15 +150,15 @@ export function Workbench(): React.ReactElement {
       className="ravel-workbench"
       data-focus-mode={focusMode ? "true" : "false"}
       style={{
-        "--omega-left-panel-width": `${widths.left}px`,
-        "--omega-right-panel-width": `${widths.right}px`,
+        "--ravel-left-panel-width": `${widths.left}px`,
+        "--ravel-right-panel-width": `${widths.right}px`,
         display: "grid",
         gridTemplateRows: "auto auto 1fr",
         gridTemplateColumns: `${leftCol} minmax(0,1fr) ${rightCol}`,
         height: "100vh",
         gap: 0,
         padding: 0,
-        transition: dragging ? "none" : "grid-template-columns var(--omega-dur-slow) var(--omega-ease-out)",
+        transition: dragging ? "none" : "grid-template-columns var(--ravel-dur-slow) var(--ravel-ease-out)",
       } as React.CSSProperties}
     >
       <TitleBar />
@@ -168,10 +171,10 @@ export function Workbench(): React.ReactElement {
         style={{ minHeight: 0, overflow: "hidden", display: "flex", position: "relative" }}
       >
         {effectiveLeftOpen ? <LeftNav /> : (
-          <div className="ravel-workbench-rail ravel-workbench-left-rail" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "12px", background: "var(--omega-bg-rail)", height: "100%" }}>
+          <div className="ravel-workbench-rail ravel-workbench-left-rail" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "12px", background: "var(--ravel-bg-rail)", height: "100%" }}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="展开左侧导航" aria-expanded={false} aria-controls="omega-left-drawer" onClick={() => useAppStore.getState().toggleLeftPanel()} style={{ color: "var(--omega-text-dim)", minWidth: 36, minHeight: 36 }}>
+                <IconButton size="sm" label="展开左侧导航" aria-expanded={false} aria-controls="omega-left-drawer" onClick={() => useAppStore.getState().toggleLeftPanel()} style={{ color: "var(--ravel-text-dim)", minWidth: 36, minHeight: 36 }}>
                   <PanelLeftOpen size={20} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -212,10 +215,10 @@ export function Workbench(): React.ReactElement {
             aria-label="会话与文件导航"
             role="dialog"
             aria-modal="true"
-            style={{ position: "fixed", inset: "0 auto 0 0", width: "min(420px, 88vw)", zIndex: 20, background: "var(--omega-bg-rail)", boxShadow: "var(--omega-shadow-lg)", display: "flex", flexDirection: "column" }}
+            style={{ position: "fixed", inset: "0 auto 0 0", width: "min(420px, 88vw)", zIndex: 20, background: "var(--ravel-bg-rail)", boxShadow: "var(--ravel-shadow-lg)", display: "flex", flexDirection: "column" }}
           >
-            <div className="ravel-workbench-drawer-header" style={{ display: "flex", justifyContent: "flex-end", padding: "4px", borderBottom: "1px solid var(--omega-border)" }}>
-              <IconButton size="sm" label="关闭左侧导航" onClick={() => useAppStore.getState().toggleLeftPanel()} style={{ color: "var(--omega-text-muted)" }}>
+            <div className="ravel-workbench-drawer-header" style={{ display: "flex", justifyContent: "flex-end", padding: "4px", borderBottom: "1px solid var(--ravel-border)" }}>
+              <IconButton size="sm" label="关闭左侧导航" onClick={() => useAppStore.getState().toggleLeftPanel()} style={{ color: "var(--ravel-text-muted)" }}>
                 <X size={18} aria-hidden="true" />
               </IconButton>
             </div>
@@ -231,10 +234,10 @@ export function Workbench(): React.ReactElement {
         {effectiveRightOpen ? (
           <RightPanel />
         ) : (
-          <div className="ravel-workbench-rail ravel-workbench-right-rail" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "12px", background: "var(--omega-bg-rail)", height: "100%" }}>
+          <div className="ravel-workbench-rail ravel-workbench-right-rail" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", paddingTop: "12px", background: "var(--ravel-bg-rail)", height: "100%" }}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="展开右侧面板" aria-expanded={false} aria-controls="omega-right-drawer" onClick={toggleRightPanel} style={{ color: "var(--omega-text-dim)", minWidth: 36, minHeight: 36 }}>
+                <IconButton size="sm" label="展开右侧面板" aria-expanded={false} aria-controls="omega-right-drawer" onClick={toggleRightPanel} style={{ color: "var(--ravel-text-dim)", minWidth: 36, minHeight: 36 }}>
                   <PanelRightOpen size={20} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -242,7 +245,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="打开 Diff 变更面板" active={rightTab === "diff"} onClick={() => setRightTab("diff")} style={{ color: rightTab === "diff" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "diff" ? "var(--omega-selected)" : "transparent" }}>
+                <IconButton size="sm" label="打开 Diff 变更面板" active={rightTab === "diff"} onClick={() => setRightTab("diff")} style={{ color: rightTab === "diff" ? "var(--ravel-accent)" : "var(--ravel-text-dim)", background: rightTab === "diff" ? "var(--ravel-selected)" : "transparent" }}>
                   <Diff size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -250,7 +253,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="打开 Graph 面板" active={rightTab === "graph"} onClick={() => setRightTab("graph")} style={{ color: rightTab === "graph" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "graph" ? "var(--omega-selected)" : "transparent" }}>
+                <IconButton size="sm" label="打开 Graph 面板" active={rightTab === "graph"} onClick={() => setRightTab("graph")} style={{ color: rightTab === "graph" ? "var(--ravel-accent)" : "var(--ravel-text-dim)", background: rightTab === "graph" ? "var(--ravel-selected)" : "transparent" }}>
                   <Waypoints size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -258,7 +261,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="打开 Worktree 面板" active={rightTab === "worktree"} onClick={() => setRightTab("worktree")} style={{ color: rightTab === "worktree" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "worktree" ? "var(--omega-selected)" : "transparent" }}>
+                <IconButton size="sm" label="打开 Worktree 面板" active={rightTab === "worktree"} onClick={() => setRightTab("worktree")} style={{ color: rightTab === "worktree" ? "var(--ravel-accent)" : "var(--ravel-text-dim)", background: rightTab === "worktree" ? "var(--ravel-selected)" : "transparent" }}>
                   <GitBranch size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -266,7 +269,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="打开 Agent 能力面板" active={rightTab === "agent"} onClick={() => setRightTab("agent")} style={{ color: rightTab === "agent" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "agent" ? "var(--omega-selected)" : "transparent" }}>
+                <IconButton size="sm" label="打开 Agent 能力面板" active={rightTab === "agent"} onClick={() => setRightTab("agent")} style={{ color: rightTab === "agent" ? "var(--ravel-accent)" : "var(--ravel-text-dim)", background: rightTab === "agent" ? "var(--ravel-selected)" : "transparent" }}>
                   <Bot size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -274,7 +277,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="打开遥测面板" active={rightTab === "telemetry"} onClick={() => setRightTab("telemetry")} style={{ color: rightTab === "telemetry" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "telemetry" ? "var(--omega-selected)" : "transparent" }}>
+                <IconButton size="sm" label="打开遥测面板" active={rightTab === "telemetry"} onClick={() => setRightTab("telemetry")} style={{ color: rightTab === "telemetry" ? "var(--ravel-accent)" : "var(--ravel-text-dim)", background: rightTab === "telemetry" ? "var(--ravel-selected)" : "transparent" }}>
                   <Activity size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -282,7 +285,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="打开快照面板" active={rightTab === "snapshots"} onClick={() => setRightTab("snapshots")} style={{ color: rightTab === "snapshots" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "snapshots" ? "var(--omega-selected)" : "transparent" }}>
+                <IconButton size="sm" label="打开快照面板" active={rightTab === "snapshots"} onClick={() => setRightTab("snapshots")} style={{ color: rightTab === "snapshots" ? "var(--ravel-accent)" : "var(--ravel-text-dim)", background: rightTab === "snapshots" ? "var(--ravel-selected)" : "transparent" }}>
                   <Camera size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -290,7 +293,7 @@ export function Workbench(): React.ReactElement {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <IconButton size="sm" label="打开终端面板" active={rightTab === "terminal"} onClick={() => setRightTab("terminal")} style={{ color: rightTab === "terminal" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "terminal" ? "var(--omega-selected)" : "transparent" }}>
+                <IconButton size="sm" label="打开终端面板" active={rightTab === "terminal"} onClick={() => setRightTab("terminal")} style={{ color: rightTab === "terminal" ? "var(--ravel-accent)" : "var(--ravel-text-dim)", background: rightTab === "terminal" ? "var(--ravel-selected)" : "transparent" }}>
                   <SquareTerminal size={18} strokeWidth={1.8} aria-hidden="true" />
                 </IconButton>
               </TooltipTrigger>
@@ -328,12 +331,12 @@ export function Workbench(): React.ReactElement {
             role="dialog"
             aria-modal="true"
             aria-label="工作台辅助面板"
-            style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: `min(${MAX_RIGHT_PX}px, 88vw)`, minWidth: 0, maxWidth: "100vw", zIndex: 20, background: "var(--omega-bg-rail)", boxShadow: "var(--omega-shadow-lg)", display: "flex", flexDirection: "column" }}
+            style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: `min(${MAX_RIGHT_PX}px, 88vw)`, minWidth: 0, maxWidth: "100vw", zIndex: 20, background: "var(--ravel-bg-rail)", boxShadow: "var(--ravel-shadow-lg)", display: "flex", flexDirection: "column" }}
           >
-            <div className="ravel-workbench-drawer-header" style={{ display: "flex", justifyContent: "flex-start", padding: "4px", borderBottom: "1px solid var(--omega-border)" }}>
+            <div className="ravel-workbench-drawer-header" style={{ display: "flex", justifyContent: "flex-start", padding: "4px", borderBottom: "1px solid var(--ravel-border)" }}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <IconButton size="sm" label="关闭右侧面板" onClick={toggleRightPanel} style={{ color: "var(--omega-text-muted)" }}>
+                  <IconButton size="sm" label="关闭右侧面板" onClick={toggleRightPanel} style={{ color: "var(--ravel-text-muted)" }}>
                     <X size={18} aria-hidden="true" />
                   </IconButton>
                 </TooltipTrigger>
