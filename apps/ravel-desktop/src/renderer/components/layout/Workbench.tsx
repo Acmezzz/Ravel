@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Diff, GitBranch, PanelLeftOpen, PanelRightOpen, Waypoints, X } from "lucide-react";
+import { Activity, Bot, Camera, Diff, GitBranch, PanelLeftOpen, PanelRightOpen, SquareTerminal, Waypoints, X } from "lucide-react";
 import { IconButton } from "../../ui/Button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
@@ -263,6 +263,38 @@ export function Workbench(): React.ReactElement {
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>Worktree</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton size="sm" label="打开 Agent 能力面板" active={rightTab === "agent"} onClick={() => setRightTab("agent")} style={{ color: rightTab === "agent" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "agent" ? "var(--omega-selected)" : "transparent" }}>
+                  <Bot size={18} strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Agent 能力</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton size="sm" label="打开遥测面板" active={rightTab === "telemetry"} onClick={() => setRightTab("telemetry")} style={{ color: rightTab === "telemetry" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "telemetry" ? "var(--omega-selected)" : "transparent" }}>
+                  <Activity size={18} strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>遥测</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton size="sm" label="打开快照面板" active={rightTab === "snapshots"} onClick={() => setRightTab("snapshots")} style={{ color: rightTab === "snapshots" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "snapshots" ? "var(--omega-selected)" : "transparent" }}>
+                  <Camera size={18} strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>快照</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton size="sm" label="打开终端面板" active={rightTab === "terminal"} onClick={() => setRightTab("terminal")} style={{ color: rightTab === "terminal" ? "var(--omega-accent)" : "var(--omega-text-dim)", background: rightTab === "terminal" ? "var(--omega-selected)" : "transparent" }}>
+                  <SquareTerminal size={18} strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>终端</TooltipContent>
             </Tooltip>
           </div>
         )}

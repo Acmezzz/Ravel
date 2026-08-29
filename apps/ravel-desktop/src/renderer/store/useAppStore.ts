@@ -91,7 +91,7 @@ export interface LayoutState {
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   focusMode: boolean;
-  rightTab: "diff" | "graph" | "worktree" | "telemetry" | "snapshots" | "terminal";
+  rightTab: "diff" | "graph" | "worktree" | "agent" | "telemetry" | "snapshots" | "terminal";
   commandPaletteOpen: boolean;
   treeOpen: boolean;
   leftTab: "sessions" | "files" | "search" | "activity";

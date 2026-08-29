@@ -179,8 +179,18 @@ export interface HistosInvocationPlanDTO {
 }
 
 export type HistosInvokeNodeResultDTO =
-  | { ok: true; plan: HistosInvocationPlanDTO; nodeId: string }
+  | { ok: true; plan: HistosInvocationPlanDTO; nodeId: string; execution?: HistosInvocationExecutionDTO }
   | { ok: false; code: string; message: string; diagnostics: Array<{ code: string; message: string }> };
+
+/** Present only when a non-dry-run invocation actually executed through the worker. */
+export interface HistosInvocationExecutionDTO {
+  status?: string;
+  ok?: boolean;
+  uncertain?: boolean;
+  sessionId?: string | null;
+  error?: string | null;
+  output?: string | null;
+}
 
 export interface HistosAgentSpecInput {
   name: string;

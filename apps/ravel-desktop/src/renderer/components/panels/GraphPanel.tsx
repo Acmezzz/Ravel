@@ -66,6 +66,14 @@ export function GraphPanel(): React.ReactElement {
   const [importWorkspaceId, setImportWorkspaceId] = React.useState("");
   const [importSha, setImportSha] = React.useState("");
   const [importing, setImporting] = React.useState(false);
+  const [scheduleInterval, setScheduleInterval] = React.useState(60);
+  const [scheduleMaxRuns, setScheduleMaxRuns] = React.useState(10);
+  const [webUrl, setWebUrl] = React.useState("");
+  const [importingWeb, setImportingWeb] = React.useState(false);
+  const [webResult, setWebResult] = React.useState<string | null>(null);
+  const [confirmRebuild, setConfirmRebuild] = React.useState(false);
+  const [rebuilding, setRebuilding] = React.useState(false);
+  const [rebuildResult, setRebuildResult] = React.useState<string | null>(null);
   const requestEpoch = React.useRef(0);
 
   const refresh = React.useCallback(async () => {
@@ -125,13 +133,15 @@ export function GraphPanel(): React.ReactElement {
 
   const createSchedule = React.useCallback(async () => {
     if (!flow?.validation.ok || scheduling) return;
+    const intervalMinutes = Number.isSafeInteger(scheduleInterval) && scheduleInterval >= 1 ? scheduleInterval : 60;
+    const maxRuns = Number.isSafeInteger(scheduleMaxRuns) && scheduleMaxRuns >= 1 ? scheduleMaxRuns : 10;
     setScheduling(true); setScheduleResult(null);
-    const result = await ipc.flowScheduleCreate({ flowSha: flow.sha256, kind: "interval", intervalMinutes: 60, maxRuns: 10 });
+    const result = await ipc.flowScheduleCreate({ flowSha: flow.sha256, kind: "interval", intervalMinutes, maxRuns });
     setScheduleResult(result.ok
-      ? t("graph.scheduleCreated", { id: result.data.items[result.data.items.length - 1]?.id ?? "" })
+      ? t("graph.scheduleCreatedParams", { minutes: intervalMinutes, runs: maxRuns, id: result.data.items[result.data.items.length - 1]?.id ?? "" })
       : `${t("graph.scheduleFailed")}: ${result.message}`);
     setScheduling(false);
-  }, [flow, scheduling, t]);
+  }, [flow, scheduling, scheduleInterval, scheduleMaxRuns, t]);
 
   const condenseGraph = React.useCallback(async () => {
     if (!activeSessionId || !graph || lens === "structural" || condensing) return;
@@ -195,6 +205,30 @@ export function GraphPanel(): React.ReactElement {
     setImporting(false);
   }, [activeSessionId, importSha, importWorkspaceId, importing, t]);
 
+  const importWebResource = React.useCallback(async () => {
+    const url = webUrl.trim();
+    if (importingWeb || !url) return;
+    setImportingWeb(true); setWebResult(null);
+    const result = await ipc.histosApplyWebResources({ urls: [url] });
+    if (!result.ok) setWebResult(`${t("graph.webFailed")}: ${result.message}`);
+    else {
+      const failures = result.data.diagnostics.length;
+      setWebResult(result.data.nodeCount > 0
+        ? `${t("graph.webImported", { n: result.data.nodeCount, e: result.data.edgeCount })}${failures > 0 ? ` · ${t("graph.webPartial", { n: failures })}` : ""}`
+        : `${t("graph.webFailed")}: ${result.data.diagnostics[0]?.message ?? t("graph.webNoNodes")}`);
+    }
+    setImportingWeb(false);
+  }, [importingWeb, t, webUrl]);
+
+  const rebuildIndex = React.useCallback(async () => {
+    if (rebuilding || !activeSessionId) return;
+    setRebuilding(true); setRebuildResult(null); setConfirmRebuild(false);
+    const result = await ipc.histosRebuild({ sourceSet: { sessionIds: [activeSessionId] }, lens, granularity: "entry" });
+    setRebuildResult(result.ok ? t("graph.rebuildDone") : `${t("graph.rebuildFailed")}: ${result.message}`);
+    setRebuilding(false);
+    void refresh();
+  }, [activeSessionId, lens, rebuilding, refresh, t]);
+
   return (
     <div className="omega-graph-panel">
       <div className="omega-graph-toolbar">
@@ -203,8 +237,18 @@ export function GraphPanel(): React.ReactElement {
         <div className="omega-graph-toolbar-actions">
           {projected ? <span className="mono-num">{projected.nodes.length}N · {projected.edges.length}E</span> : null}
           <IconButton size="sm" label={t("graph.refresh")} onClick={() => void refresh()} disabled={loading}>↻</IconButton>
+          {confirmRebuild ? (
+            <span className="omega-graph-toolbar-actions" role="group" aria-label={t("graph.rebuildConfirmAria")}>
+              <span className="omega-muted-text" role="status">{t("graph.rebuildConfirm")}</span>
+              <Button size="sm" variant="solid" disabled={rebuilding} onClick={() => void rebuildIndex()}>{rebuilding ? t("graph.rebuilding") : t("graph.rebuildYes")}</Button>
+              <Button size="sm" variant="quiet" onClick={() => setConfirmRebuild(false)}>{t("graph.rebuildNo")}</Button>
+            </span>
+          ) : (
+            <Button size="sm" variant="quiet" disabled={loading || rebuilding || !activeSessionId} onClick={() => setConfirmRebuild(true)} title={t("graph.rebuildTitle")}>{t("graph.rebuild")}</Button>
+          )}
         </div>
       </div>
+      {rebuildResult ? <p className="omega-muted-text" role="status">{rebuildResult}</p> : null}
       {loading ? <p className="omega-graph-empty" role="status">{t("graph.loading")}</p> : null}
       {error ? <p className="omega-error-text" role="alert">{error}</p> : null}
       {!loading && !error && !projected ? <p className="omega-graph-empty">{t("graph.noSession")}</p> : null}
@@ -218,6 +262,10 @@ export function GraphPanel(): React.ReactElement {
               <Button size="sm" variant="quiet" disabled={converting || projected.nodes.length === 0} onClick={() => void convertToFlow()}>{converting ? t("graph.converting") : t("graph.convert")}</Button>
               <Button size="sm" variant="quiet" disabled={condensing || lens === "structural" || projected.nodes.length === 0} onClick={() => void condenseGraph()}>{condensing ? "Condensing…" : "Condense"}</Button>
               <Button size="sm" variant="solid" disabled={!flow?.validation.ok || executingFlow || !activeSessionId} onClick={() => void executeFlow()}>{executingFlow ? "Executing…" : "Run Flow"}</Button>
+              <span className="omega-graph-toolbar-actions" role="group" aria-label={t("graph.scheduleParamsAria")}>
+                <label className="omega-muted-text">{t("graph.scheduleEveryMinutes")} <input className="omega-input omega-input-num" type="number" min={1} max={10080} value={scheduleInterval} onChange={(event) => setScheduleInterval(Number(event.target.value))} /></label>
+                <label className="omega-muted-text">{t("graph.scheduleMaxRuns")} <input className="omega-input omega-input-num" type="number" min={1} max={1000} value={scheduleMaxRuns} onChange={(event) => setScheduleMaxRuns(Number(event.target.value))} /></label>
+              </span>
               <Button size="sm" variant="quiet" disabled={!flow?.validation.ok || scheduling} onClick={() => void createSchedule()}>{scheduling ? t("graph.scheduling") : t("graph.schedule")}</Button>
             </div>
             {freezeResult ? <span className="omega-muted-text" role="status">{freezeResult}</span> : null}
@@ -272,6 +320,19 @@ export function GraphPanel(): React.ReactElement {
           />
           <Button size="sm" variant="quiet" disabled={importing || !activeSessionId} onClick={() => void runImport()}>{importing ? t("graph.importing") : t("graph.importRun")}</Button>
         </div>
+        <span className="overline-label">{t("graph.webTitle")}</span>
+        <div className="omega-graph-toolbar-actions">
+          <input
+            className="omega-input"
+            type="url"
+            value={webUrl}
+            placeholder={t("graph.webPlaceholder")}
+            onChange={(event) => setWebUrl(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter") void importWebResource(); }}
+          />
+          <Button size="sm" variant="quiet" disabled={importingWeb || webUrl.trim().length === 0} onClick={() => void importWebResource()}>{importingWeb ? t("graph.webImporting") : t("graph.webRun")}</Button>
+        </div>
+        {webResult ? <span className="omega-muted-text" role="status">{webResult}</span> : null}
         {suggestCandidates !== null && suggestCandidates.length > 0 ? (
           <ul className="omega-resource-list">
             {suggestCandidates.map((candidate) => (

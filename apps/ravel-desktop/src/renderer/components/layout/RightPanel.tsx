@@ -7,6 +7,7 @@ import { useAppStore, type LayoutState } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
 import { DiffViewer } from "../panels/DiffViewer";
 import { GraphPanel } from "../panels/GraphPanel";
+import { AgentPanel } from "../panels/AgentPanel";
 import { WorktreePanel } from "../panels/WorktreePanel";
 import { TelemetryPanel } from "../panels/TelemetryPanel";
 import { SnapshotsPanel } from "../panels/SnapshotsPanel";
@@ -17,7 +18,7 @@ function CloseIcon(): React.ReactElement {
 }
 
 function isRightTab(value: string): value is LayoutState["rightTab"] {
-  return value === "diff" || value === "graph" || value === "worktree" || value === "telemetry" || value === "snapshots" || value === "terminal";
+  return value === "diff" || value === "graph" || value === "worktree" || value === "agent" || value === "telemetry" || value === "snapshots" || value === "terminal";
 }
 
 export function RightPanel(): React.ReactElement {
@@ -39,6 +40,7 @@ export function RightPanel(): React.ReactElement {
             <TabsTrigger value="diff">{t("nav.tab.diff")}</TabsTrigger>
             <TabsTrigger value="graph">{t("nav.tab.graph")}</TabsTrigger>
             <TabsTrigger value="worktree">{t("nav.tab.worktree")}</TabsTrigger>
+            <TabsTrigger value="agent">{t("nav.tab.agent")}</TabsTrigger>
             <TabsTrigger value="telemetry">{t("nav.tab.telemetry")}</TabsTrigger>
             <TabsTrigger value="snapshots">{t("nav.tab.snapshots")}</TabsTrigger>
             <TabsTrigger value="terminal">{t("nav.tab.terminal")}</TabsTrigger>
@@ -57,6 +59,7 @@ export function RightPanel(): React.ReactElement {
         {rightTab === "diff" ? <DiffViewer /> : null}
         {rightTab === "graph" ? <GraphPanel /> : null}
         {rightTab === "worktree" ? <WorktreePanel /> : null}
+        {rightTab === "agent" ? <AgentPanel /> : null}
         {rightTab === "telemetry" ? <TelemetryPanel /> : null}
         {rightTab === "snapshots" ? <SnapshotsPanel /> : null}
         {rightTab === "terminal" ? <TerminalPanel /> : null}
