@@ -196,7 +196,6 @@ export function projectWebGraph(resources, options = {}) {
   const list = Array.isArray(resources) ? resources : [resources];
   const granularity = options.granularity === "span" ? "span" : "entry";
   const chunkLength = Number.isSafeInteger(options.chunkLength) ? options.chunkLength : DEFAULT_CHUNK_LENGTH;
-  const workspaceId = typeof options.workspaceId === "string" ? options.workspaceId : "workspace";
   const diagnostics = [];
   const nodes = [];
   const edges = [];

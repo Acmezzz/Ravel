@@ -226,7 +226,7 @@ export function histosSuggestContextRequest(value) {
     terms = value.terms.map((term) => histosString(term, "terms", 64));
     if (terms.some((term) => term === null || term.length < 2)) return null;
   } else if (typeof value?.query === "string" && value.query.length > 0 && value.query.length <= 512) {
-    terms = value.query.split(/s+/).filter(Boolean);
+    terms = value.query.split(/\s+/).filter(Boolean);
   } else {
     return null;
   }

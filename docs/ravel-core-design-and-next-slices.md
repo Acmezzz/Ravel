@@ -147,7 +147,7 @@ Ravel 已经站住、不要推倒的：
 - ContextSet 超窗后的用户收缩 UX（优先级裁剪与 `budget_exceeded` fail-closed 已落地）
 - Electron crashReporter 上传（三进程本地崩溃诊断已落地）
 
-铬件底层已是 Base UI、构建已是 Vite 8.2.2 + Rolldown + TypeScript 7 + Electron 44（T1–T5 已提交）。这些进 [`ravel-roadmap.md`](./ravel-roadmap.md) 与 Histos 计划的剩余缺口表。
+铬件底层已是 Base UI、构建已是 Vite 8.2.2 + Rolldown + TypeScript 7 + Electron 44（T1–T5 已提交）。这些能力的历史落点见 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)；当前状态与剩余缺口以 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md) 为准。
 
 ---
 

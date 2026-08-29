@@ -1,9 +1,8 @@
 /**
  * ravel:// deep link parsing and OS protocol registration policy.
  *
- * `omega://` remains accepted as a legacy entry point; see UPSTREAM.md and
- * docs/ravel-roadmap.md — compat identifiers are intentional until the
- * migration window closes.
+ * `omega://` remains accepted as a legacy entry point; compat identifiers are
+ * intentional until the migration window closes.
  */
 
 export const DEEP_LINK_PROTOCOL = "ravel";

@@ -1,252 +1,124 @@
-# Ravel × Histos 下一周期
+# Ravel × Histos 当前状态与执行入口
 
-更新日期：2026-08-28
-状态：**当前执行入口。**
-进度：2026-08-29 — N0–N8 + A1 全部落地（见 git 历史）。包 B 进度：B1 计划文件 + 人审退出 fd5fb1301；B2 Goal 接线 23e12bcf6；B3 权限规则持久库 + 设置 UI fa902fdb6；B4 task 工具 + 只读子代理 4fb3e5489（同 worker 子会话、共享模型运行时与审批守卫、深度上限 2、10 分钟超时）；B5 MCP OAuth 登录闭环 3fd4cf7c7（PKCE + ravel://oauth/callback 深链、令牌入 safeStorage vault、needs_auth 状态与登录 UI）；B6 在线 skill registry e87428655（https index.json 拉取、并发下载进 sha256 暂存、来源+SHA 展示、逐条走 installLocalResource 人审安装）；B7 导出脱敏 + 图 diff 7a2215089（HTML 导出前字段级 [redacted:*] pass；GraphRevision 结构化 diff 五分类 added/removed/changed/moved/rerouted，IPC omega:histosDiffGraphs）；B8 定时 Flow + 预授权触发 6ecb3c163（interval/daily 调度存 `.ravel/flow-schedules.json`，60s 调度器走 validate→plan→execute 全链路，预授权 = 调度作用域 allow 规则（ruleSource schedule:<id>）+ maxRuns 上限自动停用，每次触发 = flow_trigger 事实 started/skipped_busy/error）。桌面 350 测试绿、agent session 231 测试绿，npm run check 绿。**包 B 全部完成。**本文冻结接入契约；包 A 已完成验收，包 B 按 §5 顺序推进。R0–R5 验收仍认 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。产品不变量仍认 [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)；冲突时以核心设计为准，但核心设计 §1「记忆」行以本文勘误为准。
+更新日期：2026-08-29
+基线：`e26d270a6`（`main`）
 
-没有备选架构。不换壳、不换 JSONL、不换 Pi 运行时、不新增第二套审批库、本周期不新增 artifact kind。
+本文是当前唯一的项目状态入口。状态依据当前源码、桌面测试和仓库质量门禁；历史计划、竞品报告和旧测试数字不覆盖本文。未经过真实环境验证的能力不标记为生产完成。
 
----
+## 1. 产品边界
 
-## 0. 一句话
-
-Ravel 先是一个不依赖画布也能干活的编码 Agent。Histos 是同一套事实之上的记忆、图和受控编排层：会话自动入库，资源由用户触发，跨工作区只搬运已经 freeze 的 ContextSet。
+Ravel 是本地优先的 Electron 编码 Agent 工作台；Pi JSONL、Git 工作区以及 skill/plugin 文件是事实权威。Histos 是同一事实之上的可删索引、内容寻址工件和受控投影，不是第二套 transcript、审批库或 Agent runtime。
 
 ```text
-编码热路径（无 Histos 也必须通）
-  prompt → 工具 → 审批事实 → JSONL → Git / PTY / MCP
-                    │
-                    ▼ 只消费，不阻断
-Histos（记忆 / 图 / 剖面）
-  SourceSet + Lens + 预算
-    → GraphRevision / ContextSet / FlowRevision / ViewState
-    → 建议草稿 → 人审 freeze → context_attached
-    → Convert → Validate → Approval → Pi
+Renderer（无原生权限）
+  → Main（窗口、IPC、路径安全、Git、凭据路由）
+    → Agent utilityProcess（Pi session 与事实写入）
+    → Histos utilityProcess（node:sqlite、索引、工件、图/Flow）
+    → PTY utilityProcess（node-pty）
 ```
 
-杀掉 Histos utilityProcess 时：读、改、跑、审批、commit 仍可用；画布、检索、Convert to Flow 进入诊断。不另做一套记忆产品。
+必须保持：`contextIsolation`、无 `nodeIntegration`、CSP、IPC allowlist、路径 containment、审批 fail-closed、`session-facts.js` 单一事实写者。SQLite 可以删除并从事实和 durable artifacts 重建；画布不是权威。
 
----
+## 2. 当前已实现能力
 
-## 1. 冻结决策
+### 2.1 Agent 与桌面
 
-| 决策 | 选择 |
+- Pi JSONL 会话、消息、树、fork/clone/navigate、压缩和恢复。
+- Agent worker 生命周期、代际隔离、事件 replay、PTY 隔离和 bounded DTO。
+- 四档权限、Project Trust、持久 per-tool allow/prompt/deny 规则；规则不能突破安全底线。
+- Git snapshot、stage/unstage、hunk 校验、commit、worktree、checkpoint（当前 PortableGit 环境仍有失败测试，见 §5）。
+- 本地 skill/plugin 资源中心；安装、编辑、启停和 frontmatter 修改均受授权根与原子写入约束。
+- MCP stdio、streamable HTTP、OAuth callback 和 safeStorage vault；在线资源 registry 采用暂存、SHA 展示和人工安装。
+- Plan 文件与 `plan_exit` 人审、Goal round-cap continuation、只读 task/subagent（同 worker、共享模型运行时，最大深度 2，最长 10 分钟）。
+
+### 2.2 Histos 数据与投影
+
+- `FactAddress`、12 类事实来源、revision DAG、Evidence M:N、可删 `index.sqlite`、SHA-256 GraphRevision / FlowRevision / ContextSet / ViewState 工件。
+- 结构图投影、网页资源抓取与图投影、资源蒸馏接口、同工作区建议 ContextSet、跨工作区仅按已 freeze ContextSet SHA 导入。
+- 语义凝练成本/节点/字符上限和 `semantic_provider_unavailable` fail-closed；Histos worker 的 provider relay 通过 Main 转发到 Agent worker。
+- GraphRevision 结构化 diff：`added`、`removed`、`changed`、`moved`、`rerouted`。
+- Convert → Validate → 持久审批事实 → Pi `session.prompt`；语义图本身无 Run 入口。
+- Agent capability/spec 图、agent-loop 执行桥、workflow `flow-engine` 执行路径、DAG 波次、并发上限、超时、取消、memoKey 计算和仅复用已成功结果的内存接口。
+- eval_result 规范化、SHA 地址、GraphRevision 投影与持久化；token、耗时、估算成本字段保持显式缺失语义。
+- 定时 Flow 与预授权触发：每次触发记录 `flow_trigger`，按 scope、maxRuns 和 busy 状态 fail-closed。
+
+### 2.3 当前明确未完成或未宣称
+
+以下项目不能从“代码存在”推导为完整生产能力：
+
+- `skill-inject` executor 在 `histos-capability.js` 中明确 `wired: false`；只读 dry-run/规划能力不等于 skill 注入生产接入。
+- `orchestrator` executor 明确 `wired: false`；DAG 规划、memoKey 和测试 fake runner 不等于 workflow orchestrator 已接入桌面生产路径。
+- memo 目前是 `runOrchestration` 的注入式 `memoStore`/`memoLookup`/`memoWrite` 接口；未形成 durable memo 产品或持久事实协议，不能声称 memo durable 完成。
+- 真实模型、OAuth provider、网络下载、远端 registry、Git remote/fetch、签名、公证和发布流水线未在本地门禁中验证。
+- 嵌套 Sub Flow 的完整交互 UX、超窗后的用户收缩引导、crashReporter 上传仍未完成。
+
+## 3. 关键文件落点
+
+| 区域 | 入口 |
 |---|---|
-| 文档职责 | 先冻结接入契约，再只排本周期切片 |
-| Agent 完整性 | 无 Histos 也必须能完成编码任务；Plan 先是会话能力 |
-| Histos 角色 | 记忆 / 图 / 受控编排，不是执行前提 |
-| 入库边界 | 每个用户发起的持久动作产生 fact 或工件；时间线、画布、遥测是可丢弃投影 |
-| 会话 | 强制结构透镜；语义透镜按预算批量 |
-| 资源 / skill / 插件 | 资源中心由用户触发；产出 GraphRevision + 可选 ContextSet 草稿；默认不执行 |
-| 图形态 | 同一工件家族 + 处理剖面，不新开数据库 |
-| 工件种类 | 本周期不新增 kind。计划 = 带剖面的 GraphRevision |
-| 同工作区记忆 | durable 工件可检索；开会话最多给建议性 ContextSet 草稿；人审 freeze 才 `context_attached` |
-| 跨工作区记忆 | 源工作区先 freeze ContextSet；当前会话再过一遍预算；禁止静默注入原文 |
-| 语义端口 | 本周期接通生产 `semanticProvider`；默认用工作区对话模型；以后可拆 |
-| 模式 | 冻结 `ModeProfile`；本周期只交货 Plan；Goal 等占稳定 id，未接线时按无 Histos 会话模式跑 |
-| 本周期包 | 包 A（见 §4）。包 B（补齐周期，2026-08-28 用户决策）：竞品普遍具备的功能全部补齐——每工具 override、task/子代理、Goal 持久目标、MCP OAuth 闭环、在线 skill registry、计划文件+人审退出（A2）等；此前「推迟」读法以包 B 为准 |
+| Agent 运行时 | `apps/ravel-desktop/electron/worker.mjs` |
+| 事实单写者 | `apps/ravel-desktop/electron/session-facts.js` |
+| Histos 主进程桥 | `apps/ravel-desktop/electron/histos-host.js` |
+| Histos worker/引擎 | `apps/ravel-desktop/electron/histos-worker.mjs` / `histos-engine.js` |
+| capability 规划 | `apps/ravel-desktop/electron/histos-agent-spec.js` / `histos-capability.js` |
+| Agent loop 执行桥 | `apps/ravel-desktop/electron/histos-agent-loop-executor.js` |
+| orchestration 纯执行器 | `apps/ravel-desktop/electron/histos-agent-orchestrator.js` |
+| eval 规范化与图投影 | `apps/ravel-desktop/electron/histos-eval.js` |
+| Web source 适配器 | `apps/ravel-desktop/electron/histos-web-source.js` |
+| Flow 校验 | `apps/ravel-desktop/electron/flow-validation.js` |
+| 主进程 IPC 注册 | `apps/ravel-desktop/electron/main.js`、`ipc-registry.js`、`ipc-schemas.js` |
+| Renderer 类型与桥 | `apps/ravel-desktop/src/renderer/types/dto.ts`、`src/renderer/ipc/client.ts` |
 
-勘误：核心设计「先不设计跨项目记忆」不再读成「Histos 不做记忆」。正确读法是：**不另做记忆产品；记忆就是 Histos。** 同工作区默认可检索、可建议。跨工作区不是禁区，但只能显式搬运已 freeze 的 ContextSet，禁止把外库原文灌进当前 prompt。
+持久数据位于 Electron `userData/ravel/histos/<workspaceId>/`：`index.sqlite` 是可删索引，`artifacts/<sha256>.json` 是内容寻址工件。不要把 `.workbuddy` 项目数据目录与运行时 userData 混淆。
 
----
+## 4. 验证快照
 
-## 2. 两条回路，不得焊死
+### 已通过
 
-### 2.1 编码 Agent 回路（热路径）
+- `npm run --workspace=@ravel/desktop typecheck`：通过。
+- `npm run --workspace=@ravel/desktop typecheck:renderer`：通过。
+- Histos/Agent/eval/web/IPC 相关测试：已纳入桌面测试套件并通过。
+- 根 `npm run check`：当前唯一警告为 `apps/ravel-desktop/electron/histos-web-source.js:199` 的未使用局部变量 `workspaceId`，因此命令退出失败；这不是文档问题，应由代码审查任务处理。
 
-权威：Pi JSONL + Git 工作区 + skill / 插件 / `mcp.json` 文件。桌面唯一事实写者仍是 `session-facts.js`。
+### 当前失败
 
-必须在无 Histos 时可用：
+执行 `npm test --workspace=@ravel/desktop` 得到 **442 tests：439 pass、3 fail、0 cancelled**。3 个失败均在 `checkpoint-service.test.mjs`，错误为 PortableGit 的 `git update-ref` 返回成功但没有持久化 `refs/ravel/checkpoints/...`；代码已做事后 `rev-parse --verify` 并按 fail-closed 抛错。该问题不能记录为测试全绿。
 
-- 会话 CRUD、fork/clone/navigate、压缩、恢复
-- 七个编码工具 + MCP stdio 桥（走既有审批）
-- 四档权限、Project Trust、成对审批事实
-- Git 快照 / commit / worktree、shadow-git checkpoint
-- 隔离 PTY、资源中心本地安装
-- Plan 模式（只读探索 → 人审 → 执行）
+### 运行建议
 
-Histos 失败、未凝练、用户从不打开画布，都不得阻断这条回路。
-
-### 2.2 Histos 回路（派生）
-
-权威不在 sqlite，也不在画布。
-
-```text
-SQLite = rebuild(JSONL facts, Git workspace, skill/plugin files, durable artifacts)
+```bash
+npm run build:offline
+npm run --workspace=@ravel/desktop typecheck
+npm run --workspace=@ravel/desktop typecheck:renderer
+npm test --workspace=@ravel/desktop
+npm run check
+git diff --check
 ```
 
-Engine 失败进入诊断，不得回滚已追加的 JSONL。语义图不能执行。要跑必须 Convert → Validate → Approval → Pi。
+需要真实 provider、网络、签名或打包时，必须显式注明外部环境，并单独记录结果；离线测试不得伪造成功。
 
----
+## 5. 下一步
 
-## 3. 接入契约
+1. 修复并复验当前 PortableGit checkpoint 持久化失败；保持事后验证和 fail-closed。
+2. 清除 `histos-web-source.js:199` 未使用变量，使根质量门禁恢复绿。
+3. 为 capability / orchestration 决定实际生产接入边界；在接线前继续明确 `skill-inject`、`orchestrator` 和 durable memo 未完成。
+4. 补真实 provider、嵌套 Sub Flow、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
+5. 维持文档单一入口；更新时同步 HEAD、测试计数和失败原因，删除过时快照而不是复制旧路线图。
 
-凡是用户能指出「当时发生了什么」的持久对象，必须能回到 FactAddress。凡是纯展示，必须能删掉重建。
+## 6. 不变量与禁止事项
 
-### 3.1 进不进 Histos
-
-| 对象 | 进事实层 | 进 Histos | 触发 |
-|---|---|---|---|
-| 用户 prompt / 助手回复 / 工具调用 | 是（JSONL） | 是 | 自动；每个 `operation_finished` 增量结构透镜 |
-| 审批、压缩、导航、checkpoint | 是 | 结构索引引用已有 fact | 自动；不各自重跑 LLM |
-| 文件变更 | Git 为权威 | 是，`sourceType=file` | 随会话操作；checkpoint 锚定 Git SHA |
-| skill / 插件 / prompt 资源 | 文件 + content hash | 是 | **用户在资源中心触发** |
-| MCP 配置 | `mcp.json` 即事实 | 是，`sourceType=mcp_config` | 配置变更可索引；工具调用仍走审批事实 |
-| 会话遥测 / PTY 帧 / 布局宽度 | 否 | 否 | 投影或 UI 态。用量面板可读 Pi usage，不写 Histos |
-| Activity 清除签名 | 否 | 否 | localStorage |
-
-禁止：
-
-- 把 sqlite 当原文
-- 把画布手势直接当执行
-- 无用户动作把 A 工作区内容送进 B 工作区 prompt
-- 语义失败时写没有 evidence 的假节点
-- 为 Plan/Goal/记忆再开第二套存储
-
-本周期不扩展 `FACT_SOURCE_TYPES` 闭集。现有 12 类足够覆盖会话、文件、skill、MCP、checkpoint 和三类工件。缺的是剖面和触发，不是新 sourceType。
-
-### 3.2 处理剖面
-
-同一套 `GraphRevision` / `ContextSet` / `FlowRevision` / `ViewState`。差别在 SourceSet、Lens、预算、是否跑 LLM。
-
-| 剖面 id | 输入 | Lens | LLM | 产出 | 触发 |
-|---|---|---|---|---|---|
-| `session.structural` | 当前会话 facts | 结构，确定性 | 否 | GraphRevision（结构） | 每个 `operation_finished` |
-| `session.semantic` | 结构图 + 选定 evidence | 语义 | 是，按预算 | GraphRevision（语义） | 批量 job；失败 `semantic_provider_unavailable` |
-| `resource.distill` | 用户选中的 skill/插件原文 | 语义，证据指向文件 | 是，按预算 | GraphRevision + 可选 ContextSet 草稿 | 资源中心显式动作 |
-| `memory.suggest` | 本工作区 durable 工件 | 检索，不直接注入 | 可选 | 建议性 ContextSet 草稿 | 开会话或用户检索 |
-| `memory.freeze` | 草稿或选择集 | 预算裁剪 | 否（确定性） | ContextSet + `context_attached` | 人审确认 |
-| `memory.import` | 外工作区已 freeze 的 ContextSet hash | 再预算一次 | 否 | 当前会话 `context_attached` 或 `budget_exceeded` | 用户显式挂入 |
-| `plan.explore` | 只读探索会话 | 结构；语义按预算 | 可选 | 带 `plan` 剖面的 GraphRevision | Plan 模式结束且 Histos 可用 |
-| `flow.convert` | 任一可执行 GraphRevision | Validate | 否 | FlowRevision | 用户 Convert；无 Histos 则入口不可用，不阻断普通 prompt |
-
-检验：新内容只新增剖面，不新增索引库。剖面未接线时，对应入口要么不出现，要么按无 Histos 会话能力降级，禁止报假成功。
-
-### 3.3 ModeProfile
-
-模式是会话策略，不是第二运行时。本周期冻结契约，只交货 `plan`。
-
-```text
-ModeProfile {
-  id            稳定 id：plan | goal | ...
-  title         显示名
-  writeAccess   read-only | workspace-only | ask-before-command
-  tools         允许的工具名闭集；未知工具仍 untrusted
-  budget        轮次 / token 硬帽（可空，空则用会话默认）
-  completion    human-review | evidence | round-cap
-  histosProfile 可选：plan.explore | session.semantic | flow.convert
-}
-```
-
-行为：
-
-- 无 Histos：`plan` 仍必须能只读探索、出可审计划、人审后切到执行。计划正文落在会话 JSONL，不依赖画布。
-- 有 Histos：同一次 Plan 额外跑 `plan.explore`，产出带 evidence 的 GraphRevision。批准后可 Convert；不 Convert 也能按会话计划执行。
-- `goal` 本周期只占 id。调用未接线剖面时按普通会话跑，UI 标明未接入，不假装实据续跑已完成。
-- 以后新增模式 = 新增 profile 记录 + 剖面绑定，不新增 artifact kind，不做模式 IDE。
-
-### 3.4 记忆
-
-记忆不是独立子系统。可召回的只有 durable 工件和它们指向的 FactAddress。
-
-同工作区：
-
-1. 检索语料 = 本工作区 GraphRevision、用户处理过的 skill 图、已冻 ContextSet。
-2. 开会话最多生成**建议性 ContextSet 草稿**。
-3. 人审 freeze 后才写 `context_attached`。
-4. 无命中、检索失败、provider 不可用：如实显示，不静默注入。
-
-检索命中 ≠ 已进入上下文。进入上下文的唯一写操作是 freeze。
-
-### 3.5 跨工作区
-
-外工作区磁盘受 path containment 限制，禁止为了记忆去读对方仓库。
-
-跨库最小单位是源工作区已经 freeze、已经裁过的 ContextSet（或其 SHA-256）。流程：
-
-```text
-源工作区 freeze ContextSet
-  → 用户按 hash 挂入当前会话
-  → 当前会话再跑一遍 freeze 预算
-  → 通过则 context_attached
-  → 超窗则 budget_exceeded，不自动再扩、不回落到原文全量
-```
-
-当前 prompt 只增长「一个已预算的包」。解析失败的 FactAddress 标 `missing`，不得静默补全文。
-
-### 3.6 语义端口与失败
-
-- Provider：工作区当前默认对话模型。未配置则整个语义 job 失败。
-- 硬帽：沿用现有 Engine 上限（128 节点 / 32k 字符量级）。超帽不写工件。
-- 不可用：返回 `semantic_provider_unavailable`，结构透镜不受牵连。
-- 禁止用本地小模型顶上，禁止静默降级成乱写节点。
-- 本周期不做凝练 eval 产品化；会话用量继续走现有遥测面板。
-
-### 3.7 checkpoint
-
-`createCheckpoint` 在 `git update-ref` 之后必须 `rev-parse --verify`（或等价）确认 ref 存在。exit 0 但 ref 不在 = 失败，不得把假 checkpoint 写进 facts 当成功。这是热路径健康，不是 Histos 功能，但本周期 P0。
-
----
-
-## 4. 本周期切片（包 A）
-
-一次只推进下表顺序。前一项的验收不过，后一项不得假装完成。
-
-| 切片 | 内容 | 无 Histos | 有 Histos | 验收 |
-|---|---|---|---|---|
-| **N0** | checkpoint fail-closed 后置校验 | 必须 | 无关 | update-ref 成功但 ref 缺失时 API 失败；相关测试在当前 Git 下绿 |
-| **N1** | 生产 `semanticProvider` 接入 Histos worker | 会话不依赖它 | 语义剖面可跑 | 配置了默认模型则可凝练；未配置返回 `semantic_provider_unavailable`，无假节点 |
-| **N2** | `session.structural`：每个 `operation_finished` 增量更新 | JSONL 仍完整 | 画布结构图随操作增长 | Engine 挂了不阻断 prompt；重连后可从 facts 补投影 |
-| **N3** | `ModeProfile` 契约 + `plan` 会话模式 | Plan 可只读探索、人审、执行 | 可选 `plan.explore` 投影 | 无画布也能 Plan；Goal id 存在但标明未接线 |
-| **N4** | `resource.distill` | 资源仍可安装/编辑 | 用户触发后得到 GraphRevision + 可选草稿 | 默认不执行；Convert 仍走 Validate + 审批 |
-| **N5** | `memory.suggest` + `memory.freeze` | prompt 不自动塞旧图 | 建议草稿 → 人审 → `context_attached` | 无命中可见；未 freeze 的检索结果不进模型 |
-| **N6** | `memory.import` | 不读外库磁盘 | 只接受外库 ContextSet hash，再预算一次 | 超窗 `budget_exceeded`；missing evidence 可见 |
-| **N7** | MCP 基线补齐：http/sse/streamable 传输 + OAuth 登录（借鉴 opencode/kilocode，见 [`ravel-example-agent-borrowing.md`](./ravel-example-agent-borrowing.md) §3 C1/C2） | 凭据只进 safeStorage | 网络 MCP 工具仍以 `mcp__server__tool` 注册进 Pi 审批管线（untrusted 档）；needs_auth/failed 状态进资源中心 | 断连如实降级可见；工具不得绕过 approval；凭据不落 JSONL |
-| **N8** | skill/plugin 在线获取（registry index.json 拉取，借鉴 kilocode discovery + omp 命名空间纪律，见 borrowing §3 C3） | 不装不执行 | 下载进暂存区，展示来源 + SHA-256，人审后走现有 installLocalResource；来源注册为资源事实 | 不跑安装脚本；未审来源不得进入 loader 路径 |
-
-N2 可与 N1 并行准备，但语义剖面不得在 N1 验收前对用户宣称可用。N3 不得做成画布专用假面板。N7/N8 是 2026-08-28 用户范围修正后的基线补齐项：MCP、skills、plugin 是完整 Agent 的普遍能力，此前的「按设计排除」已勘误为「补，但执行权威与审批管线不变」。
-
----
-
-## 5. 补齐周期（包 B，2026-08-28 用户决策升级）
-
-原「明确推迟」清单经用户决策升级为执行项：竞品普遍具备的功能 Ravel 必须有。顺序即优先级，一次推进一项，验收不过不进下一项。
-
-| 切片 | 内容 | 来源 | 验收 |
-|---|---|---|---|
-| **B1（=A2）** | 计划文件 + 人审退出：plan 模式产物是计划文件（`.ravel/plans/<sessionId>.md`，agent 只能写这个文件），plan_exit 是人审事件；批准后注入「计划已批准，执行」切回执行档 | kilocode plan-file/plan-exit、omp/prime plan-mode | 无画布也能出可审计划；批准有审批事实；未批准不得执行 |
-| **B2** | Goal 持久目标接线：持久目标跨 turn 续跑，token/轮次/时间预算计量，complete/pause/budget 退出 | prime persistent /goal | goal 模式实据续跑；预算耗尽如实停止；无 Histos 可用 |
-| **B3（=A1b）** | 每工具 `allow/prompt/deny` override + 档位热切换：规则持久库（user/project `.ravel`）+ 设置 UI + add/revoke IPC | opencode/kilocode permission rules | 规则重启后生效；safety floor 不可覆盖；规则命中是事实 |
-| **B4** | task/子代理：前台 task 工具、子代理继承权限 deny、结构化产出、深度上限 | omp task.*、prime rlm()、kilocode task | 子代理审批走同一 fail-closed 事实；权限只窄不宽 |
-| **B5** | MCP OAuth 登录闭环：needs_auth 状态、登录 UI 动作、callback、凭据入 vault | opencode oauth-callback、prime 登录门控 | 未登录如实显示 needs_auth；登录后可用；凭据不落明文 |
-| **B6** | 在线 skill registry：远端 index.json、并发下载、staging 原子刷新、SHA 展示、人审安装 | kilocode/opencode skill discovery | 不跑安装脚本；来源+SHA 可见；失败不伪装 |
-| **B7** | 会话导出/分享 + 图 diff：HTML 导出脱敏 pass、GraphRevision 结构化 diff | opencode export.ts | 导出可脱敏；diff 可解释 added/removed/changed |
-| **B8** | 定时 Flow + 无人值守预授权（最后做） | prime cron-jobs 记录形状 | 每次触发 = flow_trigger 事实；预授权工件引用 |
-
-仍维持不做：HTTP 多客户端服务面、第二权威存储、凝练 eval 产品化、crashReporter 上传（后两项单独立项）。本周期「不新增 artifact kind」继续有效；B8 触发器走事实不是新 kind。
-
----
-
-## 6. 验收口诀
-
-1. 停掉 Histos worker，仍能打开工作区、发 prompt、跑工具、审批、commit。
-2. 打开 Histos，最近一次会话操作在结构图上有对应节点，且节点能跳回 transcript。
-3. 未配置模型时语义凝练失败可见，sqlite 里没有无 evidence 的语义节点。
-4. 资源中心处理 skill 得到可寻址 GraphRevision；不点 Convert、不经过审批，就不能改仓库。
-5. 新会话可以出现记忆建议；不点 freeze，模型上下文里没有那份草稿。
-6. 跨工作区只能贴 ContextSet hash；贴外库路径或未 freeze 的 GraphRevision 必须拒绝。
-7. checkpoint 在当前 PortableGit 下不能再「exit 0 但 ref 不存在还报成功」。
-
----
+- 不把 SQLite、Graph、ContextSet 或 memo 当成 JSONL/Git/资源文件的替代权威。
+- 不允许语义图绕过 Convert → Validate → Approval → Pi。
+- 不允许 renderer 直接访问 fs、Git、凭据、SQLite、node-pty 或 Pi SDK。
+- 不允许未审来源进入 loader，不运行在线资源安装脚本。
+- 不允许把 relay、dry-run、fake runner、接口存在或测试通过写成 workflow 生产接入、skill-inject 已完成或 memo durable 已完成。
+- 不删除 `.workbuddy/artifacts/`、`.workbuddy/memory/`、源码、测试、锁文件和 package 必要文件。
 
 ## 7. 文档关系
 
-| 文档 | 本周期地位 |
-|---|---|
-| [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md) | 不变量仍有效；记忆行见本文勘误 |
-| [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md) | R0–R5 / 锁定栈档案，已完成 |
-| [`ravel-roadmap.md`](./ravel-roadmap.md) | 未完成工作索引；执行顺序改认本文 |
-| [`ravel-design-activity-session-reference-mcp.md`](./ravel-design-activity-session-reference-mcp.md) | S2–S4 已完成档案 |
-| [`ravel-release.md`](./ravel-release.md) | 发布策略，未改 |
-| [`.workbuddy/artifacts/histos-gap-analysis-2026-08-28.md`](../.workbuddy/artifacts/histos-gap-analysis-2026-08-28.md) | 竞品调研有效；路线以本文为准 |
-| [`.workbuddy/artifacts/agent-doc-evidence-2026-08-28.md`](../.workbuddy/artifacts/agent-doc-evidence-2026-08-28.md) | 竞品证据台账，不是实施计划 |
+- 不变量：[`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)。
+- R0–R5/H0/T1–T5 历史档案：[`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。
+- S2–S4 历史档案：[`ravel-design-activity-session-reference-mcp.md`](./ravel-design-activity-session-reference-mcp.md)。
+- 外部借鉴证据：[`ravel-example-agent-borrowing.md`](./ravel-example-agent-borrowing.md)。
+- 发布规范：[`ravel-release.md`](./ravel-release.md)。
+- 调研/审查原始证据：`../.workbuddy/artifacts/`，仅作证据，不作状态入口。

@@ -1,167 +1,66 @@
-# Ravel Desktop 实施状态与剩余路线图
+# Ravel Desktop 当前实现状态
 
-> 更新日期：2026-08-25
-> 当前分支：`main`
-> 最近提交：Ravel 仓库迁移与 P0/P1 发布准备
-> 当前验证：Electron syntax、Renderer TypeScript、Vite build、桌面测试、release gate、packaged launch smoke、userData 迁移真实启动验收。后续铬件与 Histos 落地顺序见仓库根 `docs/ravel-histos-refactor-plan.md`。
->
-> Ravel 保持 Electron Main → utilityProcess Worker → preload → React Renderer 架构；不迁移 Next.js/Tauri，不把 Pi CLI 交互直接复制成 slash command。
+更新日期：2026-08-29
+权威状态入口：[`../../../docs/ravel-histos-next-cycle.md`](../../../docs/ravel-histos-next-cycle.md)
 
-## 1. 产品与安全边界
+本文只说明桌面端落点和验证命令；完整产品不变量、Histos 契约与未完成边界以仓库根状态文档为准。代码优先于历史快照。
 
-- Pi JSONL / `SessionManager` 是 session、消息、tree、时间戳和分支的权威源。
-- Ravel 只持久化桌面设置、窗口状态、草稿、workspace allowlist、event cache 和必要 UI 缓存。
-- Renderer 不拥有 raw filesystem、Git、凭据或 Pi SDK 访问权限。
-- Session path lookup 只接受 Pi sessions root 下的 canonical regular JSONL；workspace reader 对 read/readPage 拒绝目录、symlink 和其它非 regular file。
-- 所有特权操作经过 Main sender 校验、路径安全层和受控 DTO。
-- 桌面能力优先使用侧栏、面板、Dialog、原生文件选择器、上下文菜单和系统通知。
-- Git Review 是事后审查，不冒充执行前权限系统。
-- 资源中心只接受本地安装；npm/git/http/ssh 联网安装明确拒绝。
-
-## 2. 已完成归档
-
-### 2.1 Workspace、路径和 Project Trust
-
-- `electron/path-security.js` 统一 realpath containment、symlink/junction 防护、`..`/绝对路径拒绝和父目录校验；permission profile 的 workspace-only 对已存在路径也使用 canonical containment。
-- workspace registry 使用 `workspaceId / realRoot / displayPath`，持久化授权 allowlist，自动 prune 无效路径。
-- Project Switcher 支持原生目录选择器、workspace 添加/切换/移除和切换后状态刷新。
-- Project Trust 支持 trust once / always / never，未信任项目资源 dormant。
-- Trust Center 支持集中查看所有工作区、批量设置信任决策和父目录继承提示。
-
-### 2.2 Session authority、历史列表和消息分页
-
-- Pi JSONL 是正常 session list/load/tree/transcript 的唯一权威源。
-- `electron/session-reader.js` 直接扫描 JSONL，不启动 live AgentSession；按授权 workspace 过滤。
-- session 列表支持 `{ items, total, nextOffset, treeIndex }` 分页、workspace/worktree 根目录分组、parent/child 关系和加载更多。
-- `omega:readSessionMessages` 支持历史消息按 `sessionId / offset / limit` 分页，并使用 `mtime:size` 缓存。
-- Chat MessageList 支持从磁盘加载更早消息并去重 prepend。
-- 当前实时消息仍由 Pi `SessionManager` 负责，Ravel 不维护第二份 transcript authority。
-
-### 2.3 Worker、事件和关闭生命周期
-
-- WorkerHost 状态：`starting / ready / stopping / dead / restarting`。
-- Worker RPC 绑定 generation；迟到 response/event 被丢弃，pending RPC 在 Worker 失效时统一 reject。
-- Prompt queue 绑定 generation，切换 session/workspace 时不会串 prompt。
-- Prompt identity 通过 `clientMessageId` 从 Composer 贯通到 Worker event meta；多个并发流不会伪造单一归属，optimistic bubble 按 pending identity 对账。
-- Runtime replacement 使用 `runtimeEpoch`，旧 queued prompt 和旧 renderer event 在新代际被拒绝；replacement 创建失败进入 dead 状态，不保留假 ready。
-- WorkerHost 对 postMessage 断链立即清理 pending RPC；Main event persistence 失败只进入诊断边界。
-- Worker 关闭顺序固定为 `abort → bounded flush → dispose → kill`。
-- 运行中关闭提供等待、停止并退出、取消；flush 超时提供继续等待/强制退出风险提示。
-- Worker ready 后先拉 authoritative snapshot，再按 session/run/generation/sequence 过滤事件。
-- event cache 按 session 持久化到 `userData/ravel/event-cache`，通过 per-session 异步写队列写入，并按 300 条 / 4 MiB 双重上限保留尾部 ring；支持删除竞态失效、内存为空时异步恢复和带 `runtimeEpoch` 的 `limit/nextAfter` replay 分页。
-- WorkerSlot pool 默认 cap=3、idle TTL=5 分钟，支持后台运行状态、空闲回收、同 workspace 空闲 slot 复用和 unref health check。
-
-### 2.4 Shared IPC 与安全协议
-
-- `electron/ipc-registry.js` 是 invoke/push channel allowlist；Main handler、preload invoke 和 registry 有双向同步测试。
-- `electron/ipc-contracts.js` 与 `src/shared/ipc-contracts.ts` 共享 channel/error vocabulary 和 IpcResult envelope。
-- `electron/worker-protocol.js` 校验 Worker init/request/response/event envelope。
-- 仍保留历史 handler 的兼容性参数形状；完整 JSON Schema 迁移属于后续质量增强，不影响当前边界。
-
-### 2.5 桌面工作台、Git 和 FileViewer
-
-- Session Sidebar：搜索、workspace/worktree 分组、running/unread/failed/compacting、父子 session、Clone、重命名、删除和加载更多。
-- Session Tree：上下文预览、确认后 rewind、fork/clone、busy 防护。
-- Worktree Manager：列表、原生目录选择器创建、dirty 删除确认。
-- Git Review：snapshot token、stage/unstage、hunk 校验、commit、reject 和 stale snapshot 防护。
-- FileViewer：源码/Markdown、受控 DOCX 纯文本预览、行号、选区引用 `@file:start-end`、Reveal in Folder、多标签、图片/音频/PDF 受限预览、大文件按行分页、diff 视图、Mermaid/LaTeX 安全源码预览、Main `fs.watch` 实时刷新、二进制/DOCX 默认应用打开和 workspace 文件导入；阶段 4 增加文件分页 stale request guard。
-- Workbench：阶段 5 增加 Focus Mode、左栏折叠、窄窗口右栏 overlay/rail、Header overflow menu、840px 消息阅读列和 Iris/蓝紫 accent token；普通状态保持中性表面，Iris 只表达焦点、运行和主要动作。
-- Mermaid/LaTeX 当前只做源码安全预览，不执行 HTML、脚本或任意外部内容。
-
-### 2.6 配置、生态和 Extension UI
-
-- Model Center 第一轮：provider/model 列表、API key 添加/删除/测试选择；Electron `safeStorage` 优先，Main 在 Worker 创建/重启时恢复 vault 凭据，Renderer 不接触明文凭据。
-- Skills/Plugins Center：列表、搜索、本地安装/移除、启用/禁用、skill model invocation、资源 reload；联网安装拒绝。安装、移除和 Skill frontmatter 修改共享 authorized-root 校验；Skill 写入要求 regular file 并采用同目录临时文件原子替换。
-- Extension UI bridge：
-  - Dialog：`select`、`confirm`、`input`、`editor`
-  - Snackbar：`notify`
-  - Header/status：`setStatus`
-  - Chat surface：`setWidget`
-  - title/composer：`setTitle`、`setEditorText`、`pasteToEditor`
-  - 支持 session/run/generation、超时、取消和 Worker 重启清理
-- Permission profiles：Trusted、Workspace-only、Read-only、Ask before command；Pi tool-call 执行前 guard 阻止写入、越界路径和未确认命令。
-
-### 2.7 Native integration、Updater 和验证
-
-- single-instance lock、second-instance focus 与 deep link 转发。
-- workspace/session 启动参数；`ravel://` 深链在打包产物中注册 OS 协议（开发模式需 `RAVEL_REGISTER_PROTOCOL=1` 显式开启，自动化 smoke `RAVEL_AUTOTEST=1` 一律跳过），并兼容旧 `omega://` 入口；macOS 走 `open-url`。
-- window bounds 恢复、多显示器越界修正。
-- renderer crash/unresponsive 处理、原生通知、open/save/reveal 基础能力。
-- Updater core：semver、HTTPS-only manifest、受控文件名、SHA-256/size 校验、临时文件、原子 rename、单飞下载和失败清理。
-- Windows electron-builder 目标为 unpacked `dir`，不使用 NSIS。
-- `scripts/release-gate.mjs` 检查版本、dir target 和 manifest；`scripts/electron-smoke.mjs` 现在会启动真实 unpacked executable，使用隔离 `--user-data-dir=<unique>`，要求 `[main] agent worker ready`、DOM probe、autotest prompt/record、资源存在和退出码 0，并在超时/失败时收集 stdout/stderr；仅对退出码 0 且完全无输出的 single-instance 锁竞态自动重试一次。
-- `scripts/migration-smoke.mjs` 用合成 `omega/` 旧目录跑两次真实打包启动：验证迁移创建 `userData/ravel`、文件字节一致（credentials 走 sha256 对比）、旧目录不被改动、二次启动不重复迁移。
-- 当前本地 packaged smoke 已通过：Worker 握手、DOM probe、autotest record 和干净退出码均验证；migration smoke 全部检查通过；真实 provider、签名和网络下载仍不属于普通门禁。
-
-## 3. 当前验证门禁
+## 1. 当前架构
 
 ```text
-Electron Node syntax check: 通过
-Renderer TypeScript check: 通过
-Vite renderer build: 通过
-Offline SDK event projection smoke: 通过
-Desktop/security tests: 157/157 通过
-Release gate: 通过（离线配置门禁）
-Packaged launch smoke: 真实启动、Worker 握手、DOM probe、autotest record 和退出码均通过
-Migration smoke: 合成旧目录两次真实启动验收全部通过
-git diff --check: 通过
+Renderer（React；无 fs/Git/凭据/SQLite/Node 原生权限）
+  → preload 窄桥 + IPC allowlist
+  → Main（窗口、路径安全、Git、凭据和进程路由）
+    → Agent utilityProcess（Pi runtime、session JSONL、事实单写者）
+    → Histos utilityProcess（node:sqlite、索引、durable artifacts、图/Flow）
+    → PTY utilityProcess（node-pty）
 ```
 
-真实 provider smoke 只有显式设置以下环境变量才运行：
+安全基线：`contextIsolation`、无 `nodeIntegration`、CSP、sender 校验、路径 containment、Project Trust、permission profile 和审批成对事实。`apps/ravel-desktop/electron/session-facts.js` 是 durable facts 的唯一写者。
+
+## 2. 已验证的桌面能力
+
+- 会话列表/加载/分页、树导航、fork/clone、压缩恢复、事件 replay 和 worker generation 隔离。
+- 四档权限、Project Trust、持久 per-tool 规则、资源中心本地安装与安全编辑。
+- Git Review、snapshot/stage/commit、worktree、checkpoint 的 fail-closed 事后校验（checkpoint 在当前 PortableGit 上仍有失败测试）。
+- MCP stdio、streamable HTTP、OAuth callback、safeStorage vault；skill/plugin registry 下载采用 staging + SHA + 人审安装。
+- Plan 文件 + `plan_exit` 人审、Goal round-cap continuation、只读 task/subagent（深度/时限受限）。
+- Histos 图、ContextSet freeze/import/suggest、Flow Convert→Validate→Approval→Pi、结构化 Graph diff、Web source 和 eval_result 投影。
+- Histos worker 的 semantic provider relay：worker → Main → 就绪 Agent worker；模型/凭据缺失时返回 `semantic_provider_unavailable`。
+- Electron `app://` 加载、renderer typecheck、桌面 IPC/安全测试以及 packaged/migration smoke 入口。
+
+## 3. 不能宣称已完成的能力
+
+- `skill-inject` 在 `electron/histos-capability.js` 中仍为 `wired: false`；接口和 dry-run 不等于生产接入。
+- `orchestrator` 仍为 `wired: false`；DAG 规划、memoKey 和 fake runner 测试不等于 workflow 生产编排。
+- memo 仅为 `runOrchestration` 的注入式 lookup/write 接口；没有 durable memo 产品或持久事实协议。
+- 真实 provider/OAuth/网络 registry/Git remote、签名、公证和发布流水线均未由本地离线门禁证明。
+- 嵌套 Sub Flow 交互、超窗收缩 UX、crashReporter 上传仍未完成。
+
+## 4. 当前验证结果
+
+从仓库根执行：
 
 ```bash
-RAVEL_LIVE_PROVIDER=1 npm run --workspace=@ravel/desktop sdk-check
+npm run --workspace=@ravel/desktop typecheck
+npm run --workspace=@ravel/desktop typecheck:renderer
+npm test --workspace=@ravel/desktop
+npm run check
+git diff --check
 ```
 
-已知非阻塞项：Renderer bundle 约 994 kB minified（302 kB gzip），可通过面板级动态导入继续拆包。
+本次快照：
 
-## 4. 剩余任务
+- `typecheck`：通过。
+- `typecheck:renderer`：通过。
+- 桌面测试：442 项，439 通过、3 失败；失败均为 `test/checkpoint-service.test.mjs`，PortableGit `git update-ref` 表面成功但 ref 未落盘，代码事后校验后正确 fail-closed。
+- 根 `npm run check`：因 `electron/histos-web-source.js:199` 的 `workspaceId` 未使用警告而失败；需代码任务修复，不能写成全绿。
 
-### 4.1 本地可继续完成
+外部环境依赖请单独记录，不要把 fake runner、relay、dry-run 或接口存在作为生产证据。
 
-优先级 P1：
+## 5. 维护要求
 
-- Worktree 元数据已增强：staged/unstaged/untracked 计数、HEAD short hash、最近提交信息和当前分支状态；按项目聚合会话和 remote/fetch 需要跨 worktree/网络边界。
-- FileViewer 内嵌 DOCX 富文本布局、上传进度仍可增强；当前已支持安全纯文本预览、系统默认应用打开、workspace 导入和冲突保护。
-- Model Center 已支持本地 custom provider 配置持久化与 Worker 重启恢复：id/name/baseUrl/API 类型/headers/model 定义/上下文窗口，并通过 Worker `registerProvider` 组合到离线 runtime；离线 latency 抽象明确区分 network_disabled/provider_unavailable/provider_timeout；真实 OAuth、在线 discovery、真实 provider latency 仍为外部依赖。
-- Skills/Plugins package 内部资源过滤编辑、安装进度展示。
-- `electron/ipc-schemas.js` 已覆盖 workspace/session/file/replay、Git stage/commit 和 custom provider 高风险入口；完整 JSON Schema 迁移到所有历史 handler 仍可继续推进。
-
-优先级 P2：
-
-- 语言设置已支持 zh-CN/en-US 偏好持久化（English 当前为实验占位，不伪造完整翻译）。
-- 可选关闭到托盘策略。
-- Renderer bundle 动态拆包和性能优化。
-- Permission profile 的 Docker/Gondolin/WSL sandbox backend。
-
-### 4.2 外部环境依赖
-
-以下内容不能在当前“不联网、不需要 NSIS”的本地环境中诚实标记为完成：
-
-- 真实 GitHub Release 检查/更新 UI。
-- 更新下载进度、重启安装和回滚恢复。
-- Windows Authenticode、macOS notarization。
-- 完整 Electron 黑盒 E2E 和自动化 unpacked launch smoke（本地已有一次手工启动验证）。
-- CI dependency audit、release manifest 发布流水线。
-- OAuth provider、真实在线 model discovery 和 live provider smoke。
-- Git remote/fetch。
-
-Updater 的本地安全核心和 release gate 已完成，但不会自动联网或安装更新。
-
-## 5. 后续实施顺序
-
-1. Worktree 细粒度审查状态；按 canonical workspaceId/realRoot 分组已完成，跨 worktree 聚合与 remote/fetch 等待明确环境边界。
-2. FileViewer 内嵌 DOCX 富文本布局、上传进度和更完整语言资源。
-3. Model Center 离线 catalog/缓存模型和更完整 fake latency UI；真实 OAuth/discovery/latency 等待外部环境。
-4. 完整 IPC JSON Schema 迁移和性能拆包。
-5. 只有在允许联网、签名和 CI 发布环境后，才实施真实 updater UI、OAuth、remote/fetch 和完整 release E2E。
-
-## 6. 明确不做
-
-- 不迁移 Next.js。
-- 不迁移 Tauri。
-- 不把三个 example 项目直接拼接。
-- 不把桌面内置功能全部实现成 `/xxxx`。
-- 不把 Git 事后 diff 审查冒充执行前权限系统。
-- 不把真实 provider/network smoke 的失败伪装成成功。
-- 不在离线约束下伪造联网安装、OAuth、remote fetch、签名或发布成功。
+- 修改 Histos/IPC/权限实现时，同步更新根状态文档的文件落点与验证快照。
+- 不复活已删除的 Scout/Workflow 假面板，不新增第二套事实/审批/记忆存储。
+- 不删除 `.workbuddy` 项目数据、源码、测试、package-lock 或必要构建文件。
+- 详细架构历史见 [`system_design.md`](./system_design.md)；该文包含已过时 V1 章节，冲突时以当前代码和根状态文档为准。

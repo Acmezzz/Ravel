@@ -19,6 +19,8 @@ export const HISTOS_METHODS = Object.freeze([
   "applyWebResources",
   "applyAgentActivity",
   "applyEvalResults",
+  "suggestContext",
+  "importContext",
   "listCapabilities",
   "invokeNode",
   "distillResource",
