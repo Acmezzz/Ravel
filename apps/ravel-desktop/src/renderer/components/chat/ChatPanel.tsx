@@ -1,14 +1,15 @@
 import * as React from "react";
-import { useAppStore } from "../../store/useAppStore";
-import { MessageList } from "./MessageList";
-import { Composer } from "./Composer";
-import { EmptyState } from "./EmptyState";
-import { ExtensionSurface } from "../layout/ExtensionSurface";
+import { ChatTranscript } from "../../surfaces/chat/ChatTranscript";
+import { ChatComposer } from "../../surfaces/chat/ChatComposer";
 
+/**
+ * Chat 中央面板（消息流 + Composer）。任务五起作为 ChatSurface 的中央流核心复用，
+ * 内部组合 ChatTranscript（MessageList/EmptyState/ExtensionSurface）与 ChatComposer
+ * （Composer）。DOM 外壳与类名保持不变，行为不回归。
+ */
 export function ChatPanel(): React.ReactElement {
-  const messageCount = useAppStore((state) => state.messages.length);
   return <div className="omega-chat-panel">
-    <div className="omega-chat-content"><ExtensionSurface /><div className="omega-chat-messages">{messageCount === 0 ? <EmptyState /> : <MessageList />}</div></div>
-    <Composer />
+    <ChatTranscript />
+    <ChatComposer />
   </div>;
 }

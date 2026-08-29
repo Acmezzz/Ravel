@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useAppStore } from "../store/useAppStore";
-import { ChatPanel } from "../components/chat/ChatPanel";
+import { ChatSurface } from "../surfaces/chat/ChatSurface";
 
 function IdeSurfacePlaceholder(): React.ReactElement {
   return (
@@ -27,12 +27,12 @@ function HistosSurfacePlaceholder(): React.ReactElement {
 /**
  * Sole source of truth for the center-column Surface. It decides purely from
  * `surfaceMode` (product surface) — never from `agent.mode` or `layout.rightTab`.
- * Chat Surface keeps the existing ChatPanel for now (its own housing is task 5);
- * IDE / Histos are marked placeholders until tasks 6/7.
+ * Chat Surface is task 5 (ChatSurface: session sidebar + transcript + composer +
+ * context drawer, reusing ChatPanel); IDE / Histos are placeholders until 6/7.
  */
 export function SurfaceRouter(): React.ReactElement {
   const surfaceMode = useAppStore((s) => s.surfaceMode);
   if (surfaceMode === "ide") return <IdeSurfacePlaceholder />;
   if (surfaceMode === "histos") return <HistosSurfacePlaceholder />;
-  return <ChatPanel />;
+  return <ChatSurface />;
 }
