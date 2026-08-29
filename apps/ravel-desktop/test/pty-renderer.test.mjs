@@ -17,7 +17,11 @@ test("terminal renderer surface owns an xterm-backed PTY lifecycle", async () =>
   assert.match(panel, /onPtyData/);
   assert.match(panel, /onPtyExit/);
   assert.match(panel, /ResizeObserver/);
-  assert.match(panel, /crypto\.randomUUID/);
+  // Session ids must not come from `crypto.randomUUID`: the packaged renderer is
+  // served over `app://`, which is not a secure context, so that API is undefined
+  // there and threw inside the effect (white-screen on IDE). Use the safe helper.
+  assert.match(panel, /createId\("terminal"\)/);
+  assert.doesNotMatch(panel, /crypto\.randomUUID/);
   assert.match(panel, /agent\?\.cwd/);
   assert.doesNotMatch(panel, /useAppStore\.setState|set\(.*output|terminalOutput/);
   assert.match(right, /value="terminal"/);

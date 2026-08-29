@@ -27,7 +27,6 @@ import { Compartment, EditorState, RangeSetBuilder, StateField } from "@codemirr
 import { Button, IconButton } from "../../ui/Button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
-import { styleCspNonce } from "../../theme/tokens";
 import type { IdeFileSlot } from "./useIdeSurface";
 
 /* ------------------------------------------------------------- tokenizer */
@@ -136,9 +135,8 @@ function EditorSurface({
           highlightActiveLineGutter(),
           highlightField,
           EDITOR_THEME,
-          // CodeMirror mounts its base theme as a runtime <style>; hand it the
-          // CSP nonce so `style-src 'self' app:` does not block it.
-          EditorView.cspNonce.of(styleCspNonce),
+          // CodeMirror mounts its base theme as a runtime <style>; index.html
+          // allows that through `style-src ... 'unsafe-inline'`.
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
           wrapRef.current.of(wrap ? [EditorView.lineWrapping] : []),

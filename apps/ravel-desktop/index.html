@@ -6,14 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!--
     CSP (system_design.md §1.1 / 安全红线):
-      - default-src 'self'; script-src 'self'  → no inline scripts, no eval.
-      - style-src 'self' + a build-time constant nonce → renderer styles are
-        build-time external CSS; the nonce exists only so CodeMirror's runtime
-        StyleModule can mount its base theme. Still NO 'unsafe-inline' /
-        'unsafe-eval'. Keep this value in sync with `styleCspNonce` in
-        src/renderer/theme/tokens.ts (guarded by electron-security.test.mjs).
+      - default-src 'self'; script-src 'self' app:  → no inline scripts, no eval.
+        This is the line that actually matters and it stays strict.
+      - style-src allows 'unsafe-inline' on purpose: xterm (terminal) and React
+        Flow (Histos graph) inject their layout styles at runtime as inline
+        `<style>`/`style=` with no way to carry a nonce, so a nonce-only policy
+        silently broke both surfaces in the packaged app. Inline styles cannot
+        execute script; `object-src`/`base-uri`/`form-action` stay locked down.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; script-src 'self' app:; style-src 'self' app: 'nonce-ravel-static-2026'; object-src 'none'; base-uri 'none'; form-action 'self' app:" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; script-src 'self' app:; style-src 'self' app: 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'self' app:" />
   <title>Ravel Desktop</title>
   <link rel="stylesheet" href="./dist/assets/style.css" />
 </head>

@@ -11,15 +11,12 @@ export const motion = {
 } as const;
 
 /**
- * Build-time constant CSP nonce for runtime-injected styles.
+ * Runtime style injection.
  *
- * CodeMirror mounts its base theme through a `<style>` element, which
- * `style-src 'self' app:` alone would block. Rather than relaxing to
- * `'unsafe-inline'`, `index.html` carries this nonce and every CodeMirror
- * surface passes it through `EditorView.cspNonce`. The two values must stay in
- * sync — `electron-security.test.mjs` guards the CSP side.
+ * CodeMirror, xterm and React Flow all mount styles at runtime without a nonce,
+ * so `index.html` keeps `style-src ... 'unsafe-inline'` while `script-src` stays
+ * strict. See the CSP comment there for the reasoning.
  */
-export const styleCspNonce = "ravel-static-2026";
 
 export type ThemeMode = "light" | "dark" | "system";
 

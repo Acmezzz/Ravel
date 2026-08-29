@@ -3,6 +3,7 @@ import { ShellHeader } from "./ShellHeader";
 import { ShellRail } from "./ShellRail";
 import { ShellLayout } from "./ShellLayout";
 import { ShellOverlayHost } from "./ShellOverlayHost";
+import { SurfaceBoundary } from "./SurfaceBoundary";
 import { SurfaceRouter } from "../app/SurfaceRouter";
 import { useAppStore } from "../store/useAppStore";
 
@@ -25,13 +26,16 @@ import { useAppStore } from "../store/useAppStore";
  */
 export function RavelShell(): React.ReactElement {
   const focusMode = useAppStore((s) => s.layout.focusMode);
+  const surfaceMode = useAppStore((s) => s.surfaceMode);
   return (
     <main className="ravel-shell" aria-label="Ravel 工作区" data-shell-root>
       <ShellHeader />
       <div className="ravel-shell-body" data-focus-mode={focusMode ? "true" : "false"}>
         {focusMode ? null : <ShellRail />}
         <ShellLayout>
-          <SurfaceRouter />
+          <SurfaceBoundary resetKey={surfaceMode}>
+            <SurfaceRouter />
+          </SurfaceBoundary>
         </ShellLayout>
       </div>
       <ShellOverlayHost />

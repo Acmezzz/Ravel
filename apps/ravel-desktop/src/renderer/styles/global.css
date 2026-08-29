@@ -2768,7 +2768,18 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .ravel-ide-bottom-title svg { color: var(--ravel-accent); }
 .ravel-ide-bottom-caption { color: var(--ravel-text-dim); font-size: 11px; font-weight: 400; }
 .ravel-ide-bottom-actions { display: inline-flex; align-items: center; }
-.ravel-ide-bottom-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px 10px; }
+/* The body must be a flex column with a definite height: xterm sizes itself from
+ * its host, so an auto-height block lets fit() and content inflate each other and
+ * the terminal grows to thousands of pixels. Scrolling belongs to xterm itself. */
+.ravel-ide-bottom-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px 10px;
+}
+.ravel-ide-bottom-body > .omega-terminal-panel { flex: 1 1 auto; min-height: 0; }
 
 @media (max-width: 1240px) {
   .ravel-ide-chat { width: 300px; }
@@ -2821,17 +2832,6 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .ravel-histos-inspector button { flex: 0 0 auto; white-space: nowrap; }
 .ravel-histos-import-bar input { min-width: 0; flex: 1 1 auto; }
 .ravel-histos-toolbar-row { flex-wrap: wrap; }
-@media (max-width: 1120px) {
-  .ravel-histos-main { grid-template-columns: minmax(0, 1fr) 280px; }
-  .ravel-histos-import-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .ravel-histos-import-bar > .omega-graph-toolbar-actions:last-child { grid-column: 2 / -1; }
-}
-@media (max-width: 760px) {
-  .ravel-histos-main { display: flex; flex-direction: column; }
-  .ravel-histos-inspector { max-height: 42%; border-left: 0; border-top: 1px solid var(--ravel-border); }
-  .ravel-histos-import-bar { display: flex; flex-wrap: wrap; }
-  .ravel-histos-import-bar > .omega-graph-toolbar-actions { flex: 1 1 100%; }
-}
 .ravel-histos-toolbar {
   flex: 0 0 auto;
   display: flex;
@@ -2869,8 +2869,8 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
   background: var(--ravel-bg-panel);
 }
 .ravel-histos-drawer {
@@ -2939,3 +2939,50 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .ravel-histos-inspector-detail strong { color: var(--ravel-text); font-size: 0.8125rem; }
 .ravel-histos-edges { display: flex; flex-direction: column; gap: 4px; }
 .ravel-histos-suggest { display: flex; flex-direction: column; gap: 6px; }
+
+/* Responsive overrides live *after* the base rules above — earlier they were
+ * emitted before `.ravel-histos-main`, so the base declaration always won and
+ * the narrow-window behaviour silently never applied. */
+@media (max-width: 1120px) {
+  .ravel-histos-main { grid-template-columns: minmax(0, 1fr) 280px; }
+  .ravel-histos-import-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .ravel-histos-import-bar > .omega-graph-toolbar-actions:last-child { grid-column: 2 / -1; }
+}
+@media (max-width: 760px) {
+  .ravel-histos-main { display: flex; flex-direction: column; }
+  .ravel-histos-inspector { max-height: 42%; border-left: 0; border-top: 1px solid var(--ravel-border); }
+  .ravel-histos-import-bar { display: flex; flex-wrap: wrap; }
+  .ravel-histos-import-bar > .omega-graph-toolbar-actions { flex: 1 1 100%; }
+}
+
+/* --- Surface crash card (see shell/SurfaceBoundary) --- */
+.ravel-surface-error {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--ravel-bg);
+}
+.ravel-surface-error-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--ravel-radius-pill);
+  border: 1px solid var(--ravel-accent-line);
+  color: var(--ravel-accent);
+  font: 600 18px/1 var(--ravel-font-mono);
+}
+.ravel-surface-error-title { margin: 0; font-size: 13px; font-weight: 600; color: var(--ravel-text); }
+.ravel-surface-error-detail {
+  margin: 0;
+  max-width: 52ch;
+  font: 11.5px/1.5 var(--ravel-font-mono);
+  color: var(--ravel-text-dim);
+  overflow-wrap: anywhere;
+}

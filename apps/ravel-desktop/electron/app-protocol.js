@@ -86,6 +86,31 @@ export function rendererAssetRoot({ isPackaged, appPath, mainDir }) {
   return resolve(isPackaged ? appPath : join(mainDir, ".."));
 }
 
+/**
+ * Must be called before `app.whenReady()`.
+ *
+ * Without a privileged registration Chromium treats `app://bundle/…` as an
+ * opaque ("null") origin, so `new Worker("app://bundle/…/graph-layout.worker.js")`
+ * throws SecurityError and the Histos surface dies on mount. `standard` gives the
+ * scheme a real origin, `secure` makes it a secure context, and the fetch/stream
+ * flags let `net.fetch` serve the bundled assets.
+ */
+export const APP_SCHEME_PRIVILEGES = {
+  standard: true,
+  secure: true,
+  supportFetchAPI: true,
+  corsEnabled: true,
+  stream: true,
+};
+
+export function registerAppSchemePrivileges(protocolRef) {
+  if (!protocolRef || typeof protocolRef.registerSchemesAsPrivileged !== "function") {
+    throw new TypeError("protocol.registerSchemesAsPrivileged is required");
+  }
+  protocolRef.registerSchemesAsPrivileged([{ scheme: APP_PROTOCOL, privileges: APP_SCHEME_PRIVILEGES }]);
+  return APP_PROTOCOL;
+}
+
 export async function registerAppProtocol({ protocol, net, root }) {
   if (!protocol || typeof protocol.handle !== "function") throw new TypeError("protocol.handle is required");
   if (!net || typeof net.fetch !== "function") throw new TypeError("net.fetch is required");

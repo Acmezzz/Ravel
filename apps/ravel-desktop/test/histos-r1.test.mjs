@@ -23,9 +23,10 @@ test("R1 keeps the single-file IIFE, CSP, and compiler build contract", async ()
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
   assert.ok(csp, "CSP meta tag is present");
   assert.match(csp[1], /script-src 'self'/);
-  assert.match(csp[1], /style-src 'self' app: 'nonce-ravel-static-2026'/);
-  assert.doesNotMatch(csp[1], /unsafe-inline/);
+  // Scripts stay strict; styles allow runtime injection (xterm / React Flow).
+  assert.doesNotMatch(csp[1].match(/script-src([^;]*)/)[1], /unsafe-inline|unsafe-eval/);
   assert.doesNotMatch(csp[1], /unsafe-eval/);
+  assert.match(csp[1], /style-src 'self' app: 'unsafe-inline'/);
 });
 
 test("R1 headless primitives use static classes and preserve ModelPicker behavior", async () => {

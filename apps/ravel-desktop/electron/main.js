@@ -69,7 +69,7 @@ import {
   newOauthState,
   validateOAuthConfig,
 } from "./oauth-service.js";
-import { appRendererUrl, isAllowedAppUrl, registerAppProtocol, rendererAssetRoot } from "./app-protocol.js";
+import { appRendererUrl, isAllowedAppUrl, registerAppProtocol, registerAppSchemePrivileges, rendererAssetRoot } from "./app-protocol.js";
 import { WorkerHost } from "./worker-host.js";
 import { HistosHost } from "./histos-host.js";
 import { buildAgentRunRecord, createAgentLoopExecutor } from "./histos-agent-loop-executor.js";
@@ -3194,6 +3194,10 @@ function registerRavelProtocol() {
     process.stderr.write(`[main] ${DEEP_LINK_PROTOCOL}:// protocol registration failed: ${error instanceof Error ? error.message : String(error)}\n`);
   }
 }
+
+// The renderer is served from app://bundle; the scheme must be privileged before
+// `ready`, otherwise its origin stays opaque and Web Workers cannot be created.
+registerAppSchemePrivileges(protocol);
 
 app
   .whenReady()

@@ -88,7 +88,7 @@ test("Shell 三模式切换与 active session 保持", async () => {
   }
 });
 
-test("Shell 活动栏、Focus Mode 与缩放", async () => {
+test("Shell 活动栏、无专注模式与缩放", async () => {
   test.setTimeout(150_000);
   let h;
   try {
@@ -105,13 +105,9 @@ test("Shell 活动栏、Focus Mode 与缩放", async () => {
     await expect(filesNav).toHaveAttribute("data-active", "true");
     await expect(page.locator('[data-nav-key="chat"]')).toHaveAttribute("data-active", "false");
 
-    // Focus Mode：进入/退出（rail 随专注模式移除，工作台标记在 shell-body 上）。
-    const focusButton = page.getByRole("button", { name: /专注模式|进入专注模式/ });
-    await expect(focusButton).toBeVisible();
-    await focusButton.click();
-    await expect(page.locator('.ravel-shell-body[data-focus-mode="true"]')).toBeVisible();
-    await expect(page.locator(".ravel-rail")).toHaveCount(0);
-    await page.getByRole("button", { name: /退出专注模式/ }).click();
+    // 专注模式按产品决定从顶栏移除（模式切换已在顶部承担导航职责），
+    // 因此这里断言它不再出现，且活动栏常驻。
+    await expect(page.getByRole("button", { name: /专注模式/ })).toHaveCount(0);
     await expect(page.locator('.ravel-shell-body[data-focus-mode="false"]')).toBeVisible();
     await expect(page.locator(".ravel-rail")).toBeVisible();
 

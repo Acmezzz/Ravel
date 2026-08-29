@@ -239,22 +239,28 @@ test("IPC registry stays in sync with main handlers and preload invokes", async 
   }
 });
 
-test("index.html CSP allows only external styles plus the CodeMirror style nonce, no unsafe-inline / unsafe-eval", async () => {
+test("index.html CSP keeps scripts strict while allowing runtime style injection", async () => {
   const html = await read("../index.html");
-  const tokens = await read("../src/renderer/theme/tokens.ts");
   assert.match(html, /Content-Security-Policy/);
   // Scope the unsafe-* checks to the actual CSP directive, not the whole document
   // (the words legitimately appear inside a documentation comment).
   const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/);
   assert.ok(csp, "CSP meta tag is present");
   const cspContent = csp[1];
-  assert.match(cspContent, /style-src 'self' app: 'nonce-ravel-static-2026'/);
-  // The nonce is a build-time constant shared with CodeMirror's EditorView.cspNonce;
-  // a drift between the two silently re-breaks editor styling, so pin both sides.
-  assert.match(tokens, /styleCspNonce = "ravel-static-2026"/);
-  assert.match(cspContent, /script-src 'self'/);
-  assert.doesNotMatch(cspContent, /unsafe-inline/);
+
+  // The security-critical directives: no inline script, no eval, locked down
+  // object/base/form. This is what must never regress.
+  assert.match(cspContent, /script-src 'self' app:;/);
+  assert.match(cspContent, /object-src 'none'/);
+  assert.match(cspContent, /base-uri 'none'/);
+  const scriptSrc = cspContent.match(/script-src([^;]*)/)?.[1] ?? "";
+  assert.doesNotMatch(scriptSrc, /unsafe-inline|unsafe-eval/);
   assert.doesNotMatch(cspContent, /unsafe-eval/);
+
+  // style-src deliberately allows 'unsafe-inline': xterm and React Flow inject
+  // layout styles at runtime and cannot carry a nonce, which previously rendered
+  // the terminal and the Histos graph unusable in the packaged app.
+  assert.match(cspContent, /style-src 'self' app: 'unsafe-inline'/);
   assert.match(html, /\.\/dist\/assets\/index\.js/);
 });
 

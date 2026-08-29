@@ -5,6 +5,7 @@ import "@xterm/xterm/css/xterm.css";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/useAppStore";
 import { useT } from "../../lib/i18n";
+import { createId } from "../../lib/uid";
 
 /** A terminal surface backed by one isolated PTY session. Output stays in xterm, not Zustand. */
 export function TerminalPanel(): React.ReactElement {
@@ -19,7 +20,7 @@ export function TerminalPanel(): React.ReactElement {
     const host = hostRef.current;
     if (!host || !cwd) return;
 
-    const sessionId = `terminal-${crypto.randomUUID()}`;
+    const sessionId = createId("terminal");
     const terminal = new Terminal({
       convertEol: true,
       cursorBlink: true,
