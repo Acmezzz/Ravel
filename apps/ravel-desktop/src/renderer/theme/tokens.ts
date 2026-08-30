@@ -76,7 +76,7 @@ const cssPalette: Palette = {
 	bgElevated: "var(--ravel-bg-elevated)",
 	bgOverlay: "var(--ravel-bg-overlay)",
 	bgCode: "var(--ravel-bg-code)",
-	bgUserBubble: "var(--ravel-accent)",
+	bgUserBubble: "var(--ravel-bg-user-bubble)",
 	border: "var(--ravel-border)",
 	borderStrong: "var(--ravel-border-strong)",
 	text: "var(--ravel-text)",

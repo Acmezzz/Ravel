@@ -20,13 +20,42 @@ export function TerminalPanel(): React.ReactElement {
     const host = hostRef.current;
     if (!host || !cwd) return;
 
+    // 从 CSS 变量读取终端主题色，支持深浅模式切换
+    const styles = getComputedStyle(document.documentElement);
+    const bg = styles.getPropertyValue("--ravel-bg-code").trim() || "#1e1e1e";
+    const fg = styles.getPropertyValue("--ravel-text").trim() || "#e0e0e0";
+    const cursor = styles.getPropertyValue("--ravel-accent").trim() || "#89ABE3";
+    const border = styles.getPropertyValue("--ravel-border").trim() || "#3a3836";
+
     const sessionId = createId("terminal");
     const terminal = new Terminal({
       convertEol: true,
       cursorBlink: true,
-      fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
+      fontFamily: "var(--ravel-font-mono)",
       fontSize: 12,
-      theme: { background: "#0d0e12", foreground: "#f3f0ea", cursor: "#e8b44a" },
+      theme: {
+        background: bg,
+        foreground: fg,
+        cursor: cursor,
+        cursorAccent: bg,
+        selectionBackground: styles.getPropertyValue("--ravel-selection").trim() || "rgba(137, 171, 227, 0.28)",
+        black: border,
+        brightBlack: styles.getPropertyValue("--ravel-text-dim").trim() || "#8C8983",
+        red: styles.getPropertyValue("--ravel-danger").trim() || "#C0504A",
+        brightRed: styles.getPropertyValue("--ravel-danger").trim() || "#C0504A",
+        green: styles.getPropertyValue("--ravel-success").trim() || "#3E8E5A",
+        brightGreen: styles.getPropertyValue("--ravel-success").trim() || "#3E8E5A",
+        yellow: styles.getPropertyValue("--ravel-warning").trim() || "#B07D2E",
+        brightYellow: styles.getPropertyValue("--ravel-warning").trim() || "#B07D2E",
+        blue: cursor,
+        brightBlue: styles.getPropertyValue("--ravel-accent-strong").trim() || "#4F7CC4",
+        magenta: styles.getPropertyValue("--ravel-chart-5").trim() || "#C9D9F0",
+        brightMagenta: styles.getPropertyValue("--ravel-chart-5").trim() || "#C9D9F0",
+        cyan: styles.getPropertyValue("--ravel-info").trim() || "#4F7CC4",
+        brightCyan: styles.getPropertyValue("--ravel-info").trim() || "#4F7CC4",
+        white: fg,
+        brightWhite: fg,
+      },
     });
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);

@@ -112,6 +112,7 @@ export function HistosSurface(): React.ReactElement {
             flowApproved={flowApproved}
             onFlowApproved={setFlowApproved}
             actions={actions}
+            nodeCount={nodeCount}
           />
         </div>
       </div>

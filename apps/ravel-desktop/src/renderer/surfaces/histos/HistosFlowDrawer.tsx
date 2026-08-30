@@ -20,15 +20,18 @@ export interface HistosFlowDrawerProps {
   flowApproved: boolean;
   onFlowApproved: (approved: boolean) => void;
   actions: HistosContextActions;
+  /** 当前图节点数；为 0 时禁用"转换为 Flow"，避免空图转换必然失败。 */
+  nodeCount: number;
 }
 
 export function HistosFlowDrawer(props: HistosFlowDrawerProps): React.ReactElement {
-  const { open, onToggle, flowApproved, onFlowApproved, actions } = props;
+  const { open, onToggle, flowApproved, onFlowApproved, actions, nodeCount } = props;
   const t = useT();
 
   const flow = actions.flow;
   const validated = Boolean(flow?.validation.ok);
   const approved = validated && flowApproved;
+  const canConvert = actions.converting || nodeCount === 0 ? false : true;
 
   if (!open) {
     return (
@@ -51,10 +54,11 @@ export function HistosFlowDrawer(props: HistosFlowDrawerProps): React.ReactEleme
         {/* Step 1: Convert */}
         <div className="ravel-histos-step">
           <span className="overline-label">1 · 转换（Convert to Flow）</span>
-          <Button size="sm" variant="quiet" disabled={actions.converting} onClick={actions.convertToFlow} fullWidth>
+          <Button size="sm" variant="quiet" disabled={!canConvert} onClick={actions.convertToFlow} fullWidth>
             {actions.converting ? t("graph.converting") : t("graph.convert")}
           </Button>
           {actions.convertResult ? <span className="omega-muted-text" role="status">{actions.convertResult}</span> : null}
+          {nodeCount === 0 ? <span className="omega-muted-text">当前图为空，暂无可转换的节点。</span> : null}
         </div>
 
         {/* Step 2: Validate */}
