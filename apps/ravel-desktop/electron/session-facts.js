@@ -12,8 +12,10 @@ import { createHash, randomUUID } from "node:crypto";
 
 export const FACT_CUSTOM_TYPE = "ravel_record";
 
-const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached", "flow_trigger", "purge_record"]);
+const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached", "flow_trigger", "purge_record", "config_changed"]);
 const PURGE_TARGET_KINDS = new Set(["triple", "node", "edge", "artifact", "session_index"]);
+const CONFIG_DOMAINS = new Set(["resource", "permission", "trust", "mcp", "mode", "provider", "profile"]);
+const CONFIG_ACTIONS = new Set(["create", "update", "delete"]);
 const factsAppendedListeners = new WeakMap();
 
 export function setFactsAppendedListener(sessionManager, listener) {
@@ -181,6 +183,23 @@ export function appendFact(sessionManager, record) {
 			}
 			requireOptionalString(record, "reason");
 			requireOptionalString(record, "sessionId");
+			break;
+		}
+		case "config_changed": {
+			// Configuration class (P1): every settings-level write that Histos
+			// could not see before now records domain/action/id/reason through
+			// the JSONL single writer, so the Fact Graph can replay a config
+			// change timeline. Credential payloads never appear here.
+			if (!CONFIG_DOMAINS.has(record.domain)) {
+				throw new Error(`Invalid config_changed fact: domain ${JSON.stringify(record.domain)}`);
+			}
+			if (!CONFIG_ACTIONS.has(record.action)) {
+				throw new Error(`Invalid config_changed fact: action ${JSON.stringify(record.action)}`);
+			}
+			if (typeof record.targetId !== "string" || record.targetId.length === 0 || record.targetId.length > 512) {
+				throw new Error("Invalid config_changed fact: targetId must be a non-empty string of at most 512 characters");
+			}
+			requireOptionalString(record, "reason");
 			break;
 		}
 	}
@@ -478,6 +497,37 @@ export function recordPurgeFact(sessionManager, { targetKind, targetIds, reason,
 		targetIds: targetIds.slice(0, 512).map((targetId) => String(targetId)),
 		...(reason ? { reason: String(reason).slice(0, 512) } : {}),
 		...(sessionId ? { sessionId: String(sessionId) } : {}),
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
+}
+
+/**
+ * Configuration change accounting (P1). Every settings-level write the
+ * Histos surface needs to see - resource install/uninstall/toggle,
+ * permission rules, Project Trust decisions, MCP lifecycle, mode switches,
+ * provider config - lands here as a `config_changed` fact. The JSONL stays
+ * the single writer; ids reference the config object that changed, never
+ * credential material.
+ */
+export function recordConfigChange(sessionManager, { domain, action, id, reason } = {}) {
+	if (!CONFIG_DOMAINS.has(domain)) {
+		throw new Error(`Invalid config_changed fact: domain ${JSON.stringify(domain)}`);
+	}
+	if (!CONFIG_ACTIONS.has(action)) {
+		throw new Error(`Invalid config_changed fact: action ${JSON.stringify(action)}`);
+	}
+	if (typeof id !== "string" || id.length === 0 || id.length > 512) {
+		throw new Error("Invalid config_changed fact: id must be a non-empty string of at most 512 characters");
+	}
+	const record = {
+		type: "config_changed",
+		id: `config-${randomUUID()}`,
+		lane: "main",
+		domain,
+		action,
+		targetId: id,
+		...(reason ? { reason: String(reason).slice(0, 512) } : {}),
 		timestamp: Date.now(),
 	};
 	return appendFact(sessionManager, record);

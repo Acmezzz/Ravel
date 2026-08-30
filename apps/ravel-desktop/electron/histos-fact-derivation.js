@@ -34,6 +34,19 @@ const PREDICATE_BY_FACT = Object.freeze({
   flow_trigger: TRIPLE_PREDICATE.FLOW_TRIGGERED,
 });
 
+// P1 config class: one predicate family per domain so the Fact Graph can
+// answer "what changed in domain X" by predicate, and the whole config
+// timeline by tag "config".
+const CONFIG_PREDICATE_BY_DOMAIN = Object.freeze({
+  resource: "custom_config_resource",
+  permission: "custom_config_permission",
+  trust: "custom_config_trust",
+  mcp: "custom_config_mcp",
+  mode: "custom_config_mode",
+  provider: "custom_config_provider",
+  profile: "custom_config_profile",
+});
+
 const CHECKPOINT_OUTCOMES = new Set(["completed", "aborted", "failed", "declined"]);
 
 function bounded(value, max = 4096) {
@@ -63,7 +76,8 @@ function pushTriple(out, subject, predicate, object, source, opts = {}) {
 export function projectFactToTriples(fact, context = {}) {
   if (!fact || typeof fact !== "object" || typeof fact.type !== "string") return [];
   const predicate = PREDICATE_BY_FACT[fact.type];
-  if (!predicate) return [];
+  // config_changed is handled by its own domain predicate family below.
+  if (!predicate && fact.type !== "config_changed") return [];
 
   const sessionId = context.sessionId ?? fact.sessionId ?? "unknown";
   const out = [];
@@ -114,6 +128,14 @@ export function projectFactToTriples(fact, context = {}) {
         if (typeof fact.outcome === "string") pushTriple(out, `flow:${fact.flowSha}`, "annotates", `trigger_outcome:${fact.outcome}`, `session:${sessionId}`, { validFrom: ts, tag: "flow" });
       }
       break;
+    case "config_changed": {
+      const domainPredicate = CONFIG_PREDICATE_BY_DOMAIN[fact.domain];
+      if (!domainPredicate) return [];
+      const action = typeof fact.action === "string" ? fact.action : "update";
+      const targetId = typeof fact.targetId === "string" ? fact.targetId : "unknown";
+      pushTriple(out, `session:${sessionId}`, domainPredicate, `${action}:${targetId}`, `session:${sessionId}`, { validFrom: ts, tag: "config" });
+      break;
+    }
     default:
       return [];
   }
