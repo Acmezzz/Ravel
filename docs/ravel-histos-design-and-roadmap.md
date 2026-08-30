@@ -130,12 +130,18 @@ CREATE INDEX IF NOT EXISTS tombstones_target_lookup ON tombstones (target_kind, 
 
 - `diagnostic_observed` 事实（文件 × 严重度 × 时间 → Fact Graph，参照 omp diagnostics ledger 的 absPath 去重）；`fact_triples` FTS5 全文索引（参照 hermes）；GoalState 接 worker 主流程（契约已在 `goal-state.js`）；费用 usage triple。
 
-### P6 图会话与编辑闭环（策略/能力类的交互基座）
+### P6 图会话与编辑闭环（策略/能力类的交互基座，渐进式披露）
 
-- **内容**：图选区（节点/边子集）→ 一键开启**注入选区上下文的会话**（选区内容经 ContextSet 语义进入 prompt，回答可跳回图节点）；Histos 内对话式编辑 skill/prompt（agent 产出新版本 → 人审 → 原子替换 → 新 revision 入图）；图选区直接生成 skill 草稿。此切片是 P3 共创循环的交互基座，若提前实施可与 P2 并行。
-- **依据**：`ravel-graph-flow-invariant` 的产品承诺"可对任意节点/边子集开会话、生成 skill、改 skill"；现有 HistosSurface 对话栏未注入图上下文，是承诺与实现的最大差口。
-- **借鉴来源**：prime-agent agent_message 三层投递（auto/steer/follow_up）的注入语义、omp hub 会话模型；替换原子性复用既有 `setSkillModelInvocation` 的 tmp+rename 模式
-- **验收**：框选节点 → 对话栏提问回答引用选区内容；对话改 skill 产生新 revision 且旧版可回滚（经 P0 归档语义）；未批准的草稿不落盘替换。
+- **内容**：图选区（节点/边子集，任意框选）→ 一键开启**注入选区上下文的会话**；Histos 内对话式编辑 skill/prompt（agent 产出新版本 → 人审 → 原子替换 → 新 revision 入图）；图选区直接生成 skill 草稿。此切片是 P3 共创循环的交互基座，若提前实施可与 P2 并行。
+- **渐进式披露（2026-08-30 用户提出，选区会话的上下文注入模型）**——每个节点背后都有真实原文（Evidence → FactAddress），因此上下文分三层按需进入 LLM：
+  - **L0 骨架**：选区子图结构（kind + title + 关系边），默认注入，近零成本；
+  - **L1 凝练**：语义摘要（condense/distill 产物），次级默认；
+  - **L2 原文**：沿 FactAddress（含 span selector）精确提取原文，**按需**两条通道——LLM 通过 `histos_expand(nodeIds)` 工具主动拉取（预算上限，超限 fail-closed），用户在 Inspector 点"展开原文"。
+  - 冻结原型已存在：`freezeContext` 的"选中项必选 + 邻居摘要可选 + budget fail-closed"即本模型的工件路径；P6 将其扩展到活会话注入。每次 L2 提取沿 FactAddress 可回溯，满足空间可追溯前提。
+- **工作项**：选区会话 prompt 构建器（L0+L1 默认注入）；worker 侧 `histos_expand` agent 工具（经 histos-host 调 engine，FactAddress 原文提取，预算上限）；Inspector"展开原文"（复用 `readFilePage` 式分页）。
+- **依据**：`ravel-graph-flow-invariant` 的产品承诺"可对任意节点/边子集开会话、生成 skill、改 skill"及"通过 Engine 按 FactAddress 取出对应文本"；现有 HistosSurface 对话栏未注入图上下文，是承诺与实现的最大差口。
+- **借鉴来源**：prime-agent agent_message 三层投递（auto/steer/follow_up）的注入语义；kilocode System Context 的 baseline（L0/L1）+ 增量（L2 按需）模型；omp hub 会话模型；替换原子性复用既有 `setSkillModelInvocation` 的 tmp+rename 模式
+- **验收**：框选节点 → 对话默认只含骨架+摘要（可从 prompt 体积验证）；LLM 调 `histos_expand` 拿到 span 级原文片段；expand 超预算 fail-closed 并提示缩减选区；对话改 skill 产生新 revision 且旧版可回滚（经 P0 归档语义）；未批准的草稿不落盘替换。
 
 ### P7 能力运作流程视图 + 项目知识入图（能力/记忆类补全）
 
