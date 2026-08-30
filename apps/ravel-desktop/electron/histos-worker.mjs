@@ -180,6 +180,10 @@ async function invoke(method, args) {
     if (method === "applyRepoIndex") return current.applyRepoIndex(args ?? {});
     if (method === "applyDiagnostics") return current.applyDiagnostics(args ?? {});
     if (method === "ftsSearch") return current.ftsSearch(args ?? {});
+    if (method === "applyCapabilityFlows") return current.applyCapabilityFlows(args ?? {});
+    if (method === "applyProjectKnowledge") return current.applyProjectKnowledge(args ?? {});
+    if (method === "createHandoff") return current.createHandoff(args ?? {});
+    if (method === "listArtifacts") return current.listArtifacts();
     if (method === "createStrategyDraft") return current.createStrategyDraft(args ?? {});
     if (method === "approveStrategyDraft") return current.approveStrategyDraft(args ?? {});
     throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });

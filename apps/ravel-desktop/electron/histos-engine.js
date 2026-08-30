@@ -9,6 +9,7 @@ import * as adapters from "./histos-adapters.js";
 import * as webSource from "./histos-web-source.js";
 import * as repoSource from "./histos-repo-source.js";
 import * as selection from "./histos-selection.js";
+import { parseCapabilityFlow } from "./histos-capability-flow.js";
 import { agentSpecGraph, agentRunGraph, agentSpecRevisionId, normalizeAgentSpec, seedSpecs } from "./histos-agent-spec.js";
 import { normalizeInvocationRequest, planInvocationFromRequest } from "./histos-capability.js";
 import * as provenance from "./histos-provenance.js";
@@ -1489,6 +1490,143 @@ export class HistosEngine {
     };
     this.eventBus?.emit("on_strategy_approved", boundEventPayload(result));
     return result;
+  }
+
+  /**
+   * P7 capability operation flows: parse skill/extension/MCP content into
+   * structured trigger->steps->outputs artifacts. Content hash changes
+   * append a new revision (web-source contract), so the canvas shows how a
+   * capability's operation flow evolved. Also indexes project knowledge
+   * files (AGENTS.md / .ravel rules) as versioned knowledge nodes.
+   */
+  async applyCapabilityFlows(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || !Array.isArray(input.flows)) throw invalid("applyCapabilityFlows requires a flows array");
+    if (input.flows.length > 512) throw invalid("applyCapabilityFlows accepts at most 512 flows");
+    const result = emptyResult(this.workspaceId);
+    const diagnostics = [];
+    for (const flow of input.flows) {
+      try {
+        const parsed = parseCapabilityFlow({ kind: flow.kind, name: flow.name, content: String(flow.content ?? "") });
+        const evidence = [{ role: "supports", address: { sourceType: "skill", objectId: `capability:${flow.kind}:${flow.name}`, revisionId: parsed.artifact.contentSha256 } }];
+        resultFromWebGraph({
+          nodes: [{
+            id: parsed.nodeId,
+            nodeId: parsed.nodeId,
+            nodeRevisionId: parsed.nodeRevisionId,
+            kind: "skill",
+            title: `${parsed.artifact.name}: ${parsed.artifact.description}`.slice(0, 512),
+            createdAt: Date.now(),
+            evidence,
+            metadata: { capability: parsed.artifact },
+          }],
+          edges: [],
+          diagnostics: [],
+        }, result);
+      } catch (error) {
+        diagnostics.push({ code: "invalid_flow", message: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    linkNodeRevisionParents(database, result);
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      rowsFromResult(database, result);
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return { nodeCount: result.nodes.size, diagnostics };
+  }
+
+  /**
+   * P7 project knowledge: version AGENTS.md / .ravel rules / context-source
+   * files into the graph with a revision chain, effective scope
+   * (user/project) and a distilled summary (first non-empty lines).
+   */
+  async applyProjectKnowledge(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || !Array.isArray(input.files)) throw invalid("applyProjectKnowledge requires a files array");
+    if (input.files.length > 512) throw invalid("applyProjectKnowledge accepts at most 512 files");
+    const result = emptyResult(this.workspaceId);
+    for (const file of input.files) {
+      if (!isObject(file) || typeof file.path !== "string" || file.path.length === 0 || file.path.length > 1024) continue;
+      const content = typeof file.content === "string" ? file.content : "";
+      if (content.length === 0) continue;
+      const scope = file.scope === "project" ? "project" : "user";
+      const contentSha256 = hashId(content);
+      const nodeId = `knowledge:${scope}:${file.path}`;
+      const nodeRevisionId = hashId(`knowledge-node:${nodeId}:${contentSha256}`);
+      const summary = content.split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 4).join(" ");
+      resultFromWebGraph({
+        nodes: [{
+          id: nodeId,
+          nodeId,
+          nodeRevisionId,
+          kind: "knowledge",
+          title: `${file.path} · ${scope}`.slice(0, 512),
+          createdAt: Date.now(),
+          evidence: [{ role: "supports", address: { sourceType: "file", objectId: nodeId, revisionId: contentSha256 } }],
+          metadata: { scope, summary: summary.slice(0, 512), bytes: content.length },
+        }],
+        edges: [],
+        diagnostics: [],
+      }, result);
+    }
+    linkNodeRevisionParents(database, result);
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      rowsFromResult(database, result);
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return { nodeCount: result.nodes.size };
+  }
+
+  /**
+   * P8 handoff: package the current session into a handoff document artifact
+   * (compaction-entry style, freezeable as a ContextSet for cross-session
+   * attach). Refuses while a compaction is running (busy, fail-closed) so
+   * handoff never races the summarizer.
+   */
+  async createHandoff(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || typeof input.sessionId !== "string" || input.sessionId.length === 0) throw invalid("createHandoff requires sessionId");
+    if (input.busy === true) {
+      return { ok: false, code: "handoff_busy", message: "compaction is running; handoff is refused to avoid racing it" };
+    }
+    const summary = typeof input.summary === "string" && input.summary.length > 0 ? input.summary.slice(0, 8192) : `Handoff for session ${input.sessionId}`;
+    const anchors = Array.isArray(input.anchors) ? input.anchors.slice(0, 4096).map(String) : [];
+    const artifact = validateArtifact({
+      schemaVersion: 1,
+      workspaceId: this.workspaceId,
+      kind: "handoff",
+      sourceSet: { sessionIds: [input.sessionId] },
+      lens: "structural",
+      granularity: "entry",
+      handoff: { sessionId: input.sessionId, summary, anchors },
+    }, { workspaceId: this.workspaceId, kind: "handoff" });
+    const sha256 = await writeArtifact(this.artifactsDir, artifact, { workspaceId: this.workspaceId, kind: "handoff" });
+    const stored = { ...artifact, sha256 };
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      insertArtifact(database, stored, sha256);
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return { ok: true, sha256, kind: "handoff", sessionId: input.sessionId, freezeableAsContextSet: true };
+  }
+
+  /**
+   * P8 artifact library: list every content-addressed artifact on disk.
+   */
+  listArtifacts() {
+    const artifacts = listArtifacts(this.artifactsDir, () => {});
+    return artifacts;
   }
 
   async condenseGraph(input = {}) {

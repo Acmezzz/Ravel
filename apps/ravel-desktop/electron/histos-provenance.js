@@ -19,7 +19,7 @@ import {
 
 export { FACT_SOURCE_TYPES, canonicalFactAddress, canonicalJson, factAddressId, formatFactAddress, validateFactAddress };
 
-export const ARTIFACT_KINDS = Object.freeze(["graph_revision", "flow_revision", "context_set", "view_state"]);
+export const ARTIFACT_KINDS = Object.freeze(["graph_revision", "flow_revision", "context_set", "view_state", "handoff"]);
 export const FACT_SELECTOR_KINDS = Object.freeze(["span", "hunk", "json_path", "node", "edge"]);
 export const EVIDENCE_ROLES = Object.freeze(["supports", "quotes", "produces", "navigates"]);
 
