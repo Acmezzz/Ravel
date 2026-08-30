@@ -74,6 +74,7 @@ export function HistosToolbar(props: HistosToolbarProps): React.ReactElement {
             type="text"
             value={actions.importWorkspaceId}
             placeholder={t("graph.importWorkspace")}
+            aria-label={t("graph.importWorkspace")}
             onChange={(event) => actions.setImportWorkspaceId(event.target.value)}
           />
           <input
@@ -81,6 +82,7 @@ export function HistosToolbar(props: HistosToolbarProps): React.ReactElement {
             type="text"
             value={actions.importSha}
             placeholder={t("graph.importSha")}
+            aria-label={t("graph.importSha")}
             onChange={(event) => actions.setImportSha(event.target.value)}
           />
           <Button size="sm" variant="quiet" disabled={actions.importing} onClick={actions.runImport}>{actions.importing ? t("graph.importing") : t("graph.importRun")}</Button>
@@ -91,6 +93,7 @@ export function HistosToolbar(props: HistosToolbarProps): React.ReactElement {
             type="url"
             value={actions.webUrl}
             placeholder={t("graph.webPlaceholder")}
+            aria-label={t("graph.webPlaceholder")}
             onChange={(event) => actions.setWebUrl(event.target.value)}
             onKeyDown={(event) => { if (event.key === "Enter") actions.importWebResource(); }}
           />

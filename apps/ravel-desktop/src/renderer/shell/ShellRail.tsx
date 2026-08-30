@@ -1,15 +1,7 @@
 import * as React from "react";
-import {
-  Bot,
-  Files,
-  MessageSquare,
-  Settings,
-  Search,
-  Waypoints,
-} from "lucide-react";
+import { Bot, Search, Settings } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/Tooltip";
 import { useAppStore } from "../store/useAppStore";
-import type { SurfaceMode } from "../store/useAppStore";
 import type { LucideIcon } from "lucide-react";
 
 interface RailItem {
@@ -17,31 +9,28 @@ interface RailItem {
   label: string;
   hint: string;
   icon: LucideIcon;
-  /** The surface this item represents, when it is one of the three. */
-  surface?: SurfaceMode;
   /** Momentary action (opens an overlay) rather than a persistent surface. */
-  run?: () => void;
+  run: () => void;
 }
 
 /**
  * The shell's activity rail (48px, single instance).
  *
- * It used to be duplicated: this rail plus the legacy `LeftNav` and the
- * collapsed `RightPanel` icon strip all rendered at once, which is why the app
- * showed two icon columns. The rail is now the only vertical navigator, and
- * each item drives real store state instead of local component state — the
- * three surface keys set `surfaceMode`, the rest open their overlay.
+ * It used to be duplicated twice over: this rail plus the legacy `LeftNav` and
+ * the collapsed `RightPanel` icon strip all rendered at once (two icon
+ * columns), and — worse — three of its items mirrored the surface tabs that
+ * live in the title bar, so 对话/IDE/Histos appeared in two places at once and
+ * the two copies could disagree about which surface was active.
+ *
+ * Surface navigation is owned exclusively by `ShellSurfaceTabs` in the title
+ * bar. This rail only carries actions that have no other home: search,
+ * resources, settings.
  */
 export function ShellRail(): React.ReactElement {
-  const surfaceMode = useAppStore((s) => s.surfaceMode);
-  const setSurfaceMode = useAppStore((s) => s.setSurfaceMode);
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
 
   const items: RailItem[] = [
-    { key: "chat", label: "对话", hint: "Ctrl+1", icon: MessageSquare, surface: "chat" },
-    { key: "files", label: "文件工作区", hint: "Ctrl+3", icon: Files, surface: "ide" },
-    { key: "graph", label: "Histos 图谱", hint: "Ctrl+4", icon: Waypoints, surface: "histos" },
     {
       key: "search",
       label: "搜索 / 命令面板",
@@ -70,20 +59,14 @@ export function ShellRail(): React.ReactElement {
       <div className="ravel-rail-group">
         {items.map((item) => {
           const Icon = item.icon;
-          const active = item.surface ? surfaceMode === item.surface : false;
           const button = (
             <button
               key={item.key}
               type="button"
               className="ravel-rail-item"
               data-nav-key={item.key}
-              data-active={active ? "true" : "false"}
               aria-label={item.hint ? `${item.label}（${item.hint}）` : item.label}
-              aria-current={active ? "page" : undefined}
-              onClick={() => {
-                if (item.surface) setSurfaceMode(item.surface);
-                else item.run?.();
-              }}
+              onClick={item.run}
             >
               <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
             </button>
@@ -101,14 +84,6 @@ export function ShellRail(): React.ReactElement {
 
       <div className="ravel-rail-footer">
         <span className="ravel-rail-rule" aria-hidden="true" />
-        <button
-          type="button"
-          className="ravel-rail-kbd"
-          aria-label="打开命令面板"
-          onClick={() => setCommandPaletteOpen(true)}
-        >
-          ⌘K
-        </button>
         <Tooltip>
           <TooltipTrigger asChild>
             <button type="button" className="ravel-rail-avatar" aria-label="账户设置" onClick={() => setSettingsOpen(true)}>

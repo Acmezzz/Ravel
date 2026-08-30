@@ -161,14 +161,17 @@ export function CommandPalette(): React.ReactElement {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="omega-dialog-command-palette">
-        <DialogTitle>{t("palette.search")}</DialogTitle>
+        {/* Kept only for the dialog's accessible name: it used to render as a
+         * visible title *and* a visible field label that repeated the same
+         * string the placeholder already showed — three copies of one phrase. */}
+        <DialogTitle className="omega-sr-only">{t("palette.search")}</DialogTitle>
         <DialogContentArea className="omega-model-picker-search">
           <label className="omega-field" htmlFor="omega-command-search">
-            <span className="omega-field-label">{t("palette.search")}</span>
             <input
               id="omega-command-search"
               className="omega-input"
               autoFocus
+              aria-label={t("palette.search")}
               placeholder={t("palette.searchPlaceholder")}
               value={query}
               aria-controls="omega-command-list"

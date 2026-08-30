@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Command, Paperclip, RotateCcw, Send, Square, Zap } from "lucide-react";
+import { Paperclip, RotateCcw, Search, Send, Square, Zap } from "lucide-react";
 import { IconButton } from "../../ui/Button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import { useAppStore } from "../../store/useAppStore";
@@ -52,8 +52,14 @@ function truncate(text: string, max = 120): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-function CommandIcon(): React.ReactElement {
-  return <Command className="omega-icon-16" aria-hidden="true" />;
+/**
+ * The palette affordance. Previously lucide's `Command`, which draws the ⌘
+ * glyph — a macOS modifier key that means nothing on Windows/Linux, where this
+ * app spends most of its time. A magnifier reads as "search / run a command"
+ * on every platform, so it carries the same action with no wrong metaphor.
+ */
+function PaletteIcon(): React.ReactElement {
+  return <Search className="omega-icon-16" aria-hidden="true" />;
 }
 
 function AttachFile(): React.ReactElement {
@@ -660,7 +666,7 @@ export function Composer(): React.ReactElement {
           <Tooltip>
             <TooltipTrigger asChild>
               <IconButton size="lg" className="omega-composer-action" label={t("composer.commandPaletteAria")} onClick={() => setCommandPaletteOpen(true)} disabled={shuttingDown}>
-                <CommandIcon />
+                <PaletteIcon />
               </IconButton>
             </TooltipTrigger>
             <TooltipContent>{t("composer.commandPaletteTooltip")}</TooltipContent>

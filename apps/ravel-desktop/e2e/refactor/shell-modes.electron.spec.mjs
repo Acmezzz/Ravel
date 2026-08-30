@@ -96,14 +96,25 @@ test("Shell 活动栏、无专注模式与缩放", async () => {
     const { page, app } = h;
     await expect(page.locator('[data-surface="chat"]')).toBeVisible();
 
-    // 活动栏 data-nav-key 点击切换 data-active。
+    // 活动栏只保留无归属的操作。模式切换已统一由顶栏 segmented control 承担，
+    // 左栏不再出现 对话 / 文件工作区 / Histos 三个与之重复的入口（此前两处
+    // 各自维护激活态，可能显示不一致）。
     const rail = page.locator(".ravel-rail");
     await expect(rail).toBeVisible();
-    const filesNav = page.locator('[data-nav-key="files"]');
-    await expect(filesNav).toBeVisible();
-    await filesNav.click();
-    await expect(filesNav).toHaveAttribute("data-active", "true");
-    await expect(page.locator('[data-nav-key="chat"]')).toHaveAttribute("data-active", "false");
+    for (const key of ["chat", "files", "graph"]) {
+      await expect(page.locator(`[data-nav-key="${key}"]`)).toHaveCount(0);
+    }
+    await expect(page.locator('[data-nav-key="search"]')).toBeVisible();
+    await expect(page.locator('[data-nav-key="extensions"]')).toBeVisible();
+    await expect(page.locator('[data-nav-key="settings"]')).toBeVisible();
+
+    // 模式切换：顶栏 segmented control 是唯一入口，切换后 surface 与 tab 同步。
+    await expect(page.locator('[data-surface-tab="chat"]')).toHaveAttribute("aria-selected", "true");
+    await page.locator('[data-surface-tab="ide"]').click();
+    await expect(page.locator('[data-surface-tab="ide"]')).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('[data-surface="ide"]')).toBeVisible();
+    await page.locator('[data-surface-tab="chat"]').click();
+    await expect(page.locator('[data-surface="chat"]')).toBeVisible();
 
     // 专注模式按产品决定从顶栏移除（模式切换已在顶部承担导航职责），
     // 因此这里断言它不再出现，且活动栏常驻。
