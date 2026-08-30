@@ -88,6 +88,20 @@ const TABLE_DEFINITIONS = Object.freeze({
     ["valid_until", "INTEGER", 0, null, 0],
     ["created_at", "INTEGER", 1, null, 0],
   ]),
+  // Tombstones for the two-level deletion semantics (archive = tombstone,
+  // reversible via revoked_at; purge = physical delete, never a tombstone).
+  // Rows act as a query-level filter for every Histos read path; the JSONL
+  // fact authority is never touched by an archive. `revoked_at` non-null
+  // means the tombstone has been revoked (entry restored), keeping the
+  // audit trail of who/when was restored.
+  tombstones: Object.freeze([
+    ["id", "TEXT", 0, null, 1],
+    ["target_kind", "TEXT", 1, null, 0],
+    ["target_id", "TEXT", 1, null, 0],
+    ["reason", "TEXT", 0, null, 0],
+    ["created_at", "INTEGER", 1, null, 0],
+    ["revoked_at", "INTEGER", 0, null, 0],
+  ]),
 });
 
 export const HISTOS_TABLES = Object.freeze(Object.keys(TABLE_DEFINITIONS));
@@ -103,6 +117,7 @@ const INDEX_DEFINITIONS = Object.freeze({
   fact_triples_subject_lookup: Object.freeze({ table: "fact_triples", columns: ["scope", "subject", "created_at"] }),
   fact_triples_predicate_lookup: Object.freeze({ table: "fact_triples", columns: ["scope", "predicate", "created_at"] }),
   fact_triples_object_lookup: Object.freeze({ table: "fact_triples", columns: ["scope", "object", "created_at"] }),
+  tombstones_target_lookup: Object.freeze({ table: "tombstones", columns: ["target_kind", "target_id"] }),
 });
 
 export const HISTOS_INDEXES = Object.freeze(Object.keys(INDEX_DEFINITIONS));
@@ -212,6 +227,24 @@ CREATE INDEX IF NOT EXISTS fact_triples_predicate_lookup
   ON fact_triples (scope, predicate, created_at);
 CREATE INDEX IF NOT EXISTS fact_triples_object_lookup
   ON fact_triples (scope, object, created_at);
+
+-- Tombstones for the P0 traceability cycle (archive/restore semantics).
+-- Created on every init so old workspaces gain the table on first open.
+-- target_kind is a closed set: 'triple' | 'node' | 'edge' | 'artifact' |
+-- 'session_index'. reason is user-supplied (<= 512 chars) and optional.
+-- revoked_at non-null marks a restored (un-deleted) entry; the row itself
+-- is kept so the audit chain of archive/restore actions stays queryable.
+CREATE TABLE IF NOT EXISTS tombstones (
+  id TEXT PRIMARY KEY,
+  target_kind TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  reason TEXT,
+  created_at INTEGER NOT NULL,
+  revoked_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS tombstones_target_lookup
+  ON tombstones (target_kind, target_id);
 `;
 
 const MAX_WORKSPACE_ID_LENGTH = 512;
