@@ -103,10 +103,33 @@ git diff --check
 
 ## 5. 下一步
 
+全局路线见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md) §3（P0–P5）；本节维护**当前周期**的切片级执行计划。
+
+### 5.1 P0 追溯周期（当前执行，T0.1–T0.6）
+
+前置决策（2026-08-30 用户拍板）：删除语义两级——归档（墓碑，可复原）/ 抹除（purge，不可逆）；复原 = 撤销墓碑 + asOf；JSONL 单行永不重写；审批账目不可归档；rebuild 重放墓碑表。schema 细节见 design-and-roadmap §2。
+
+| 切片 | 内容 | 文件落点 | 验收 |
+|---|---|---|---|
+| T0.1 | `tombstones` 表（`id/target_kind/target_id/reason/created_at/revoked_at`）+ `tombstones_target_lookup` 索引并入 schema 校验 | `electron/histos-schema.js` | `test/histos-tombstones.test.mjs`：校验含新表；旧库重开自动获得表 |
+| T0.2 | 引擎归档/复原：`archiveEntries(kind, ids, reason)` / `restoreEntries(tombstoneIds)`；全部读路径（`graphRows`/`queryFacts`/`getNode`/`suggestContext`）join 过滤；`kind='approval'` 的节点及其关联 triple 拒绝归档 | `electron/histos-engine.js` | 归档后四类查询不可见；撤销重现；撤销操作留痕（`revoked_at`）；审批类归档被拒 |
+| T0.3 | `rebuild` 重放墓碑表（临时库 → swap 路径中搬运） | `electron/histos-engine.js` | 归档 → rebuild → 仍不可见 |
+| T0.4 | 抹除：`purgeEntries(kind, ids)` 物理删行 + 工件文件删除；purge 账目事实经 main 转发 agent worker `recordPurgeFact`（`session-facts.js` 扩 `purge_record` 类型，参照 `appendFlowTriggerFact` 模式）；整会级抹除复用 `omega:deleteSession` | `electron/histos-engine.js`、`worker.mjs`、`session-facts.js` | `test/histos-purge.test.mjs`：行物理消失、工件文件删除、`purge_record` 事实落盘、审批账目随会话抹除提示 |
+| T0.5 | IPC 三通道 `omega:histos{Archive,Restore,Purge}` + 事件广播 `on_entries_archived/restored/purged`（六方同步：ipc-schemas/main/preload/ipc-registry/ipc-contracts/shared+DTO+client，参照 `histosQueryFacts` 通道清单） | 同上午 fact 通道的六方文件 | `histos-ipc.test.mjs` 与 `electron-security.test.mjs` 通道断言更新；事件经 `histos:event` 到 renderer |
+| T0.6 | asOf 节点/边投影：`graphRows` 按 `created_at` + `revision_parents` 过滤；`histosGetGraph` 可选 `asOf` | `electron/histos-engine.js`、`ipc-schemas.js` | 新 revision 后 asOf 旧时点只返回旧版；`fact_triples.asOf` 行为不变 |
+
+依赖：T0.1 → T0.2 →（T0.3 / T0.4 / T0.5 / T0.6 可并行）。每片验收含 `node --test` 对应文件 + biome + `typecheck:renderer`（涉 renderer 类型时）。
+
+### 5.2 后续周期（切片计划在各周期开始时细化到这里）
+
+P1 `config_changed` 事实 → P2 Fact Graph 表面 UI → P3 策略共创循环 → P4 repo source 适配器 → P5 观测（`diagnostic_observed`/FTS5/GoalState 接线）。目标与借鉴来源见 design-and-roadmap §3。
+
+### 5.3 长期遗留（不随 P 周期关闭）
+
 1. 修复并复验当前 PortableGit checkpoint 持久化失败；保持事后验证和 fail-closed。
-2. 清除 `histos-web-source.js:199` 未使用变量，使根质量门禁恢复绿。
-3. 为 capability / orchestration 决定实际生产接入边界；在接线前继续明确 `skill-inject`、`orchestrator` 和 durable memo 未完成。
-4. 补真实 provider、嵌套 Sub Flow、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
+2. 为 capability / orchestration 决定实际生产接入边界；在接线前继续明确 `skill-inject`、`orchestrator` 和 durable memo 未完成。
+3. 补真实 provider、嵌套 Sub Flow、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
+4. `packages/ai` 的 11 个基线 TS 错误（cloudflare-ai-gateway 流类型 + kimi-k2.6 等 ModelId 注册）在 main 上存在，与桌面端无关但阻塞根 `npm run check` 全绿。
 5. 维持文档单一入口；更新时同步 HEAD、测试计数和失败原因，删除过时快照而不是复制旧路线图。
 
 ## 6. 不变量与禁止事项
