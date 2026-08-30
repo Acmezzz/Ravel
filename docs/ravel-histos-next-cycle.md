@@ -1,7 +1,7 @@
 # Ravel × Histos 当前状态与执行入口
 
-更新日期：2026-08-30
-基线：`main`
+更新日期：2026-08-31
+基线：`main` @ `42169d125`（P0 追溯层 T0.1–T0.6 + checkpoint 持久化修复后）
 
 本文是当前唯一的项目状态入口。状态依据当前源码、桌面测试和仓库质量门禁；历史计划、竞品报告和旧测试数字不覆盖本文。未经过真实环境验证的能力不标记为生产完成。
 
@@ -42,6 +42,7 @@ Renderer（无原生权限）
 - eval_result 规范化、SHA 地址、GraphRevision 投影与持久化；token、耗时、估算成本字段保持显式缺失语义。
 - 定时 Flow 与预授权触发：每次触发记录 `flow_trigger`，按 scope、maxRuns 和 busy 状态 fail-closed。
 - Fact graph（2026-08-30，借鉴 oh-my-pi Mnemopi / prime-agent Refinement）：`FactGraphBackend` 契约（`histos-fact-graph.js`）+ sqlite 后端（`histos-sqlite-fact-graph.js`，同库 `fact_triples` 表）+ 事实派生投影（`histos-fact-derivation.js`）。`applySessionFacts` 派生 triple（best-effort，失败不回传）；引擎暴露 `queryFacts` / `writeFacts` / `factStats` / `clearFacts`；IPC 四通道 `omega:histos{QueryFacts,WriteFacts,FactStats,ClearFacts}`；Histos 事件总线（`histos-event-bus.js`，BeforeX/AfterX 命名）经 worker → Main → renderer `histos:event` 推送。`operation_finished` 支持可选 `previousStateRef` + `appliedEdits`。GoalState / AutonomousGate 契约落点 `goal-state.js`（未接 worker 主流程）。
+- P0 追溯层（2026-08-31，Phase 0 收口）：`tombstones` 表 + `tombstones_target_lookup` 索引并入 schema（`IF NOT EXISTS` 旧库自动补表）；引擎 `archiveEntries(kind, ids, reason)` / `restoreEntries(tombstoneIds)` / `purgeEntries(kind, ids)`，四条读路径（`graphRows`/`queryFacts`/`getNode`/`suggestContext`）join 墓碑过滤，审批节点/triple 归档与单独抹除均 fail-closed 拒绝；`rebuild` 重放墓碑表；purge 经 main 转发 agent worker 由 `session-facts.js` 单写者落 `purge_record` 账目事实（记录级抹除提示会话级删除）；IPC 三通道 `omega:histos{Archive,Restore,Purge}` 六方同步 + 事件 `on_entries_archived/restored/purged` 广播到 renderer；节点/边投影支持 asOf 时间旅行（`created_at` + `revision_parents` DAG，`fact_triples.asOf` 语义不变）。
 
 ### 2.3 当前明确未完成或未宣称
 
@@ -81,12 +82,12 @@ Renderer（无原生权限）
 
 - `npm run --workspace=@ravel/desktop typecheck`：通过。
 - `npm run --workspace=@ravel/desktop typecheck:renderer`：通过。
-- Histos/Agent/eval/web/IPC 相关测试：已纳入桌面测试套件并通过（含 fact-graph / event-bus / goal-state 新测试，244 项核心子集全绿）。
-- 根 `npm run check`：biome、pinned-deps、ts-imports、shrinkwrap、install-lock 全部通过；`tsc --noEmit` 在 `packages/ai` 存在 11 个基线错误（`cloudflare-ai-gateway.ts` 流类型与 kimi-k2.6 等 ModelId 注册），与桌面端无关。
+- Histos/Agent/eval/web/IPC 相关测试：已纳入桌面测试套件并通过（含 tombstones / purge / asOf / 事件广播新测试）。
+- 根 `npm run check`：biome、pinned-deps、ts-imports、shrinkwrap、install-lock 其余部分通过；biome 对 `src/renderer/styles/global.css` 的 8 个 specificity 警告（基线既有，本周期未触碰该文件）与 `packages/ai` 的 11 个基线 TS 错误（`cloudflare-ai-gateway.ts` 流类型与 kimi-k2.6 等 ModelId 注册，与桌面端无关）按现状保留，未在范围内强行修复。
 
 ### 当前失败
 
-执行 `npm test --workspace=@ravel/desktop` 得到 **442 tests：439 pass、3 fail、0 cancelled**。3 个失败均在 `checkpoint-service.test.mjs`，错误为 PortableGit 的 `git update-ref` 返回成功但没有持久化 `refs/ravel/checkpoints/...`；代码已做事后 `rev-parse --verify` 并按 fail-closed 抛错。该问题不能记录为测试全绿。
+执行 `npm test --workspace=@ravel/desktop` 得到 **518 tests：517 pass、1 fail、0 cancelled**。3 个 PortableGit checkpoint 失败已修复（ref 改为直接写 loose ref 文件 + `rev-parse --verify` fail-closed，见提交 `42169d125`）；剩余 1 个失败在 `p1-cjk-lucide.test.mjs`（字体栈正则匹配），经基线 `2c75a12f5` worktree 对照确认是基线既有环境问题，非本周期引入。
 
 ### 运行建议
 
@@ -103,22 +104,13 @@ git diff --check
 
 ## 5. 下一步
 
-全局路线见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md) §3（P0–P5）；本节维护**当前周期**的切片级执行计划。
+全局路线见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md) §3（P0–P8）；本节维护**当前周期**的切片级执行计划。
 
-### 5.1 P0 追溯周期（当前执行，T0.1–T0.6）
+### 5.1 P0 追溯周期（已完成，T0.1–T0.6）
 
 前置决策（2026-08-30 用户拍板）：删除语义两级——归档（墓碑，可复原）/ 抹除（purge，不可逆）；复原 = 撤销墓碑 + asOf；JSONL 单行永不重写；审批账目不可归档；rebuild 重放墓碑表。schema 细节见 design-and-roadmap §2。
 
-| 切片 | 内容 | 文件落点 | 验收 |
-|---|---|---|---|
-| T0.1 | `tombstones` 表（`id/target_kind/target_id/reason/created_at/revoked_at`）+ `tombstones_target_lookup` 索引并入 schema 校验 | `electron/histos-schema.js` | `test/histos-tombstones.test.mjs`：校验含新表；旧库重开自动获得表 |
-| T0.2 | 引擎归档/复原：`archiveEntries(kind, ids, reason)` / `restoreEntries(tombstoneIds)`；全部读路径（`graphRows`/`queryFacts`/`getNode`/`suggestContext`）join 过滤；`kind='approval'` 的节点及其关联 triple 拒绝归档 | `electron/histos-engine.js` | 归档后四类查询不可见；撤销重现；撤销操作留痕（`revoked_at`）；审批类归档被拒 |
-| T0.3 | `rebuild` 重放墓碑表（临时库 → swap 路径中搬运） | `electron/histos-engine.js` | 归档 → rebuild → 仍不可见 |
-| T0.4 | 抹除：`purgeEntries(kind, ids)` 物理删行 + 工件文件删除；purge 账目事实经 main 转发 agent worker `recordPurgeFact`（`session-facts.js` 扩 `purge_record` 类型，参照 `appendFlowTriggerFact` 模式）；整会级抹除复用 `omega:deleteSession` | `electron/histos-engine.js`、`worker.mjs`、`session-facts.js` | `test/histos-purge.test.mjs`：行物理消失、工件文件删除、`purge_record` 事实落盘、审批账目随会话抹除提示 |
-| T0.5 | IPC 三通道 `omega:histos{Archive,Restore,Purge}` + 事件广播 `on_entries_archived/restored/purged`（六方同步：ipc-schemas/main/preload/ipc-registry/ipc-contracts/shared+DTO+client，参照 `histosQueryFacts` 通道清单） | 同上午 fact 通道的六方文件 | `histos-ipc.test.mjs` 与 `electron-security.test.mjs` 通道断言更新；事件经 `histos:event` 到 renderer |
-| T0.6 | asOf 节点/边投影：`graphRows` 按 `created_at` + `revision_parents` 过滤；`histosGetGraph` 可选 `asOf` | `electron/histos-engine.js`、`ipc-schemas.js` | 新 revision 后 asOf 旧时点只返回旧版；`fact_triples.asOf` 行为不变 |
-
-依赖：T0.1 → T0.2 →（T0.3 / T0.4 / T0.5 / T0.6 可并行）。每片验收含 `node --test` 对应文件 + biome + `typecheck:renderer`（涉 renderer 类型时）。
+T0.1–T0.6 全部完成并独立提交（`b8ef00dc1`/`22534b997`/`cda9fadb3`/`28ac42879`/`29d3070ca`/`6c2717a42`）；门禁修复 checkpoint 持久化失败提交 `42169d125`。详见 §2.2「P0 追溯层」。
 
 ### 5.2 后续周期（切片计划在各周期开始时细化到这里）
 
@@ -126,11 +118,10 @@ P1 `config_changed` 事实 → P2 Fact Graph 表面 UI → P3 策略共创循环
 
 ### 5.3 长期遗留（不随 P 周期关闭）
 
-1. 修复并复验当前 PortableGit checkpoint 持久化失败；保持事后验证和 fail-closed。
-2. 为 capability / orchestration 决定实际生产接入边界；在接线前继续明确 `skill-inject`、`orchestrator` 和 durable memo 未完成。
-3. 补真实 provider、嵌套 Sub Flow、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
-4. `packages/ai` 的 11 个基线 TS 错误（cloudflare-ai-gateway 流类型 + kimi-k2.6 等 ModelId 注册）在 main 上存在，与桌面端无关但阻塞根 `npm run check` 全绿。
-5. 维持文档单一入口；更新时同步 HEAD、测试计数和失败原因，删除过时快照而不是复制旧路线图。
+1. 为 capability / orchestration 决定实际生产接入边界；在接线前继续明确 `skill-inject`、`orchestrator` 和 durable memo 未完成。
+2. 补真实 provider、嵌套 Sub Flow、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
+3. `packages/ai` 的 11 个基线 TS 错误与 `p1-cjk-lucide` 字体栈测试失败（均为基线既有，待单独处理）。
+4. 维持文档单一入口；更新时同步 HEAD、测试计数和失败原因，删除过时快照而不是复制旧路线图。
 
 ## 6. 不变量与禁止事项
 

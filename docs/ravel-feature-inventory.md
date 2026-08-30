@@ -109,7 +109,8 @@ Histos 接入状态分三档：
 | eval_result 规范化与投影 | 完成 | |
 | Histos 事件总线（17 种 BeforeX/AfterX/OnX 事件，worker→main→renderer 推送） | 完成 | 借鉴 prime-agent ExtensionEvent；**消费方（表面订阅）未接** |
 | Fact Graph IPC 四通道（queryFacts/writeFacts/factStats/clearFacts） | 完成 | preload/main/registry/DTO 四方同步 |
-| Fact Graph 表面 UI（Inspector/Toolbar 消费 triples） | **未实现** | **接口就绪**（下一刀） |
+| 追溯两级删除：归档（墓碑）/ 复原 / 抹除（purge）/ asOf 时间旅行（P0） | 完成 | tombstones 表 + 四读路径 join 过滤 + rebuild 重放；purge_record 账目事实走单写者；IPC 三通道 + 三事件；approval 账目 fail-closed |
+| Fact Graph 表面 UI（Inspector/Toolbar 消费 triples） | **未实现** | **接口就绪**（P2） |
 
 ## 9. Flow（图 → 可执行流程）
 
