@@ -1,12 +1,13 @@
 # Ravel 项目文档
 
-更新日期：2026-08-29
+更新日期：2026-08-30
 
 本目录只保留有明确职责的文档。当前状态、已验证结果和下一步入口以 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md) 为准；代码和测试优先于任何历史文字。
 
 | 文档 | 角色 | 是否当前执行依据 |
 |---|---|---|
 | [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md) | 当前实现状态、能力边界、测试快照和剩余工作 | 是 |
+| [`ravel-feature-inventory.md`](./ravel-feature-inventory.md) | 功能全景清单：每个功能的实现位置与 Histos 接入状态（已投影/接口就绪/未设计） | 是（清单） |
 | [`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md) | 产品不变量：事实权威、单写者、隔离、审批和工件规则 | 是（规范） |
 | [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md) | R0–R5、H0、T1–T5 的历史验收与锁定栈档案 | 否（历史证据） |
 | [`ravel-design-activity-session-reference-mcp.md`](./ravel-design-activity-session-reference-mcp.md) | S2–S4 设计与验收记录 | 否（历史证据） |
