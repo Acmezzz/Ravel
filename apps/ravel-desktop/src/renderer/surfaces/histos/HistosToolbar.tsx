@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { useT } from "../../lib/i18n";
-import type { HistosLens } from "../../types/dto";
+import type { HistosLens, HistosFactStatsDTO } from "../../types/dto";
 import { Button, IconButton } from "../../ui/Button";
 import type { HistosContextActions } from "./useHistosContextActions";
 import type { HistosLayoutMode } from "./HistosGraphWorkspace";
@@ -23,10 +23,12 @@ export interface HistosToolbarProps {
   freezeDisabled: boolean;
   onRefresh: () => void;
   actions: HistosContextActions;
+  /** P2: Fact Graph triple statistics shown next to the node/edge counts. */
+  factStats?: HistosFactStatsDTO | null;
 }
 
 export function HistosToolbar(props: HistosToolbarProps): React.ReactElement {
-  const { lens, onLensChange, nodeCount, edgeCount, loading, layoutMode, onLayoutModeChange, freezeDisabled, onRefresh, actions } = props;
+  const { lens, onLensChange, nodeCount, edgeCount, loading, layoutMode, onLayoutModeChange, freezeDisabled, onRefresh, actions, factStats } = props;
   const t = useT();
 
   return (
@@ -46,6 +48,7 @@ export function HistosToolbar(props: HistosToolbarProps): React.ReactElement {
         </label>
         <div className="omega-graph-toolbar-actions">
           {nodeCount + edgeCount > 0 ? <span className="mono-num">{nodeCount}N · {edgeCount}E</span> : null}
+          {factStats ? <span className="mono-num" title="Fact Graph triple 统计">{factStats.tripleCount}F</span> : null}
           <IconButton size="sm" label={t("graph.refresh")} onClick={onRefresh} disabled={loading}>↻</IconButton>
           <Button size="sm" variant="quiet" disabled={loading} onClick={() => onLayoutModeChange(layoutMode === "auto" ? "saved" : "auto")} title={layoutMode === "auto" ? "重新触发 ELK 自动布局" : "切换到自动布局"}>
             {layoutMode === "auto" ? "自动布局" : "保存位置"}

@@ -13,6 +13,8 @@ import type { HistosGraphDTO } from "../../types/dto";
 import { Button } from "../../ui/Button";
 import { SnippetEditor } from "../../components/common/SnippetEditor";
 import type { HistosContextActions, SuggestCandidate } from "./useHistosContextActions";
+import type { HistosFactPanel } from "./useHistosFactPanel";
+import { FactsPanel } from "./FactsPanel";
 
 export interface HistosInspectorProps {
   projected: GraphProjection | null;
@@ -22,6 +24,8 @@ export interface HistosInspectorProps {
   /** 该 Flow 当前是否需要批准；打开 FlowDrawer 入口。 */
   onOpenFlowDrawer: () => void;
   actions: HistosContextActions;
+  /** P2: Fact Graph panel state (shared with the toolbar stats). */
+  factPanel: HistosFactPanel;
 }
 
 function suggestionLabel(candidate: SuggestCandidate): string {
@@ -35,10 +39,11 @@ function targetLabel(target: GraphTraceTarget): string {
 }
 
 export function HistosInspector(props: HistosInspectorProps): React.ReactElement {
-  const { projected, graph, selection, flowApproved, onOpenFlowDrawer, actions } = props;
+  const { projected, graph, selection, flowApproved, onOpenFlowDrawer, actions, factPanel } = props;
   const t = useT();
   const activeSessionId = useAppStore((state) => state.activeSessionId);
   const requestTranscriptNavigation = useAppStore((state) => state.requestTranscriptNavigation);
+  const [activeTab, setActiveTab] = React.useState<"detail" | "facts">("detail");
 
   const selected = React.useMemo(() => {
     if (!projected || !selection) return null;
@@ -79,6 +84,14 @@ export function HistosInspector(props: HistosInspectorProps): React.ReactElement
 
   return (
     <section className="ravel-histos-inspector" aria-label={t("graph.detailAria")}>
+      <div className="ravel-histos-tabs" role="tablist" aria-label="检查器页签">
+        <button type="button" role="tab" aria-selected={activeTab === "detail"} className={activeTab === "detail" ? "ravel-histos-tab-active" : ""} onClick={() => setActiveTab("detail")}>详情</button>
+        <button type="button" role="tab" aria-selected={activeTab === "facts"} className={activeTab === "facts" ? "ravel-histos-tab-active" : ""} onClick={() => setActiveTab("facts")}>事实</button>
+      </div>
+      {activeTab === "facts" ? (
+        <FactsPanel panel={factPanel} selectedSessionId={target?.sessionId ?? null} />
+      ) : (
+        <>
       {selected ? (
         <div className="ravel-histos-inspector-detail">
           <span className="overline-label">{selected.kind}</span>
@@ -150,6 +163,8 @@ export function HistosInspector(props: HistosInspectorProps): React.ReactElement
           </ul>
         ) : null}
       </div>
+        </>
+      )}
     </section>
   );
 }

@@ -21,6 +21,7 @@ import { HistosInspector } from "./HistosInspector";
 import { HistosFlowDrawer } from "./HistosFlowDrawer";
 import { useHistosGraphQuery } from "./useHistosGraphQuery";
 import { useHistosContextActions } from "./useHistosContextActions";
+import { useHistosFactPanel } from "./useHistosFactPanel";
 
 export function HistosSurface(): React.ReactElement {
   const activeSessionId = useAppStore((state) => state.activeSessionId);
@@ -40,6 +41,7 @@ export function HistosSurface(): React.ReactElement {
     draft,
     refresh: q.refresh,
   });
+  const factPanel = useHistosFactPanel();
 
   const projected = React.useMemo(() => (q.graph ? projectHistosGraph(q.graph, selection) : null), [q.graph, selection]);
 
@@ -83,6 +85,7 @@ export function HistosSurface(): React.ReactElement {
           freezeDisabled={freezeDisabled}
           onRefresh={q.refresh}
           actions={actions}
+          factStats={factPanel.stats}
         />
 
         <div className="ravel-histos-body">
@@ -96,6 +99,7 @@ export function HistosSurface(): React.ReactElement {
               onSelect={setSelection}
               onDraftChange={setDraft}
               layoutMode={layoutMode}
+              factPanel={factPanel}
             />
             <HistosInspector
               projected={projected}
@@ -104,6 +108,7 @@ export function HistosSurface(): React.ReactElement {
               flowApproved={flowApproved}
               onOpenFlowDrawer={() => setFlowDrawerOpen(true)}
               actions={actions}
+              factPanel={factPanel}
             />
           </div>
           <HistosFlowDrawer
