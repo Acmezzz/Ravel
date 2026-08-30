@@ -27,6 +27,15 @@ const MAX_CONDENSE_BUDGET = 32_000;
 const MAX_DISTILL_CONTENT_BYTES = 262_144;
 const MAX_DISTILL_CONTEXT_BUDGET = 64_000;
 
+// Tombstone (P0 traceability) constants. `target_kind` is the closed set from
+// the schema definition; approval accounting is protected fail-closed — those
+// facts can never be archived or purged while their session exists.
+const TOMBSTONE_TARGET_KINDS = new Set(["triple", "node", "edge", "artifact", "session_index"]);
+const MAX_TOMBSTONE_IDS = 512;
+const MAX_TOMBSTONE_REASON = 512;
+const APPROVAL_TRIPLE_PREDICATES = new Set(["approves", "denies"]);
+const APPROVAL_TRIPLE_TAGS = new Set(["approved", "denied"]);
+
 const initializeSchema = schema.initializeHistosSchema ?? schema.createHistosSchema;
 const validateSchema = schema.validateHistosSchema ?? schema.validateSchema;
 const validateAddress = addressModule.validateFactAddress ?? addressModule.normalizeFactAddress;
@@ -521,9 +530,60 @@ function revisionLensMatches(database, artifactSha, lens) {
   return row?.lens === lens;
 }
 
+/**
+ * Ids currently hidden by an active (non-revoked) tombstone of `kind`.
+ * One prepared query per read path call; the tombstones table is joined in
+ * memory so every query path shares the same "invisible" definition.
+ */
+function activeTombstoneIds(database, kind) {
+  const rows = database.prepare("SELECT target_id AS targetId FROM tombstones WHERE target_kind = ? AND revoked_at IS NULL").all(kind);
+  return new Set(rows.map((row) => row.targetId));
+}
+
+function tombstoneId() {
+  return Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+}
+
+/**
+ * Fail-closed gate for archive/purge: approval accounting is never
+ * archivable, and the target rows must actually exist (a tombstone over a
+ * missing object would silently pretend a deletion happened).
+ * `kind='session_index'` points at JSONL session identifiers that live
+ * outside sqlite, so existence is not verified here.
+ */
+function assertEntriesArchivable(database, kind, ids) {
+  if (kind === "session_index") return;
+  const table = { node: "node_revisions", edge: "edge_revisions", triple: "fact_triples", artifact: "artifacts" }[kind];
+  const column = { node: "node_revision_id", edge: "edge_revision_id", triple: "id", artifact: "sha256" }[kind];
+  const found = new Set();
+  const select = database.prepare(`SELECT ${column} AS id FROM ${table}`);
+  for (const row of select.all()) found.add(row.id);
+  const missing = ids.filter((id) => !found.has(id));
+  if (missing.length > 0) {
+    throw Object.assign(new Error(`cannot archive unknown ${kind} target(s): ${missing.slice(0, 8).join(", ")}`), { code: "target_not_found", missing });
+  }
+  if (kind === "node") {
+    const approvalRows = database.prepare("SELECT node_revision_id AS id FROM node_revisions WHERE kind = 'approval'").all();
+    const approvalIds = new Set(approvalRows.map((row) => row.id));
+    const blocked = ids.filter((id) => approvalIds.has(id));
+    if (blocked.length > 0) {
+      throw Object.assign(new Error("approval accounting facts cannot be archived"), { code: "approval_protected", blocked });
+    }
+  }
+  if (kind === "triple") {
+    const rows = database.prepare("SELECT id, predicate, tag FROM fact_triples").all();
+    const blocked = rows.filter((row) => ids.includes(row.id) && (APPROVAL_TRIPLE_PREDICATES.has(row.predicate) || APPROVAL_TRIPLE_TAGS.has(row.tag))).map((row) => row.id);
+    if (blocked.length > 0) {
+      throw Object.assign(new Error("approval accounting triples cannot be archived"), { code: "approval_protected", blocked });
+    }
+  }
+}
+
 function graphRows(database, query) {
-  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map(readNodeRow).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
-  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query, row.artifactSha));
+  const archivedNodeIds = activeTombstoneIds(database, "node");
+  const archivedEdgeIds = activeTombstoneIds(database, "edge");
+  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map(readNodeRow).filter((row) => !archivedNodeIds.has(row.nodeRevisionId)).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
+  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => !archivedEdgeIds.has(row.edgeRevisionId)).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query, row.artifactSha));
   const revisions = [...nodes.map((item) => item.nodeRevisionId), ...edges.map((item) => item.edgeRevisionId)];
   const evidence = revisions.length === 0 ? [] : database.prepare(`SELECT e.revision_id AS revisionId, e.address_id AS addressId, e.role, a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS addressRevisionId, a.selector_json AS selectorJson FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id IN (${revisions.map(() => "?").join(",")})`).all(...revisions).map((row) => ({ revisionId: row.revisionId, addressId: row.addressId, role: row.role, address: { sourceType: row.sourceType, objectId: row.objectId, revisionId: row.addressRevisionId, ...(row.selectorJson ? { selector: JSON.parse(row.selectorJson) } : {}) } }));
   const withAnchors = (items, revisionKey) => items.map((item) => {
@@ -759,14 +819,19 @@ export class HistosEngine {
     return this.factGraph.writeTriples(Array.isArray(triples) ? triples : []);
   }
 
-  /** Read FactTriples with the same scope-aware query the surface needs. */
+  /** Read FactTriples with the same scope-aware query the surface needs.
+   *  Triples hidden by an active tombstone are filtered out of the result. */
   async queryFacts(query = {}) {
     if (!this.factGraph) return { ok: false, code: "not_ready", message: "Fact graph backend is not configured", triples: [] };
     if (!this.factGraphReady) {
       try { await this.factGraph.start({ workspaceId: this.workspaceId }); this.factGraphReady = true; }
       catch (error) { return { ok: false, code: error?.code ?? "start_failed", message: error instanceof Error ? error.message : String(error), triples: [] }; }
     }
-    return this.factGraph.queryTriples(query);
+    const result = await this.factGraph.queryTriples(query);
+    if (!result?.ok || !Array.isArray(result.triples) || result.triples.length === 0) return result;
+    const archived = activeTombstoneIds(this.assertOpen(), "triple");
+    if (archived.size === 0) return result;
+    return { ...result, triples: result.triples.filter((triple) => !archived.has(triple.id)) };
   }
 
   /** Return FactGraphBackend stats. */
@@ -787,6 +852,87 @@ export class HistosEngine {
       catch (error) { return { ok: false, code: error?.code ?? "start_failed", message: error instanceof Error ? error.message : String(error), count: 0 }; }
     }
     return this.factGraph.clear();
+  }
+
+  /**
+   * P0 archive: write tombstones over the given targets. The JSONL fact
+   * authority is never touched — a tombstone only hides rows from the
+   * derived index read paths (graphRows/queryFacts/getNode/suggestContext).
+   * Idempotent: an already-active tombstone for the same target is left as
+   * is. Approval accounting is fail-closed (throws, nothing written).
+   */
+  archiveEntries(kind, ids, reason = null) {
+    const database = this.assertOpen();
+    if (typeof kind !== "string" || !TOMBSTONE_TARGET_KINDS.has(kind)) {
+      throw invalid(`archiveEntries.kind must be one of ${[...TOMBSTONE_TARGET_KINDS].join(", ")}`);
+    }
+    if (!Array.isArray(ids) || ids.length === 0) throw invalid("archiveEntries requires a non-empty ids array");
+    if (ids.length > MAX_TOMBSTONE_IDS) throw invalid(`archiveEntries accepts at most ${MAX_TOMBSTONE_IDS} ids per call`);
+    const targets = [...new Set(ids.map((id) => string(id, "archiveEntries.id", 512)))];
+    if (reason !== undefined && reason !== null) {
+      if (typeof reason !== "string" || reason.length === 0 || reason.length > MAX_TOMBSTONE_REASON) {
+        throw invalid(`archiveEntries.reason must be a string of at most ${MAX_TOMBSTONE_REASON} characters`);
+      }
+    }
+    assertEntriesArchivable(database, kind, targets);
+    const insert = database.prepare(
+      "INSERT OR IGNORE INTO tombstones (id, target_kind, target_id, reason, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, NULL)",
+    );
+    const activeLookup = database.prepare("SELECT id FROM tombstones WHERE target_kind = ? AND target_id = ? AND revoked_at IS NULL");
+    const archived = [];
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      for (const target of targets) {
+        if (activeLookup.get(kind, target)) continue;
+        insert.run(tombstoneId(), kind, target, reason ?? null, now());
+        archived.push(target);
+      }
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    this.eventBus?.emit("on_entries_archived", boundEventPayload({ targetKind: kind, count: archived.length, targets: archived }));
+    return { ok: true, targetKind: kind, archivedCount: archived.length, archived, skippedCount: targets.length - archived.length };
+  }
+
+  /**
+   * P0 restore: revoke tombstones so the archived objects reappear in every
+   * read path. The revocation itself is the audit record (revoked_at on the
+   * tombstone row); rows are never deleted, so restore is repeatable and
+   * the archive/restore chain stays queryable.
+   */
+  restoreEntries(tombstoneIds) {
+    const database = this.assertOpen();
+    if (!Array.isArray(tombstoneIds) || tombstoneIds.length === 0) throw invalid("restoreEntries requires a non-empty tombstoneIds array");
+    if (tombstoneIds.length > MAX_TOMBSTONE_IDS) throw invalid(`restoreEntries accepts at most ${MAX_TOMBSTONE_IDS} ids per call`);
+    const requested = [...new Set(tombstoneIds.map((id) => string(id, "restoreEntries.tombstoneId", 64)))];
+    const select = database.prepare("SELECT id, target_kind AS targetKind, target_id AS targetId, revoked_at AS revokedAt FROM tombstones WHERE id = ?");
+    const update = database.prepare("UPDATE tombstones SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL");
+    const restored = [];
+    const notFound = [];
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      for (const id of requested) {
+        const row = select.get(id);
+        if (!row) {
+          notFound.push(id);
+          continue;
+        }
+        if (row.revokedAt === null || row.revokedAt === undefined) {
+          update.run(now(), id);
+          restored.push({ tombstoneId: id, targetKind: row.targetKind, targetId: row.targetId });
+        }
+      }
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    if (restored.length > 0) {
+      this.eventBus?.emit("on_entries_restored", boundEventPayload({ count: restored.length, entries: restored }));
+    }
+    return { ok: true, restoredCount: restored.length, restored, notFound };
   }
 
   /**
@@ -1160,7 +1306,8 @@ export class HistosEngine {
     if (terms.length === 0) throw invalid("suggestContext terms must each be 2-64 characters after trimming");
     const limit = input.limit === undefined ? 8 : input.limit;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 16) throw invalid("suggestContext.limit must be between 1 and 16");
-    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha FROM node_revisions ORDER BY created_at DESC, node_revision_id").all();
+    const archivedNodeIds = activeTombstoneIds(database, "node");
+    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha FROM node_revisions ORDER BY created_at DESC, node_revision_id").all().filter((row) => !archivedNodeIds.has(row.nodeRevisionId));
     const evidenceCounts = new Map(database.prepare("SELECT revision_id AS revisionId, COUNT(*) AS count FROM evidence GROUP BY revision_id").all().map((row) => [row.revisionId, row.count]));
     const lensBySha = new Map(database.prepare("SELECT sha256, lens FROM artifacts").all().map((row) => [row.sha256, row.lens]));
     const candidates = [];
@@ -1190,7 +1337,8 @@ export class HistosEngine {
     const nodeId = typeof first === "string" ? first : first.nodeId ?? first.id;
     string(nodeId, "nodeId");
     const database = this.assertOpen();
-    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
+    const archivedNodeIds = activeTombstoneIds(database, "node");
+    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => !archivedNodeIds.has(row.nodeRevisionId)).filter((row) => revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
     if (rows.length === 0) return null;
     const graph = graphRows(database, query);
     return { ...rows[0], evidence: graph.evidence.filter((item) => item.revisionId === rows[0].nodeRevisionId), parents: graph.parents.filter((item) => item.childId === rows[0].nodeRevisionId) };
