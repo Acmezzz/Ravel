@@ -1,0 +1,893 @@
+{
+  "schemaVersion": "1.0",
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.08.06.19.15.08",
+    "version_source": "skill-release-manifest.json",
+    "schema_version": "1.0",
+    "release": "prompt-base-cloud-ssot-migration",
+    "read_status": "ok"
+  },
+  "project": {
+    "name": "ravel-agent-redesign",
+    "title": "Ravel Agent 桌面端重设计",
+    "resolvedLane": "complex_html_page",
+    "operatingMode": "free-explore",
+    "deviceType": "desktop",
+    "language": "zh-CN",
+    "viewportMode": "desktop-1440",
+    "brandPrefix": "ravel",
+    "intentProfile": {
+      "surface": "project",
+      "caseFamily": "complex_multi_page_product_ui",
+      "productType": "AI Agent 桌面客户端（Electron + React + TS + Tailwind）",
+      "sourceRepo": "d:/project/agent/Ravel",
+      "deliverable": "三模式高保真界面稿（可编辑 HTML），放入 .design 画布",
+      "pageCount": 3,
+      "styleKeywords": [
+        "琥珀色主题",
+        "简约",
+        "类 Codex / TraeWork 桌面 Agent",
+        "高质感",
+        "交互细节丰富",
+        "信息密度可控"
+      ],
+      "stateGroupStrategy": "interaction-state-expansion",
+      "assetStrategy": "no-bitmap-assets（monogram 头像 + lucide 图标 + 内联 SVG，Step 2.5 跳过）"
+    },
+    "selectedIntentWorkflowRead": true,
+    "contextReadScope": {
+      "orchestrationScopeOnly": true,
+      "mainAgentRead": [
+        "intent-workflows/intent-project-complex-build/INTENT_WORKFLOW.md",
+        "intent-workflows/intent-project-complex-build/start-complex-project-build.md",
+        "intent-workflows/intent-project-complex-build/00-requirement-and-style-intake.md",
+        "intent-workflows/intent-project-complex-build/02-page-composition.md",
+        "intent-workflows/intent-project-complex-build/page-composition-tree.md",
+        "intent-workflows/intent-project-complex-build/orchestration-summary-fields.md",
+        "shared-runtime/orchestration-summary-contract/orchestration-summary-contract.md",
+        "shared-runtime/orchestration-summary-contract/generalized-flow-control-fields.md",
+        "shared-runtime/design-artifact-formats/design-project-file-format.md",
+        "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+        "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+        "delivery-quality/page-rendering-quality-gate.md",
+        "delivery-quality/design-artifact-validation.md",
+        "delivery-quality/delivery-evidence-contract.md",
+        "visual-experience/visual-experience-guidelines.md",
+        "visual-experience/visual-checkpoint-protocol.md"
+      ],
+      "subAgentReadsOwnConstraints": true,
+      "note": "Page Sub-Agents 按 shared-page-rendering-kernel.md Phase 0/1 直读约束文件；Main Agent 不代为消化。"
+    },
+    "contextRequirementsLoaded": [
+      {
+        "path": "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "shared-runtime/agent-dispatch-runtime/shared-page-rendering-kernel.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z",
+        "loadType": "declared-for-sub-agent"
+      },
+      {
+        "path": "delivery-quality/page-rendering-quality-gate.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "delivery-quality/design-artifact-validation.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "delivery-quality/delivery-evidence-contract.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "visual-experience/visual-experience-guidelines.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "visual-experience/visual-checkpoint-protocol.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "intent-workflows/intent-project-complex-build/start-complex-project-build.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "intent-workflows/intent-project-complex-build/00-requirement-and-style-intake.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      },
+      {
+        "path": "intent-workflows/intent-project-complex-build/02-page-composition.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:12:00.000Z"
+      },
+      {
+        "path": "intent-workflows/intent-project-complex-build/orchestration-summary-fields.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:12:00.000Z"
+      },
+      {
+        "path": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:12:00.000Z"
+      },
+      {
+        "path": "intent-workflows/intent-project-complex-build/complex-page-dispatch-contract.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:12:00.000Z"
+      },
+      {
+        "path": "shared-runtime/design-artifact-formats/design-project-file-format.md",
+        "readStatus": "loaded",
+        "bodyRead": true,
+        "recordedAt": "2026-08-29T02:05:00.000Z"
+      }
+    ],
+    "validationRunDiscipline": {
+      "maxFullValidationRuns": 2,
+      "softWarningsTriggerRepair": false,
+      "blockingRepairMode": "targeted-once"
+    },
+    "lowValueCallWatchdog": {
+      "applies": true,
+      "noProgressSignals": [
+        "no_tool_call",
+        "no_artifact_diff",
+        "no_structured_decision"
+      ],
+      "noProgressNextAction": "enter_readiness_or_blocked_summary",
+      "recordedAt": "2026-08-29T02:05:00.000Z"
+    },
+    "cssPreflightEvidence": {
+      "status": "passed",
+      "brandPrefix": "ravel",
+      "prefixMode": "standard",
+      "command": "node <SKILL_DIR>/shared-runtime/deterministic-tooling/apply-html-head-contract.mjs d:/project/agent/Ravel/ravel-agent-redesign/colors_and_type.css <TEMP>/preflight-probe.html --title=\"Preflight Probe\" --lang=zh-CN",
+      "exitCode": 0,
+      "outputSummary": "Brand prefix: ravel; [OK] HTML skeleton generated",
+      "recordedAt": "2026-08-29T02:04:00.000Z"
+    },
+    "generationTree": {
+      "nodeId": "gen-project-shell",
+      "kind": "project-shell",
+      "pageIds": [
+        "page-chat",
+        "page-ide",
+        "page-histos"
+      ],
+      "output": "partials/project-shell.html",
+      "sharedRegions": [
+        "桌面窗口帧（1440x900 内容画布，圆角窗口投影）",
+        "标题栏：品牌 Ravel + 工作区名 + 三模式分段控件（mode-chat|mode-ide|mode-histos）+ 冻结上下文/主题/账户/更多",
+        "左侧活动图标栏 48px（新建会话、历史、文件、图谱、扩展、搜索、设置、账户），每项 data-nav-key",
+        "全局 tokens 用法、状态色语义、tooltip/焦点环/滚动条规范"
+      ],
+      "privateRegions": [],
+      "mutableSlots": [
+        "SLOT:activeNavItem",
+        "SLOT:activeTab",
+        "SLOT:workspacePrimary"
+      ],
+      "status": "generated",
+      "generatedAt": "2026-08-29T12:40:00.000Z",
+      "children": [
+        {
+          "nodeId": "gen-page-chat",
+          "kind": "page-leaf",
+          "stateRole": "base",
+          "stateGroupId": "ravel-modes",
+          "pageIds": [
+            "page-chat"
+          ],
+          "output": "pages/chat.html",
+          "sharedRegions": [
+            "继承 gen-project-shell 全部区域"
+          ],
+          "privateRegions": [
+            "会话列表 280px",
+            "中央对话主流（消息/工具卡/代码块/变更摘要/计划卡/建议 chips）",
+            "composer",
+            "右侧信息抽屉",
+            "流式/排队/错误/空态演示"
+          ],
+          "mutableSlots": [
+            "SLOT:activeNavItem",
+            "SLOT:activeTab",
+            "SLOT:workspacePrimary"
+          ],
+          "status": "generated",
+          "generatedAt": "2026-08-29T12:55:00.000Z",
+          "children": [
+            {
+              "nodeId": "gen-page-ide",
+              "kind": "page-leaf",
+              "stateRole": "derived",
+              "stateGroupId": "ravel-modes",
+              "derivedFromNodeId": "gen-page-chat",
+              "derivedFromHtmlSrc": "pages/chat.html",
+              "pageIds": [
+                "page-ide"
+              ],
+              "output": "pages/ide.html",
+              "sharedRegions": [
+                "继承 gen-project-shell",
+                "继承 chat 会话面板（压缩 360px）"
+              ],
+              "privateRegions": [
+                "中央代码 tab 查看器 + 行号 + diff + 状态条",
+                "右栏目录树 + 次级 tabs（diff/graph/worktree/agent/telemetry/snapshots/terminal）",
+                "底部终端抽屉",
+                "Agent 与代码联动细节"
+              ],
+              "mutableSlots": [
+                "SLOT:activeNavItem",
+                "SLOT:activeTab",
+                "SLOT:workspacePrimary"
+              ],
+              "status": "generated",
+              "generatedAt": "2026-08-29T13:10:00.000Z",
+              "children": []
+            },
+            {
+              "nodeId": "gen-page-histos",
+              "kind": "page-leaf",
+              "stateRole": "derived",
+              "stateGroupId": "ravel-modes",
+              "derivedFromNodeId": "gen-page-chat",
+              "derivedFromHtmlSrc": "pages/chat.html",
+              "pageIds": [
+                "page-histos"
+              ],
+              "output": "pages/histos.html",
+              "sharedRegions": [
+                "继承 gen-project-shell",
+                "继承 chat 会话面板（压缩 360px）"
+              ],
+              "privateRegions": [
+                "知识图谱画布（节点/边/分组/缩放平移）",
+                "画布工具条（Lens、N·E、Refresh、Rebuild、Freeze Context）",
+                "右侧节点详情与动作（Convert to Flow/Run Flow/Schedule/Suggest）",
+                "导入条（Workspace Import sha256、URL 导入）",
+                "图例与构建状态"
+              ],
+              "mutableSlots": [
+                "SLOT:activeNavItem",
+                "SLOT:activeTab",
+                "SLOT:workspacePrimary"
+              ],
+              "status": "generated",
+              "generatedAt": "2026-08-29T13:10:00.000Z",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    "sharedProjectShellContract": {
+      "applies": true,
+      "shellFragment": "partials/project-shell.html",
+      "owningNode": "gen-project-shell",
+      "windowFrame": {
+        "canvasWidth": 1440,
+        "canvasHeight": 900,
+        "cornerRadius": 14,
+        "chrome": "自绘标题栏（无系统边框），整窗 overflow 由内部面板各自滚动"
+      },
+      "regions": {
+        "titlebar": "高度 44px：左品牌 + 工作区名（含分支 chip）；中间分段控件三模式；右 Freeze Context、主题切换、账户 monogram、更多菜单",
+        "activityRail": "宽度 48px，垂直图标列，激活项左侧 2px 琥珀指示条 + 图标琥珀色，hover 出 tooltip",
+        "workspace": "rest of window，由 SLOT:workspacePrimary 填充"
+      },
+      "navigationSync": {
+        "mechanism": "data-tab-key / data-nav-key + [data-active=\"true\"]",
+        "activeStylingOwner": "gen-project-shell",
+        "leafPermission": "只替换 slot，不得重写或复制共享 nav/tab DOM"
+      },
+      "continuityAnchors": [
+        "标题栏 + 活动栏构成的窗口 chrome（三模式完全一致）",
+        "琥珀主色单点使用（激活态、主按钮、焦点、进度），其余中性灰阶",
+        "radius 阶 6/10/14/16 与低透明阴影（<=0.05 alpha）",
+        "字体栈 Inter + PingFang SC；代码 JetBrains Mono",
+        "面板间 1px border + surface 层级差，而非重投影"
+      ],
+      "tokenUsage": "所有颜色/字体/圆角/阴影/动效必须引用 var(--ravel-*)；禁止裸 hex、禁止 --secondary/--accent 裸名",
+      "mobileNavigation": {
+        "applies": false,
+        "reason": "desktop-only Electron 客户端"
+      }
+    },
+    "visualQualityCheckpoints": [
+      {
+        "checkpointId": "vq-anchor",
+        "dimension": "visual-anchor",
+        "expected": "每模式有唯一主锚点：chat=对话主流；ide=代码查看器；histos=图谱画布。锚点占视觉重量最大，chrome 退居中性",
+        "evidenceTarget": "pages/chat.html#workspacePrimary"
+      },
+      {
+        "checkpointId": "vq-hierarchy",
+        "dimension": "information-hierarchy",
+        "expected": "标题栏/活动栏（最低权重）→ 面板 chrome → 面板内容 → 琥珀强调仅用于当前可操作焦点",
+        "evidenceTarget": "pages/ide.html#workspacePrimary"
+      },
+      {
+        "checkpointId": "vq-structure",
+        "dimension": "composition-structure",
+        "expected": "桌面三栏/四栏栅格：rail 48 / 会话 280-360 / 主区弹性 / 右栏 300-360；间距节奏 4-8-12-16-24；密度高但不挤压",
+        "evidenceTarget": "pages/histos.html#workspacePrimary"
+      },
+      {
+        "checkpointId": "vq-implementation",
+        "dimension": "implementation-strategy",
+        "expected": "纯 HTML + Tailwind CDN + ravel tokens；图标 lucide CDN；无位图资产；图谱/代码/终端用 SVG 与 CSS 构造",
+        "evidenceTarget": "pages/chat.html#implementation"
+      }
+    ],
+    "interactionWiringPlan": {
+      "stateGroup": "ravel-modes",
+      "visibleBusinessEdges": 0,
+      "hiddenInteractions": [
+        {
+          "sourcePage": "page-chat",
+          "domId": "mode-chat",
+          "targetPage": "page-chat",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-chat",
+          "domId": "mode-ide",
+          "targetPage": "page-ide",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-chat",
+          "domId": "mode-histos",
+          "targetPage": "page-histos",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-ide",
+          "domId": "mode-chat",
+          "targetPage": "page-chat",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-ide",
+          "domId": "mode-ide",
+          "targetPage": "page-ide",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-ide",
+          "domId": "mode-histos",
+          "targetPage": "page-histos",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-histos",
+          "domId": "mode-chat",
+          "targetPage": "page-chat",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-histos",
+          "domId": "mode-ide",
+          "targetPage": "page-ide",
+          "hideEdge": true
+        },
+        {
+          "sourcePage": "page-histos",
+          "domId": "mode-histos",
+          "targetPage": "page-histos",
+          "hideEdge": true
+        }
+      ],
+      "note": "三模式互为状态组，画布上不产生业务连接线；9 条 tab 跳转为 hideEdge 交互。"
+    },
+    "validationHistory": [],
+    "validationRepairLedger": [],
+    "dispatchPreflightManifest": [
+      {
+        "recorded_at": "2026-08-29T12:19:44.470Z",
+        "generatedBy": "build-page-dispatch-manifest.mjs",
+        "packetType": "ComplexPagePacket",
+        "laneContract": {
+          "resolvedLane": "complex_html_page",
+          "packetType": "ComplexPagePacket",
+          "pageRuntimeGuide": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+          "dispatchContract": "intent-workflows/intent-project-complex-build/complex-page-dispatch-contract.md"
+        },
+        "taskLinePresent": true,
+        "outputPathPresent": true,
+        "sharedTemplate": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+        "nodeId": "gen-page-chat",
+        "htmlSrc": "pages/chat.html",
+        "supplementaryReads": [],
+        "allowedWritePaths": [
+          "pages/chat.html",
+          "assets/"
+        ],
+        "forbiddenWriteRoots": [
+          "*.design",
+          "runtime-orchestration-summary.json",
+          "validation-report.json",
+          "finish-readiness-report.json",
+          "restore-contract-report.json",
+          "page-generation-summary.json"
+        ],
+        "toolPolicy": {
+          "todoWriteAllowed": false,
+          "validationScriptsAllowed": false,
+          "previewAllowed": false,
+          "helperScriptsAllowed": false,
+          "designFileWriteAllowed": false,
+          "allowedWritePaths": [
+            "pages/chat.html",
+            "assets/"
+          ]
+        },
+        "skillRuntime": {
+          "skillDir": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design",
+          "deterministicToolDir": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling",
+          "toolPaths": {
+            "applyHtmlHeadContract": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\apply-html-head-contract.mjs",
+            "recordDispatchCompletion": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs",
+            "buildPageDispatchManifest": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\build-page-dispatch-manifest.mjs",
+            "validateDesignWorkspace": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-design-workspace.mjs",
+            "validateFinishReadiness": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs",
+            "validateRestoreContract": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-restore-contract.mjs"
+          },
+          "requiredForPageSubAgent": [
+            "applyHtmlHeadContract",
+            "recordDispatchCompletion"
+          ],
+          "pathInjection": "absolute",
+          "pathContract": "Do not use {SKILL_DIR} placeholders inside Page Sub-Agent packets; use toolPaths.* absolute paths.",
+          "commandTemplates": {
+            "recordDispatchCompletion": "node \"c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs\" \"d:\\project\\agent\\Ravel\\ravel-agent-redesign\" --node-id=\"gen-page-chat\" --html-src=\"pages/chat.html\" --status=completed --changed-files=<comma-separated-project-relative-files> --trace-digest=<main-agent-runtime-trace-digest> --tool-ledger-json=<tool-ledger-json-or-file>"
+          }
+        },
+        "cssFilePath": "d:\\project\\agent\\Ravel\\ravel-agent-redesign\\colors_and_type.css",
+        "htmlFilePath": "d:\\project\\agent\\Ravel\\ravel-agent-redesign\\pages\\chat.html",
+        "brandPrefix": "ravel",
+        "aestheticsMode": "free-explore",
+        "toolDisciplineBlockPresent": true,
+        "fillHtmlHeadCommand": "node \"c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\apply-html-head-contract.mjs\" \"d:\\project\\agent\\Ravel\\ravel-agent-redesign\\colors_and_type.css\" \"d:\\project\\agent\\Ravel\\ravel-agent-redesign\\pages\\chat.html\" --title=\"对话模式\" --lang=\"zh-CN\" --prefix=\"ravel\"",
+        "headFillMode": "skeleton-first",
+        "viewportMode": "desktop-1440",
+        "completionSchemaExpected": "full",
+        "restoreFields": null,
+        "restoreContractStatus": null,
+        "restoreCompactPacket": null,
+        "deterministicCommands": null,
+        "sourceAuthorityLock": null,
+        "preDispatchFileHashes": {
+          "ravel-agent-redesign.design": "c1b4b14649f46b91aba1512e8dd85b7e901de7e78c68a6a7b7b8d2125b1744e2"
+        },
+        "contextPreflight": {
+          "workflowPath": "intent-workflows/intent-project-complex-build/INTENT_WORKFLOW.md",
+          "requiredContextFiles": [
+            "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+            "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+            "shared-runtime/agent-dispatch-runtime/shared-page-rendering-kernel.md",
+            "delivery-quality/page-rendering-quality-gate.md",
+            "delivery-quality/design-artifact-validation.md",
+            "delivery-quality/delivery-evidence-contract.md",
+            "visual-experience/visual-experience-guidelines.md",
+            "visual-experience/visual-checkpoint-protocol.md"
+          ],
+          "optionalContextFiles": [],
+          "passed": true
+        },
+        "pageSliceOnly": true,
+        "requiredFieldsPresent": true,
+        "missingFields": [],
+        "fillHtmlHeadCommandValid": true,
+        "mobileNavigation": {
+          "required": false,
+          "appliesToThisPage": false,
+          "canonicalHtmlIncluded": false,
+          "missingFields": []
+        },
+        "persistedToSummary": true,
+        "taskQueryAudited": false,
+        "proofSource": "summary-only",
+        "largeWorkflowFilesInTaskQuery": null
+      },
+      {
+        "recorded_at": "2026-08-29T12:19:44.470Z",
+        "generatedBy": "build-page-dispatch-manifest.mjs",
+        "packetType": "ComplexPagePacket",
+        "laneContract": {
+          "resolvedLane": "complex_html_page",
+          "packetType": "ComplexPagePacket",
+          "pageRuntimeGuide": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+          "dispatchContract": "intent-workflows/intent-project-complex-build/complex-page-dispatch-contract.md"
+        },
+        "taskLinePresent": true,
+        "outputPathPresent": true,
+        "sharedTemplate": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+        "nodeId": "gen-page-ide",
+        "htmlSrc": "pages/ide.html",
+        "supplementaryReads": [],
+        "allowedWritePaths": [
+          "pages/ide.html",
+          "assets/"
+        ],
+        "forbiddenWriteRoots": [
+          "*.design",
+          "runtime-orchestration-summary.json",
+          "validation-report.json",
+          "finish-readiness-report.json",
+          "restore-contract-report.json",
+          "page-generation-summary.json"
+        ],
+        "toolPolicy": {
+          "todoWriteAllowed": false,
+          "validationScriptsAllowed": false,
+          "previewAllowed": false,
+          "helperScriptsAllowed": false,
+          "designFileWriteAllowed": false,
+          "allowedWritePaths": [
+            "pages/ide.html",
+            "assets/"
+          ]
+        },
+        "skillRuntime": {
+          "skillDir": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design",
+          "deterministicToolDir": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling",
+          "toolPaths": {
+            "applyHtmlHeadContract": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\apply-html-head-contract.mjs",
+            "recordDispatchCompletion": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs",
+            "buildPageDispatchManifest": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\build-page-dispatch-manifest.mjs",
+            "validateDesignWorkspace": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-design-workspace.mjs",
+            "validateFinishReadiness": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs",
+            "validateRestoreContract": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-restore-contract.mjs"
+          },
+          "requiredForPageSubAgent": [
+            "applyHtmlHeadContract",
+            "recordDispatchCompletion"
+          ],
+          "pathInjection": "absolute",
+          "pathContract": "Do not use {SKILL_DIR} placeholders inside Page Sub-Agent packets; use toolPaths.* absolute paths.",
+          "commandTemplates": {
+            "recordDispatchCompletion": "node \"c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs\" \"d:\\project\\agent\\Ravel\\ravel-agent-redesign\" --node-id=\"gen-page-ide\" --html-src=\"pages/ide.html\" --status=completed --changed-files=<comma-separated-project-relative-files> --trace-digest=<main-agent-runtime-trace-digest> --tool-ledger-json=<tool-ledger-json-or-file>"
+          }
+        },
+        "cssFilePath": "d:\\project\\agent\\Ravel\\ravel-agent-redesign\\colors_and_type.css",
+        "htmlFilePath": "d:\\project\\agent\\Ravel\\ravel-agent-redesign\\pages\\ide.html",
+        "brandPrefix": "ravel",
+        "aestheticsMode": "free-explore",
+        "toolDisciplineBlockPresent": true,
+        "fillHtmlHeadCommand": null,
+        "headFillMode": "skeleton-first",
+        "viewportMode": "desktop-1440",
+        "completionSchemaExpected": "full",
+        "restoreFields": null,
+        "restoreContractStatus": null,
+        "restoreCompactPacket": null,
+        "deterministicCommands": null,
+        "sourceAuthorityLock": null,
+        "preDispatchFileHashes": {
+          "ravel-agent-redesign.design": "c1b4b14649f46b91aba1512e8dd85b7e901de7e78c68a6a7b7b8d2125b1744e2"
+        },
+        "contextPreflight": {
+          "workflowPath": "intent-workflows/intent-project-complex-build/INTENT_WORKFLOW.md",
+          "requiredContextFiles": [
+            "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+            "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+            "shared-runtime/agent-dispatch-runtime/shared-page-rendering-kernel.md",
+            "delivery-quality/page-rendering-quality-gate.md",
+            "delivery-quality/design-artifact-validation.md",
+            "delivery-quality/delivery-evidence-contract.md",
+            "visual-experience/visual-experience-guidelines.md",
+            "visual-experience/visual-checkpoint-protocol.md"
+          ],
+          "optionalContextFiles": [],
+          "passed": true
+        },
+        "pageSliceOnly": true,
+        "requiredFieldsPresent": true,
+        "missingFields": [],
+        "fillHtmlHeadCommandValid": true,
+        "mobileNavigation": {
+          "required": false,
+          "appliesToThisPage": false,
+          "canonicalHtmlIncluded": false,
+          "missingFields": []
+        },
+        "persistedToSummary": true,
+        "taskQueryAudited": false,
+        "proofSource": "summary-only",
+        "largeWorkflowFilesInTaskQuery": null
+      },
+      {
+        "recorded_at": "2026-08-29T12:19:44.470Z",
+        "generatedBy": "build-page-dispatch-manifest.mjs",
+        "packetType": "ComplexPagePacket",
+        "laneContract": {
+          "resolvedLane": "complex_html_page",
+          "packetType": "ComplexPagePacket",
+          "pageRuntimeGuide": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+          "dispatchContract": "intent-workflows/intent-project-complex-build/complex-page-dispatch-contract.md"
+        },
+        "taskLinePresent": true,
+        "outputPathPresent": true,
+        "sharedTemplate": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+        "nodeId": "gen-page-histos",
+        "htmlSrc": "pages/histos.html",
+        "supplementaryReads": [],
+        "allowedWritePaths": [
+          "pages/histos.html",
+          "assets/"
+        ],
+        "forbiddenWriteRoots": [
+          "*.design",
+          "runtime-orchestration-summary.json",
+          "validation-report.json",
+          "finish-readiness-report.json",
+          "restore-contract-report.json",
+          "page-generation-summary.json"
+        ],
+        "toolPolicy": {
+          "todoWriteAllowed": false,
+          "validationScriptsAllowed": false,
+          "previewAllowed": false,
+          "helperScriptsAllowed": false,
+          "designFileWriteAllowed": false,
+          "allowedWritePaths": [
+            "pages/histos.html",
+            "assets/"
+          ]
+        },
+        "skillRuntime": {
+          "skillDir": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design",
+          "deterministicToolDir": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling",
+          "toolPaths": {
+            "applyHtmlHeadContract": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\apply-html-head-contract.mjs",
+            "recordDispatchCompletion": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs",
+            "buildPageDispatchManifest": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\build-page-dispatch-manifest.mjs",
+            "validateDesignWorkspace": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-design-workspace.mjs",
+            "validateFinishReadiness": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs",
+            "validateRestoreContract": "c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-restore-contract.mjs"
+          },
+          "requiredForPageSubAgent": [
+            "applyHtmlHeadContract",
+            "recordDispatchCompletion"
+          ],
+          "pathInjection": "absolute",
+          "pathContract": "Do not use {SKILL_DIR} placeholders inside Page Sub-Agent packets; use toolPaths.* absolute paths.",
+          "commandTemplates": {
+            "recordDispatchCompletion": "node \"c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs\" \"d:\\project\\agent\\Ravel\\ravel-agent-redesign\" --node-id=\"gen-page-histos\" --html-src=\"pages/histos.html\" --status=completed --changed-files=<comma-separated-project-relative-files> --trace-digest=<main-agent-runtime-trace-digest> --tool-ledger-json=<tool-ledger-json-or-file>"
+          }
+        },
+        "cssFilePath": "d:\\project\\agent\\Ravel\\ravel-agent-redesign\\colors_and_type.css",
+        "htmlFilePath": "d:\\project\\agent\\Ravel\\ravel-agent-redesign\\pages\\histos.html",
+        "brandPrefix": "ravel",
+        "aestheticsMode": "free-explore",
+        "toolDisciplineBlockPresent": true,
+        "fillHtmlHeadCommand": null,
+        "headFillMode": "skeleton-first",
+        "viewportMode": "desktop-1440",
+        "completionSchemaExpected": "full",
+        "restoreFields": null,
+        "restoreContractStatus": null,
+        "restoreCompactPacket": null,
+        "deterministicCommands": null,
+        "sourceAuthorityLock": null,
+        "preDispatchFileHashes": {
+          "ravel-agent-redesign.design": "c1b4b14649f46b91aba1512e8dd85b7e901de7e78c68a6a7b7b8d2125b1744e2"
+        },
+        "contextPreflight": {
+          "workflowPath": "intent-workflows/intent-project-complex-build/INTENT_WORKFLOW.md",
+          "requiredContextFiles": [
+            "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+            "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+            "shared-runtime/agent-dispatch-runtime/shared-page-rendering-kernel.md",
+            "delivery-quality/page-rendering-quality-gate.md",
+            "delivery-quality/design-artifact-validation.md",
+            "delivery-quality/delivery-evidence-contract.md",
+            "visual-experience/visual-experience-guidelines.md",
+            "visual-experience/visual-checkpoint-protocol.md"
+          ],
+          "optionalContextFiles": [],
+          "passed": true
+        },
+        "pageSliceOnly": true,
+        "requiredFieldsPresent": true,
+        "missingFields": [],
+        "fillHtmlHeadCommandValid": true,
+        "mobileNavigation": {
+          "required": false,
+          "appliesToThisPage": false,
+          "canonicalHtmlIncluded": false,
+          "missingFields": []
+        },
+        "persistedToSummary": true,
+        "taskQueryAudited": false,
+        "proofSource": "summary-only",
+        "largeWorkflowFilesInTaskQuery": null
+      }
+    ],
+    "readScopeLedger": [
+      {
+        "actor": "page-sub-agent",
+        "lane": "complex_html_page",
+        "path": "intent-workflows/intent-project-complex-build/complex-page-runtime.md",
+        "reason": "page runtime guide",
+        "scopeClass": "page-runtime",
+        "declaredBeforeRead": true,
+        "recordedAt": "2026-08-29T12:19:44.470Z",
+        "nodeId": "gen-page-chat",
+        "htmlSrc": "pages/chat.html"
+      },
+      {
+        "actor": "page-sub-agent",
+        "lane": "complex_html_page",
+        "path": "intent-workflows/intent-project-complex-build/complex-page-dispatch-contract.md",
+        "reason": "dispatch contract",
+        "scopeClass": "dispatch-contract",
+        "declaredBeforeRead": true,
+        "recordedAt": "2026-08-29T12:19:44.470Z",
+        "nodeId": "gen-page-chat",
+        "htmlSrc": "pages/chat.html"
+      }
+    ],
+    "expectedDispatches": [
+      {
+        "nodeId": "gen-page-chat",
+        "pageId": "gen-page-chat",
+        "targetPageId": "gen-page-chat",
+        "htmlSrc": "pages/chat.html",
+        "packetType": "ComplexPagePacket",
+        "status": "completed",
+        "changedFiles": [
+          "pages/chat.html"
+        ],
+        "toolCallLedger": {
+          "source": "main-agent-runtime-trace",
+          "traceDigest": "main-agent-chat-20260829-v3",
+          "todoWriteCalls": 0,
+          "previewCalls": 0,
+          "validationScriptCalls": 0,
+          "helperScriptWrites": 0
+        },
+        "recordedAt": "2026-08-29T13:45:41.730Z",
+        "source": "record-dispatch-completion.mjs"
+      },
+      {
+        "nodeId": "gen-page-ide",
+        "pageId": "gen-page-ide",
+        "targetPageId": "gen-page-ide",
+        "htmlSrc": "pages/ide.html",
+        "packetType": "ComplexPagePacket",
+        "status": "completed",
+        "changedFiles": [
+          "pages/ide.html"
+        ],
+        "toolCallLedger": {
+          "source": "main-agent-runtime-trace",
+          "traceDigest": "main-agent-ide-20260829-v3",
+          "todoWriteCalls": 0,
+          "previewCalls": 0,
+          "validationScriptCalls": 0,
+          "helperScriptWrites": 0
+        },
+        "recordedAt": "2026-08-29T13:45:41.836Z",
+        "source": "record-dispatch-completion.mjs"
+      },
+      {
+        "nodeId": "gen-page-histos",
+        "pageId": "gen-page-histos",
+        "targetPageId": "gen-page-histos",
+        "htmlSrc": "pages/histos.html",
+        "packetType": "ComplexPagePacket",
+        "status": "completed",
+        "changedFiles": [
+          "pages/histos.html"
+        ],
+        "toolCallLedger": {
+          "source": "main-agent-runtime-trace",
+          "traceDigest": "main-agent-histos-20260829-v3",
+          "todoWriteCalls": 0,
+          "previewCalls": 0,
+          "validationScriptCalls": 0,
+          "helperScriptWrites": 0
+        },
+        "recordedAt": "2026-08-29T13:45:42.001Z",
+        "source": "record-dispatch-completion.mjs"
+      }
+    ],
+    "mainAgentPostDispatchMutations": [
+      {
+        "path": "ravel-agent-redesign.design",
+        "reason": "registered 3 mode tab interactions",
+        "owner": "main-agent",
+        "recordedAt": "2026-08-29T13:45:41.730Z",
+        "source": "record-dispatch-completion.mjs"
+      }
+    ]
+  },
+  "designSource": {
+    "operatingMode": "free-explore",
+    "designLibrary": null,
+    "brandPrefix": "ravel",
+    "cssFilePath": "colors_and_type.css",
+    "theme": {
+      "default": "light",
+      "lightBackground": "#faf8f5",
+      "lightPrimary": "#c67d12",
+      "darkBackground": "#17150f",
+      "darkPrimary": "#e8b44a",
+      "note": "暖中性 + 单一琥珀强调；深色为默认演示之外的可切换主题（html.light/.dark）"
+    },
+    "inspiration": [
+      "OpenAI Codex 桌面端：克制的对话流 + 工具步骤卡",
+      "Trae / TraeWork：活动栏 + 工作区分栏 + 右侧上下文面板",
+      "Linear：密度、层级与微交互质感",
+      "Raycast：命令面板与快捷键提示呈现"
+    ]
+  },
+  "pages": [
+    {
+      "nodeId": "gen-page-chat",
+      "pageId": "page-chat",
+      "pageIndex": 1,
+      "htmlSrc": "pages/chat.html",
+      "title": "对话模式",
+      "stateRole": "base",
+      "stateGroupId": "ravel-modes",
+      "requirements": "常规模式（类 Codex / TraeWork）。装配 project shell（窗口帧 + 标题栏三模式分段控件 + 左侧活动栏，激活 nav key=chat、tab key=mode-chat）。工作区：左二栏会话列表 280px（搜索、按今天/昨天/更早分组、条目含状态点与相对时间、底部新建会话）；中央对话主流 max-width 760px 居中，含用户消息、Agent 回复（Markdown 节奏：标题/列表/表格/行内代码）、思考中骨架、工具调用卡（工具名 + 参数摘要 + 运行中/成功/失败三态 + 耗时 + 可展开输出流）、代码块（语言标签 + 复制 + JetBrains Mono）、文件变更摘要卡（+/- 行数、路径、接受/撤销）、计划卡（子任务勾选进度 3/5）、建议追问 chips；底部 composer（自动增高多行输入、Agent/Plan/Ask 模式切换、模型选择、附件与 @ 引用上下文、发送按钮、Enter/Shift+Enter 提示）；右信息抽屉 300px（工作区与分支、上下文占用进度条、Token/费用、运行时长、可折叠）。交互细节：流式光标、滚动到底部按钮、hover 显示消息操作（复制/重试/点赞）、错误重试条、空态引导。状态演示齐全但界面保持简约。"
+    },
+    {
+      "nodeId": "gen-page-ide",
+      "pageId": "page-ide",
+      "pageIndex": 2,
+      "htmlSrc": "pages/ide.html",
+      "title": "IDE 模式",
+      "stateRole": "derived",
+      "stateGroupId": "ravel-modes",
+      "derivedFromHtmlSrc": "pages/chat.html",
+      "requirements": "类 IDE 模式：左对话栏 + 中代码/内容浏览区 + 右工作区目录树。从 pages/chat.html 复制派生，shell 与对话面板结构保持不变（对话栏压缩为 360px，nav key=files、tab key=mode-ide）。中央查看区：文件标签页（激活态、脏点、关闭）、面包屑（src/agent/tools/run.ts）、行号代码视图（约 40 行真实感的 TS 代码，语法高亮全部用 --ravel-chart-*/state token）、内联 diff 增删标记 + 左右 gutter 标记、minimap、底部状态条（行列、空格、UTF-8、分支、Lint 结果）。右栏 340px：顶部 tabs（diff / graph / worktree / agent / telemetry / snapshots / terminal，diff 为激活态）、目录树（展开到三级、文件类型色点、Git 状态 M/A/U/D 字母、修改时间）、底部可拖拽终端抽屉（提示符、两条命令与输出、运行中任务进度）。联动细节：Agent 变更文件行 hover 出现「查看 diff / 定位」，顶部「全部接受 / 全部撤销」，审查模式切换（查看 / 标注）。"
+    },
+    {
+      "nodeId": "gen-page-histos",
+      "pageId": "page-histos",
+      "pageIndex": 3,
+      "htmlSrc": "pages/histos.html",
+      "title": "Histos 模式",
+      "stateRole": "derived",
+      "stateGroupId": "ravel-modes",
+      "derivedFromHtmlSrc": "pages/chat.html",
+      "requirements": "Histos 知识图谱模式：左对话栏 + 右图谱画布。从 pages/chat.html 复制派生（对话栏压缩为 360px，nav key=graph、tab key=mode-histos），会话中出现引用节点 chip 与答案内节点引用。右画布：SVG 知识图谱（约 18 节点、26 边；节点类型论文/概念/数据集/代码/作者，各自形状与 --ravel-chart-* 色，标签层级清晰；1 个聚焦节点高亮 + 相邻边加粗；分组云轮廓），缩放/平移控件与网格背景；画布顶部工具条：Lens 分段（structural / semantic / mixed，semantic 激活）、统计「N 18 · E 26」、Refresh、Rebuild、Freeze Context（冻结态徽标）、布局切换；右侧详情面板 340px：选中节点标题、摘要、属性键值表、关联边列表（方向 + 关系 + 权重）、动作按钮 Convert to Flow / Run Flow / Schedule / Suggest；画布顶部下方导入条：Workspace Import（sha256 前 12 位 + 校验通过状态）、URL 导入输入 + 导入按钮、进度；画布底部图例与构建状态（构建中 62% / 已冻结）。"
+    }
+  ]
+}

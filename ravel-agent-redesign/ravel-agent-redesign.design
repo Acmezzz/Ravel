@@ -1,0 +1,132 @@
+{
+  "data": [
+    {
+      "id": "page-chat",
+      "nodeId": "gen-page-chat",
+      "title": "对话模式",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1788004800000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 948,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-f97acf0a",
+          "measuredAt": 1788009067214
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/chat.html",
+        "interactions": [
+          {
+            "domId": "mode-chat",
+            "targetPageId": "page-chat",
+            "hideEdge": true
+          },
+          {
+            "domId": "mode-ide",
+            "targetPageId": "page-ide",
+            "hideEdge": true
+          },
+          {
+            "domId": "mode-histos",
+            "targetPageId": "page-histos",
+            "hideEdge": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-ide",
+      "nodeId": "gen-page-ide",
+      "title": "IDE 模式",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1788004800000,
+      "canvasData": {
+        "x": 480,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 948,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-85fd547e",
+          "measuredAt": 1788010332804
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/ide.html",
+        "interactions": [
+          {
+            "domId": "mode-chat",
+            "targetPageId": "page-chat",
+            "hideEdge": true
+          },
+          {
+            "domId": "mode-ide",
+            "targetPageId": "page-ide",
+            "hideEdge": true
+          },
+          {
+            "domId": "mode-histos",
+            "targetPageId": "page-histos",
+            "hideEdge": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-histos",
+      "nodeId": "gen-page-histos",
+      "title": "Histos 模式",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1788004800000,
+      "canvasData": {
+        "x": 960,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 948,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-5211c2b8",
+          "measuredAt": 1788010332804
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/histos.html",
+        "interactions": [
+          {
+            "domId": "mode-chat",
+            "targetPageId": "page-chat",
+            "hideEdge": true
+          },
+          {
+            "domId": "mode-ide",
+            "targetPageId": "page-ide",
+            "hideEdge": true
+          },
+          {
+            "domId": "mode-histos",
+            "targetPageId": "page-histos",
+            "hideEdge": true
+          }
+        ]
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "Ravel Agent 桌面端重设计",
+    "designLibrary": null,
+    "visualEditorEnabled": false,
+    "showEdge": false
+  }
+}

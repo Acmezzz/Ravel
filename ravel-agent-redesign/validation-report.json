@@ -1,0 +1,93 @@
+{
+  "success": true,
+  "outcome": "passed",
+  "repairable": true,
+  "terminalViolations": [],
+  "terminalBlockingSummary": null,
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.08.06.19.15.08",
+    "version_source": "skill-release-manifest.json",
+    "runtime_skill_dir": null,
+    "recorded_at": null,
+    "expected_version": "2026.08.06.19.15.08",
+    "status": "matched",
+    "read_status": "ok"
+  },
+  "operatingMode": "free-explore",
+  "renderBlockingErrorCount": 0,
+  "softWarningCount": 0,
+  "renderBlockingErrors": [],
+  "errorSignatures": [],
+  "softWarnings": [],
+  "repairPlanHints": [],
+  "repairActionTable": [],
+  "errorCount": 0,
+  "warningCount": 0,
+  "errors": [],
+  "warnings": [],
+  "validationRunDisciplineStatus": {
+    "declared": true,
+    "restoreMode": false,
+    "maxFullValidationRuns": 2,
+    "validationHistoryCount": 0,
+    "repairLedgerCount": 0,
+    "softWarningsTriggerRepair": false,
+    "terminalState": null,
+    "nextAction": null,
+    "violations": [],
+    "success": true
+  },
+  "terminalState": null,
+  "nextCheck": {
+    "type": "finish-readiness",
+    "command": "node \"c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"d:\\project\\agent\\Ravel\\ravel-agent-redesign\" --check=all",
+    "fullValidationAllowed": false,
+    "reason": "workspace validation passed; run complete finish readiness before final delivery"
+  },
+  "repairBatch": [],
+  "repairContextPacket": {
+    "schema_version": "1.0",
+    "purpose": "small-context repair packet; read this before full validation-report.json",
+    "success": true,
+    "terminalState": null,
+    "skillProvenance": {
+      "name": "solo-design",
+      "version": "2026.08.06.19.15.08",
+      "version_source": "skill-release-manifest.json",
+      "runtime_skill_dir": null,
+      "recorded_at": null,
+      "expected_version": "2026.08.06.19.15.08",
+      "status": "matched",
+      "read_status": "ok"
+    },
+    "renderBlockingErrorCount": 0,
+    "softWarningCount": 0,
+    "renderBlockingErrors": [],
+    "repairActionTable": [],
+    "nextCheck": {
+      "type": "finish-readiness",
+      "command": "node \"c:\\Users\\admin\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"d:\\project\\agent\\Ravel\\ravel-agent-redesign\" --check=all",
+      "fullValidationAllowed": false,
+      "reason": "workspace validation passed; run complete finish readiness before final delivery"
+    },
+    "forbidden": [
+      "do not read validator source",
+      "do not rerun full validation when nextCheck.fullValidationAllowed=false",
+      "do not start preview/browser unless user explicitly asks",
+      "do not hand-edit repair ledger fields"
+    ]
+  },
+  "projectFileHashes": {
+    "ravel-agent-redesign.design": "baeb6065e06e7a141dd16a561e6eff1289af996963625ca14d96b45431429fe3",
+    "colors_and_type.css": "44123f41a48f468ffbcc87b405beb8bbec31cc426219353f1927e984b366ea64",
+    "runtime-orchestration-summary.json": "0e60110b50859cb015e32ed79ad732f366e8d9ccbd390d39af89373099e413cb",
+    "pages/chat.html": "25931aca6f27f2a77ace08f5a18757f5e2fa6db445b73a62a12b45d2dd2648ee",
+    "pages/histos.html": "c3ff55b539c0343c7b81594324dbc55c1b64f41b26d86ea03ce855fe9b3bbb84",
+    "pages/ide.html": "f065f2242a7fe406cd131142d3ae5a69188b927ef112da821928d32523bf02a2"
+  },
+  "designDir": "d:\\project\\agent\\Ravel\\ravel-agent-redesign",
+  "expectedPages": 3,
+  "requireInteractions": "mode-chat:pages/chat.html,mode-ide:pages/chat.html,mode-histos:pages/chat.html,mode-chat:pages/ide.html,mode-ide:pages/ide.html,mode-histos:pages/ide.html,mode-chat:pages/histos.html,mode-ide:pages/histos.html,mode-histos:pages/histos.html",
+  "checkedAt": "2026-08-29T13:45:58.177Z"
+}

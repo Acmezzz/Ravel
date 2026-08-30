@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-08-29T02:15:00.000Z",
+  "project": "ravel-agent-redesign",
+  "projectName": "Ravel Agent 桌面端重设计",
+  "root": {
+    "nodeId": "gen-project-shell",
+    "kind": "project-shell",
+    "pageIds": ["page-chat", "page-ide", "page-histos"],
+    "output": "partials/project-shell.html",
+    "sharedRegions": [
+      "桌面窗口帧（1440x900 内容画布，四边留白 + 圆角窗口投影，标题栏可拖拽区）",
+      "标题栏：左侧品牌标识 Ravel + 工作区名，中间三模式分段控件（对话模式 / IDE 模式 / Histos 模式，data-tab-key=mode-chat|mode-ide|mode-histos），右侧冻结上下文、主题切换、账户 monogram、窗口三点菜单",
+      "左侧活动图标栏（48px）：新建会话、会话历史、文件工作区、知识图谱、扩展、搜索、设置 + 底部账户头像，每项带 data-nav-key",
+      "全局 tokens 用法：var(--ravel-*) 琥珀主色、双主题 class、字体栈、radius 阶、shadow 阶、ease/duration",
+      "状态色语义：--ravel-state-success/warning/danger/info 及 -soft 变体（工具调用结果、运行中、错误提示统一取色）",
+      "键盘提示与 tooltip 视觉规范、焦点环 ring、滚动条样式"
+    ],
+    "privateRegions": [],
+    "generatedAt": "2026-08-29T12:40:00.000Z",
+    "mutableSlots": [
+      "SLOT:activeNavItem（活动图标栏当前激活项，叶子只替换 data-active，不得复制整条 DOM）",
+      "SLOT:activeTab（标题栏模式分段控件当前激活项）",
+      "SLOT:workspacePrimary（主内容区，叶子页面在此填充自己的布局栅格）"
+    ],
+    "status": "generated",
+    "children": [
+      {
+        "nodeId": "gen-page-chat",
+        "kind": "page-leaf",
+        "stateRole": "base",
+        "stateGroupId": "ravel-modes",
+        "pageIds": ["page-chat"],
+        "output": "pages/chat.html",
+        "sharedRegions": ["继承 gen-project-shell 全部区域，原样装配"],
+        "privateRegions": [
+          "左二栏会话列表（280px）：搜索框、分组（今天 / 昨天 / 更早）、会话条目（标题 + 相对时间 + 状态点）、新建会话按钮",
+          "中央对话主流（最大宽 760px 居中）：用户消息气泡、Agent 回复块（Markdown 节奏）、思考中占位、工具调用卡（工具名、参数摘要、运行/成功/失败状态、耗时、可展开输出）、代码块（含语言标签 + 复制）、文件改动摘要卡（+/- 行数、路径、接受/撤销）、计划清单卡（子任务勾选进度）、建议追问 chips",
+          "底部 composer：多行输入、模式选择（Agent / Plan / Ask）、模型选择、附件与上下文引用、语音、发送按钮、快捷键提示（Enter 发送 / Shift+Enter 换行）",
+          "右侧信息抽屉（可折叠）：工作区、分支、上下文占用条、Token 与费用统计、运行时长",
+          "状态演示：流式生成中光标、任务排队中、错误重试条、空态（无会话引导）"
+        ],
+        "mutableSlots": ["SLOT:activeNavItem", "SLOT:activeTab", "SLOT:workspacePrimary"],
+        "status": "generated",
+        "generatedAt": "2026-08-29T12:55:00.000Z",
+        "children": [
+          {
+            "nodeId": "gen-page-ide",
+            "kind": "page-leaf",
+            "stateRole": "derived",
+            "stateGroupId": "ravel-modes",
+            "derivedFromNodeId": "gen-page-chat",
+            "derivedFromHtmlSrc": "pages/chat.html",
+            "pageIds": ["page-ide"],
+            "output": "pages/ide.html",
+            "sharedRegions": ["继承 gen-project-shell", "继承 chat 的会话面板结构（压缩为 360px 左栏）"],
+            "privateRegions": [
+              "中央代码/内容查看区：文件标签页（可关闭 + 脏点）、面包屑路径、行号代码视图（语法高亮色取自 chart tokens）、 minimap、diff 内联标记、状态条（行列、缩进、编码、分支）",
+              "右栏工作区目录树：搜索/过滤、文件夹展开层级、文件类型图标、Git 状态字母、拖拽手柄、次要动作（刷新、折叠全部）",
+              "右栏次级 tabs：diff / graph / worktree / agent / telemetry / snapshots / terminal",
+              "底部可拖拽终端抽屉（提示符、命令历史、运行中任务）",
+              "Agent 与代码联动细节：变更文件跳到 diff、审查模式（查看/标注）切换、接受/拒绝全部更改"
+            ],
+            "mutableSlots": ["SLOT:activeNavItem", "SLOT:activeTab", "SLOT:workspacePrimary"],
+            "status": "generated",
+            "generatedAt": "2026-08-29T13:10:00.000Z",
+            "children": []
+          },
+          {
+            "nodeId": "gen-page-histos",
+            "kind": "page-leaf",
+            "stateRole": "derived",
+            "stateGroupId": "ravel-modes",
+            "derivedFromNodeId": "gen-page-chat",
+            "derivedFromHtmlSrc": "pages/chat.html",
+            "pageIds": ["page-histos"],
+            "output": "pages/histos.html",
+            "sharedRegions": ["继承 gen-project-shell", "继承 chat 的会话面板结构（压缩为 360px 左栏）"],
+            "privateRegions": [
+              "知识图谱画布：节点（论文/概念/数据集/代码/作者）+ 有向边 + 分组云、缩放与平移控件、网格背景、节点标签层级、当前聚焦节点高亮",
+              "画布顶部工具条：Lens 切换（structural / semantic / mixed）、N·E 统计（节点数 / 边数）、Refresh、Rebuild、Freeze Context、布局切换",
+              "右侧节点详情面板：选中节点摘要、属性键值、关联边列表、Convert to Flow / Run Flow、Schedule、Suggest 动作",
+              "导入条：Workspace Import（sha256 校验状态）、URL 导入输入、导入进度",
+              "画布底部时间线/图例：图类型色例、置信度、构建状态（构建中/已冻结）",
+              "左栏会话：围绕图谱的追问（引用节点 chip、回答内嵌节点引用）"
+            ],
+            "mutableSlots": ["SLOT:activeNavItem", "SLOT:activeTab", "SLOT:workspacePrimary"],
+            "status": "generated",
+            "generatedAt": "2026-08-29T13:10:00.000Z",
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+/* ============================================================
+   Ravel Agent 桌面端重设计 — Amber Workshop tokens
+   brandPrefix: ravel | 单一琥珀 primary | light/dark 双主题
+   默认 <html class="light">，.dark 覆盖
+   ============================================================ */
+
+:root {
+  /* ---- 基础语义色（light） ---- */
+  --ravel-background: #faf8f5;
+  --ravel-foreground: #221e18;
+  --ravel-surface: #f5f2ec;
+  --ravel-panel: #f2eee7;
+  --ravel-elevated: #ffffff;
+  --ravel-card: #ffffff;
+  --ravel-card-foreground: #221e18;
+  --ravel-popover: #fffdf9;
+  --ravel-popover-foreground: #2a251d;
+  --ravel-muted: #efeae1;
+  --ravel-muted-foreground: #7d7466;
+  --ravel-border: #e5ded1;
+  --ravel-input: #e8e1d4;
+  --ravel-ring: #c67d12;
+
+  /* ---- 主色（单一琥珀） ---- */
+  --ravel-primary: #c67d12;
+  --ravel-primary-foreground: #fffaf0;
+  --ravel-primary-soft: #f5e7cd;
+  --ravel-primary-hover: #b06f0e;
+
+  /* ---- 活动栏 / 侧栏 ---- */
+  --ravel-rail: #efe9df;
+  --ravel-rail-foreground: #6f665a;
+  --ravel-sidebar: #f2eee7;
+  --ravel-sidebar-foreground: #3a342b;
+  --ravel-sidebar-primary: #c67d12;
+  --ravel-sidebar-primary-foreground: #fffaf0;
+  --ravel-sidebar-accent: #efe2c9;
+  --ravel-sidebar-accent-foreground: #6b4e15;
+  --ravel-sidebar-border: #e3dacc;
+
+  /* ---- 代码 / 终端表面 ---- */
+  --ravel-code: #f6f1e6;
+  --ravel-code-foreground: #3c352a;
+
+  /* ---- 危险 / 状态（仅 state-*） ---- */
+  --ravel-destructive: #b3402e;
+  --ravel-destructive-foreground: #fff7f5;
+  --ravel-state-success: #3f7d4f;
+  --ravel-state-success-soft: #e4efe3;
+  --ravel-state-warning: #a97a12;
+  --ravel-state-warning-soft: #f6ecd4;
+  --ravel-state-danger: #b3402e;
+  --ravel-state-danger-soft: #f6e2dc;
+  --ravel-state-info: #3a6a92;
+  --ravel-state-info-soft: #e2ebf3;
+
+  /* ---- 图表 ---- */
+  --ravel-chart-1: #c67d12;
+  --ravel-chart-2: #ddab4b;
+  --ravel-chart-3: #8a6a3a;
+  --ravel-chart-4: #3a6a92;
+  --ravel-chart-5: #9a9183;
+
+  /* ---- 圆角（2/4/8/16 体系内收敛） ---- */
+  --ravel-radius-sm: 6px;
+  --ravel-radius-md: 10px;
+  --ravel-radius-lg: 14px;
+  --ravel-radius-xl: 16px;
+  --ravel-radius-full: 9999px;
+
+  /* ---- 阴影（静态 alpha ≤0.05） ---- */
+  --ravel-shadow-sm: 0 1px 2px rgba(34, 30, 24, 0.04);
+  --ravel-shadow-md: 0 4px 16px rgba(34, 30, 24, 0.05);
+  --ravel-shadow-pop: 0 10px 30px rgba(34, 30, 24, 0.05);
+
+  /* ---- 字体 ---- */
+  --ravel-font-sans: "Inter", "PingFang SC", "HarmonicOS Sans SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --ravel-font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, "Noto Sans Mono CJK SC", monospace;
+  --ravel-tracking-tight: -0.01em;
+  --ravel-tracking-cjk: 0.01em;
+  --default-font-family: var(--ravel-font-sans);
+  --default-mono-font-family: var(--ravel-font-mono);
+
+  /* ---- 动效 ---- */
+  --ravel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ravel-duration-fast: 120ms;
+  --ravel-duration-normal: 200ms;
+  --ravel-duration-slow: 320ms;
+}
+
+.dark {
+  --ravel-background: #17150f;
+  --ravel-foreground: #ece5d8;
+  --ravel-surface: #1c1a13;
+  --ravel-panel: #1f1c14;
+  --ravel-elevated: #262219;
+  --ravel-card: #201d15;
+  --ravel-card-foreground: #ece5d8;
+  --ravel-popover: #262219;
+  --ravel-popover-foreground: #ece5d8;
+  --ravel-muted: #272319;
+  --ravel-muted-foreground: #9a9183;
+  --ravel-border: #322d21;
+  --ravel-input: #35301f;
+  --ravel-ring: #e8b44a;
+
+  --ravel-primary: #e8b44a;
+  --ravel-primary-foreground: #241a05;
+  --ravel-primary-soft: #3a2f14;
+  --ravel-primary-hover: #f0c364;
+
+  --ravel-rail: #131109;
+  --ravel-rail-foreground: #8d8474;
+  --ravel-sidebar: #14120c;
+  --ravel-sidebar-foreground: #d8d1c2;
+  --ravel-sidebar-primary: #e8b44a;
+  --ravel-sidebar-primary-foreground: #241a05;
+  --ravel-sidebar-accent: #2c2513;
+  --ravel-sidebar-accent-foreground: #e8c98a;
+  --ravel-sidebar-border: #2a2519;
+
+  --ravel-code: #14120c;
+  --ravel-code-foreground: #dcd4c3;
+
+  --ravel-destructive: #e0705c;
+  --ravel-destructive-foreground: #24110c;
+  --ravel-state-success: #82c192;
+  --ravel-state-success-soft: #22301f;
+  --ravel-state-warning: #e0a83c;
+  --ravel-state-warning-soft: #3a2f14;
+  --ravel-state-danger: #e0705c;
+  --ravel-state-danger-soft: #3a1f18;
+  --ravel-state-info: #7aa6cc;
+  --ravel-state-info-soft: #1e2a36;
+
+  --ravel-chart-1: #e8b44a;
+  --ravel-chart-2: #b8d178;
+  --ravel-chart-3: #7aa6cc;
+  --ravel-chart-4: #d88f6a;
+  --ravel-chart-5: #9a9183;
+
+  --ravel-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ravel-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05);
+  --ravel-shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.05);
+}

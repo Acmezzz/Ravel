@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histos 模式</title>
+    <style id="theme-vars">
+/* ============================================================
+   Ravel Agent 桌面端重设计 — Amber Workshop tokens
+   brandPrefix: ravel | 单一琥珀 primary | light/dark 双主题
+   默认 <html class="light">，.dark 覆盖
+   ============================================================ */
+
+:root {
+  /* ---- 基础语义色（light） ---- */
+  --ravel-background: #faf8f5;
+  --ravel-foreground: #221e18;
+  --ravel-surface: #f5f2ec;
+  --ravel-panel: #f2eee7;
+  --ravel-elevated: #ffffff;
+  --ravel-card: #ffffff;
+  --ravel-card-foreground: #221e18;
+  --ravel-popover: #fffdf9;
+  --ravel-popover-foreground: #2a251d;
+  --ravel-muted: #efeae1;
+  --ravel-muted-foreground: #7d7466;
+  --ravel-border: #e5ded1;
+  --ravel-input: #e8e1d4;
+  --ravel-ring: #c67d12;
+
+  /* ---- 主色（单一琥珀） ---- */
+  --ravel-primary: #c67d12;
+  --ravel-primary-foreground: #fffaf0;
+  --ravel-primary-soft: #f5e7cd;
+  --ravel-primary-hover: #b06f0e;
+
+  /* ---- 活动栏 / 侧栏 ---- */
+  --ravel-rail: #efe9df;
+  --ravel-rail-foreground: #6f665a;
+  --ravel-sidebar: #f2eee7;
+  --ravel-sidebar-foreground: #3a342b;
+  --ravel-sidebar-primary: #c67d12;
+  --ravel-sidebar-primary-foreground: #fffaf0;
+  --ravel-sidebar-accent: #efe2c9;
+  --ravel-sidebar-accent-foreground: #6b4e15;
+  --ravel-sidebar-border: #e3dacc;
+
+  /* ---- 代码 / 终端表面 ---- */
+  --ravel-code: #f6f1e6;
+  --ravel-code-foreground: #3c352a;
+
+  /* ---- 危险 / 状态（仅 state-*） ---- */
+  --ravel-destructive: #b3402e;
+  --ravel-destructive-foreground: #fff7f5;
+  --ravel-state-success: #3f7d4f;
+  --ravel-state-success-soft: #e4efe3;
+  --ravel-state-warning: #a97a12;
+  --ravel-state-warning-soft: #f6ecd4;
+  --ravel-state-danger: #b3402e;
+  --ravel-state-danger-soft: #f6e2dc;
+  --ravel-state-info: #3a6a92;
+  --ravel-state-info-soft: #e2ebf3;
+
+  /* ---- 图表 ---- */
+  --ravel-chart-1: #c67d12;
+  --ravel-chart-2: #ddab4b;
+  --ravel-chart-3: #8a6a3a;
+  --ravel-chart-4: #3a6a92;
+  --ravel-chart-5: #9a9183;
+
+  /* ---- 圆角（2/4/8/16 体系内收敛） ---- */
+  --ravel-radius-sm: 6px;
+  --ravel-radius-md: 10px;
+  --ravel-radius-lg: 14px;
+  --ravel-radius-xl: 16px;
+  --ravel-radius-full: 9999px;
+
+  /* ---- 阴影（静态 alpha ≤0.05） ---- */
+  --ravel-shadow-sm: 0 1px 2px rgba(34, 30, 24, 0.04);
+  --ravel-shadow-md: 0 4px 16px rgba(34, 30, 24, 0.05);
+  --ravel-shadow-pop: 0 10px 30px rgba(34, 30, 24, 0.05);
+
+  /* ---- 字体 ---- */
+  --ravel-font-sans: "Inter", "PingFang SC", "HarmonicOS Sans SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --ravel-font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, "Noto Sans Mono CJK SC", monospace;
+  --ravel-tracking-tight: -0.01em;
+  --ravel-tracking-cjk: 0.01em;
+  --default-font-family: var(--ravel-font-sans);
+  --default-mono-font-family: var(--ravel-font-mono);
+
+  /* ---- 动效 ---- */
+  --ravel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ravel-duration-fast: 120ms;
+  --ravel-duration-normal: 200ms;
+  --ravel-duration-slow: 320ms;
+}
+
+.dark {
+  --ravel-background: #17150f;
+  --ravel-foreground: #ece5d8;
+  --ravel-surface: #1c1a13;
+  --ravel-panel: #1f1c14;
+  --ravel-elevated: #262219;
+  --ravel-card: #201d15;
+  --ravel-card-foreground: #ece5d8;
+  --ravel-popover: #262219;
+  --ravel-popover-foreground: #ece5d8;
+  --ravel-muted: #272319;
+  --ravel-muted-foreground: #9a9183;
+  --ravel-border: #322d21;
+  --ravel-input: #35301f;
+  --ravel-ring: #e8b44a;
+
+  --ravel-primary: #e8b44a;
+  --ravel-primary-foreground: #241a05;
+  --ravel-primary-soft: #3a2f14;
+  --ravel-primary-hover: #f0c364;
+
+  --ravel-rail: #131109;
+  --ravel-rail-foreground: #8d8474;
+  --ravel-sidebar: #14120c;
+  --ravel-sidebar-foreground: #d8d1c2;
+  --ravel-sidebar-primary: #e8b44a;
+  --ravel-sidebar-primary-foreground: #241a05;
+  --ravel-sidebar-accent: #2c2513;
+  --ravel-sidebar-accent-foreground: #e8c98a;
+  --ravel-sidebar-border: #2a2519;
+
+  --ravel-code: #14120c;
+  --ravel-code-foreground: #dcd4c3;
+
+  --ravel-destructive: #e0705c;
+  --ravel-destructive-foreground: #24110c;
+  --ravel-state-success: #82c192;
+  --ravel-state-success-soft: #22301f;
+  --ravel-state-warning: #e0a83c;
+  --ravel-state-warning-soft: #3a2f14;
+  --ravel-state-danger: #e0705c;
+  --ravel-state-danger-soft: #3a1f18;
+  --ravel-state-info: #7aa6cc;
+  --ravel-state-info-soft: #1e2a36;
+
+  --ravel-chart-1: #e8b44a;
+  --ravel-chart-2: #b8d178;
+  --ravel-chart-3: #7aa6cc;
+  --ravel-chart-4: #d88f6a;
+  --ravel-chart-5: #9a9183;
+
+  --ravel-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ravel-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05);
+  --ravel-shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--ravel-background);
+    --color-foreground: var(--ravel-foreground);
+    --color-card: var(--ravel-card);
+    --color-card-foreground: var(--ravel-card-foreground);
+    --color-popover: var(--ravel-popover);
+    --color-popover-foreground: var(--ravel-popover-foreground);
+    --color-primary: var(--ravel-primary);
+    --color-primary-foreground: var(--ravel-primary-foreground);
+    --color-muted: var(--ravel-muted);
+    --color-muted-foreground: var(--ravel-muted-foreground);
+    --color-destructive: var(--ravel-destructive);
+    --color-destructive-foreground: var(--ravel-destructive-foreground);
+    --color-border: var(--ravel-border);
+    --color-input: var(--ravel-input);
+    --color-ring: var(--ravel-ring);
+    --color-chart-1: var(--ravel-chart-1);
+    --color-chart-2: var(--ravel-chart-2);
+    --color-chart-3: var(--ravel-chart-3);
+    --color-chart-4: var(--ravel-chart-4);
+    --color-chart-5: var(--ravel-chart-5);
+    --color-sidebar: var(--ravel-sidebar);
+    --color-sidebar-foreground: var(--ravel-sidebar-foreground);
+    --color-sidebar-primary: var(--ravel-sidebar-primary);
+    --color-sidebar-primary-foreground: var(--ravel-sidebar-primary-foreground);
+    --color-sidebar-accent: var(--ravel-sidebar-accent);
+    --color-sidebar-accent-foreground: var(--ravel-sidebar-accent-foreground);
+    --radius-sm: var(--ravel-radius-sm);
+    --radius-md: var(--ravel-radius-md);
+    --radius-lg: var(--ravel-radius-lg);
+    --radius-xl: var(--ravel-radius-xl);
+  }
+  @layer base {
+    body { background: var(--ravel-background); color: var(--ravel-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--ravel-background); }
+      .text-background { color: var(--ravel-background); }
+      .border-background { border-color: var(--ravel-background); }
+      .ring-background { --tw-ring-color: var(--ravel-background); }
+      .bg-foreground { background-color: var(--ravel-foreground); }
+      .text-foreground { color: var(--ravel-foreground); }
+      .border-foreground { border-color: var(--ravel-foreground); }
+      .ring-foreground { --tw-ring-color: var(--ravel-foreground); }
+      .bg-card { background-color: var(--ravel-card); }
+      .text-card { color: var(--ravel-card); }
+      .border-card { border-color: var(--ravel-card); }
+      .ring-card { --tw-ring-color: var(--ravel-card); }
+      .bg-card-foreground { background-color: var(--ravel-card-foreground); }
+      .text-card-foreground { color: var(--ravel-card-foreground); }
+      .border-card-foreground { border-color: var(--ravel-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--ravel-card-foreground); }
+      .bg-popover { background-color: var(--ravel-popover); }
+      .text-popover { color: var(--ravel-popover); }
+      .border-popover { border-color: var(--ravel-popover); }
+      .ring-popover { --tw-ring-color: var(--ravel-popover); }
+      .bg-popover-foreground { background-color: var(--ravel-popover-foreground); }
+      .text-popover-foreground { color: var(--ravel-popover-foreground); }
+      .border-popover-foreground { border-color: var(--ravel-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--ravel-popover-foreground); }
+      .bg-primary { background-color: var(--ravel-primary); }
+      .text-primary { color: var(--ravel-primary); }
+      .border-primary { border-color: var(--ravel-primary); }
+      .ring-primary { --tw-ring-color: var(--ravel-primary); }
+      .bg-primary-foreground { background-color: var(--ravel-primary-foreground); }
+      .text-primary-foreground { color: var(--ravel-primary-foreground); }
+      .border-primary-foreground { border-color: var(--ravel-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--ravel-primary-foreground); }
+      .bg-muted { background-color: var(--ravel-muted); }
+      .text-muted { color: var(--ravel-muted); }
+      .border-muted { border-color: var(--ravel-muted); }
+      .ring-muted { --tw-ring-color: var(--ravel-muted); }
+      .bg-muted-foreground { background-color: var(--ravel-muted-foreground); }
+      .text-muted-foreground { color: var(--ravel-muted-foreground); }
+      .border-muted-foreground { border-color: var(--ravel-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--ravel-muted-foreground); }
+      .bg-destructive { background-color: var(--ravel-destructive); }
+      .text-destructive { color: var(--ravel-destructive); }
+      .border-destructive { border-color: var(--ravel-destructive); }
+      .ring-destructive { --tw-ring-color: var(--ravel-destructive); }
+      .bg-destructive-foreground { background-color: var(--ravel-destructive-foreground); }
+      .text-destructive-foreground { color: var(--ravel-destructive-foreground); }
+      .border-destructive-foreground { border-color: var(--ravel-destructive-foreground); }
+      .ring-destructive-foreground { --tw-ring-color: var(--ravel-destructive-foreground); }
+      .bg-border { background-color: var(--ravel-border); }
+      .text-border { color: var(--ravel-border); }
+      .border-border { border-color: var(--ravel-border); }
+      .ring-border { --tw-ring-color: var(--ravel-border); }
+      .bg-input { background-color: var(--ravel-input); }
+      .text-input { color: var(--ravel-input); }
+      .border-input { border-color: var(--ravel-input); }
+      .ring-input { --tw-ring-color: var(--ravel-input); }
+      .bg-ring { background-color: var(--ravel-ring); }
+      .text-ring { color: var(--ravel-ring); }
+      .border-ring { border-color: var(--ravel-ring); }
+      .ring-ring { --tw-ring-color: var(--ravel-ring); }
+      .bg-chart-1 { background-color: var(--ravel-chart-1); }
+      .text-chart-1 { color: var(--ravel-chart-1); }
+      .border-chart-1 { border-color: var(--ravel-chart-1); }
+      .ring-chart-1 { --tw-ring-color: var(--ravel-chart-1); }
+      .bg-chart-2 { background-color: var(--ravel-chart-2); }
+      .text-chart-2 { color: var(--ravel-chart-2); }
+      .border-chart-2 { border-color: var(--ravel-chart-2); }
+      .ring-chart-2 { --tw-ring-color: var(--ravel-chart-2); }
+      .bg-chart-3 { background-color: var(--ravel-chart-3); }
+      .text-chart-3 { color: var(--ravel-chart-3); }
+      .border-chart-3 { border-color: var(--ravel-chart-3); }
+      .ring-chart-3 { --tw-ring-color: var(--ravel-chart-3); }
+      .bg-chart-4 { background-color: var(--ravel-chart-4); }
+      .text-chart-4 { color: var(--ravel-chart-4); }
+      .border-chart-4 { border-color: var(--ravel-chart-4); }
+      .ring-chart-4 { --tw-ring-color: var(--ravel-chart-4); }
+      .bg-chart-5 { background-color: var(--ravel-chart-5); }
+      .text-chart-5 { color: var(--ravel-chart-5); }
+      .border-chart-5 { border-color: var(--ravel-chart-5); }
+      .ring-chart-5 { --tw-ring-color: var(--ravel-chart-5); }
+      .bg-sidebar { background-color: var(--ravel-sidebar); }
+      .text-sidebar { color: var(--ravel-sidebar); }
+      .border-sidebar { border-color: var(--ravel-sidebar); }
+      .ring-sidebar { --tw-ring-color: var(--ravel-sidebar); }
+      .bg-sidebar-foreground { background-color: var(--ravel-sidebar-foreground); }
+      .text-sidebar-foreground { color: var(--ravel-sidebar-foreground); }
+      .border-sidebar-foreground { border-color: var(--ravel-sidebar-foreground); }
+      .ring-sidebar-foreground { --tw-ring-color: var(--ravel-sidebar-foreground); }
+      .bg-sidebar-primary { background-color: var(--ravel-sidebar-primary); }
+      .text-sidebar-primary { color: var(--ravel-sidebar-primary); }
+      .border-sidebar-primary { border-color: var(--ravel-sidebar-primary); }
+      .ring-sidebar-primary { --tw-ring-color: var(--ravel-sidebar-primary); }
+      .bg-sidebar-primary-foreground { background-color: var(--ravel-sidebar-primary-foreground); }
+      .text-sidebar-primary-foreground { color: var(--ravel-sidebar-primary-foreground); }
+      .border-sidebar-primary-foreground { border-color: var(--ravel-sidebar-primary-foreground); }
+      .ring-sidebar-primary-foreground { --tw-ring-color: var(--ravel-sidebar-primary-foreground); }
+      .bg-sidebar-accent { background-color: var(--ravel-sidebar-accent); }
+      .text-sidebar-accent { color: var(--ravel-sidebar-accent); }
+      .border-sidebar-accent { border-color: var(--ravel-sidebar-accent); }
+      .ring-sidebar-accent { --tw-ring-color: var(--ravel-sidebar-accent); }
+      .bg-sidebar-accent-foreground { background-color: var(--ravel-sidebar-accent-foreground); }
+      .text-sidebar-accent-foreground { color: var(--ravel-sidebar-accent-foreground); }
+      .border-sidebar-accent-foreground { border-color: var(--ravel-sidebar-accent-foreground); }
+      .ring-sidebar-accent-foreground { --tw-ring-color: var(--ravel-sidebar-accent-foreground); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+      <div class="min-h-screen w-full flex items-center justify-center p-6 bg-[var(--ravel-muted)]">
+        <!-- ============ 窗口帧 ============ -->
+        <div data-region="windowFrame" class="w-[1440px] max-w-full h-[900px] flex flex-col overflow-hidden rounded-[14px] border border-[var(--ravel-border)] bg-[var(--ravel-background)] shadow-[var(--ravel-shadow-pop)]">
+
+          <!-- ============ 标题栏 ============ -->
+          <header data-region="titlebar" data-drag-region class="titlebar h-11 shrink-0 flex items-center gap-3 border-b border-[var(--ravel-border)] bg-[var(--ravel-surface)] pl-3 pr-2">
+            <!-- 左段：品牌 + 工作区 -->
+            <div class="flex min-w-0 flex-1 items-center gap-2" data-drag-region>
+              <span class="inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] bg-primary text-[11px] font-semibold leading-none tracking-tight text-primary-foreground">R</span>
+              <span class="shrink-0 text-[13px] font-medium tracking-tight text-foreground">Ravel</span>
+              <span class="h-4 w-px shrink-0 bg-[var(--ravel-border)]" aria-hidden="true"></span>
+              <span class="truncate font-mono text-[12px] tracking-tight text-muted-foreground">ravel-desktop</span>
+              <span class="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full border border-[var(--ravel-border)] px-1.5 text-[11px] tracking-tight text-muted-foreground">
+                <i data-lucide="git-branch" class="size-3" aria-hidden="true"></i>main
+              </span>
+              <span class="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[var(--ravel-radius-sm)] bg-[var(--ravel-panel)] px-1.5 text-[11px] tracking-tight text-muted-foreground">
+                <i data-lucide="diff" class="size-3" aria-hidden="true"></i>3 个未提交变更
+              </span>
+            </div>
+
+            <!-- 中段：三模式分段控件（全项目唯一的跨模式导航） -->
+            <!-- SLOT:activeTab：叶子页面只翻转下面三个按钮的 data-active 与 aria-selected，不得复制或重写整条分段控件 -->
+            <div role="tablist" aria-label="界面模式" class="seg flex shrink-0 items-center gap-0.5 rounded-[var(--ravel-radius-md)] border border-[var(--ravel-border)] bg-[var(--ravel-panel)] p-0.5">
+              <a href="#" role="tab" aria-selected="false" data-dom-id="mode-chat" data-tab-key="mode-chat" data-active="false" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-3 text-[12px] font-medium tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="message-square" class="size-3.5" aria-hidden="true"></i>对话
+              </a>
+              <a href="#" role="tab" aria-selected="false" data-dom-id="mode-ide" data-tab-key="mode-ide" data-active="false" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-3 text-[12px] font-medium tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="code-2" class="size-3.5" aria-hidden="true"></i>IDE
+              </a>
+              <a href="#" role="tab" aria-selected="true" data-dom-id="mode-histos" data-tab-key="mode-histos" data-active="true" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-3 text-[12px] font-medium tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="network" class="size-3.5" aria-hidden="true"></i>Histos
+              </a>
+            </div>
+
+            <!-- 右段：会话动作 + 主题 + 账户 -->
+            <div class="flex shrink-0 items-center justify-end gap-1">
+              <button type="button" class="inline-flex h-7 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-2 text-[12px] font-medium tracking-tight text-[var(--ravel-state-info)] hover:bg-[var(--ravel-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="snowflake" class="size-3.5" aria-hidden="true"></i>Freeze Context
+              </button>
+              <button type="button" aria-label="切换深色 / 浅色" title="切换深色 / 浅色" class="size-7 inline-flex items-center justify-center rounded-[var(--ravel-radius-sm)] text-muted-foreground hover:bg-[var(--ravel-surface)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="moon" class="size-4" aria-hidden="true"></i>
+              </button>
+              <button type="button" aria-label="账户：YF" title="YF · 在线" class="relative size-7 inline-flex items-center justify-center rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <span class="inline-flex size-6 items-center justify-center rounded-full bg-[var(--ravel-elevated)] text-[10px] font-medium tracking-tight text-foreground ring-1 ring-[var(--ravel-border)]">YF</span>
+                <span class="absolute bottom-0 right-0 size-[6px] rounded-full bg-[var(--ravel-state-success)] ring-1 ring-[var(--ravel-surface)]" aria-hidden="true"></span>
+              </button>
+              <button type="button" aria-label="更多操作" class="size-7 inline-flex items-center justify-center rounded-[var(--ravel-radius-sm)] text-muted-foreground hover:bg-[var(--ravel-surface)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="ellipsis" class="size-4" aria-hidden="true"></i>
+              </button>
+            </div>
+          </header>
+
+          <!-- ============ 主体 ============ -->
+          <div class="flex flex-1 min-h-0">
+
+            <!-- 活动图标栏 -->
+            <nav data-region="activityRail" aria-label="主导航" class="w-12 shrink-0 border-r border-[var(--ravel-border)] bg-[var(--ravel-sidebar)] flex flex-col items-center py-2">
+              <!-- SLOT:activeNavItem：叶子页面只翻转下面各项的 data-active，不得复制或重写整条 rail DOM -->
+              <div class="rail flex flex-col items-center gap-1">
+                <button type="button" data-dom-id="rail-chat" data-nav-key="chat" data-active="false" aria-label="对话" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="message-square" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">对话<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘1</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-history" data-nav-key="history" data-active="false" aria-label="历史" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="history" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">历史<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘2</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-files" data-nav-key="files" data-active="false" aria-label="文件" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="folder-tree" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">文件<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘3</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-graph" data-nav-key="graph" data-active="true" aria-label="图谱" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="network" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">Histos 图谱<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘4</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-search" data-nav-key="search" data-active="false" aria-label="搜索" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="search" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">搜索<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘5</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-extensions" data-nav-key="extensions" data-active="false" aria-label="扩展" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="puzzle" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">扩展<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘6</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-settings" data-nav-key="settings" data-active="false" aria-label="设置" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="settings" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">设置<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘,</kbd></span>
+                </button>
+              </div>
+
+              <div class="mt-auto flex flex-col items-center gap-2">
+                <span class="h-px w-6 bg-[var(--ravel-border)]" aria-hidden="true"></span>
+                <button type="button" aria-label="打开命令面板" class="inline-flex h-[22px] w-8 items-center justify-center rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] px-1 font-mono text-[10px] tracking-tight text-muted-foreground hover:bg-[var(--ravel-sidebar-accent)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">⌘K</button>
+                <button type="button" aria-label="账户设置" class="inline-flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--ravel-elevated)] text-[9px] font-medium tracking-tight text-foreground ring-1 ring-[var(--ravel-border)] hover:ring-[var(--ravel-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">YF</button>
+              </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <section data-region="workspace" class="flex-1 min-w-0 flex flex-col bg-[var(--ravel-background)]">
+              <!-- ============ Histos 模式工作区 ============ -->
+              <div class="flex flex-1 min-h-0">
+
+                <!-- 左栏：会话列表（图谱相关追问） -->
+                <aside class="w-[360px] shrink-0 border-r border-[var(--ravel-border)] bg-[var(--ravel-surface)] flex flex-col">
+                  <!-- 搜索框 -->
+                  <div class="p-3 border-b border-[var(--ravel-border)]">
+                    <div class="relative">
+                      <i data-lucide="search" class="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true"></i>
+                      <input type="text" placeholder="搜索图谱追问…" aria-label="搜索追问" class="w-full h-8 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-[var(--ravel-background)] pl-8 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--ravel-ring)]">
+                    </div>
+                  </div>
+
+                  <!-- 会话列表 -->
+                  <div class="flex-1 overflow-y-auto">
+                    <!-- 今天 -->
+                    <div class="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">今天</div>
+
+                    <button type="button" class="w-full text-left px-3 py-2.5 rounded-[var(--ravel-radius-sm)] bg-[var(--ravel-sidebar-accent)] group flex flex-col gap-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-foreground truncate">Attention 机制的演进路径</span>
+                        <span class="text-[11px] text-muted-foreground shrink-0 ml-2">14:32</span>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="size-1.5 rounded-sm bg-[var(--ravel-chart-1)] shrink-0 mt-1" aria-hidden="true"></span>
+                        <span class="text-[12px] text-muted-foreground truncate">引用了 3 个节点 · Agent 回复</span>
+                      </div>
+                    </button>
+
+                    <button type="button" class="w-full text-left px-3 py-2.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-sidebar-accent)] group flex flex-col gap-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-foreground truncate">Transformer 变体对比</span>
+                        <span class="text-[11px] text-muted-foreground shrink-0 ml-2">13:08</span>
+                      </div>
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="size-1.5 rounded-sm bg-[var(--ravel-chart-3)] shrink-0 mt-1" aria-hidden="true"></span>
+                        <span class="text-[12px] text-muted-foreground">引用了</span>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-[var(--ravel-sidebar-accent)] px-1.5 py-0.5 text-[11px]">
+                          <span class="size-1.5 rounded-sm bg-[var(--ravel-chart-1)]" aria-hidden="true"></span>Attention
+                        </span>
+                        <span class="text-[12px] text-muted-foreground">· Agent 回复</span>
+                      </div>
+                    </button>
+
+                    <button type="button" class="w-full text-left px-3 py-2.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-sidebar-accent)] group flex flex-col gap-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-foreground truncate">BERT 与 GPT 的区别</span>
+                        <span class="text-[11px] text-muted-foreground shrink-0 ml-2">11:45</span>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="size-1.5 rounded-sm bg-[var(--ravel-chart-1)] shrink-0 mt-1" aria-hidden="true"></span>
+                        <span class="text-[12px] text-muted-foreground truncate">引用了 2 个节点 · Agent 回复</span>
+                      </div>
+                    </button>
+
+                    <!-- 昨天 -->
+                    <div class="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">昨天</div>
+
+                    <button type="button" class="w-full text-left px-3 py-2.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-sidebar-accent)] group flex flex-col gap-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-foreground truncate">图谱新增节点：Mamba</span>
+                        <span class="text-[11px] text-muted-foreground shrink-0 ml-2">18:22</span>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="size-1.5 rounded-sm bg-[var(--ravel-state-success)] shrink-0 mt-1" aria-hidden="true"></span>
+                        <span class="text-[12px] text-muted-foreground truncate">已添加 1 个节点 · 已重建边</span>
+                      </div>
+                    </button>
+
+                    <button type="button" class="w-full text-left px-3 py-2.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-sidebar-accent)] group flex flex-col gap-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-foreground truncate">评估基准对比：GLUE vs SuperGLUE</span>
+                        <span class="text-[11px] text-muted-foreground shrink-0 ml-2">15:50</span>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="size-1.5 rounded-sm bg-[var(--ravel-chart-2)] shrink-0 mt-1" aria-hidden="true"></span>
+                        <span class="text-[12px] text-muted-foreground truncate">引用了 GLUE 节点 · Agent 回复</span>
+                      </div>
+                    </button>
+
+                    <!-- 更早 -->
+                    <div class="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">更早</div>
+
+                    <button type="button" class="w-full text-left px-3 py-2.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-sidebar-accent)] group flex flex-col gap-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-foreground truncate">HuggingFace 代码库导入</span>
+                        <span class="text-[11px] text-muted-foreground shrink-0 ml-2">08/27</span>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="size-1.5 rounded-sm bg-[var(--ravel-chart-4)] shrink-0 mt-1" aria-hidden="true"></span>
+                        <span class="text-[12px] text-muted-foreground truncate">已链接 2 个代码节点</span>
+                      </div>
+                    </button>
+
+                    <button type="button" class="w-full text-left px-3 py-2.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-sidebar-accent)] group flex flex-col gap-0.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-foreground truncate">语义 Lens 切换测试</span>
+                        <span class="text-[11px] text-muted-foreground shrink-0 ml-2">08/26</span>
+                      </div>
+                      <span class="text-[12px] text-muted-foreground truncate">语义视图已设为默认</span>
+                    </button>
+                  </div>
+
+                  <!-- 底部新建会话 -->
+                  <div class="p-3 border-t border-[var(--ravel-border)]">
+                    <button type="button" class="w-full h-8 inline-flex items-center justify-center gap-1.5 rounded-[var(--ravel-radius-sm)] bg-primary text-primary-foreground text-[13px] font-medium hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                      <i data-lucide="plus" class="size-4" aria-hidden="true"></i>新建追问
+                    </button>
+                  </div>
+                </aside>
+
+                <!-- 主内容区：知识图谱画布 + 节点详情 -->
+                <div class="flex flex-1 min-h-0">
+
+                  <!-- 知识图谱画布区 -->
+                  <main class="flex-1 min-w-0 flex flex-col bg-[var(--ravel-background)] relative">
+
+                    <!-- 画布顶部工具条 -->
+                    <div class="h-11 shrink-0 border-b border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-4 flex items-center justify-between gap-3">
+                      <!-- 左段：Lens 分段控件 -->
+                      <div role="tablist" aria-label="图谱 Lens" class="flex items-center gap-0.5 p-0.5 rounded-[var(--ravel-radius-md)] border border-[var(--ravel-border)] bg-[var(--ravel-panel)]">
+                        <button type="button" class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[var(--ravel-radius-sm)] text-[12px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="boxes" class="size-3.5" aria-hidden="true"></i>structural
+                        </button>
+                        <button type="button" class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[var(--ravel-radius-sm)] text-[12px] font-medium bg-primary text-primary-foreground shadow-[var(--ravel-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="brain" class="size-3.5" aria-hidden="true"></i>semantic
+                        </button>
+                        <button type="button" class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[var(--ravel-radius-sm)] text-[12px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="layers" class="size-3.5" aria-hidden="true"></i>mixed
+                        </button>
+                      </div>
+
+                      <!-- 中段：统计 -->
+                      <span class="text-[12px] text-muted-foreground">节点 <span class="font-mono font-medium text-foreground">18</span> · 边 <span class="font-mono font-medium text-foreground">26</span></span>
+
+                      <!-- 右段：操作按钮组 -->
+                      <div class="flex items-center gap-1">
+                        <button type="button" class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[var(--ravel-radius-sm)] text-[12px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="refresh-cw" class="size-3.5" aria-hidden="true"></i>Refresh
+                        </button>
+                        <button type="button" class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[var(--ravel-radius-sm)] text-[12px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="hammer" class="size-3.5" aria-hidden="true"></i>Rebuild
+                        </button>
+                        <button type="button" class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[var(--ravel-radius-sm)] text-[12px] text-[var(--ravel-state-info)] bg-[var(--ravel-state-info-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="snowflake" class="size-3.5" aria-hidden="true"></i>Freeze Context
+                          <span class="inline-flex items-center rounded-full bg-[var(--ravel-state-info)] text-[var(--ravel-state-info-soft)] px-1.5 py-0 text-[10px] font-medium leading-4">已冻结</span>
+                        </button>
+                        <button type="button" aria-label="布局切换" title="布局切换" class="inline-flex items-center justify-center size-7 rounded-[var(--ravel-radius-sm)] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="layout-grid" class="size-3.5" aria-hidden="true"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 导入条 -->
+                    <div class="h-10 shrink-0 border-b border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-4 flex items-center gap-3">
+                      <!-- Workspace Import 状态 -->
+                      <span class="inline-flex items-center gap-1.5 text-[12px]">
+                        <i data-lucide="package-check" class="size-3.5 text-[var(--ravel-state-success)]" aria-hidden="true"></i>
+                        <span class="font-mono text-muted-foreground">sha256: a3f8c1d9e2b4</span>
+                        <span class="text-[var(--ravel-state-success)] text-[11px]">校验通过</span>
+                      </span>
+                      <span class="h-4 w-px bg-[var(--ravel-border)]" aria-hidden="true"></span>
+                      <!-- URL 导入 -->
+                      <input type="text" placeholder="输入论文/数据集 URL 导入…" aria-label="URL 导入" class="h-7 flex-1 max-w-[320px] rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-[var(--ravel-background)] px-3 text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--ravel-ring)]">
+                      <button type="button" class="inline-flex items-center gap-1 h-7 px-2.5 rounded-[var(--ravel-radius-sm)] bg-primary text-primary-foreground text-[12px] font-medium hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                        <i data-lucide="download" class="size-3.5" aria-hidden="true"></i>导入
+                      </button>
+                      <!-- 右侧：导入进度 -->
+                      <div class="ml-auto flex items-center gap-2">
+                        <span class="text-[11px] text-muted-foreground">构建中</span>
+                        <div class="h-1.5 w-24 rounded-full bg-[var(--ravel-panel)] overflow-hidden">
+                          <div class="h-full w-[62%] bg-primary rounded-full"></div>
+                        </div>
+                        <span class="text-[11px] font-mono text-muted-foreground">62%</span>
+                      </div>
+                    </div>
+
+                    <!-- SVG 图谱画布 -->
+                    <div class="flex-1 relative overflow-hidden bg-[var(--ravel-background)] graph-canvas">
+                      <svg class="absolute inset-0 w-full h-full" viewBox="0 0 800 520" role="img" aria-label="知识图谱：Transformer 架构、训练优化与评估方法的 18 个节点及 26 条边" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--ravel-border)" stroke-width="0.5" opacity="0.5"/>
+                          </pattern>
+                          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ravel-border)"/>
+                          </marker>
+                          <marker id="arrow-focus" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ravel-primary)"/>
+                          </marker>
+                        </defs>
+
+                        <!-- 网格背景 -->
+                        <rect width="100%" height="100%" fill="url(#grid)"/>
+
+                        <!-- 分组云 -->
+                        <g aria-hidden="true">
+                          <ellipse cx="270" cy="220" rx="200" ry="160" fill="var(--ravel-chart-1)" opacity="0.04"/>
+                          <text x="120" y="70" font-size="11" font-weight="500" fill="var(--ravel-chart-1)" opacity="0.5">Transformer 架构</text>
+                          <ellipse cx="620" cy="200" rx="160" ry="140" fill="var(--ravel-chart-3)" opacity="0.04"/>
+                          <text x="540" y="70" font-size="11" font-weight="500" fill="var(--ravel-chart-3)" opacity="0.5">训练优化</text>
+                          <ellipse cx="340" cy="445" rx="220" ry="80" fill="var(--ravel-chart-2)" opacity="0.04"/>
+                          <text x="250" y="505" font-size="11" font-weight="500" fill="var(--ravel-chart-2)" opacity="0.5">评估方法</text>
+                        </g>
+
+                        <!-- 边（26 条） -->
+                        <g fill="none" stroke-linecap="round">
+                          <!-- 聚焦节点相邻边（primary） -->
+                          <line x1="381" y1="239" x2="319" y2="201" stroke="var(--ravel-primary)" stroke-width="1.5" marker-end="url(#arrow-focus)"/>
+                          <line x1="456" y1="187" x2="415" y2="233" stroke="var(--ravel-primary)" stroke-width="1.5" marker-end="url(#arrow-focus)"/>
+                          <line x1="381" y1="261" x2="199" y2="360" stroke="var(--ravel-primary)" stroke-width="1.5" marker-end="url(#arrow-focus)"/>
+                          <line x1="419" y1="262" x2="541" y2="338" stroke="var(--ravel-primary)" stroke-width="1.5" marker-end="url(#arrow-focus)"/>
+                          <path d="M 419,239 Q 510,130 601,131" stroke="var(--ravel-primary)" stroke-width="1.5" marker-end="url(#arrow-focus)"/>
+
+                          <!-- 普通边（border） -->
+                          <line x1="287" y1="208" x2="243" y2="272" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="311" y1="171" x2="329" y2="139" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="279" y1="197" x2="231" y2="213" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="320" y1="181" x2="370" y2="159" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="279" y1="184" x2="171" y2="156" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="201" y1="377" x2="399" y2="443" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="542" y1="363" x2="438" y2="437" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="197" y1="384" x2="253" y2="427" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <path d="M 201,364 Q 390,200 579,247" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="568" y1="329" x2="593" y2="261" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="612" y1="258" x2="628" y2="282" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <path d="M 202,367 Q 410,280 618,303" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="716" y1="222" x2="684" y2="378" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <path d="M 658,399 Q 430,440 202,371" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="660" y1="392" x2="580" y2="359" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="129" y1="341" x2="161" y2="359" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <path d="M 242,272 Q 200,180 328,139" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <path d="M 328,139 Q 180,200 192,352" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <line x1="206" y1="242" x2="184" y2="348" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <path d="M 170,160 Q 355,180 540,340" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                          <path d="M 404,167 Q 520,180 546,333" stroke="var(--ravel-border)" stroke-width="1" marker-end="url(#arrow)"/>
+                        </g>
+
+                        <!-- 聚焦节点脉冲光圈 -->
+                        <circle cx="400" cy="250" r="22" fill="none" stroke="var(--ravel-primary)" stroke-width="1.5" opacity="0.4">
+                          <animate attributeName="r" values="22;34;22" dur="2.4s" repeatCount="indefinite"/>
+                          <animate attributeName="opacity" values="0.4;0;0.4" dur="2.4s" repeatCount="indefinite"/>
+                        </circle>
+
+                        <!-- 节点（18 个，5 种类型） -->
+                        <g>
+                          <!-- 1. Attention Is All You Need（论文 · 聚焦） -->
+                          <g>
+                            <rect x="358" y="237" width="84" height="26" rx="4" fill="var(--ravel-primary)" opacity="0.15" stroke="var(--ravel-primary)" stroke-width="2"/>
+                            <text x="400" y="254" font-size="11" font-weight="500" fill="var(--ravel-foreground)" text-anchor="middle">Attention</text>
+                          </g>
+
+                          <!-- 2. Transformer（概念） -->
+                          <g>
+                            <circle cx="300" cy="190" r="20" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="300" y="224" font-size="11" font-weight="500" fill="var(--ravel-foreground)" text-anchor="middle">Transformer</text>
+                          </g>
+
+                          <!-- 3. Self-Attention（概念） -->
+                          <g>
+                            <circle cx="230" cy="290" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="230" y="320" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Self-Attention</text>
+                          </g>
+
+                          <!-- 4. Multi-Head（概念） -->
+                          <g>
+                            <circle cx="340" cy="120" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="340" y="150" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Multi-Head</text>
+                          </g>
+
+                          <!-- 5. BERT（论文） -->
+                          <g>
+                            <rect x="138" y="357" width="84" height="26" rx="4" fill="var(--ravel-chart-1)" opacity="0.12" stroke="var(--ravel-chart-1)" stroke-width="1"/>
+                            <text x="180" y="374" font-size="11" font-weight="500" fill="var(--ravel-foreground)" text-anchor="middle">BERT</text>
+                          </g>
+
+                          <!-- 6. GPT（论文） -->
+                          <g>
+                            <rect x="518" y="337" width="84" height="26" rx="4" fill="var(--ravel-chart-1)" opacity="0.12" stroke="var(--ravel-chart-1)" stroke-width="1"/>
+                            <text x="560" y="354" font-size="11" font-weight="500" fill="var(--ravel-foreground)" text-anchor="middle">GPT</text>
+                          </g>
+
+                          <!-- 7. GLUE（数据集 · 菱形） -->
+                          <g>
+                            <path d="M 420,437 L 433,450 L 420,463 L 407,450 Z" fill="var(--ravel-chart-2)" opacity="0.12" stroke="var(--ravel-chart-2)" stroke-width="1"/>
+                            <text x="420" y="478" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">GLUE</text>
+                          </g>
+
+                          <!-- 8. SQuAD（数据集 · 菱形） -->
+                          <g>
+                            <path d="M 270,427 L 283,440 L 270,453 L 257,440 Z" fill="var(--ravel-chart-2)" opacity="0.12" stroke="var(--ravel-chart-2)" stroke-width="1"/>
+                            <text x="270" y="468" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">SQuAD</text>
+                          </g>
+
+                          <!-- 9. Vaswani（作者 · 小圆） -->
+                          <g>
+                            <circle cx="470" cy="170" r="6" fill="var(--ravel-chart-5)" opacity="0.12" stroke="var(--ravel-chart-5)" stroke-width="1"/>
+                            <text x="470" y="190" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Vaswani</text>
+                          </g>
+
+                          <!-- 10. Positional Encoding（概念） -->
+                          <g>
+                            <circle cx="210" cy="220" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="210" y="250" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Positional</text>
+                          </g>
+
+                          <!-- 11. Residual（概念） -->
+                          <g>
+                            <circle cx="390" cy="150" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="390" y="180" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Residual</text>
+                          </g>
+
+                          <!-- 12. LayerNorm（概念） -->
+                          <g>
+                            <circle cx="150" cy="150" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="150" y="180" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">LayerNorm</text>
+                          </g>
+
+                          <!-- 13. Adam（概念） -->
+                          <g>
+                            <circle cx="620" cy="120" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="620" y="150" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Adam</text>
+                          </g>
+
+                          <!-- 14. Pre-training（概念） -->
+                          <g>
+                            <circle cx="600" cy="240" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="600" y="270" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Pre-train</text>
+                          </g>
+
+                          <!-- 15. Fine-tuning（概念） -->
+                          <g>
+                            <circle cx="640" cy="300" r="18" fill="var(--ravel-chart-3)" opacity="0.12" stroke="var(--ravel-chart-3)" stroke-width="1"/>
+                            <text x="640" y="330" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Fine-tune</text>
+                          </g>
+
+                          <!-- 16. HuggingFace（代码 · 六边形） -->
+                          <g>
+                            <path d="M 687.5,387 L 695,400 L 687.5,413 L 672.5,413 L 665,400 L 672.5,387 Z" fill="var(--ravel-chart-4)" opacity="0.12" stroke="var(--ravel-chart-4)" stroke-width="1"/>
+                            <text x="680" y="428" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">HuggingFace</text>
+                          </g>
+
+                          <!-- 17. PyTorch（代码 · 六边形） -->
+                          <g>
+                            <path d="M 727.5,187 L 735,200 L 727.5,213 L 712.5,213 L 705,200 L 712.5,187 Z" fill="var(--ravel-chart-4)" opacity="0.12" stroke="var(--ravel-chart-4)" stroke-width="1"/>
+                            <text x="720" y="228" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">PyTorch</text>
+                          </g>
+
+                          <!-- 18. Devlin（作者 · 小圆） -->
+                          <g>
+                            <circle cx="110" cy="330" r="6" fill="var(--ravel-chart-5)" opacity="0.12" stroke="var(--ravel-chart-5)" stroke-width="1"/>
+                            <text x="110" y="350" font-size="9" fill="var(--ravel-foreground)" text-anchor="middle">Devlin</text>
+                          </g>
+                        </g>
+                      </svg>
+
+                      <!-- 缩放百分比指示器 -->
+                      <span class="absolute bottom-3 left-3 text-[11px] font-mono text-muted-foreground pointer-events-none">100%</span>
+
+                      <!-- 缩放/平移控件 -->
+                      <div class="absolute bottom-3 right-3 flex flex-col gap-1">
+                        <button type="button" aria-label="放大" class="size-7 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] flex items-center justify-center text-muted-foreground hover:text-foreground shadow-[var(--ravel-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="plus" class="size-3.5" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" aria-label="缩小" class="size-7 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] flex items-center justify-center text-muted-foreground hover:text-foreground shadow-[var(--ravel-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="minus" class="size-3.5" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" aria-label="适应窗口" class="size-7 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] flex items-center justify-center text-muted-foreground hover:text-foreground shadow-[var(--ravel-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="maximize" class="size-3.5" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" aria-label="定位到聚焦节点" class="size-7 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] flex items-center justify-center text-muted-foreground hover:text-foreground shadow-[var(--ravel-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="locate-fixed" class="size-3.5" aria-hidden="true"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 画布底部图例栏 -->
+                    <div class="h-8 shrink-0 border-t border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-4 flex items-center justify-between text-[11px]">
+                      <!-- 左 = 图例 -->
+                      <div class="flex items-center gap-4">
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="size-2.5 rounded-sm bg-[var(--ravel-chart-1)]" aria-hidden="true"></span>论文
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="size-2.5 rounded-sm bg-[var(--ravel-chart-3)]" aria-hidden="true"></span>概念
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="size-2.5 rounded-sm bg-[var(--ravel-chart-2)]" aria-hidden="true"></span>数据集
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="size-2.5 rounded-sm bg-[var(--ravel-chart-4)]" aria-hidden="true"></span>代码
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="size-2.5 rounded-sm bg-[var(--ravel-chart-5)]" aria-hidden="true"></span>作者
+                        </span>
+                      </div>
+                      <!-- 右 = 构建状态 -->
+                      <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center gap-1 text-[var(--ravel-state-info)]">
+                          <i data-lucide="loader-2" class="size-3 animate-spin" aria-hidden="true"></i>构建中 62%
+                        </span>
+                        <span class="h-3 w-px bg-[var(--ravel-border)]" aria-hidden="true"></span>
+                        <span class="text-muted-foreground">最后更新 2 分钟前</span>
+                      </div>
+                    </div>
+                  </main>
+
+                  <!-- 右侧节点详情面板 -->
+                  <aside class="w-[340px] shrink-0 border-l border-[var(--ravel-border)] bg-[var(--ravel-surface)] flex flex-col">
+                    <!-- 头部 -->
+                    <div class="h-10 px-4 flex items-center justify-between border-b border-[var(--ravel-border)]">
+                      <span class="text-[13px] font-medium text-foreground">节点详情</span>
+                      <button type="button" aria-label="关闭详情面板" class="size-6 inline-flex items-center justify-center rounded-[var(--ravel-radius-sm)] text-muted-foreground hover:bg-[var(--ravel-background)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                        <i data-lucide="x" class="size-4" aria-hidden="true"></i>
+                      </button>
+                    </div>
+
+                    <!-- 内容 -->
+                    <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                      <!-- 节点标题与类型 -->
+                      <div class="flex items-start gap-2">
+                        <span class="size-3 rounded-sm bg-[var(--ravel-chart-1)] mt-1 shrink-0" aria-hidden="true"></span>
+                        <div class="flex-1">
+                          <div class="text-[14px] font-medium text-foreground">Attention Is All You Need</div>
+                          <div class="text-[11px] text-muted-foreground mt-0.5">论文 · 2017 · NeurIPS</div>
+                        </div>
+                      </div>
+
+                      <!-- 摘要 -->
+                      <p class="text-[12px] leading-relaxed text-muted-foreground">提出 Transformer 架构，完全基于自注意力机制，摒弃循环和卷积结构。在机器翻译任务上取得 SOTA，同时支持并行训练，显著降低训练时间。</p>
+
+                      <!-- 属性键值表 -->
+                      <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between text-[12px] py-1 border-b border-[var(--ravel-border)]/50">
+                          <span class="text-muted-foreground">引用数</span>
+                          <span class="font-mono text-foreground">98,432</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[12px] py-1 border-b border-[var(--ravel-border)]/50">
+                          <span class="text-muted-foreground">影响因子</span>
+                          <span class="font-mono text-foreground">12.7</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[12px] py-1 border-b border-[var(--ravel-border)]/50">
+                          <span class="text-muted-foreground">发表年份</span>
+                          <span class="font-mono text-foreground">2017</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[12px] py-1 border-b border-[var(--ravel-border)]/50">
+                          <span class="text-muted-foreground">作者数</span>
+                          <span class="font-mono text-foreground">8</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[12px] py-1 border-b border-[var(--ravel-border)]/50">
+                          <span class="text-muted-foreground">关联概念</span>
+                          <span class="font-mono text-foreground">12</span>
+                        </div>
+                      </div>
+
+                      <!-- 关联边列表 -->
+                      <div class="flex flex-col gap-1">
+                        <div class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">关联边 · 7</div>
+                        <div class="flex items-center gap-2 py-1.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-background)] px-2 text-[12px]">
+                          <i data-lucide="arrow-right" class="size-3 text-muted-foreground" aria-hidden="true"></i>
+                          <span class="text-foreground">提出方法</span>
+                          <span class="text-muted-foreground font-mono">Transformer</span>
+                          <span class="ml-auto text-[11px] font-mono text-muted-foreground">0.92</span>
+                        </div>
+                        <div class="flex items-center gap-2 py-1.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-background)] px-2 text-[12px]">
+                          <i data-lucide="arrow-right" class="size-3 text-muted-foreground" aria-hidden="true"></i>
+                          <span class="text-foreground">作者</span>
+                          <span class="text-muted-foreground font-mono">Vaswani</span>
+                          <span class="ml-auto text-[11px] font-mono text-muted-foreground">1.00</span>
+                        </div>
+                        <div class="flex items-center gap-2 py-1.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-background)] px-2 text-[12px]">
+                          <i data-lucide="arrow-right" class="size-3 text-muted-foreground" aria-hidden="true"></i>
+                          <span class="text-foreground">被引用</span>
+                          <span class="text-muted-foreground font-mono">BERT</span>
+                          <span class="ml-auto text-[11px] font-mono text-muted-foreground">0.95</span>
+                        </div>
+                        <div class="flex items-center gap-2 py-1.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-background)] px-2 text-[12px]">
+                          <i data-lucide="arrow-right" class="size-3 text-muted-foreground" aria-hidden="true"></i>
+                          <span class="text-foreground">被引用</span>
+                          <span class="text-muted-foreground font-mono">GPT</span>
+                          <span class="ml-auto text-[11px] font-mono text-muted-foreground">0.93</span>
+                        </div>
+                        <div class="flex items-center gap-2 py-1.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-background)] px-2 text-[12px]">
+                          <i data-lucide="arrow-right" class="size-3 text-muted-foreground" aria-hidden="true"></i>
+                          <span class="text-foreground">训练</span>
+                          <span class="text-muted-foreground font-mono">Adam</span>
+                          <span class="ml-auto text-[11px] font-mono text-muted-foreground">0.78</span>
+                        </div>
+                        <div class="flex items-center gap-2 py-1.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-background)] px-2 text-[12px]">
+                          <i data-lucide="arrow-right" class="size-3 text-muted-foreground" aria-hidden="true"></i>
+                          <span class="text-foreground">扩展</span>
+                          <span class="text-muted-foreground font-mono">Multi-Head</span>
+                          <span class="ml-auto text-[11px] font-mono text-muted-foreground">0.85</span>
+                        </div>
+                        <div class="flex items-center gap-2 py-1.5 rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-background)] px-2 text-[12px]">
+                          <i data-lucide="arrow-right" class="size-3 text-muted-foreground" aria-hidden="true"></i>
+                          <span class="text-foreground">使用</span>
+                          <span class="text-muted-foreground font-mono">Self-Attention</span>
+                          <span class="ml-auto text-[11px] font-mono text-muted-foreground">0.88</span>
+                        </div>
+                      </div>
+
+                      <!-- 动作按钮组 -->
+                      <div class="flex flex-col gap-2 mt-2">
+                        <button type="button" class="w-full h-8 rounded-[var(--ravel-radius-sm)] bg-primary text-primary-foreground text-[12px] font-medium inline-flex items-center justify-center gap-1.5 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="workflow" class="size-3.5" aria-hidden="true"></i>Convert to Flow
+                        </button>
+                        <button type="button" class="w-full h-8 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] text-[12px] text-foreground hover:bg-[var(--ravel-background)] inline-flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="play" class="size-3.5" aria-hidden="true"></i>Run Flow
+                        </button>
+                        <button type="button" class="w-full h-8 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] text-[12px] text-foreground hover:bg-[var(--ravel-background)] inline-flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="calendar-clock" class="size-3.5" aria-hidden="true"></i>Schedule
+                        </button>
+                        <button type="button" class="w-full h-8 rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] text-[12px] text-foreground hover:bg-[var(--ravel-background)] inline-flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                          <i data-lucide="sparkles" class="size-3.5" aria-hidden="true"></i>Suggest
+                        </button>
+                      </div>
+                    </div>
+                  </aside>
+
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <style>
+      /* ---- 窗口壳交互态：由 shell 拥有，叶子页面不得重写 ---- */
+      .seg [data-tab-key],
+      .rail [data-nav-key],
+      [data-region="titlebar"] button {
+        transition: all var(--ravel-duration-fast) var(--ravel-ease);
+      }
+
+      /* 分段控件：激活态 = 琥珀实心 */
+      .seg [data-tab-key][data-active="true"] {
+        background-color: var(--ravel-primary);
+        color: var(--ravel-primary-foreground);
+        box-shadow: var(--ravel-shadow-sm);
+      }
+      .seg [data-tab-key][data-active="false"] { color: var(--ravel-muted-foreground); }
+      .seg [data-tab-key][data-active="false"]:hover {
+        color: var(--ravel-foreground);
+        background-color: var(--ravel-surface);
+      }
+
+      /* 活动栏：激活态 = 琥珀图标 + 强调底色 + 左侧 2px 指示条 */
+      .rail [data-nav-key][data-active="true"] {
+        color: var(--ravel-primary);
+        background-color: var(--ravel-sidebar-accent);
+      }
+      .rail [data-nav-key][data-active="true"]::before {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 2px;
+        height: 18px;
+        border-radius: var(--ravel-radius-full);
+        background-color: var(--ravel-primary);
+      }
+      .rail [data-nav-key][data-active="false"] { color: var(--ravel-muted-foreground); }
+      .rail [data-nav-key][data-active="false"]:hover {
+        color: var(--ravel-sidebar-foreground);
+        background-color: var(--ravel-sidebar-accent);
+      }
+
+      /* rail 悬浮提示：纯 CSS 气泡 */
+      .rail [data-nav-key] .rail-tip {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity var(--ravel-duration-fast) var(--ravel-ease),
+                    visibility var(--ravel-duration-fast) var(--ravel-ease);
+      }
+      .rail [data-nav-key]:hover .rail-tip,
+      .rail [data-nav-key]:focus-visible .rail-tip {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .seg [data-tab-key],
+        .rail [data-nav-key],
+        .rail [data-nav-key] .rail-tip,
+        [data-region="titlebar"] button { transition: none; }
+      }
+    </style>
+    <style>
+      /* ---- Histos 专属：图谱画布节点交互 ---- */
+      .graph-canvas svg text {
+        user-select: none;
+        pointer-events: none;
+      }
+      .graph-canvas svg g {
+        cursor: pointer;
+      }
+      .graph-canvas svg g > circle,
+      .graph-canvas svg g > rect,
+      .graph-canvas svg g > path {
+        transition: opacity var(--ravel-duration-fast) var(--ravel-ease),
+                    stroke-width var(--ravel-duration-fast) var(--ravel-ease);
+      }
+      .graph-canvas svg g:hover > circle,
+      .graph-canvas svg g:hover > rect,
+      .graph-canvas svg g:hover > path {
+        opacity: 0.22;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .graph-canvas svg circle animate { display: none; }
+      }
+    </style>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

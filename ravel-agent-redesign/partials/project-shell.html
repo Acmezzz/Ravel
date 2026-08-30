@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ravel Agent 桌面端 · 共享窗口壳</title>
+    <style id="theme-vars">
+/* ============================================================
+   Ravel Agent 桌面端重设计 — Amber Workshop tokens
+   brandPrefix: ravel | 单一琥珀 primary | light/dark 双主题
+   默认 <html class="light">，.dark 覆盖
+   ============================================================ */
+
+:root {
+  /* ---- 基础语义色（light） ---- */
+  --ravel-background: #faf8f5;
+  --ravel-foreground: #221e18;
+  --ravel-surface: #f5f2ec;
+  --ravel-panel: #f2eee7;
+  --ravel-elevated: #ffffff;
+  --ravel-card: #ffffff;
+  --ravel-card-foreground: #221e18;
+  --ravel-popover: #fffdf9;
+  --ravel-popover-foreground: #2a251d;
+  --ravel-muted: #efeae1;
+  --ravel-muted-foreground: #7d7466;
+  --ravel-border: #e5ded1;
+  --ravel-input: #e8e1d4;
+  --ravel-ring: #c67d12;
+
+  /* ---- 主色（单一琥珀） ---- */
+  --ravel-primary: #c67d12;
+  --ravel-primary-foreground: #fffaf0;
+  --ravel-primary-soft: #f5e7cd;
+  --ravel-primary-hover: #b06f0e;
+
+  /* ---- 活动栏 / 侧栏 ---- */
+  --ravel-rail: #efe9df;
+  --ravel-rail-foreground: #6f665a;
+  --ravel-sidebar: #f2eee7;
+  --ravel-sidebar-foreground: #3a342b;
+  --ravel-sidebar-primary: #c67d12;
+  --ravel-sidebar-primary-foreground: #fffaf0;
+  --ravel-sidebar-accent: #efe2c9;
+  --ravel-sidebar-accent-foreground: #6b4e15;
+  --ravel-sidebar-border: #e3dacc;
+
+  /* ---- 代码 / 终端表面 ---- */
+  --ravel-code: #f6f1e6;
+  --ravel-code-foreground: #3c352a;
+
+  /* ---- 危险 / 状态（仅 state-*） ---- */
+  --ravel-destructive: #b3402e;
+  --ravel-destructive-foreground: #fff7f5;
+  --ravel-state-success: #3f7d4f;
+  --ravel-state-success-soft: #e4efe3;
+  --ravel-state-warning: #a97a12;
+  --ravel-state-warning-soft: #f6ecd4;
+  --ravel-state-danger: #b3402e;
+  --ravel-state-danger-soft: #f6e2dc;
+  --ravel-state-info: #3a6a92;
+  --ravel-state-info-soft: #e2ebf3;
+
+  /* ---- 图表 ---- */
+  --ravel-chart-1: #c67d12;
+  --ravel-chart-2: #ddab4b;
+  --ravel-chart-3: #8a6a3a;
+  --ravel-chart-4: #3a6a92;
+  --ravel-chart-5: #9a9183;
+
+  /* ---- 圆角（2/4/8/16 体系内收敛） ---- */
+  --ravel-radius-sm: 6px;
+  --ravel-radius-md: 10px;
+  --ravel-radius-lg: 14px;
+  --ravel-radius-xl: 16px;
+  --ravel-radius-full: 9999px;
+
+  /* ---- 阴影（静态 alpha ≤0.05） ---- */
+  --ravel-shadow-sm: 0 1px 2px rgba(34, 30, 24, 0.04);
+  --ravel-shadow-md: 0 4px 16px rgba(34, 30, 24, 0.05);
+  --ravel-shadow-pop: 0 10px 30px rgba(34, 30, 24, 0.05);
+
+  /* ---- 字体 ---- */
+  --ravel-font-sans: "Inter", "PingFang SC", "HarmonicOS Sans SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --ravel-font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, "Noto Sans Mono CJK SC", monospace;
+  --ravel-tracking-tight: -0.01em;
+  --ravel-tracking-cjk: 0.01em;
+  --default-font-family: var(--ravel-font-sans);
+  --default-mono-font-family: var(--ravel-font-mono);
+
+  /* ---- 动效 ---- */
+  --ravel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ravel-duration-fast: 120ms;
+  --ravel-duration-normal: 200ms;
+  --ravel-duration-slow: 320ms;
+}
+
+.dark {
+  --ravel-background: #17150f;
+  --ravel-foreground: #ece5d8;
+  --ravel-surface: #1c1a13;
+  --ravel-panel: #1f1c14;
+  --ravel-elevated: #262219;
+  --ravel-card: #201d15;
+  --ravel-card-foreground: #ece5d8;
+  --ravel-popover: #262219;
+  --ravel-popover-foreground: #ece5d8;
+  --ravel-muted: #272319;
+  --ravel-muted-foreground: #9a9183;
+  --ravel-border: #322d21;
+  --ravel-input: #35301f;
+  --ravel-ring: #e8b44a;
+
+  --ravel-primary: #e8b44a;
+  --ravel-primary-foreground: #241a05;
+  --ravel-primary-soft: #3a2f14;
+  --ravel-primary-hover: #f0c364;
+
+  --ravel-rail: #131109;
+  --ravel-rail-foreground: #8d8474;
+  --ravel-sidebar: #14120c;
+  --ravel-sidebar-foreground: #d8d1c2;
+  --ravel-sidebar-primary: #e8b44a;
+  --ravel-sidebar-primary-foreground: #241a05;
+  --ravel-sidebar-accent: #2c2513;
+  --ravel-sidebar-accent-foreground: #e8c98a;
+  --ravel-sidebar-border: #2a2519;
+
+  --ravel-code: #14120c;
+  --ravel-code-foreground: #dcd4c3;
+
+  --ravel-destructive: #e0705c;
+  --ravel-destructive-foreground: #24110c;
+  --ravel-state-success: #82c192;
+  --ravel-state-success-soft: #22301f;
+  --ravel-state-warning: #e0a83c;
+  --ravel-state-warning-soft: #3a2f14;
+  --ravel-state-danger: #e0705c;
+  --ravel-state-danger-soft: #3a1f18;
+  --ravel-state-info: #7aa6cc;
+  --ravel-state-info-soft: #1e2a36;
+
+  --ravel-chart-1: #e8b44a;
+  --ravel-chart-2: #b8d178;
+  --ravel-chart-3: #7aa6cc;
+  --ravel-chart-4: #d88f6a;
+  --ravel-chart-5: #9a9183;
+
+  --ravel-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ravel-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05);
+  --ravel-shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--ravel-background);
+    --color-foreground: var(--ravel-foreground);
+    --color-card: var(--ravel-card);
+    --color-card-foreground: var(--ravel-card-foreground);
+    --color-popover: var(--ravel-popover);
+    --color-popover-foreground: var(--ravel-popover-foreground);
+    --color-primary: var(--ravel-primary);
+    --color-primary-foreground: var(--ravel-primary-foreground);
+    --color-muted: var(--ravel-muted);
+    --color-muted-foreground: var(--ravel-muted-foreground);
+    --color-destructive: var(--ravel-destructive);
+    --color-destructive-foreground: var(--ravel-destructive-foreground);
+    --color-border: var(--ravel-border);
+    --color-input: var(--ravel-input);
+    --color-ring: var(--ravel-ring);
+    --color-chart-1: var(--ravel-chart-1);
+    --color-chart-2: var(--ravel-chart-2);
+    --color-chart-3: var(--ravel-chart-3);
+    --color-chart-4: var(--ravel-chart-4);
+    --color-chart-5: var(--ravel-chart-5);
+    --color-sidebar: var(--ravel-sidebar);
+    --color-sidebar-foreground: var(--ravel-sidebar-foreground);
+    --color-sidebar-primary: var(--ravel-sidebar-primary);
+    --color-sidebar-primary-foreground: var(--ravel-sidebar-primary-foreground);
+    --color-sidebar-accent: var(--ravel-sidebar-accent);
+    --color-sidebar-accent-foreground: var(--ravel-sidebar-accent-foreground);
+    --radius-sm: var(--ravel-radius-sm);
+    --radius-md: var(--ravel-radius-md);
+    --radius-lg: var(--ravel-radius-lg);
+    --radius-xl: var(--ravel-radius-xl);
+  }
+  @layer base {
+    body { background: var(--ravel-background); color: var(--ravel-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--ravel-background); }
+      .text-background { color: var(--ravel-background); }
+      .border-background { border-color: var(--ravel-background); }
+      .ring-background { --tw-ring-color: var(--ravel-background); }
+      .bg-foreground { background-color: var(--ravel-foreground); }
+      .text-foreground { color: var(--ravel-foreground); }
+      .border-foreground { border-color: var(--ravel-foreground); }
+      .ring-foreground { --tw-ring-color: var(--ravel-foreground); }
+      .bg-card { background-color: var(--ravel-card); }
+      .text-card { color: var(--ravel-card); }
+      .border-card { border-color: var(--ravel-card); }
+      .ring-card { --tw-ring-color: var(--ravel-card); }
+      .bg-card-foreground { background-color: var(--ravel-card-foreground); }
+      .text-card-foreground { color: var(--ravel-card-foreground); }
+      .border-card-foreground { border-color: var(--ravel-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--ravel-card-foreground); }
+      .bg-popover { background-color: var(--ravel-popover); }
+      .text-popover { color: var(--ravel-popover); }
+      .border-popover { border-color: var(--ravel-popover); }
+      .ring-popover { --tw-ring-color: var(--ravel-popover); }
+      .bg-popover-foreground { background-color: var(--ravel-popover-foreground); }
+      .text-popover-foreground { color: var(--ravel-popover-foreground); }
+      .border-popover-foreground { border-color: var(--ravel-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--ravel-popover-foreground); }
+      .bg-primary { background-color: var(--ravel-primary); }
+      .text-primary { color: var(--ravel-primary); }
+      .border-primary { border-color: var(--ravel-primary); }
+      .ring-primary { --tw-ring-color: var(--ravel-primary); }
+      .bg-primary-foreground { background-color: var(--ravel-primary-foreground); }
+      .text-primary-foreground { color: var(--ravel-primary-foreground); }
+      .border-primary-foreground { border-color: var(--ravel-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--ravel-primary-foreground); }
+      .bg-muted { background-color: var(--ravel-muted); }
+      .text-muted { color: var(--ravel-muted); }
+      .border-muted { border-color: var(--ravel-muted); }
+      .ring-muted { --tw-ring-color: var(--ravel-muted); }
+      .bg-muted-foreground { background-color: var(--ravel-muted-foreground); }
+      .text-muted-foreground { color: var(--ravel-muted-foreground); }
+      .border-muted-foreground { border-color: var(--ravel-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--ravel-muted-foreground); }
+      .bg-destructive { background-color: var(--ravel-destructive); }
+      .text-destructive { color: var(--ravel-destructive); }
+      .border-destructive { border-color: var(--ravel-destructive); }
+      .ring-destructive { --tw-ring-color: var(--ravel-destructive); }
+      .bg-destructive-foreground { background-color: var(--ravel-destructive-foreground); }
+      .text-destructive-foreground { color: var(--ravel-destructive-foreground); }
+      .border-destructive-foreground { border-color: var(--ravel-destructive-foreground); }
+      .ring-destructive-foreground { --tw-ring-color: var(--ravel-destructive-foreground); }
+      .bg-border { background-color: var(--ravel-border); }
+      .text-border { color: var(--ravel-border); }
+      .border-border { border-color: var(--ravel-border); }
+      .ring-border { --tw-ring-color: var(--ravel-border); }
+      .bg-input { background-color: var(--ravel-input); }
+      .text-input { color: var(--ravel-input); }
+      .border-input { border-color: var(--ravel-input); }
+      .ring-input { --tw-ring-color: var(--ravel-input); }
+      .bg-ring { background-color: var(--ravel-ring); }
+      .text-ring { color: var(--ravel-ring); }
+      .border-ring { border-color: var(--ravel-ring); }
+      .ring-ring { --tw-ring-color: var(--ravel-ring); }
+      .bg-chart-1 { background-color: var(--ravel-chart-1); }
+      .text-chart-1 { color: var(--ravel-chart-1); }
+      .border-chart-1 { border-color: var(--ravel-chart-1); }
+      .ring-chart-1 { --tw-ring-color: var(--ravel-chart-1); }
+      .bg-chart-2 { background-color: var(--ravel-chart-2); }
+      .text-chart-2 { color: var(--ravel-chart-2); }
+      .border-chart-2 { border-color: var(--ravel-chart-2); }
+      .ring-chart-2 { --tw-ring-color: var(--ravel-chart-2); }
+      .bg-chart-3 { background-color: var(--ravel-chart-3); }
+      .text-chart-3 { color: var(--ravel-chart-3); }
+      .border-chart-3 { border-color: var(--ravel-chart-3); }
+      .ring-chart-3 { --tw-ring-color: var(--ravel-chart-3); }
+      .bg-chart-4 { background-color: var(--ravel-chart-4); }
+      .text-chart-4 { color: var(--ravel-chart-4); }
+      .border-chart-4 { border-color: var(--ravel-chart-4); }
+      .ring-chart-4 { --tw-ring-color: var(--ravel-chart-4); }
+      .bg-chart-5 { background-color: var(--ravel-chart-5); }
+      .text-chart-5 { color: var(--ravel-chart-5); }
+      .border-chart-5 { border-color: var(--ravel-chart-5); }
+      .ring-chart-5 { --tw-ring-color: var(--ravel-chart-5); }
+      .bg-sidebar { background-color: var(--ravel-sidebar); }
+      .text-sidebar { color: var(--ravel-sidebar); }
+      .border-sidebar { border-color: var(--ravel-sidebar); }
+      .ring-sidebar { --tw-ring-color: var(--ravel-sidebar); }
+      .bg-sidebar-foreground { background-color: var(--ravel-sidebar-foreground); }
+      .text-sidebar-foreground { color: var(--ravel-sidebar-foreground); }
+      .border-sidebar-foreground { border-color: var(--ravel-sidebar-foreground); }
+      .ring-sidebar-foreground { --tw-ring-color: var(--ravel-sidebar-foreground); }
+      .bg-sidebar-primary { background-color: var(--ravel-sidebar-primary); }
+      .text-sidebar-primary { color: var(--ravel-sidebar-primary); }
+      .border-sidebar-primary { border-color: var(--ravel-sidebar-primary); }
+      .ring-sidebar-primary { --tw-ring-color: var(--ravel-sidebar-primary); }
+      .bg-sidebar-primary-foreground { background-color: var(--ravel-sidebar-primary-foreground); }
+      .text-sidebar-primary-foreground { color: var(--ravel-sidebar-primary-foreground); }
+      .border-sidebar-primary-foreground { border-color: var(--ravel-sidebar-primary-foreground); }
+      .ring-sidebar-primary-foreground { --tw-ring-color: var(--ravel-sidebar-primary-foreground); }
+      .bg-sidebar-accent { background-color: var(--ravel-sidebar-accent); }
+      .text-sidebar-accent { color: var(--ravel-sidebar-accent); }
+      .border-sidebar-accent { border-color: var(--ravel-sidebar-accent); }
+      .ring-sidebar-accent { --tw-ring-color: var(--ravel-sidebar-accent); }
+      .bg-sidebar-accent-foreground { background-color: var(--ravel-sidebar-accent-foreground); }
+      .text-sidebar-accent-foreground { color: var(--ravel-sidebar-accent-foreground); }
+      .border-sidebar-accent-foreground { border-color: var(--ravel-sidebar-accent-foreground); }
+      .ring-sidebar-accent-foreground { --tw-ring-color: var(--ravel-sidebar-accent-foreground); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+      <div class="min-h-screen w-full flex items-center justify-center p-6 bg-[var(--ravel-muted)]">
+        <!-- ============ 窗口帧 ============ -->
+        <div data-region="windowFrame" class="w-[1440px] max-w-full h-[900px] flex flex-col overflow-hidden rounded-[14px] border border-[var(--ravel-border)] bg-[var(--ravel-background)] shadow-[var(--ravel-shadow-pop)]">
+
+          <!-- ============ 标题栏 ============ -->
+          <header data-region="titlebar" data-drag-region class="titlebar h-11 shrink-0 flex items-center gap-3 border-b border-[var(--ravel-border)] bg-[var(--ravel-surface)] pl-3 pr-2">
+            <!-- 左段：品牌 + 工作区 -->
+            <div class="flex min-w-0 flex-1 items-center gap-2" data-drag-region>
+              <span class="inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] bg-primary text-[11px] font-semibold leading-none tracking-tight text-primary-foreground">R</span>
+              <span class="shrink-0 text-[13px] font-medium tracking-tight text-foreground">Ravel</span>
+              <span class="h-4 w-px shrink-0 bg-[var(--ravel-border)]" aria-hidden="true"></span>
+              <span class="truncate font-mono text-[12px] tracking-tight text-muted-foreground">ravel-desktop</span>
+              <span class="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full border border-[var(--ravel-border)] px-1.5 text-[11px] tracking-tight text-muted-foreground">
+                <i data-lucide="git-branch" class="size-3" aria-hidden="true"></i>main
+              </span>
+              <span class="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[var(--ravel-radius-sm)] bg-[var(--ravel-panel)] px-1.5 text-[11px] tracking-tight text-muted-foreground">
+                <i data-lucide="diff" class="size-3" aria-hidden="true"></i>3 个未提交变更
+              </span>
+            </div>
+
+            <!-- 中段：三模式分段控件（全项目唯一的跨模式导航） -->
+            <!-- SLOT:activeTab：叶子页面只翻转下面三个按钮的 data-active 与 aria-selected，不得复制或重写整条分段控件 -->
+            <div role="tablist" aria-label="界面模式" class="seg flex shrink-0 items-center gap-0.5 rounded-[var(--ravel-radius-md)] border border-[var(--ravel-border)] bg-[var(--ravel-panel)] p-0.5">
+              <a href="#" role="tab" aria-selected="true" data-dom-id="mode-chat" data-tab-key="mode-chat" data-active="true" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-3 text-[12px] font-medium tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="message-square" class="size-3.5" aria-hidden="true"></i>对话
+              </a>
+              <a href="#" role="tab" aria-selected="false" data-dom-id="mode-ide" data-tab-key="mode-ide" data-active="false" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-3 text-[12px] font-medium tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="code-2" class="size-3.5" aria-hidden="true"></i>IDE
+              </a>
+              <a href="#" role="tab" aria-selected="false" data-dom-id="mode-histos" data-tab-key="mode-histos" data-active="false" class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-3 text-[12px] font-medium tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="network" class="size-3.5" aria-hidden="true"></i>Histos
+              </a>
+            </div>
+
+            <!-- 右段：会话动作 + 主题 + 账户 -->
+            <div class="flex shrink-0 items-center justify-end gap-1">
+              <button type="button" class="inline-flex h-7 items-center gap-1.5 rounded-[var(--ravel-radius-sm)] px-2 text-[12px] font-medium tracking-tight text-[var(--ravel-state-info)] hover:bg-[var(--ravel-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="snowflake" class="size-3.5" aria-hidden="true"></i>Freeze Context
+              </button>
+              <button type="button" aria-label="切换深色 / 浅色" title="切换深色 / 浅色" class="size-7 inline-flex items-center justify-center rounded-[var(--ravel-radius-sm)] text-muted-foreground hover:bg-[var(--ravel-surface)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="moon" class="size-4" aria-hidden="true"></i>
+              </button>
+              <button type="button" aria-label="账户：YF" title="YF · 在线" class="relative size-7 inline-flex items-center justify-center rounded-[var(--ravel-radius-sm)] hover:bg-[var(--ravel-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <span class="inline-flex size-6 items-center justify-center rounded-full bg-[var(--ravel-elevated)] text-[10px] font-medium tracking-tight text-foreground ring-1 ring-[var(--ravel-border)]">YF</span>
+                <span class="absolute bottom-0 right-0 size-[6px] rounded-full bg-[var(--ravel-state-success)] ring-1 ring-[var(--ravel-surface)]" aria-hidden="true"></span>
+              </button>
+              <button type="button" aria-label="更多操作" class="size-7 inline-flex items-center justify-center rounded-[var(--ravel-radius-sm)] text-muted-foreground hover:bg-[var(--ravel-surface)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                <i data-lucide="ellipsis" class="size-4" aria-hidden="true"></i>
+              </button>
+            </div>
+          </header>
+
+          <!-- ============ 主体 ============ -->
+          <div class="flex flex-1 min-h-0">
+
+            <!-- 活动图标栏 -->
+            <nav data-region="activityRail" aria-label="主导航" class="w-12 shrink-0 border-r border-[var(--ravel-border)] bg-[var(--ravel-sidebar)] flex flex-col items-center py-2">
+              <!-- SLOT:activeNavItem：叶子页面只翻转下面各项的 data-active，不得复制或重写整条 rail DOM -->
+              <div class="rail flex flex-col items-center gap-1">
+                <button type="button" data-dom-id="rail-chat" data-nav-key="chat" data-active="true" aria-label="对话" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="message-square" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">对话<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘1</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-history" data-nav-key="history" data-active="false" aria-label="历史" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="history" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">历史<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘2</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-files" data-nav-key="files" data-active="false" aria-label="文件" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="folder-tree" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">文件<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘3</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-graph" data-nav-key="graph" data-active="false" aria-label="图谱" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="network" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">Histos 图谱<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘4</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-search" data-nav-key="search" data-active="false" aria-label="搜索" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="search" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">搜索<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘5</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-extensions" data-nav-key="extensions" data-active="false" aria-label="扩展" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="puzzle" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">扩展<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘6</kbd></span>
+                </button>
+                <button type="button" data-dom-id="rail-settings" data-nav-key="settings" data-active="false" aria-label="设置" class="relative flex size-8 items-center justify-center rounded-[var(--ravel-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">
+                  <i data-lucide="settings" class="size-[18px]" aria-hidden="true"></i>
+                  <span class="rail-tip pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] bg-popover px-2 py-1 text-[11px] tracking-tight text-popover-foreground shadow-[var(--ravel-shadow-md)]">设置<kbd class="rounded-[3px] border border-[var(--ravel-border)] bg-[var(--ravel-surface)] px-1 font-mono text-[10px] leading-[14px] text-muted-foreground">⌘,</kbd></span>
+                </button>
+              </div>
+
+              <div class="mt-auto flex flex-col items-center gap-2">
+                <span class="h-px w-6 bg-[var(--ravel-border)]" aria-hidden="true"></span>
+                <button type="button" aria-label="打开命令面板" class="inline-flex h-[22px] w-8 items-center justify-center rounded-[var(--ravel-radius-sm)] border border-[var(--ravel-border)] px-1 font-mono text-[10px] tracking-tight text-muted-foreground hover:bg-[var(--ravel-sidebar-accent)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">⌘K</button>
+                <button type="button" aria-label="账户设置" class="inline-flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--ravel-elevated)] text-[9px] font-medium tracking-tight text-foreground ring-1 ring-[var(--ravel-border)] hover:ring-[var(--ravel-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ravel-ring)]">YF</button>
+              </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <section data-region="workspace" class="flex-1 min-w-0 flex flex-col bg-[var(--ravel-background)]">
+              <!-- SLOT:workspacePrimary:begin -->
+              <div class="flex-1 min-h-0 flex items-center justify-center text-muted-foreground text-sm">
+                共享窗口壳片段：叶子页面在此填充三栏工作区（pages/chat.html · pages/ide.html · pages/histos.html）
+              </div>
+              <!-- SLOT:workspacePrimary:end -->
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <style>
+      /* ---- 窗口壳交互态：由 shell 拥有，叶子页面不得重写 ---- */
+      .seg [data-tab-key],
+      .rail [data-nav-key],
+      [data-region="titlebar"] button {
+        transition: all var(--ravel-duration-fast) var(--ravel-ease);
+      }
+
+      /* 分段控件：激活态 = 琥珀实心 */
+      .seg [data-tab-key][data-active="true"] {
+        background-color: var(--ravel-primary);
+        color: var(--ravel-primary-foreground);
+        box-shadow: var(--ravel-shadow-sm);
+      }
+      .seg [data-tab-key][data-active="false"] { color: var(--ravel-muted-foreground); }
+      .seg [data-tab-key][data-active="false"]:hover {
+        color: var(--ravel-foreground);
+        background-color: var(--ravel-surface);
+      }
+
+      /* 活动栏：激活态 = 琥珀图标 + 强调底色 + 左侧 2px 指示条 */
+      .rail [data-nav-key][data-active="true"] {
+        color: var(--ravel-primary);
+        background-color: var(--ravel-sidebar-accent);
+      }
+      .rail [data-nav-key][data-active="true"]::before {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 2px;
+        height: 18px;
+        border-radius: var(--ravel-radius-full);
+        background-color: var(--ravel-primary);
+      }
+      .rail [data-nav-key][data-active="false"] { color: var(--ravel-muted-foreground); }
+      .rail [data-nav-key][data-active="false"]:hover {
+        color: var(--ravel-sidebar-foreground);
+        background-color: var(--ravel-sidebar-accent);
+      }
+
+      /* rail 悬浮提示：纯 CSS 气泡 */
+      .rail [data-nav-key] .rail-tip {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity var(--ravel-duration-fast) var(--ravel-ease),
+                    visibility var(--ravel-duration-fast) var(--ravel-ease);
+      }
+      .rail [data-nav-key]:hover .rail-tip,
+      .rail [data-nav-key]:focus-visible .rail-tip {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .seg [data-tab-key],
+        .rail [data-nav-key],
+        .rail [data-nav-key] .rail-tip,
+        [data-region="titlebar"] button { transition: none; }
+      }
+    </style>
+    <script>lucide.createIcons();</script>
+</body>
+</html>
