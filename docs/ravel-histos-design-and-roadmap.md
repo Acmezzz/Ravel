@@ -143,6 +143,14 @@ CREATE INDEX IF NOT EXISTS tombstones_target_lookup ON tombstones (target_kind, 
 - **借鉴来源**：prime-agent agent_message 三层投递（auto/steer/follow_up）的注入语义；kilocode System Context 的 baseline（L0/L1）+ 增量（L2 按需）模型；omp hub 会话模型；替换原子性复用既有 `setSkillModelInvocation` 的 tmp+rename 模式
 - **验收**：框选节点 → 对话默认只含骨架+摘要（可从 prompt 体积验证）；LLM 调 `histos_expand` 拿到 span 级原文片段；expand 超预算 fail-closed 并提示缩减选区；对话改 skill 产生新 revision 且旧版可回滚（经 P0 归档语义）；未批准的草稿不落盘替换。
 
+- **渐进式披露的第二应用：会话压缩统一（2026-08-30 用户指出，记忆系统的终极用途）**——正常会话上下文满时的 compaction，与选区会话共用同一模型，且 Histos 让压缩从"有损摘要"升级为"记忆外置"：
+  - **压缩前零成本已有记忆**：早期 turn 的事实已由 `applySessionFacts` 自动投影为 triple/节点——被压缩的范围天然在 Histos 里有结构化记忆，无需压缩时额外提取；
+  - **摘要嵌入记忆锚点**：compaction 摘要不再只是文本（现状：`CompactionEntry {summary, firstKeptEntryId}`，细节沉在 JSONL 里但上下文无从导航），而是嵌入被压缩范围的 FactAddress / 节点 id 列表——上下文从"摘要文本"变成"摘要 + 可导航的记忆指针"；
+  - **expand 全局可用**：`histos_expand` 对全会话生效，LLM 需要早期细节时按锚点拉回 JSONL 原文（原文永在、FactAddress 可达）；
+  - **可选冻结**：压缩前可把重要子图 freeze 成 ContextSet 工件（复用既有审批/预算语义），摘要引用工件 sha——重要记忆从"会话附属"升级为"一等工件"。
+  - **借鉴来源**：oh-my-pi Mnemopi 的 autoRetain/autoRecall 分工（记忆外置 + 注入，但它的记忆不与压缩联动）；prime-agent handoff（压缩时生成结构化交接）；kilocode context epochs + baseline。**六项目中无一家把 compaction 直接构建在图记忆之上**——Ravel 因 FactAddress 全链而独有此机会。
+  - **验收**：compaction 后 LLM 能经 expand 取回被压缩范围内的具体原文细节；摘要含可验证的记忆锚点（锚点 id 在图中真实存在）；压缩全程不破坏 FactAddress 回溯；压缩前后 token 占用可见对比。
+
 ### P7 能力运作流程视图 + 项目知识入图（能力/记忆类补全）
 
 - **内容**：skill/extension/MCP 内容 → LLM 解析为结构化"触发条件 → 执行步骤 → 产出"工件（内容 hash 变更自动重解析出新 revision，画布能力节点挂流程视图）；项目知识文件（AGENTS.md、`.ravel/` 规则、上下文源）版本化入图（版本链 + 生效范围 user/project + 蒸馏摘要）。
