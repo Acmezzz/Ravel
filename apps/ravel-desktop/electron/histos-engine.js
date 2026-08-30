@@ -1144,6 +1144,33 @@ export class HistosEngine {
   }
 
   /**
+   * Project MCP server configurations into the graph (P1). Config content
+   * changes append a new revision to the mcp_config node's chain instead of
+   * overwriting, so the canvas can show how a server's config evolved.
+   */
+  async applyMcpConfigs(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || !Array.isArray(input.configs)) throw invalid("applyMcpConfigs requires a configs array");
+    const result = emptyResult(this.workspaceId);
+    const graph = adapters.projectMcpConfigGraph(input.configs, { workspaceId: this.workspaceId });
+    resultFromWebGraph(graph, result);
+    linkNodeRevisionParents(database, result);
+
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      rowsFromResult(database, result);
+      database
+        .prepare("INSERT INTO meta (key, value) VALUES ('last_apply_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .run(String(now()));
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return { nodeCount: result.nodes.size, edgeCount: result.edges.size, diagnostics: graph.diagnostics ?? [] };
+  }
+
+  /**
    * Persist evaluator observations as content-addressed GraphRevision artifacts.
    * Invalid batches are normalized before any artifact or database write, and
    * repeated observations collapse by their deterministic node revision id.

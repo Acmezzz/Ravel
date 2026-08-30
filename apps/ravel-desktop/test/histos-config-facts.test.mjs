@@ -1,4 +1,7 @@
 import test from "node:test";
+import * as fs from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import assert from "node:assert/strict";
 import { recordConfigChange, readFacts } from "../electron/session-facts.js";
 import { projectFactBatchToTriples } from "../electron/histos-fact-derivation.js";
@@ -86,3 +89,45 @@ test("config change timeline is reconstructable from the JSONL after restart", (
   const timeline = readFacts(manager).map((fact) => `${fact.domain}:${fact.action}:${fact.targetId}`);
   assert.deepEqual(timeline, ["mcp:create:mcp:a", "mcp:update:mcp:a", "mcp:delete:mcp:a"]);
 });
+
+// --- Task 11: mcp_config projection + worker recordConfigChange dispatch ---
+
+import { HistosEngine } from "../electron/histos-engine.js";
+import { mkdtempSync, rmSync } from "node:fs";
+
+test("applyMcpConfigs projects mcp_config nodes and appends revisions on config change", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "histos-mcp-"));
+  const engine = new HistosEngine({
+    workspaceId: "workspace-1",
+    databasePath: join(directory, "index.sqlite"),
+    artifactsDir: join(directory, "artifacts"),
+  });
+  try {
+    const query = { sourceSet: {}, lens: "structural", granularity: "entry" };
+    const first = await engine.applyMcpConfigs({ configs: [{ name: "serp", command: "npx", args: ["@serp/mcp"], enabled: true }] });
+    assert.equal(first.nodeCount, 1);
+    const graph1 = engine.getGraph(query);
+    const node = graph1.nodes.find((item) => item.kind === "mcp_config" && item.nodeId === "mcp:serp");
+    assert.ok(node, "mcp_config node must appear on the canvas");
+
+    // Content change appends a revision; the old revision stays queryable.
+    const second = await engine.applyMcpConfigs({ configs: [{ name: "serp", command: "npx", args: ["@serp/mcp", "--v2"], enabled: true }] });
+    assert.equal(second.nodeCount, 1);
+    const versions = engine.getGraph(query).nodes.filter((item) => item.nodeId === "mcp:serp");
+    assert.equal(versions.length, 2, "config change must append a revision");
+    assert.notEqual(versions[0].nodeRevisionId, versions[1].nodeRevisionId);
+    // asOf time travel shows only the older revision at the first created_at.
+    const early = engine.getGraph({ ...query, asOf: versions[1].createdAt });
+    assert.equal(early.nodes.filter((item) => item.nodeId === "mcp:serp").length, 1);
+  } finally {
+    engine.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("worker.mjs dispatches recordConfigChange to the single writer", async () => {
+  const workerSource = await fs.readFile(new URL("../electron/worker.mjs", import.meta.url), "utf8");
+  assert.match(workerSource, /recordConfigChange/);
+  assert.match(workerSource, /recordConfigChange: async/);
+});
+

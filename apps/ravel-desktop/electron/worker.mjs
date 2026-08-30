@@ -42,6 +42,7 @@ import {
   appendContextAttachedFact,
   appendFlowTriggerFact,
   recordPurgeFact,
+  recordConfigChange,
   setFactsAppendedListener,
   appendSessionReferenceFacts,
   buildSessionReferenceBlock,
@@ -934,6 +935,11 @@ const methods = {
   /** Erasure accounting (P0): the purge_record fact for a Histos purge. */
   recordPurge: async ({ targetKind, targetIds, reason, sessionId }) => {
     const entryId = recordPurgeFact(runtime.session.sessionManager, { targetKind, targetIds, reason, sessionId });
+    return { entryId };
+  },
+  /** Configuration change accounting (P1): settings-level writes. */
+  recordConfigChange: async ({ domain, action, targetId, reason }) => {
+    const entryId = recordConfigChange(runtime.session.sessionManager, { domain, action, id: targetId, reason });
     return { entryId };
   },
   getState: () => ({

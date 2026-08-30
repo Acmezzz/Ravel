@@ -176,6 +176,7 @@ async function invoke(method, args) {
     if (method === "archiveEntries") return current.archiveEntries(args?.kind, args?.ids ?? [], args?.reason ?? null);
     if (method === "restoreEntries") return current.restoreEntries(args?.tombstoneIds ?? []);
     if (method === "purgeEntries") return current.purgeEntries(args?.kind, args?.ids ?? [], args?.reason ?? null);
+    if (method === "applyMcpConfigs") return current.applyMcpConfigs(args ?? {});
     throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });
 }
 

@@ -1,4 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { extname, join, resolve } from "node:path";
 import {
   addressIdForFactAddress,
@@ -572,4 +573,45 @@ export const structuralGraph = projectStructuralGraph;
 // Kept as a named export for callers that need to construct addresses while
 // interpreting a scan, without depending on the internal helper names.
 export { sessionEntryAddress };
+
+/**
+ * Project MCP server configurations into mcp_config nodes (P1).
+ *
+ * The canvas already knows the `mcp_config` node kind; this adapter is what
+ * actually produces those nodes. Each server becomes one node addressed to
+ * the configuration file (`sourceType: "mcp_config"`), with a content
+ * addressed revision id so changing the config (command/url/args/enabled)
+ * appends a revision instead of overwriting history - the same
+ * contentSha256 + revision-chain contract the web source uses.
+ */
+export function projectMcpConfigGraph(configs) {
+  const nodes = [];
+  const edges = [];
+  if (!Array.isArray(configs)) return { nodes, edges, diagnostics: [] };
+  for (const config of configs) {
+    if (!isPlainObject(config) || typeof config.name !== "string" || config.name.length === 0 || config.name.length > 256) continue;
+    const content = JSON.stringify({
+      name: config.name,
+      command: typeof config.command === "string" ? config.command : null,
+      url: typeof config.url === "string" ? config.url : null,
+      args: Array.isArray(config.args) ? config.args.slice(0, 64) : [],
+      enabled: config.enabled !== false,
+      project: config.project === true,
+    });
+    const contentSha256 = createHash("sha256").update(content, "utf8").digest("hex");
+    const nodeId = `mcp:${config.name}`;
+    const nodeRevisionId = createHash("sha256").update(`mcp-node:${config.name}:${contentSha256}`, "utf8").digest("hex");
+    nodes.push({
+      id: nodeId,
+      nodeId,
+      nodeRevisionId,
+      kind: "mcp_config",
+      title: config.name,
+      createdAt: Date.now(),
+      evidence: [{ role: "source", address: { sourceType: "mcp_config", objectId: nodeId, revisionId: contentSha256 } }],
+      metadata: { transport: typeof config.url === "string" ? "http" : "stdio", enabled: config.enabled !== false },
+    });
+  }
+  return { nodes, edges, diagnostics: [] };
+}
 

@@ -580,6 +580,39 @@ function okResult(data) {
   return { ok: true, data: data };
 }
 
+/**
+ * P1 config accounting: best-effort record of a settings-level write through
+ * the agent worker's JSONL single writer (session-facts.recordConfigChange).
+ * The settings write already happened by the time this runs; a failed fact
+ * append is diagnostic noise, never a rollback of the real change.
+ */
+async function recordConfig(domain, action, id, reason) {
+  try {
+    if (!worker?.sessionId) return;
+    await worker.call("recordConfigChange", { domain, action, targetId: String(id).slice(0, 512), reason: reason ? String(reason).slice(0, 512) : undefined });
+  } catch { /* best effort */ }
+}
+
+/**
+ * P1 mcp_config projection: mirror the current MCP config bundle into the
+ * Histos graph (content-addressed revisions per server). Best effort — the
+ * canvas gains mcp_config nodes when a Histos host is alive; the durable
+ * config_changed facts are the authoritative record either way.
+ */
+async function projectMcpConfigs() {
+  try {
+    const histos = await activeHistos();
+    const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
+    const configs = listMcpRows(bundle.user, bundle.project).map((row) => ({
+      name: row.name,
+      ...(row.url ? { url: row.url } : { command: row.command, args: row.args ?? [] }),
+      enabled: row.enabled,
+      project: row.scope === "project",
+    }));
+    await histos.call("applyMcpConfigs", { configs });
+  } catch { /* best effort */ }
+}
+
 function assertIpcResult(value) {
   if (!isIpcEnvelope(value)) throw new Error("invalid_ipc_envelope");
   return value;
@@ -828,6 +861,7 @@ ipcMain.handle("omega:permissionRulesAdd", async (event, req) => {
     const rule = validateRule({ permission: req?.permission, pattern: req?.pattern, action: req?.action });
     addRule(file, rule);
     await pushRulesToWorkers();
+    await recordConfig("permission", "create", `${req?.action ?? "update"}:${req?.pattern ?? ""}`);
     const projectFile = activeCwd && projectTrust.isTrusted(activeCwd) ? rulesProjectFile() : null;
     const bundle = loadRulesBundle({ userFile: RULES_USER_FILE, projectFile });
     return okResult({ items: listRuleRows(bundle) });
@@ -846,6 +880,7 @@ ipcMain.handle("omega:permissionRulesRemove", async (event, req) => {
     const index = Number(req?.id?.split(":")[1]);
     removeRuleAt(file, Number.isSafeInteger(index) ? index : -1);
     await pushRulesToWorkers();
+    await recordConfig("permission", "delete", String(req?.id ?? ""));
     const projectFile = activeCwd && projectTrust.isTrusted(activeCwd) ? rulesProjectFile() : null;
     const bundle = loadRulesBundle({ userFile: RULES_USER_FILE, projectFile });
     return okResult({ items: listRuleRows(bundle) });
@@ -1375,6 +1410,7 @@ ipcMain.handle("omega:decideProjectTrust", async (event, req) => {
   try {
     const root = authorizedWorkspace(req.workspace);
     const trust = projectTrust.decide(root, req.decision);
+    await recordConfig("trust", "update", String(req.workspace), String(req.decision));
     if (activeCwd && root === activeCwd) {
       const sessionId = worker?.sessionId ?? null;
       await workerPool.disposeAll();
@@ -1698,6 +1734,7 @@ ipcMain.handle("omega:configureCustomProvider", async (event, req) => {
   if (!result.ok) return result;
   const current = desktopSettings.get().customProviders ?? {};
   desktopSettings.update({ customProviders: { ...current, [provider.id]: provider } });
+  await recordConfig("provider", "update", provider.id, "custom provider");
   return result;
 });
 
@@ -1746,6 +1783,7 @@ ipcMain.handle("omega:setModeProfile", async (event, req) => {
   }
   const previous = desktopSettings.get().modeProfile;
   desktopSettings.update({ modeProfile: mode });
+  await recordConfig("mode", "update", String(mode));
   const slots = workerPool.list().filter((slot) => slot.host?.state === "ready");
   const applied = [];
   const results = await Promise.all(slots.map(async (slot) => {
@@ -1806,6 +1844,7 @@ ipcMain.handle("omega:setProviderApiKey", async (event, req) => {
   if (!result.ok) return result;
   try {
     credentialStore?.set(providerId, apiKey);
+    await recordConfig("provider", "update", providerId, "api key set");
   } catch (error) {
     try {
       if (previous) await rpc("setProviderApiKey", { providerId, apiKey: previous }, "write_failed");
@@ -2521,6 +2560,7 @@ ipcMain.handle("omega:installLocalResource", async (event, req) => {
     if (!pickedByDialog && !isUnderAuthorizedRoot(source) && !isStagedResource(source)) {
       return errorResult("forbidden", "只能安装用户选择的目录、已授权工作区内的本地资源，或已审阅的暂存资源");
     }
+    await recordConfig("resource", "create", source);
     return rpc("installLocalResource", { source, project: req?.project === true }, "write_failed");
   } catch (error) {
     return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
@@ -2537,6 +2577,7 @@ ipcMain.handle("omega:removeLocalResource", async (event, req) => {
   try {
     const source = assertLocalSource(req?.source);
     if (!isUnderAuthorizedRoot(source)) return errorResult("forbidden", "只能移除已授权根目录内的本地资源");
+    await recordConfig("resource", "delete", source);
     return rpc("removeLocalResource", { source, project: req?.project === true }, "write_failed");
   } catch (error) {
     return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
@@ -2553,6 +2594,7 @@ ipcMain.handle("omega:setResourceEnabled", async (event, req) => {
   if (!req || typeof req.kind !== "string" || typeof req.path !== "string" || !req.path.trim()) {
     return errorResult("invalid_args", "kind and path are required");
   }
+  await recordConfig("resource", "update", `${req.kind}:${req.path}`, String(req.enabled !== false));
   return rpc("setResourceEnabled", {
     kind: req.kind,
     path: req.path,
@@ -2573,6 +2615,7 @@ ipcMain.handle("omega:setSkillModelInvocation", async (event, req) => {
     return errorResult(error?.code ?? "permission_denied", error instanceof Error ? error.message : String(error));
   }
   if (!isUnderAuthorizedRoot(req.filePath)) return errorResult("forbidden", "只能修改已授权根目录内的 Skill");
+  await recordConfig("resource", "update", req.filePath, "frontmatter model-invocation");
   return rpc("setSkillModelInvocation", { filePath: req.filePath, disable: req.disable === true }, "write_failed");
 });
 
@@ -2633,6 +2676,8 @@ ipcMain.handle("omega:mcpAdd", async (event, req) => {
     mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) =>
       upsertMcpServer(config, { name, command: req?.command, args: req?.args, url: req?.url, headers: req?.headers, auth: req?.auth, enabled: true }),
     );
+    await recordConfig("mcp", "create", name);
+    await projectMcpConfigs();
     const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
     return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
   } catch (error) {
@@ -2649,6 +2694,8 @@ ipcMain.handle("omega:mcpSetEnabled", async (event, req) => {
     mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) =>
       setMcpServerEnabled(config, name, req?.enabled !== false),
     );
+    await recordConfig("mcp", "update", name, String(req?.enabled !== false));
+    await projectMcpConfigs();
     const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
     return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
   } catch (error) {
@@ -2664,6 +2711,8 @@ ipcMain.handle("omega:mcpRemove", async (event, req) => {
     if (req?.project === true) assertMcpProjectScopeAllowed();
     // Removal only deletes the definition key; nothing else in the file moves.
     mutateMcpFile(req?.project === true ? mcpProjectFile() : MCP_USER_FILE, (config) => removeMcpServer(config, name));
+    await recordConfig("mcp", "delete", name);
+    await projectMcpConfigs();
     const bundle = loadMcpBundle({ userFile: MCP_USER_FILE, projectFile: mcpProjectFile() });
     return okResult({ items: listMcpRows(bundle.user, bundle.project), bridgeLoaded: hasExtensionNamed(MCP_BRIDGE_EXTENSION) });
   } catch (error) {
@@ -2732,6 +2781,7 @@ ipcMain.handle("omega:mcpLogin", async (event, req) => {
     });
     await shell.openExternal(authorizeUrl);
     const result = await login;
+    await recordConfig("mcp", "update", name, "oauth login");
     return okResult(result);
   } catch (error) {
     return errorResult(error?.code ?? "oauth_failed", error instanceof Error ? error.message : String(error));
