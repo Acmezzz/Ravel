@@ -2378,6 +2378,15 @@ ipcMain.handle("omega:histosIndexRepo", async (event, req) => {
   try {
     const histos = await activeHistos();
     const result = await histos.call("applyRepoIndex", { root, ...normalized });
+    // P5 observability: index diagnostics land as diagnostic_observed facts
+    // (durable JSONL via the agent worker + deduped Fact Graph projection).
+    const diagnostics = (result?.diagnostics ?? []).map((item) => ({ file: `repo:${root}`, severity: "warning", message: item.message ?? String(item.code ?? "diagnostic") }));
+    if (diagnostics.length > 0) {
+      try { await histos.call("applyDiagnostics", { diagnostics }); } catch { /* best effort */ }
+      for (const item of diagnostics) {
+        try { if (worker?.sessionId) await worker.call("recordDiagnosticObserved", item); } catch { /* best effort */ }
+      }
+    }
     return okResult(result ?? { nodeCount: 0, edgeCount: 0, fileCount: 0, diagnostics: [] });
   } catch (error) {
     return errorResult(error?.code ?? "index_failed", error instanceof Error ? error.message : String(error));

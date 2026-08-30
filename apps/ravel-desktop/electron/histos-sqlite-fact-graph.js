@@ -83,6 +83,12 @@ export function createSqliteFactGraph({ database, workspaceId, randomId, default
       (id, subject, predicate, object, source, scope, tag, confidence, valid_from, valid_until, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  // FTS5 mirror (P5): every inserted triple is mirrored into the external
+  // content table so keyword search over fact_triples stays in sync. The
+  // mirror uses the implicit integer rowid of the content table row.
+  const ftsInsert = database.prepare("INSERT INTO fact_triples_fts(rowid, subject, predicate, object) VALUES (?, ?, ?, ?)");
+  const rowidOf = database.prepare("SELECT rowid FROM fact_triples WHERE id = ?");
+  const ftsDeleteAll = database.prepare("DELETE FROM fact_triples_fts");
   const existsById = database.prepare("SELECT 1 AS present FROM fact_triples WHERE id = ?");
   const countAll = database.prepare("SELECT COUNT(*) AS count FROM fact_triples WHERE scope = ?");
   const distinctSubjects = database.prepare("SELECT COUNT(DISTINCT subject) AS count FROM fact_triples WHERE scope = ?");
@@ -136,6 +142,10 @@ export function createSqliteFactGraph({ database, workspaceId, randomId, default
                 triple.validUntil,
                 triple.createdAt ?? now(),
               );
+              try {
+                const rowid = rowidOf.get(id)?.rowid;
+                if (typeof rowid === "number") ftsInsert.run(rowid, triple.subject, triple.predicate, triple.object);
+              } catch { /* FTS mirror is best-effort */ }
               count += 1;
             }
           }
@@ -207,12 +217,35 @@ export function createSqliteFactGraph({ database, workspaceId, randomId, default
         ensurePrepared();
         const removed = countAll.get(resolvedScope)?.count ?? 0;
         deleteAll.run(resolvedScope);
+        try { ftsDeleteAll.run(); } catch { /* best effort */ }
         seenIds.clear();
         prepared = false;
         ensurePrepared();
         return { ok: true, count: removed };
       } catch (error) {
         return { ok: false, code: error?.code ?? "clear_failed", message: error instanceof Error ? error.message : String(error) };
+      }
+    },
+    /** FTS5 keyword search over the mirrored triple text (P5). */
+    async searchFts(query = {}) {
+      try {
+        ensurePrepared();
+        const term = typeof query.term === "string" && query.term.trim().length > 0 ? query.term.trim() : null;
+        if (!term) return { ok: false, code: "invalid_args", message: "term is required", triples: [] };
+        const limit = Number.isSafeInteger(query.limit) ? Math.max(1, Math.min(100, query.limit)) : 50;
+        // Quote as an FTS5 phrase so user/LLM terms with punctuation cannot
+        // smuggle query syntax into MATCH.
+        const phrase = `"${term.replace(/"/g, "\"\"")}"`;
+        const rows = database.prepare(
+          `SELECT f.rowid AS rowid, t.id, t.subject, t.predicate, t.object, t.source, t.scope, t.tag, t.confidence, t.valid_from, t.valid_until, t.created_at
+           FROM fact_triples_fts f JOIN fact_triples t ON t.rowid = f.rowid
+           WHERE fact_triples_fts MATCH ?
+           ORDER BY rank
+           LIMIT ?`,
+        ).all(phrase, limit).map(rowToTriple).filter(Boolean);
+        return { ok: true, triples: rows };
+      } catch (error) {
+        return { ok: false, code: error?.code ?? "search_failed", message: error instanceof Error ? error.message : String(error), triples: [] };
       }
     },
   });

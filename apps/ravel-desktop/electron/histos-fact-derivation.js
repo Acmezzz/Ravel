@@ -23,6 +23,10 @@ const TRIPLE_PREDICATE = {
   FLOW_TRIGGERED: "schedules",
 };
 
+// Class-level fact types that project through their own predicate families
+// (config_changed, diagnostic_observed, usage_observed, goal_state).
+const CUSTOM_PREDICATE_FACT_TYPES = new Set(["config_changed", "diagnostic_observed", "usage_observed", "goal_state"]);
+
 const PREDICATE_BY_FACT = Object.freeze({
   operation_started: TRIPLE_PREDICATE.OPERATION_OPENED,
   operation_finished: TRIPLE_PREDICATE.OPERATION_CLOSED,
@@ -76,8 +80,8 @@ function pushTriple(out, subject, predicate, object, source, opts = {}) {
 export function projectFactToTriples(fact, context = {}) {
   if (!fact || typeof fact !== "object" || typeof fact.type !== "string") return [];
   const predicate = PREDICATE_BY_FACT[fact.type];
-  // config_changed is handled by its own domain predicate family below.
-  if (!predicate && fact.type !== "config_changed") return [];
+  // Class-level fact types are handled by their own predicate families below.
+  if (!predicate && !CUSTOM_PREDICATE_FACT_TYPES.has(fact.type)) return [];
 
   const sessionId = context.sessionId ?? fact.sessionId ?? "unknown";
   const out = [];
@@ -134,6 +138,37 @@ export function projectFactToTriples(fact, context = {}) {
       const action = typeof fact.action === "string" ? fact.action : "update";
       const targetId = typeof fact.targetId === "string" ? fact.targetId : "unknown";
       pushTriple(out, `session:${sessionId}`, domainPredicate, `${action}:${targetId}`, `session:${sessionId}`, { validFrom: ts, tag: "config" });
+      break;
+    }
+    case "diagnostic_observed": {
+      // Observability class: file x severity x time, tagged diagnostic. The
+      // projection keeps the newest per-file severity in the graph (the
+      // JSONL keeps full history); object carries severity + bounded message.
+      // Subject is the URI-safe normalized path (matches applyDiagnostics).
+      if (typeof fact.file !== "string" || !fact.file) return [];
+      const severity = typeof fact.severity === "string" ? fact.severity : "info";
+      const message = typeof fact.message === "string" ? fact.message : "";
+      const subjectKey = fact.file.replace(/[^A-Za-z0-9_.:-]/g, "_");
+      pushTriple(out, `file:${subjectKey}`, "custom_diagnostic_observed", `${severity}:${bounded(message, 2048)}`, `session:${sessionId}`, { validFrom: ts, tag: "diagnostic" });
+      break;
+    }
+    case "usage_observed": {
+      // Usage class: model x token/time/cost, tagged usage. Missing cost
+      // fields stay missing (explicit-missing semantics preserved).
+      if (typeof fact.model !== "string" || !fact.model) return [];
+      const parts = [];
+      if (typeof fact.tokens === "number" && Number.isFinite(fact.tokens)) parts.push(`tokens:${fact.tokens}`);
+      if (typeof fact.elapsedMs === "number" && Number.isFinite(fact.elapsedMs)) parts.push(`elapsedMs:${fact.elapsedMs}`);
+      if (typeof fact.costUsd === "number" && Number.isFinite(fact.costUsd)) parts.push(`costUsd:${fact.costUsd}`);
+      pushTriple(out, `model:${fact.model}`, "custom_usage_observed", parts.join(" ") || "usage", `session:${sessionId}`, { validFrom: ts, tag: "usage" });
+      break;
+    }
+    case "goal_state": {
+      // Goal accounting: objective status + round counter.
+      if (typeof fact.objective !== "string" || !fact.objective) return [];
+      const status = typeof fact.status === "string" ? fact.status : "active";
+      const rounds = Number.isFinite(fact.rounds) ? fact.rounds : 0;
+      pushTriple(out, `session:${sessionId}`, "custom_goal_state", `${status}:rounds:${rounds}`, `session:${sessionId}`, { validFrom: ts, tag: "goal" });
       break;
     }
     default:

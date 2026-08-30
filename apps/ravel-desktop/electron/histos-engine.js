@@ -903,6 +903,59 @@ export class HistosEngine {
   }
 
   /**
+   * P5 observability: project diagnostic observations into the Fact Graph,
+   * deduped by absolute path (newest per file wins, omp diagnostics ledger
+   * pattern). The JSONL fact stream keeps full history; only the derived
+   * index is compacted. The caller (Main) also routes the same observations
+   * to the agent worker's recordDiagnosticObserved for the durable fact.
+   */
+  async applyDiagnostics(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || !Array.isArray(input.diagnostics)) throw invalid("applyDiagnostics requires a diagnostics array");
+    if (input.diagnostics.length > 1000) throw invalid("applyDiagnostics accepts at most 1000 diagnostics");
+    const normalized = [];
+    for (const item of input.diagnostics) {
+      if (!isObject(item) || typeof item.file !== "string" || item.file.length === 0 || item.file.length > 1024) throw invalid("each diagnostic requires a file");
+      if (!["info", "warning", "error"].includes(item.severity)) throw invalid("diagnostic severity must be info, warning or error");
+      normalized.push({ file: item.file, severity: item.severity, message: String(item.message ?? "").slice(0, 4096), ts: Number.isFinite(item.ts) ? item.ts : Date.now() });
+    }
+    const deleteStale = database.prepare("DELETE FROM fact_triples WHERE subject = ? AND predicate = 'custom_diagnostic_observed'");
+    // Subject keys must satisfy the URI-ish triple subject charset, so the
+    // absolute path is normalized (dedupe stays per-file, keyed on the
+    // normalized form).
+    const keyOf = (file) => file.replace(/[^A-Za-z0-9_.:-]/g, "_");
+    const triples = normalized.map((item) => ({
+      subject: `file:${keyOf(item.file)}`,
+      predicate: "custom_diagnostic_observed",
+      object: `${item.severity}:${item.message}`,
+      source: "diagnostic",
+      validFrom: item.ts,
+      tag: "diagnostic",
+    }));
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      for (const item of normalized) deleteStale.run(`file:${keyOf(item.file)}`);
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    const written = await this.writeFacts(triples);
+    return { ok: written.ok, count: written.count ?? 0, dedupedFiles: normalized.length, code: written.code, message: written.message };
+  }
+
+  /** P5 FTS5 keyword search over fact triple text. */
+  async ftsSearch(input = {}) {
+    if (!this.factGraph) return { ok: false, code: "not_ready", message: "Fact graph backend is not configured", triples: [] };
+    if (!this.factGraphReady) {
+      try { await this.factGraph.start({ workspaceId: this.workspaceId }); this.factGraphReady = true; }
+      catch (error) { return { ok: false, code: error?.code ?? "start_failed", message: error instanceof Error ? error.message : String(error), triples: [] }; }
+    }
+    if (typeof this.factGraph.searchFts !== "function") return { ok: false, code: "unsupported", message: "backend does not provide FTS search", triples: [] };
+    return this.factGraph.searchFts(input);
+  }
+
+  /**
    * P0 archive: write tombstones over the given targets. The JSONL fact
    * authority is never touched — a tombstone only hides rows from the
    * derived index read paths (graphRows/queryFacts/getNode/suggestContext).

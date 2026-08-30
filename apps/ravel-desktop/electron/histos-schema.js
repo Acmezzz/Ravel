@@ -245,6 +245,19 @@ CREATE TABLE IF NOT EXISTS tombstones (
 
 CREATE INDEX IF NOT EXISTS tombstones_target_lookup
   ON tombstones (target_kind, target_id);
+
+-- FTS5 full-text index over fact_triples (P5, referenced hermes SessionDB).
+-- External-content table over fact_triples rowids; kept out of HISTOS_TABLES
+-- because a virtual table has no PRAGMA table_info shape. Old workspaces
+-- gain it on first open; rebuild re-populates via the rebuild command.
+CREATE VIRTUAL TABLE IF NOT EXISTS fact_triples_fts USING fts5(
+  subject,
+  predicate,
+  object,
+  content='fact_triples',
+  content_rowid='rowid',
+  tokenize='unicode61'
+);
 `;
 
 const MAX_WORKSPACE_ID_LENGTH = 512;

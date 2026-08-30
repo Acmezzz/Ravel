@@ -9,13 +9,17 @@
  * entry id chain and timestamps.
  */
 import { createHash, randomUUID } from "node:crypto";
+import { GOAL_STATUS } from "./goal-state.js";
+
+const GOAL_STATUS_SET = new Set(GOAL_STATUS);
 
 export const FACT_CUSTOM_TYPE = "ravel_record";
 
-const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached", "flow_trigger", "purge_record", "config_changed"]);
+const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached", "flow_trigger", "purge_record", "config_changed", "diagnostic_observed", "goal_state", "usage_observed"]);
 const PURGE_TARGET_KINDS = new Set(["triple", "node", "edge", "artifact", "session_index"]);
 const CONFIG_DOMAINS = new Set(["resource", "permission", "trust", "mcp", "mode", "provider", "profile"]);
 const CONFIG_ACTIONS = new Set(["create", "update", "delete"]);
+const DIAGNOSTIC_SEVERITIES = new Set(["info", "warning", "error"]);
 const factsAppendedListeners = new WeakMap();
 
 export function setFactsAppendedListener(sessionManager, listener) {
@@ -200,6 +204,41 @@ export function appendFact(sessionManager, record) {
 				throw new Error("Invalid config_changed fact: targetId must be a non-empty string of at most 512 characters");
 			}
 			requireOptionalString(record, "reason");
+			break;
+		}
+		case "diagnostic_observed": {
+			// Observability class (P5): file x severity x time observations.
+			// The message is bounded; absolute paths are allowed here because
+			// the diagnostic ledger is keyed by file (omp diagnostics pattern).
+			if (typeof record.file !== "string" || record.file.length === 0 || record.file.length > 1024) {
+				throw new Error("Invalid diagnostic_observed fact: file must be a non-empty string of at most 1024 characters");
+			}
+			if (!DIAGNOSTIC_SEVERITIES.has(record.severity)) {
+				throw new Error(`Invalid diagnostic_observed fact: severity ${JSON.stringify(record.severity)}`);
+			}
+			requireString(record, "message");
+			break;
+		}
+		case "goal_state": {
+			// P5 goal accounting: the round/token/elapsed counters that drive
+			// the autonomous gate (createGoalState/recordGoalTurn contract).
+			requireString(record, "objective");
+			if (!GOAL_STATUS_SET.has(record.status)) throw new Error(`Invalid goal_state fact: status ${JSON.stringify(record.status)}`);
+			if (typeof record.rounds !== "number" || !Number.isFinite(record.rounds) || record.rounds < 0) {
+				throw new Error("Invalid goal_state fact: rounds must be a non-negative number");
+			}
+			break;
+		}
+		case "usage_observed": {
+			// P5 usage triple: token/time/estimated cost, each optional so a
+			// provider that reports none keeps the explicit-missing semantics.
+			for (const field of ["tokens", "elapsedMs", "costUsd"]) {
+				if (record[field] === undefined || record[field] === null) continue;
+				if (typeof record[field] !== "number" || !Number.isFinite(record[field]) || record[field] < 0) {
+					throw new Error(`Invalid usage_observed fact: ${field} must be a non-negative number`);
+				}
+			}
+			requireString(record, "model");
 			break;
 		}
 	}
@@ -497,6 +536,82 @@ export function recordPurgeFact(sessionManager, { targetKind, targetIds, reason,
 		targetIds: targetIds.slice(0, 512).map((targetId) => String(targetId)),
 		...(reason ? { reason: String(reason).slice(0, 512) } : {}),
 		...(sessionId ? { sessionId: String(sessionId) } : {}),
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
+}
+
+/**
+ * Observability accounting (P5). One observation per diagnostic: file x
+ * severity x time, message bounded. The JSONL keeps the full history; the
+ * Fact Graph projection dedupes by absPath (newest per file wins).
+ */
+export function recordDiagnosticObserved(sessionManager, { file, severity, message } = {}) {
+	if (typeof file !== "string" || file.length === 0 || file.length > 1024) {
+		throw new Error("Invalid diagnostic_observed fact: file must be a non-empty string of at most 1024 characters");
+	}
+	if (!DIAGNOSTIC_SEVERITIES.has(severity)) {
+		throw new Error(`Invalid diagnostic_observed fact: severity ${JSON.stringify(severity)}`);
+	}
+	if (typeof message !== "string" || message.length === 0) {
+		throw new Error("Invalid diagnostic_observed fact: message must be a non-empty string");
+	}
+	const record = {
+		type: "diagnostic_observed",
+		id: `diag-${randomUUID()}`,
+		lane: "main",
+		file,
+		severity,
+		message: message.slice(0, 4096),
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
+}
+
+/**
+ * Goal accounting (P5): persist a GoalState snapshot as a durable fact.
+ * The counter fields drive the autonomous gate; the JSONL keeps the full
+ * round/token/elapsed history so a restarted worker can see how far a goal
+ * got before it stopped.
+ */
+export function appendGoalStateFact(sessionManager, state) {
+	if (!state || typeof state !== "object") throw new Error("Invalid goal_state fact: state is required");
+	if (typeof state.objective !== "string" || state.objective.length === 0 || state.objective.length > 4096) {
+		throw new Error("Invalid goal_state fact: objective must be a non-empty string of at most 4096 characters");
+	}
+	if (!GOAL_STATUS_SET.has(state.status)) throw new Error(`Invalid goal_state fact: status ${JSON.stringify(state.status)}`);
+	const record = {
+		type: "goal_state",
+		id: `goal-${randomUUID()}`,
+		lane: "main",
+		objective: state.objective,
+		status: state.status,
+		rounds: Number.isFinite(state.rounds) ? state.rounds : 0,
+		...(Number.isFinite(state.tokensUsed) && state.tokensUsed > 0 ? { tokensUsed: state.tokensUsed } : {}),
+		...(Number.isFinite(state.timeUsedSeconds) && state.timeUsedSeconds > 0 ? { timeUsedSeconds: state.timeUsedSeconds } : {}),
+		...(Number.isFinite(state.continuationsUsed) && state.continuationsUsed > 0 ? { continuationsUsed: state.continuationsUsed } : {}),
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
+}
+
+/**
+ * Usage accounting (P5): one triple per model invocation. tokens/elapsedMs/
+ * costUsd are each optional so providers that report nothing keep explicit
+ * missing semantics - absent fields stay absent, never fabricated zeroes.
+ */
+export function recordUsageObserved(sessionManager, { model, tokens, elapsedMs, costUsd } = {}) {
+	if (typeof model !== "string" || model.length === 0 || model.length > 256) {
+		throw new Error("Invalid usage_observed fact: model must be a non-empty string of at most 256 characters");
+	}
+	const record = {
+		type: "usage_observed",
+		id: `usage-${randomUUID()}`,
+		lane: "main",
+		model,
+		...(Number.isFinite(tokens) && tokens >= 0 ? { tokens } : {}),
+		...(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? { elapsedMs } : {}),
+		...(Number.isFinite(costUsd) && costUsd >= 0 ? { costUsd } : {}),
 		timestamp: Date.now(),
 	};
 	return appendFact(sessionManager, record);

@@ -35,6 +35,7 @@ import { isExtensionUIResponse } from "./extension-ui-protocol.js";
 import { isWorkerRequest } from "./worker-protocol.js";
 import { createPermissionGuard, sanitizePermissionProfile } from "./permission-profiles.js";
 import { getModeProfile, modeAllowsTool, sanitizeModeProfile, buildModeDirectiveBlock, goalCapExceeded, GOAL_CONTINUATION_TEXT, PLAN_APPROVED_TEXT } from "./mode-profiles.js";
+import { createGoalState, recordGoalTurn, isGoalBudgetExceeded } from "./goal-state.js";
 import { validateCustomProvider } from "./custom-providers.js";
 import {
   appendCheckpointFacts,
@@ -43,6 +44,9 @@ import {
   appendFlowTriggerFact,
   recordPurgeFact,
   recordConfigChange,
+  recordDiagnosticObserved,
+  appendGoalStateFact,
+  recordUsageObserved,
   setFactsAppendedListener,
   appendSessionReferenceFacts,
   buildSessionReferenceBlock,
@@ -424,10 +428,11 @@ let modeProfile = "default";
 /** Persistent per-tool rulesets in increasing precedence: [user, project] (B3). */
 let permissionRulesets = [];
 /**
- * Goal-mode continuation state (B2). The goal starts with the first prompt in
- * goal mode and keeps prompting within the round/elapsed caps; it stops on
- * abort, error, cap exhaustion or a mode switch. Completion is never
- * self-declared by the model — that needs the evidence gate (borrowing B1).
+ * Goal-mode continuation state (B2, contract in goal-state.js). The goal
+ * starts with the first prompt in goal mode and keeps prompting within the
+ * round/elapsed caps; it stops on abort, error, cap exhaustion or a mode
+ * switch. Completion is never self-declared by the model — that needs the
+ * evidence gate (borrowing B1).
  */
 let goalState = null;
 
@@ -685,9 +690,10 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
       operationId = `op-${randomUUID()}`;
       beginOperationFact(session, operationId, text);
     }
-    // First prompt in goal mode starts the goal loop.
+    // First prompt in goal mode starts the goal loop (goal-state contract).
     if (modeProfile === "goal" && !goalState) {
-      goalState = { text, rounds: 1, startedAt: Date.now() };
+      goalState = createGoalState({ objective: text, sessionId: runtime.session.sessionId });
+      try { appendGoalStateFact(session.sessionManager, goalState); } catch { /* best effort */ }
     }
     if (trackedClientMessageId) activeClientMessageIds.add(trackedClientMessageId);
     try {
@@ -704,6 +710,12 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
         if (activeRunId === operationId) activeRunId = null;
       }
       // A failed or aborted round stops the goal loop: never continue on error.
+      if (goalState) {
+        try {
+          goalState.status = "error";
+          appendGoalStateFact(session.sessionManager, goalState);
+        } catch { /* best effort */ }
+      }
       goalState = null;
       throw error;
     } finally {
@@ -712,13 +724,19 @@ async function prompt({ text, behavior, images, clientMessageId, generation: req
         recordReferenceFacts(session.sessionManager, { leafBefore, promptText: fullText, clientMessageId: trackedClientMessageId, references: refs });
       }
     }
-    // Goal continuation (B2): within the round/elapsed caps the harness keeps
-    // prompting; the caps — never a model completion claim — end the loop.
-    // Fire-and-forget: awaiting here would queue the continuation behind the
-    // very run that is still executing it (promptQueue deadlock).
+    // Goal continuation (B2, goal-state contract): within the round/elapsed
+    // caps the harness keeps prompting; the caps — never a model completion
+    // claim — end the loop. Fire-and-forget: awaiting here would queue the
+    // continuation behind the very run that is still executing it
+    // (promptQueue deadlock).
     if (modeProfile === "goal" && goalState && !disposed) {
-      goalState.rounds += 1;
-      if (goalCapExceeded(goalState)) {
+      recordGoalTurn(goalState, { continuation: true });
+      try { recordUsageObserved(session.sessionManager, { model: session.model?.id ?? "unknown", elapsedMs: Date.now() - goalState.startedAt }); } catch { /* best effort */ }
+      if (isGoalBudgetExceeded(goalState) || goalCapExceeded(goalState)) {
+        try {
+          goalState.status = "budget_limited";
+          appendGoalStateFact(session.sessionManager, goalState);
+        } catch { /* best effort */ }
         goalState = null;
         return;
       }
@@ -940,6 +958,11 @@ const methods = {
   /** Configuration change accounting (P1): settings-level writes. */
   recordConfigChange: async ({ domain, action, targetId, reason }) => {
     const entryId = recordConfigChange(runtime.session.sessionManager, { domain, action, id: targetId, reason });
+    return { entryId };
+  },
+  /** Observability accounting (P5): one durable fact per diagnostic. */
+  recordDiagnosticObserved: async ({ file, severity, message }) => {
+    const entryId = recordDiagnosticObserved(runtime.session.sessionManager, { file, severity, message });
     return { entryId };
   },
   getState: () => ({
