@@ -130,6 +130,25 @@ CREATE INDEX IF NOT EXISTS tombstones_target_lookup ON tombstones (target_kind, 
 
 - `diagnostic_observed` 事实（文件 × 严重度 × 时间 → Fact Graph，参照 omp diagnostics ledger 的 absPath 去重）；`fact_triples` FTS5 全文索引（参照 hermes）；GoalState 接 worker 主流程（契约已在 `goal-state.js`）；费用 usage triple。
 
+### P6 图会话与编辑闭环（策略/能力类的交互基座）
+
+- **内容**：图选区（节点/边子集）→ 一键开启**注入选区上下文的会话**（选区内容经 ContextSet 语义进入 prompt，回答可跳回图节点）；Histos 内对话式编辑 skill/prompt（agent 产出新版本 → 人审 → 原子替换 → 新 revision 入图）；图选区直接生成 skill 草稿。此切片是 P3 共创循环的交互基座，若提前实施可与 P2 并行。
+- **依据**：`ravel-graph-flow-invariant` 的产品承诺"可对任意节点/边子集开会话、生成 skill、改 skill"；现有 HistosSurface 对话栏未注入图上下文，是承诺与实现的最大差口。
+- **借鉴来源**：prime-agent agent_message 三层投递（auto/steer/follow_up）的注入语义、omp hub 会话模型；替换原子性复用既有 `setSkillModelInvocation` 的 tmp+rename 模式
+- **验收**：框选节点 → 对话栏提问回答引用选区内容；对话改 skill 产生新 revision 且旧版可回滚（经 P0 归档语义）；未批准的草稿不落盘替换。
+
+### P7 能力运作流程视图 + 项目知识入图（能力/记忆类补全）
+
+- **内容**：skill/extension/MCP 内容 → LLM 解析为结构化"触发条件 → 执行步骤 → 产出"工件（内容 hash 变更自动重解析出新 revision，画布能力节点挂流程视图）；项目知识文件（AGENTS.md、`.ravel/` 规则、上下文源）版本化入图（版本链 + 生效范围 user/project + 蒸馏摘要）。
+- **借鉴来源**：hermes skills curator（自动解析与去重合并的受控版）、kilocode System Context 的 baseline + 增量模型
+- **验收**：skill 内容变更后其运作流程工件出新 revision；AGENTS.md 修改在图上可查历史版本与生效范围；全部可归档（P0 语义）。
+
+### P8 成果浏览与会话交接（成果/记忆类补全）
+
+- **内容**：工件库面板（GraphRevision / 报告 / 导出 / Flow 实例的列表 + 预览 + Evidence 回溯原文 + 归档入口）；handoff 生成管线（oneshot 把当前会话整理成交接文档，以 compaction entry 落盘，可冻结为 ContextSet）。
+- **借鉴来源**：prime-agent `/handoff`（SessionHandoff.generateDocument + compaction 提交 + 防 race）、omp blob/artifact 双存储的 URL 解析（`artifact://` 预览模型）
+- **验收**：成果面板能列出/预览/回溯任意工件；handoff 生成不与 compaction 竞态（busy 时明确拒绝）；交接文档可跨会话附加。
+
 ---
 
 ## 4. 文档关系

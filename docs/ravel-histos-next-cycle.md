@@ -122,7 +122,7 @@ git diff --check
 
 ### 5.2 后续周期（切片计划在各周期开始时细化到这里）
 
-P1 `config_changed` 事实 → P2 Fact Graph 表面 UI → P3 策略共创循环 → P4 repo source 适配器 → P5 观测（`diagnostic_observed`/FTS5/GoalState 接线）。目标与借鉴来源见 design-and-roadmap §3。
+P1 `config_changed` 事实 → P2 Fact Graph 表面 UI → P3 策略共创循环（交互基座 P6 图会话可提前并行）→ P4 repo source 适配器 → P5 观测 → P6 图会话与编辑闭环 → P7 能力运作流程 + 项目知识入图 → P8 成果浏览 + handoff。目标与借鉴来源见 design-and-roadmap §3；覆盖分类学 6 大类全部子类。
 
 ### 5.3 长期遗留（不随 P 周期关闭）
 
