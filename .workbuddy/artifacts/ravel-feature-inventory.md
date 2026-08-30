@@ -181,7 +181,7 @@ Ravel 是一个**本地优先的编码 Agent 桌面工作台**（Windows 优先�
 | 命令面板 / 键位绑定（可配置，不硬编码） | ✅ | `layout/CommandPalette.tsx`、`keybindings.js`、`renderer/lib/keybindings.ts` | |
 | 模型中心 / 自定义 provider / API Key vault | ✅ | `layout/ModelCenter.tsx`、`ModelPicker.tsx`、`credential-store.js`（safeStorage）、`custom-providers.js` | 凭据加密 blob 迁移时不解密不重加密（migration:smoke sha256 对比） |
 | 设置中心 / SessionInfo / TreeOverlay | ✅ | `layout/SettingsDialog.tsx`、`SessionInfoDialog.tsx`、`TreeOverlay.tsx` | i18n（中文为主）+ 语言设置测试 |
-| 琥珀工匠设计系统（`--omega-*` token、∞ Header、Context Donut、ToolCard 结构化 diff） | ✅ | `renderer/ui/*`（Base UI 1.7 包装，Radix 已删）、Tailwind 4.3.3 | CJK fallback + Lucide（P1） |
+| 琥珀工匠设计系统（`--ravel-*` token、∞ Header、Context Donut、ToolCard 结构化 diff） | ✅ | `renderer/ui/*`（Base UI 1.7 包装，Radix 已删）、Tailwind 4.3.3 | CJK fallback + Lucide（P1） |
 | Canvas 2D 远景 LOD | 🔒 | — | 三条实测判据全满足前不立项 |
 
 ### 2.11 遥测与诊断
