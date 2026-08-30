@@ -954,6 +954,103 @@ export class HistosEngine {
   }
 
   /**
+   * P0 erase: the only physical deletion. Index rows (fact_triples /
+   * node_revisions / edge_revisions / artifacts) disappear for good and
+   * artifact files are removed from disk. Approval accounting refuses to be
+   * purged while its session exists. The caller (Main, forwarded to the
+   * agent worker) records the returned `purgeFact` through
+   * `session-facts.recordPurgeFact` so the erase itself stays auditable in
+   * the JSONL — the erased payload never is. Content that lives in a
+   * session JSONL cannot be removed by a record-level purge, so the result
+   * names the owning sessions with the delete-session hint.
+   */
+  purgeEntries(kind, ids, reason = null) {
+    const database = this.assertOpen();
+    if (typeof kind !== "string" || !TOMBSTONE_TARGET_KINDS.has(kind)) {
+      throw invalid(`purgeEntries.kind must be one of ${[...TOMBSTONE_TARGET_KINDS].join(", ")}`);
+    }
+    if (!Array.isArray(ids) || ids.length === 0) throw invalid("purgeEntries requires a non-empty ids array");
+    if (ids.length > MAX_TOMBSTONE_IDS) throw invalid(`purgeEntries accepts at most ${MAX_TOMBSTONE_IDS} ids per call`);
+    const targets = [...new Set(ids.map((id) => string(id, "purgeEntries.id", 512)))];
+    if (reason !== undefined && reason !== null) {
+      if (typeof reason !== "string" || reason.length === 0 || reason.length > MAX_TOMBSTONE_REASON) {
+        throw invalid(`purgeEntries.reason must be a string of at most ${MAX_TOMBSTONE_REASON} characters`);
+      }
+    }
+    assertEntriesArchivable(database, kind, targets);
+    if (kind === "session_index") {
+      // Session-level erase reuses omega:deleteSession (whole JSONL file,
+      // path-containment checked); there is nothing to delete here.
+      throw invalid("purgeEntries cannot purge session_index targets; use omega:deleteSession for session-level erase");
+    }
+
+    const affectedSessions = new Set();
+    const placeholders = targets.map(() => "?").join(",");
+    if (kind === "triple") {
+      for (const row of database.prepare(`SELECT source FROM fact_triples WHERE id IN (${placeholders})`).all(...targets)) {
+        const match = /^session:(.+)$/.exec(row.source ?? "");
+        if (match) affectedSessions.add(match[1]);
+      }
+    } else {
+      const revisionColumn = kind === "node" ? "node_revision_id" : kind === "edge" ? "edge_revision_id" : null;
+      if (revisionColumn) {
+        for (const row of database.prepare(`SELECT a.object_id AS objectId FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id IN (${placeholders}) AND a.source_type = 'session_entry'`).all(...targets)) {
+          const separator = row.objectId.indexOf("/");
+          if (separator > 0) affectedSessions.add(row.objectId.slice(0, separator));
+        }
+      }
+    }
+
+    const purged = [];
+    const artifactFiles = [];
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      if (kind === "triple") {
+        database.prepare(`DELETE FROM fact_triples WHERE id IN (${placeholders})`).run(...targets);
+      } else if (kind === "node") {
+        database.prepare(`DELETE FROM evidence WHERE revision_id IN (${placeholders})`).run(...targets);
+        database.prepare(`DELETE FROM revision_parents WHERE child_id IN (${placeholders}) OR parent_id IN (${placeholders})`).run(...targets, ...targets);
+        database.prepare(`DELETE FROM node_revisions WHERE node_revision_id IN (${placeholders})`).run(...targets);
+      } else if (kind === "edge") {
+        database.prepare(`DELETE FROM evidence WHERE revision_id IN (${placeholders})`).run(...targets);
+        database.prepare(`DELETE FROM revision_parents WHERE child_id IN (${placeholders}) OR parent_id IN (${placeholders})`).run(...targets, ...targets);
+        database.prepare(`DELETE FROM edge_revisions WHERE edge_revision_id IN (${placeholders})`).run(...targets);
+      } else if (kind === "artifact") {
+        for (const row of database.prepare(`SELECT sha256 FROM artifacts WHERE sha256 IN (${placeholders})`).all(...targets)) artifactFiles.push(row.sha256);
+        database.prepare(`DELETE FROM artifacts WHERE sha256 IN (${placeholders})`).run(...targets);
+      }
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    // Artifact files are deleted after the transaction commits; a failed
+    // unlink leaves the file orphaned on disk but the index is already
+    // honest (the row is gone and the next rebuild re-scans sources).
+    for (const sha256 of [...new Set(artifactFiles)]) {
+      try { rmSync(join(this.artifactsDir, `${sha256}.json`), { force: true }); purged.push(sha256); } catch { /* best effort; the row is already gone */ }
+    }
+    if (kind === "triple" || kind === "node" || kind === "edge") purged.push(...targets);
+    const purgeFact = { targetKind: kind, targetIds: purged, ...(reason ? { reason } : {}) };
+    this.eventBus?.emit("on_entries_purged", boundEventPayload({ targetKind: kind, count: purged.length, targets: purged, ...(affectedSessions.size > 0 ? { sessions: [...affectedSessions] } : {}) }));
+    return {
+      ok: true,
+      targetKind: kind,
+      purgedCount: purged.length,
+      purged,
+      // Record-level erase cannot reach into a session JSONL: name the
+      // owning sessions so the UI can offer the session-level erase.
+      ...(affectedSessions.size > 0
+        ? {
+            sessions: [...affectedSessions],
+            hint: "原文属于会话 JSONL，记录级抹除不会删除会话原文；彻底删除请删除该会话",
+          }
+        : {}),
+      purgeFact,
+    };
+  }
+
+  /**
    * Index fetched web pages. Accepts either already-fetched `resources` or a
    * list of `urls` to fetch here. A single unreachable URL is recorded as a
    * diagnostic instead of failing the whole batch — one bad link should not

@@ -12,7 +12,8 @@ import { createHash, randomUUID } from "node:crypto";
 
 export const FACT_CUSTOM_TYPE = "ravel_record";
 
-const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached"]);
+const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached", "flow_trigger", "purge_record"]);
+const PURGE_TARGET_KINDS = new Set(["triple", "node", "edge", "artifact", "session_index"]);
 const factsAppendedListeners = new WeakMap();
 
 export function setFactsAppendedListener(sessionManager, listener) {
@@ -153,6 +154,33 @@ export function appendFact(sessionManager, record) {
 			requireString(record, "targetSessionId");
 			const contextSha = requireString(record, "contextSha");
 			if (!/^[0-9a-f]{64}$/.test(contextSha)) throw new Error("Invalid context_attached fact: contextSha must be a SHA-256 hex string");
+			break;
+		}
+		case "flow_trigger":
+			requireString(record, "flowSha");
+			requireString(record, "scheduleId");
+			if (!["started", "skipped_busy", "error"].includes(record.outcome)) {
+				throw new Error(`Invalid flow_trigger fact: outcome ${JSON.stringify(record.outcome)}`);
+			}
+			requireOptionalString(record, "detail");
+			break;
+		case "purge_record": {
+			// Erasure accounting (P0 traceability): the purge action itself is
+			// durable even though the purged content is gone for good. Only
+			// ids/kinds/reason are recorded — never the purged payload.
+			if (!PURGE_TARGET_KINDS.has(record.targetKind)) {
+				throw new Error(`Invalid purge_record fact: targetKind ${JSON.stringify(record.targetKind)}`);
+			}
+			if (!Array.isArray(record.targetIds) || record.targetIds.length === 0 || record.targetIds.length > 512) {
+				throw new Error("Invalid purge_record fact: targetIds must be an array of 1..512 ids");
+			}
+			for (const targetId of record.targetIds) {
+				if (typeof targetId !== "string" || targetId.length === 0 || targetId.length > 512 || /[\u0000-\u001f\u007f]/.test(targetId)) {
+					throw new Error("Invalid purge_record fact: each targetId must be a bounded non-empty string");
+				}
+			}
+			requireOptionalString(record, "reason");
+			requireOptionalString(record, "sessionId");
 			break;
 		}
 	}
@@ -426,4 +454,31 @@ export function appendCheckpointFacts(sessionManager, { checkpointId, label, out
 		timestamp: Date.now(),
 	});
 	return operationId;
+}
+
+/**
+ * Erasure accounting (P0 traceability). A purge physically deletes Histos
+ * index rows and artifact files; this fact is the only residue, recording
+ * that an erase happened (what kind, which ids, why) without carrying any
+ * of the erased payload. Called on the agent worker via Main so the JSONL
+ * single-writer invariant holds.
+ */
+export function recordPurgeFact(sessionManager, { targetKind, targetIds, reason, sessionId } = {}) {
+	if (!PURGE_TARGET_KINDS.has(targetKind)) {
+		throw new Error(`Invalid purge_record fact: targetKind ${JSON.stringify(targetKind)}`);
+	}
+	if (!Array.isArray(targetIds) || targetIds.length === 0) {
+		throw new Error("Invalid purge_record fact: targetIds must be a non-empty array");
+	}
+	const record = {
+		type: "purge_record",
+		id: `purge-${randomUUID()}`,
+		lane: "main",
+		targetKind,
+		targetIds: targetIds.slice(0, 512).map((targetId) => String(targetId)),
+		...(reason ? { reason: String(reason).slice(0, 512) } : {}),
+		...(sessionId ? { sessionId: String(sessionId) } : {}),
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
 }
