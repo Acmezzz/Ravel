@@ -7,8 +7,8 @@ import { createCheckpoint, listCheckpoints, restoreCheckpoint, pruneCheckpoints 
 
 test("createCheckpoint verifies the ref after update-ref (fail-closed against silent git regressions)", async () => {
   const source = await readFile(new URL("../electron/checkpoint-service.js", import.meta.url), "utf8");
-  assert.match(source, /rev-parse", "--verify", refFor\(id\)/);
-  assert.match(source, /did not persist/);
+  assert.match(source, /rev-parse", "--verify", ref/);
+  assert.match(source, /writeRefChecked/);
 });
 
 async function exec(command, args, cwd) {

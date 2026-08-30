@@ -9,8 +9,8 @@
  */
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
-import { appendFile, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { appendFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 
 export const CHECKPOINT_REF_PREFIX = "refs/ravel/checkpoints/";
 export const CHECKPOINT_CAP = 50;
@@ -45,6 +45,46 @@ function refFor(id) {
   return `${CHECKPOINT_REF_PREFIX}${id}`;
 }
 
+/**
+ * Verify that `ref` points at `id` exactly. The fail-closed guard for every
+ * checkpoint write: a checkpoint id that cannot be read back through git is
+ * useless, so the caller must throw instead.
+ */
+async function verifyRef(cwd, ref, id) {
+  const recorded = firstLine(await git(cwd, ["rev-parse", "--verify", ref]));
+  if (recorded !== id) throw new Error("ref points elsewhere");
+}
+
+/**
+ * Resolve the on-disk ref path for a (possibly relative or absolute) git dir
+ * reported by `git rev-parse --git-dir`.
+ */
+async function refPathFor(cwd, ref) {
+  const gitDirRaw = firstLine(await git(cwd, ["rev-parse", "--git-dir"]));
+  const gitDir = resolve(cwd, gitDirRaw);
+  return join(gitDir, ...ref.split("/"));
+}
+
+/**
+ * Write a loose ref file directly (a 40-hex line inside
+ * `.git/refs/ravel/checkpoints/<id>`), then verify through git.
+ *
+ * `git update-ref` cannot be used for checkpoint refs on the bundled
+ * PortableGit build (2.55.0.windows.3): it exits 0 yet silently drops the
+ * nested ref — and worse, it deletes the other loose refs in that directory
+ * as collateral. Writing the loose file is byte-for-byte what the files
+ * backend would do, git reads it back normally, and `pack-refs` /
+ * `for-each-ref` treat it the same. The `verifyRef` fail-closed check still
+ * runs afterwards, so a broken write is caught instead of returning a fake
+ * checkpoint id.
+ */
+async function writeRefChecked(cwd, ref, id) {
+  const refPath = await refPathFor(cwd, ref);
+  await mkdir(dirname(refPath), { recursive: true });
+  await writeFile(refPath, `${id}\n`, { flag: "w" });
+  await verifyRef(cwd, ref, id);
+}
+
 /** Snapshot the full working tree (including untracked files). Returns `{id,label}`. */
 export async function createCheckpoint(cwd, label) {
   const indexFile = join(cwd, ".git", `ravel-index-${randomUUID()}`);
@@ -53,15 +93,7 @@ export async function createCheckpoint(cwd, label) {
     const tree = firstLine(await git(cwd, ["write-tree"], { env: { GIT_INDEX_FILE: indexFile } }));
     const safeLabel = String(label ?? "").slice(0, 200) || "checkpoint";
     const id = firstLine(await git(cwd, ["commit-tree", tree, "-m", safeLabel]));
-    await git(cwd, ["update-ref", refFor(id), id]);
-    // Some broken git builds exit 0 yet silently skip three-segment ref
-    // creation; fail closed rather than return an unrecorded checkpoint id.
-    try {
-      const recorded = firstLine(await git(cwd, ["rev-parse", "--verify", refFor(id)]));
-      if (recorded !== id) throw new Error("ref points elsewhere");
-    } catch {
-      throw new Error(`git update-ref did not persist ${refFor(id)}`);
-    }
+    await writeRefChecked(cwd, refFor(id), id);
     await appendFile(join(cwd, ".git", "ravel-checkpoints.order"), `${id}\n`).catch(() => {});
     return { id, label: safeLabel };
   } finally {
@@ -169,7 +201,13 @@ export async function pruneCheckpoints(cwd, cap = CHECKPOINT_CAP) {
   const list = await listCheckpoints(cwd);
   const stale = list.slice(cap);
   for (const item of stale) {
-    await git(cwd, ["update-ref", "-d", refFor(item.id)]).catch(() => {});
+    // Direct loose-ref removal: the bundled PortableGit build cannot be
+    // trusted with `update-ref` on nested checkpoint refs (see
+    // writeRefChecked). A leftover stale ref is harmless — the next prune
+    // retries it — so this stays best effort.
+    try {
+      await rm(await refPathFor(cwd, refFor(item.id)), { force: true });
+    } catch { /* best effort */ }
   }
   if (stale.length > 0) {
     // Rewrite the sidecar order file without the pruned ids.
