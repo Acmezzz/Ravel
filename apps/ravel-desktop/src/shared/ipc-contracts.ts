@@ -111,6 +111,7 @@ export const IPC_CHANNELS = {
   histosFactStats: "omega:histosFactStats",
   histosClearFacts: "omega:histosClearFacts",
   histosArchive: "omega:histosArchive",
+  histosIndexRepo: "omega:histosIndexRepo",
   histosRestore: "omega:histosRestore",
   histosPurge: "omega:histosPurge",
   extensionUiResponse: "omega:extensionUiResponse",

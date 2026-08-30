@@ -489,6 +489,24 @@ export function histosPurgeRequest(value) {
   return histosArchiveRequest(value);
 }
 
+// P4 repo source: the renderer may only pass scan limits. The repository
+// root is resolved by Main from the active authorized workspace — the
+// renderer never supplies a path.
+export function histosIndexRepoRequest(value) {
+  if (value === undefined || value === null) return {};
+  if (!isPlainObject(value)) return null;
+  const out = {};
+  if (value.maxFiles !== undefined) {
+    if (!Number.isSafeInteger(value.maxFiles) || value.maxFiles < 1 || value.maxFiles > 4000) return null;
+    out.maxFiles = value.maxFiles;
+  }
+  if (value.maxDepth !== undefined) {
+    if (!Number.isSafeInteger(value.maxDepth) || value.maxDepth < 1 || value.maxDepth > 12) return null;
+    out.maxDepth = value.maxDepth;
+  }
+  return out;
+}
+
 export function histosFactAddress(value) {
   return histosAddress(value);
 }

@@ -154,6 +154,7 @@ test("new IPC handlers stay behind senderAllowed and return an IpcResult envelop
     "omega:histosGetViewState",
     "omega:histosExecuteFlow",
     "omega:histosArchive",
+    "omega:histosIndexRepo",
     "omega:histosRestore",
     "omega:histosPurge",
     "agent:abort",
@@ -217,6 +218,7 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "histosFactStats",
     "histosClearFacts",
     "histosArchive",
+    "histosIndexRepo",
     "histosRestore",
     "histosPurge",
   ]) {

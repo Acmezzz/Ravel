@@ -467,6 +467,12 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:histosPurge", { kind: req.kind, ids, ...(req.reason ? { reason: req.reason } : {}) });
   },
+  histosIndexRepo: (req) => {
+    const payload = req && typeof req === "object" ? req : {};
+    const maxFiles = Number.isSafeInteger(payload.maxFiles) && payload.maxFiles >= 1 && payload.maxFiles <= 4000 ? payload.maxFiles : undefined;
+    const maxDepth = Number.isSafeInteger(payload.maxDepth) && payload.maxDepth >= 1 && payload.maxDepth <= 12 ? payload.maxDepth : undefined;
+    return ipcRenderer.invoke("omega:histosIndexRepo", { ...(maxFiles === undefined ? {} : { maxFiles }), ...(maxDepth === undefined ? {} : { maxDepth }) });
+  },
   onHistosEvent: (callback) => {
     if (typeof callback !== "function") return () => {};
     const handler = (_event, data) => {

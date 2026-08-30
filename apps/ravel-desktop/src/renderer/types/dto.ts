@@ -1127,3 +1127,18 @@ export interface HistosPurgeResultDTO {
   code?: string;
   message?: string;
 }
+
+/** P4 repo source: scan limits only; the repository root is Main-resolved. */
+export interface HistosIndexRepoRequestDTO {
+  maxFiles?: number;
+  maxDepth?: number;
+}
+
+export interface HistosIndexRepoResultDTO {
+  nodeCount: number;
+  edgeCount: number;
+  fileCount: number;
+  diagnostics: Array<{ code?: string; message: string }>;
+  code?: string;
+  message?: string;
+}

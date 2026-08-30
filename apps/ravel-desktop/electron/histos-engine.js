@@ -7,6 +7,7 @@ import * as schema from "./histos-schema.js";
 import * as addressModule from "./histos-address.js";
 import * as adapters from "./histos-adapters.js";
 import * as webSource from "./histos-web-source.js";
+import * as repoSource from "./histos-repo-source.js";
 import { agentSpecGraph, agentRunGraph, agentSpecRevisionId, normalizeAgentSpec, seedSpecs } from "./histos-agent-spec.js";
 import { normalizeInvocationRequest, planInvocationFromRequest } from "./histos-capability.js";
 import * as provenance from "./histos-provenance.js";
@@ -1141,6 +1142,45 @@ export class HistosEngine {
       nodeCount: result.nodes.size,
       edgeCount: result.edges.size,
       diagnostics: [...diagnostics, ...(graph.diagnostics ?? [])],
+    };
+  }
+
+  /**
+   * P4 repo source: index a repository root into file/module nodes and
+   * dependency edges (pure-text heuristics). Content changes append new
+   * revisions via the same contentSha256 + revision-chain contract the web
+   * source uses. `root` is supplied by Main (an authorized workspace root),
+   * never by the renderer.
+   */
+  async applyRepoIndex(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || typeof input.root !== "string" || input.root.length === 0 || input.root.length > 4096) {
+      throw invalid("applyRepoIndex requires a repository root");
+    }
+    const graph = repoSource.scanRepository(input.root, {
+      ...(Number.isSafeInteger(input.maxFiles) ? { maxFiles: input.maxFiles } : {}),
+      ...(Number.isSafeInteger(input.maxDepth) ? { maxDepth: input.maxDepth } : {}),
+    });
+    const result = emptyResult(this.workspaceId);
+    resultFromWebGraph(graph, result);
+    linkNodeRevisionParents(database, result);
+
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      rowsFromResult(database, result);
+      database
+        .prepare("INSERT INTO meta (key, value) VALUES ('last_apply_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .run(String(now()));
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+    return {
+      nodeCount: result.nodes.size,
+      edgeCount: result.edges.size,
+      fileCount: graph.fileCount ?? 0,
+      diagnostics: graph.diagnostics ?? [],
     };
   }
 

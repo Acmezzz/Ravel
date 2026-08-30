@@ -78,6 +78,8 @@ import type {
   HistosRestoreRequestDTO,
   HistosRestoreResultDTO,
   HistosPurgeResultDTO,
+  HistosIndexRepoRequestDTO,
+  HistosIndexRepoResultDTO,
 } from "../types/dto";
 
 /**
@@ -224,6 +226,7 @@ export interface RavelBridge {
   histosArchive(req: HistosEntriesRequestDTO): Promise<IpcResult<HistosArchiveResultDTO>>;
   histosRestore(req: HistosRestoreRequestDTO): Promise<IpcResult<HistosRestoreResultDTO>>;
   histosPurge(req: HistosEntriesRequestDTO): Promise<IpcResult<HistosPurgeResultDTO>>;
+  histosIndexRepo(req?: HistosIndexRepoRequestDTO): Promise<IpcResult<HistosIndexRepoResultDTO>>;
   onHistosEvent(callback: (data: HistosFactEventDTO) => void): () => void;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;

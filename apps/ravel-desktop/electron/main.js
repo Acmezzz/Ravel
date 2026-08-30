@@ -101,6 +101,7 @@ import {
   histosArchiveRequest,
   histosRestoreRequest,
   histosPurgeRequest,
+  histosIndexRepoRequest,
   histosSuggestContextRequest,
   histosImportContextRequest,
   histosRebuildRequest,
@@ -2365,6 +2366,21 @@ ipcMain.handle("omega:histosPurge", async (event, req) => {
     return okResult({ ...result, purgeRecord });
   } catch (error) {
     return errorResult(error?.code ?? "purge_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosIndexRepo", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosIndexRepoRequest(req);
+  if (normalized === null) return errorResult("invalid_args", "maxFiles/maxDepth are the only accepted scan limits");
+  const root = activeCwd ? authorizedWorkspace(activeCwd) : null;
+  if (!root) return errorResult("invalid_args", "no active authorized workspace to index");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("applyRepoIndex", { root, ...normalized });
+    return okResult(result ?? { nodeCount: 0, edgeCount: 0, fileCount: 0, diagnostics: [] });
+  } catch (error) {
+    return errorResult(error?.code ?? "index_failed", error instanceof Error ? error.message : String(error));
   }
 });
 

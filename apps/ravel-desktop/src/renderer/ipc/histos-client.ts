@@ -39,6 +39,8 @@ import type {
   HistosRestoreRequestDTO,
   HistosRestoreResultDTO,
   HistosPurgeResultDTO,
+  HistosIndexRepoRequestDTO,
+  HistosIndexRepoResultDTO,
 } from "../types/dto";
 import { ok } from "./utils";
 
@@ -94,6 +96,8 @@ export const histosClient = {
     ok(await window.omega?.histosRestore?.(req)),
   histosPurge: async (req: HistosEntriesRequestDTO): Promise<IpcResult<HistosPurgeResultDTO>> =>
     ok(await window.omega?.histosPurge?.(req)),
+  histosIndexRepo: async (req?: HistosIndexRepoRequestDTO): Promise<IpcResult<HistosIndexRepoResultDTO>> =>
+    ok(await window.omega?.histosIndexRepo?.(req)),
   onHistosEvent: (callback: (data: HistosFactEventDTO) => void): (() => void) =>
     window.omega?.onHistosEvent?.(callback) ?? (() => {}),
 };
