@@ -90,7 +90,10 @@ function queryOf(input, label = "query") {
   if (!LENSES.has(lens)) throw invalid(`Invalid ${label}.lens: ${lens}`);
   const granularity = string(input.granularity, `${label}.granularity`, 32);
   if (!GRANULARITIES.has(granularity)) throw invalid(`Invalid ${label}.granularity: ${granularity}`);
-  return { sourceSet, lens, granularity };
+  if (input.asOf !== undefined && input.asOf !== null) {
+    if (typeof input.asOf !== "number" || !Number.isFinite(input.asOf)) throw invalid(`${label}.asOf must be a finite timestamp in milliseconds`);
+  }
+  return { sourceSet, lens, granularity, ...(Number.isFinite(input.asOf) ? { asOf: input.asOf } : {}) };
 }
 
 function checkAbort(signal, isCancelled) {
@@ -488,6 +491,29 @@ function sourceMatches(sourceSet, address) {
   return true;
 }
 
+/**
+ * P0 time travel (T0.6): project the revision DAG as it stood at `asOf`.
+ *
+ * Two rules, both needed: a revision created after `asOf` cannot be part of
+ * the past state, and a revision that already has a surviving child was
+ * superseded before `asOf` (the revision_parents DAG carries the lineage,
+ * not the timestamps alone). The result keeps every revision that was a tip
+ * at that instant, so a branched DAG can legitimately return more than one
+ * live revision per object.
+ */
+function filterRevisionsAsOf(database, rows, asOf, idField) {
+  if (!Number.isFinite(asOf)) return rows;
+  const visible = rows.filter((row) => Number.isFinite(row.createdAt) && row.createdAt <= asOf);
+  if (visible.length === 0) return [];
+  const childOf = database.prepare("SELECT child_id AS childId, parent_id AS parentId FROM revision_parents").all();
+  const visibleIds = new Set(visible.map((row) => row[idField]));
+  const superseded = new Set();
+  for (const { childId, parentId } of childOf) {
+    if (childId !== parentId && visibleIds.has(childId) && visibleIds.has(parentId)) superseded.add(parentId);
+  }
+  return visible.filter((row) => !superseded.has(row[idField]));
+}
+
 function revisionMatches(database, revisionId, query, artifactSha = null) {
   const rows = database.prepare("SELECT a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS revisionId FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id = ?").all(revisionId);
   // Zero-evidence revisions bypass the SourceSet filter, so they are only
@@ -582,8 +608,10 @@ function assertEntriesArchivable(database, kind, ids) {
 function graphRows(database, query) {
   const archivedNodeIds = activeTombstoneIds(database, "node");
   const archivedEdgeIds = activeTombstoneIds(database, "edge");
-  const nodes = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map(readNodeRow).filter((row) => !archivedNodeIds.has(row.nodeRevisionId)).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
-  const edges = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => !archivedEdgeIds.has(row.edgeRevisionId)).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query, row.artifactSha));
+  const nodeRows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions ORDER BY created_at, node_revision_id").all().map(readNodeRow).filter((row) => !archivedNodeIds.has(row.nodeRevisionId)).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
+  const edgeRows = database.prepare("SELECT edge_revision_id AS edgeRevisionId, edge_id AS edgeId, src_node_id AS srcNodeId, dst_node_id AS dstNodeId, kind, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM edge_revisions ORDER BY created_at, edge_revision_id").all().map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => !archivedEdgeIds.has(row.edgeRevisionId)).filter((row) => revisionLensMatches(database, row.artifactSha, query.lens) && revisionMatches(database, row.edgeRevisionId, query, row.artifactSha));
+  const nodes = filterRevisionsAsOf(database, nodeRows, query.asOf, "nodeRevisionId");
+  const edges = filterRevisionsAsOf(database, edgeRows, query.asOf, "edgeRevisionId");
   const revisions = [...nodes.map((item) => item.nodeRevisionId), ...edges.map((item) => item.edgeRevisionId)];
   const evidence = revisions.length === 0 ? [] : database.prepare(`SELECT e.revision_id AS revisionId, e.address_id AS addressId, e.role, a.source_type AS sourceType, a.object_id AS objectId, a.revision_id AS addressRevisionId, a.selector_json AS selectorJson FROM evidence e JOIN addresses a ON a.address_id = e.address_id WHERE e.revision_id IN (${revisions.map(() => "?").join(",")})`).all(...revisions).map((row) => ({ revisionId: row.revisionId, addressId: row.addressId, role: row.role, address: { sourceType: row.sourceType, objectId: row.objectId, revisionId: row.addressRevisionId, ...(row.selectorJson ? { selector: JSON.parse(row.selectorJson) } : {}) } }));
   const withAnchors = (items, revisionKey) => items.map((item) => {
@@ -591,7 +619,7 @@ function graphRows(database, query) {
     return fallback && !item.anchor ? { ...item, anchor: fallback } : item;
   });
   const parents = database.prepare("SELECT child_id AS childId, parent_id AS parentId FROM revision_parents").all();
-  return { nodes: withAnchors(nodes, "nodeRevisionId"), edges: withAnchors(edges, "edgeRevisionId"), evidence, parents, sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity };
+  return { nodes: withAnchors(nodes, "nodeRevisionId"), edges: withAnchors(edges, "edgeRevisionId"), evidence, parents, sourceSet: query.sourceSet, lens: query.lens, granularity: query.granularity, ...(Number.isFinite(query.asOf) ? { asOf: query.asOf } : {}) };
 }
 
 export class HistosEngine {
@@ -1453,7 +1481,8 @@ export class HistosEngine {
     string(nodeId, "nodeId");
     const database = this.assertOpen();
     const archivedNodeIds = activeTombstoneIds(database, "node");
-    const rows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => !archivedNodeIds.has(row.nodeRevisionId)).filter((row) => revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
+    const candidateRows = database.prepare("SELECT node_revision_id AS nodeRevisionId, node_id AS nodeId, kind, title, created_at AS createdAt, artifact_sha AS artifactSha, anchor_json AS anchorJson FROM node_revisions WHERE node_id = ? OR node_revision_id = ? ORDER BY created_at DESC").all(nodeId, nodeId).map((row) => ({ ...row, ...(row.anchorJson ? { anchor: JSON.parse(row.anchorJson) } : {}) })).map(({ anchorJson, ...row }) => row).filter((row) => !archivedNodeIds.has(row.nodeRevisionId)).filter((row) => revisionMatches(database, row.nodeRevisionId, query, row.artifactSha));
+    const rows = filterRevisionsAsOf(database, candidateRows, query.asOf, "nodeRevisionId");
     if (rows.length === 0) return null;
     const graph = graphRows(database, query);
     return { ...rows[0], evidence: graph.evidence.filter((item) => item.revisionId === rows[0].nodeRevisionId), parents: graph.parents.filter((item) => item.childId === rows[0].nodeRevisionId) };

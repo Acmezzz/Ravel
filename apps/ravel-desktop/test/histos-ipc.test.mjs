@@ -201,6 +201,16 @@ test("eval result requests remain bounded and preserve result fields", () => {
   assert.equal(histosApplyEvalResultsRequest({ results: Array(257).fill(result) }), null);
 });
 
+test("graph query accepts an optional asOf timestamp and rejects non-numeric ones", () => {
+  assert.deepEqual(histosQueryRequest(QUERY), QUERY);
+  assert.deepEqual(histosQueryRequest({ ...QUERY, asOf: 1_700_000_000_000 }), { ...QUERY, asOf: 1_700_000_000_000 });
+  for (const asOf of ["yesterday", Number.NaN, Number.POSITIVE_INFINITY, {}]) {
+    assert.equal(histosQueryRequest({ ...QUERY, asOf }), null, `asOf ${String(asOf)} must be rejected`);
+  }
+  // `asOf: null` is treated as "unset" like every other optional field.
+  assert.deepEqual(histosQueryRequest({ ...QUERY, asOf: null }), QUERY);
+});
+
 test("archive/restore/purge schemas enforce the closed target kind and bounded ids", () => {
   assert.deepEqual(histosArchiveRequest({ kind: "triple", ids: ["t-1"], reason: "stale" }), { kind: "triple", ids: ["t-1"], reason: "stale" });
   assert.deepEqual(histosArchiveRequest({ kind: "node", ids: ["n-1", "n-2"] }), { kind: "node", ids: ["n-1", "n-2"] });

@@ -188,7 +188,15 @@ function histosQuery(value) {
   if (!lens || !HISTOS_LENSES.has(lens)) return null;
   const granularity = histosString(value.granularity, "granularity", 32);
   if (!granularity || !HISTOS_GRANULARITIES.has(granularity)) return null;
-  return { sourceSet, lens, granularity };
+  const query = { sourceSet, lens, granularity };
+  // P0 time travel: `asOf` is a timestamp (ms). The node/edge projection
+  // shows the revision chain as it stood at that instant; triple asOf
+  // semantics (validFrom/validUntil window) are unchanged elsewhere.
+  if (value.asOf !== undefined && value.asOf !== null) {
+    if (typeof value.asOf !== "number" || !Number.isFinite(value.asOf)) return null;
+    query.asOf = value.asOf;
+  }
+  return query;
 }
 
 function histosSelection(value) {
