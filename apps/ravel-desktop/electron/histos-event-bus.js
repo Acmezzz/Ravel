@@ -33,6 +33,7 @@ export const HISTOS_EVENT_TYPES = Object.freeze([
   "on_entries_archived",
   "on_entries_restored",
   "on_entries_purged",
+  "on_strategy_approved",
 ]);
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;

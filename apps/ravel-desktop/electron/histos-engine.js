@@ -16,6 +16,7 @@ import { evalResultGraph, normalizeEvalResult } from "./histos-eval.js";
 import { createSqliteFactGraph } from "./histos-sqlite-fact-graph.js";
 import { createOffFactGraph } from "./histos-fact-graph.js";
 import { projectFactBatchToTriples } from "./histos-fact-derivation.js";
+import * as strategy from "./histos-strategy.js";
 import { boundEventPayload } from "./histos-event-bus.js";
 
 const LENSES = new Set(["structural", "semantic", "mixed"]);
@@ -1319,6 +1320,45 @@ export class HistosEngine {
         },
       } : {}),
     };
+  }
+
+  /**
+   * P3 strategy co-creation gate: validate a mode/orchestration/workflow
+   * draft (schema + permission + budget, fail-closed). Returns the draft
+   * with its checks; a draft that fails any check must not be approved.
+   */
+  createStrategyDraft(input = {}) {
+    return strategy.createStrategyDraft(input);
+  }
+
+  /**
+   * P3 approval: persist an approved strategy draft as an agent_spec node
+   * (new revision, content-addressed) so it appears on the canvas and
+   * `invokeNode` can plan against it. Unapproved drafts never reach this
+   * path and have no runnable representation.
+   */
+  approveStrategyDraft(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || typeof input.draftId !== "string") throw invalid("approveStrategyDraft requires draftId");
+    const draft = isObject(input.draft) ? input.draft : null;
+    if (!draft) throw invalid("approveStrategyDraft requires the draft object");
+    const checks = strategy.validateStrategyDraft({ ...draft, ...(Number.isSafeInteger(input.budget) ? { maxBudget: input.budget } : {}) });
+    if (!checks.ok) throw Object.assign(new Error(`strategy draft failed validation: ${checks.message}`), { code: checks.code });
+    const spec = normalizeAgentSpec(strategy.strategyDraftToSpec(draft));
+    const existing = database.prepare("SELECT 1 AS present FROM node_revisions WHERE node_id = ? AND kind = 'agent_spec' LIMIT 1").get(`agent-spec:${spec.name}`);
+    if (existing) throw Object.assign(new Error(`strategy "${spec.name}" is already approved and persisted`), { code: "already_approved" });
+    const graph = agentSpecGraph(spec);
+    this.persistAgentSeed(graph);
+    this.agentSpecs.set(spec.name, spec);
+    const result = {
+      ok: true,
+      nodeId: `agent-spec:${spec.name}`,
+      nodeRevisionId: graph.nodes[0].nodeRevisionId,
+      specRevisionId: agentSpecRevisionId(spec),
+      approvedAt: Date.now(),
+    };
+    this.eventBus?.emit("on_strategy_approved", boundEventPayload(result));
+    return result;
   }
 
   async condenseGraph(input = {}) {
