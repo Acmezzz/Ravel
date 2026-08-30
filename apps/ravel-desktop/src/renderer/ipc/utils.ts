@@ -73,6 +73,11 @@ import type {
   HistosFactWriteResultDTO,
   HistosFactClearResultDTO,
   HistosFactEventDTO,
+  HistosEntriesRequestDTO,
+  HistosArchiveResultDTO,
+  HistosRestoreRequestDTO,
+  HistosRestoreResultDTO,
+  HistosPurgeResultDTO,
 } from "../types/dto";
 
 /**
@@ -216,6 +221,9 @@ export interface RavelBridge {
   histosWriteFacts(req: { triples: HistosFactTripleDTO[] }): Promise<IpcResult<HistosFactWriteResultDTO>>;
   histosFactStats(): Promise<IpcResult<HistosFactStatsDTO>>;
   histosClearFacts(): Promise<IpcResult<HistosFactClearResultDTO>>;
+  histosArchive(req: HistosEntriesRequestDTO): Promise<IpcResult<HistosArchiveResultDTO>>;
+  histosRestore(req: HistosRestoreRequestDTO): Promise<IpcResult<HistosRestoreResultDTO>>;
+  histosPurge(req: HistosEntriesRequestDTO): Promise<IpcResult<HistosPurgeResultDTO>>;
   onHistosEvent(callback: (data: HistosFactEventDTO) => void): () => void;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;

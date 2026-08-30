@@ -41,6 +41,7 @@ import {
   appendFact,
   appendContextAttachedFact,
   appendFlowTriggerFact,
+  recordPurgeFact,
   setFactsAppendedListener,
   appendSessionReferenceFacts,
   buildSessionReferenceBlock,
@@ -929,6 +930,11 @@ const methods = {
     }
     appendContextAttachedFact(runtime.session.sessionManager, { targetSessionId, contextSha, lane });
     return { targetSessionId, contextSha };
+  },
+  /** Erasure accounting (P0): the purge_record fact for a Histos purge. */
+  recordPurge: async ({ targetKind, targetIds, reason, sessionId }) => {
+    const entryId = recordPurgeFact(runtime.session.sessionManager, { targetKind, targetIds, reason, sessionId });
+    return { entryId };
   },
   getState: () => ({
     ...bridge.snapshotOf(runtime),

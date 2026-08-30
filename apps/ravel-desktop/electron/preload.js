@@ -429,6 +429,44 @@ contextBridge.exposeInMainWorld("omega", {
   },
   histosFactStats: () => ipcRenderer.invoke("omega:histosFactStats", {}),
   histosClearFacts: () => ipcRenderer.invoke("omega:histosClearFacts", {}),
+  histosArchive: (req) => {
+    const kinds = ["triple", "node", "edge", "artifact", "session_index"];
+    if (!req || !kinds.includes(req.kind) || !Array.isArray(req.ids) || req.ids.length === 0 || req.ids.length > 512) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "kind must be triple/node/edge/artifact/session_index with 1..512 ids" });
+    }
+    const ids = req.ids.filter((id) => typeof id === "string" && id.length > 0 && id.length <= 512);
+    if (ids.length !== req.ids.length) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "each id must be a string of at most 512 characters" });
+    }
+    if (req.reason !== undefined && req.reason !== null && (typeof req.reason !== "string" || req.reason.length === 0 || req.reason.length > 512)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "reason must be a string of at most 512 characters" });
+    }
+    return ipcRenderer.invoke("omega:histosArchive", { kind: req.kind, ids, ...(req.reason ? { reason: req.reason } : {}) });
+  },
+  histosRestore: (req) => {
+    if (!req || !Array.isArray(req.tombstoneIds) || req.tombstoneIds.length === 0 || req.tombstoneIds.length > 512) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "tombstoneIds must be a non-empty array of at most 512 tombstone ids" });
+    }
+    const tombstoneIds = req.tombstoneIds.filter((id) => typeof id === "string" && id.length > 0 && id.length <= 64);
+    if (tombstoneIds.length !== req.tombstoneIds.length) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "each tombstone id must be a string of at most 64 characters" });
+    }
+    return ipcRenderer.invoke("omega:histosRestore", { tombstoneIds });
+  },
+  histosPurge: (req) => {
+    const kinds = ["triple", "node", "edge", "artifact", "session_index"];
+    if (!req || !kinds.includes(req.kind) || !Array.isArray(req.ids) || req.ids.length === 0 || req.ids.length > 512) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "kind must be triple/node/edge/artifact/session_index with 1..512 ids" });
+    }
+    const ids = req.ids.filter((id) => typeof id === "string" && id.length > 0 && id.length <= 512);
+    if (ids.length !== req.ids.length) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "each id must be a string of at most 512 characters" });
+    }
+    if (req.reason !== undefined && req.reason !== null && (typeof req.reason !== "string" || req.reason.length === 0 || req.reason.length > 512)) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "reason must be a string of at most 512 characters" });
+    }
+    return ipcRenderer.invoke("omega:histosPurge", { kind: req.kind, ids, ...(req.reason ? { reason: req.reason } : {}) });
+  },
   onHistosEvent: (callback) => {
     if (typeof callback !== "function") return () => {};
     const handler = (_event, data) => {

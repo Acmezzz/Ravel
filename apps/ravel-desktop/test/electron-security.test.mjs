@@ -153,6 +153,9 @@ test("new IPC handlers stay behind senderAllowed and return an IpcResult envelop
     "omega:histosSaveViewState",
     "omega:histosGetViewState",
     "omega:histosExecuteFlow",
+    "omega:histosArchive",
+    "omega:histosRestore",
+    "omega:histosPurge",
     "agent:abort",
   ]) {
     assert.match(source, new RegExp(`ipcMain\\.handle\\("${channel}"`), `${channel} handler present`);
@@ -213,6 +216,9 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "histosWriteFacts",
     "histosFactStats",
     "histosClearFacts",
+    "histosArchive",
+    "histosRestore",
+    "histosPurge",
   ]) {
     assert.match(source, new RegExp(`ipcRenderer\\.invoke\\("omega:${method}"`), `${method} invoke present`);
   }

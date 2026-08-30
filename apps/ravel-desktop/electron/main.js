@@ -98,6 +98,9 @@ import {
   histosDistillResourceRequest,
   histosQueryFactsRequest,
   histosWriteFactsRequest,
+  histosArchiveRequest,
+  histosRestoreRequest,
+  histosPurgeRequest,
   histosSuggestContextRequest,
   histosImportContextRequest,
   histosRebuildRequest,
@@ -2272,6 +2275,57 @@ ipcMain.handle("omega:histosClearFacts", async (event) => {
     return okResult(result ?? { ok: true, count: 0 });
   } catch (error) {
     return errorResult(error?.code ?? "clear_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosArchive", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosArchiveRequest(req);
+  if (!normalized) return errorResult("invalid_args", "kind must be one of triple/node/edge/artifact/session_index with 1..512 ids and an optional reason");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("archiveEntries", normalized);
+    return okResult(result ?? { ok: true, archivedCount: 0 });
+  } catch (error) {
+    return errorResult(error?.code ?? "archive_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosRestore", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosRestoreRequest(req);
+  if (!normalized) return errorResult("invalid_args", "tombstoneIds must be a non-empty array of at most 512 tombstone ids");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("restoreEntries", normalized);
+    return okResult(result ?? { ok: true, restoredCount: 0 });
+  } catch (error) {
+    return errorResult(error?.code ?? "restore_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosPurge", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosPurgeRequest(req);
+  if (!normalized) return errorResult("invalid_args", "kind must be one of triple/node/edge/artifact/session_index with 1..512 ids and an optional reason");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("purgeEntries", normalized);
+    // The erase itself stays auditable: the purge_record fact is written by
+    // the agent worker through session-facts (the JSONL single writer).
+    // Best effort like every fact write — a failed append never un-deletes.
+    let purgeRecord = { ok: false, error: "no active session" };
+    if (result?.purgeFact && worker?.sessionId) {
+      try {
+        await worker.call("recordPurge", { ...result.purgeFact, sessionId: worker.sessionId });
+        purgeRecord = { ok: true };
+      } catch (error) {
+        purgeRecord = { ok: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    }
+    return okResult({ ...result, purgeRecord });
+  } catch (error) {
+    return errorResult(error?.code ?? "purge_failed", error instanceof Error ? error.message : String(error));
   }
 });
 

@@ -34,6 +34,11 @@ import type {
   HistosFactWriteResultDTO,
   HistosFactClearResultDTO,
   HistosFactEventDTO,
+  HistosEntriesRequestDTO,
+  HistosArchiveResultDTO,
+  HistosRestoreRequestDTO,
+  HistosRestoreResultDTO,
+  HistosPurgeResultDTO,
 } from "../types/dto";
 import { ok } from "./utils";
 
@@ -83,6 +88,12 @@ export const histosClient = {
     ok(await window.omega?.histosWriteFacts?.(req)),
   histosFactStats: async (): Promise<IpcResult<HistosFactStatsDTO>> => ok(await window.omega?.histosFactStats?.()),
   histosClearFacts: async (): Promise<IpcResult<HistosFactClearResultDTO>> => ok(await window.omega?.histosClearFacts?.()),
+  histosArchive: async (req: HistosEntriesRequestDTO): Promise<IpcResult<HistosArchiveResultDTO>> =>
+    ok(await window.omega?.histosArchive?.(req)),
+  histosRestore: async (req: HistosRestoreRequestDTO): Promise<IpcResult<HistosRestoreResultDTO>> =>
+    ok(await window.omega?.histosRestore?.(req)),
+  histosPurge: async (req: HistosEntriesRequestDTO): Promise<IpcResult<HistosPurgeResultDTO>> =>
+    ok(await window.omega?.histosPurge?.(req)),
   onHistosEvent: (callback: (data: HistosFactEventDTO) => void): (() => void) =>
     window.omega?.onHistosEvent?.(callback) ?? (() => {}),
 };

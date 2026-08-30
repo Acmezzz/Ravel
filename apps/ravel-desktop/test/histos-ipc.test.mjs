@@ -12,6 +12,9 @@ import {
   histosRebuildRequest,
   histosApplyAgentActivityRequest,
   histosApplyEvalResultsRequest,
+  histosArchiveRequest,
+  histosRestoreRequest,
+  histosPurgeRequest,
 } from "../electron/ipc-schemas.js";
 import {
   diffChannelSets,
@@ -166,12 +169,15 @@ test("Histos channels are present in the registry and preload invokes", async ()
     "omega:histosWriteFacts",
     "omega:histosFactStats",
     "omega:histosClearFacts",
+    "omega:histosArchive",
+    "omega:histosRestore",
+    "omega:histosPurge",
   ];
   const registered = INVOKE_CHANNELS.filter((channel) => channel.startsWith("omega:histos"));
   const preload = await readSource("../electron/preload.js");
   const invoked = uniqueSorted(extractInvokeChannels(preload).filter((channel) => channel.startsWith("omega:histos")));
   assert.deepEqual(registered, expected);
-  assert.equal(registered.length, 23);
+  assert.equal(registered.length, 26);
   assert.deepEqual(diffChannelSets(expected, invoked), { missing: [], extra: [] });
 });
 
@@ -193,6 +199,29 @@ test("eval result requests remain bounded and preserve result fields", () => {
   assert.deepEqual(histosApplyEvalResultsRequest({ results: [result], junk: true }), { results: [result] });
   assert.equal(histosApplyEvalResultsRequest({}), null);
   assert.equal(histosApplyEvalResultsRequest({ results: Array(257).fill(result) }), null);
+});
+
+test("archive/restore/purge schemas enforce the closed target kind and bounded ids", () => {
+  assert.deepEqual(histosArchiveRequest({ kind: "triple", ids: ["t-1"], reason: "stale" }), { kind: "triple", ids: ["t-1"], reason: "stale" });
+  assert.deepEqual(histosArchiveRequest({ kind: "node", ids: ["n-1", "n-2"] }), { kind: "node", ids: ["n-1", "n-2"] });
+  assert.deepEqual(histosArchiveRequest({ kind: "session_index", ids: ["session-1"] }), { kind: "session_index", ids: ["session-1"] });
+  for (const request of [
+    null,
+    undefined,
+    {},
+    { kind: "approval", ids: ["x"] },
+    { kind: "triple", ids: [] },
+    { kind: "triple", ids: Array(513).fill("t") },
+    { kind: "triple", ids: ["t-1"], reason: "x".repeat(513) },
+  ]) {
+    assert.equal(histosArchiveRequest(request), null, `archive request ${JSON.stringify(request)} must be rejected`);
+  }
+  assert.deepEqual(histosRestoreRequest({ tombstoneIds: ["ab12cd34"] }), { tombstoneIds: ["ab12cd34"] });
+  for (const request of [null, {}, { tombstoneIds: [] }, { tombstoneIds: Array(513).fill("a") }]) {
+    assert.equal(histosRestoreRequest(request), null, `restore request ${JSON.stringify(request)} must be rejected`);
+  }
+  assert.deepEqual(histosPurgeRequest({ kind: "artifact", ids: ["a".repeat(64)] }), { kind: "artifact", ids: ["a".repeat(64)] });
+  assert.equal(histosPurgeRequest({ kind: "bogus", ids: ["x"] }), null);
 });
 
 test("preload and schema sources expose no private Histos DTO fields", async () => {

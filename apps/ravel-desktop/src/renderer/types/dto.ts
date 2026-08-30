@@ -1077,3 +1077,53 @@ export interface HistosFactEventDTO {
   eventType: string;
   payload: Record<string, unknown>;
 }
+
+/**
+ * P0 traceability: archive (tombstone, reversible) / restore (revoke) /
+ * purge (physical erase) requests and results. targetKind is the schema
+ * closed set; purge results name the owning sessions for content that
+ * still lives in a session JSONL.
+ */
+export type HistosTombstoneTargetKind = "triple" | "node" | "edge" | "artifact" | "session_index";
+
+export interface HistosEntriesRequestDTO {
+  kind: HistosTombstoneTargetKind;
+  ids: string[];
+  reason?: string;
+}
+
+export interface HistosArchiveResultDTO {
+  ok: boolean;
+  targetKind: HistosTombstoneTargetKind;
+  archivedCount: number;
+  archived: string[];
+  skippedCount: number;
+  code?: string;
+  message?: string;
+}
+
+export interface HistosRestoreRequestDTO {
+  tombstoneIds: string[];
+}
+
+export interface HistosRestoreResultDTO {
+  ok: boolean;
+  restoredCount: number;
+  restored: Array<{ tombstoneId: string; targetKind: HistosTombstoneTargetKind; targetId: string }>;
+  notFound: string[];
+  code?: string;
+  message?: string;
+}
+
+export interface HistosPurgeResultDTO {
+  ok: boolean;
+  targetKind: HistosTombstoneTargetKind;
+  purgedCount: number;
+  purged: string[];
+  sessions?: string[];
+  hint?: string;
+  purgeFact?: { targetKind: HistosTombstoneTargetKind; targetIds: string[]; reason?: string };
+  purgeRecord?: { ok: boolean; error?: string };
+  code?: string;
+  message?: string;
+}

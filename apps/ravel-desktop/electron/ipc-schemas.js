@@ -445,6 +445,42 @@ export function histosWriteFactsRequest(value) {
   return { triples };
 }
 
+// P0 traceability channels: archive (tombstone) / restore (revoke tombstone)
+// / purge (physical erase). target_kind is the schema closed set; reason is
+// the user-supplied deletion rationale (<= 512 chars, optional).
+const HISTOS_TOMBSTONE_KINDS = new Set(["triple", "node", "edge", "artifact", "session_index"]);
+const MAX_HISTOS_TOMBSTONE_IDS = 512;
+const MAX_HISTOS_TOMBSTONE_REASON = 512;
+
+function histosTombstoneReason(value) {
+  if (value === undefined || value === null) return null;
+  return histosString(value, "reason", MAX_HISTOS_TOMBSTONE_REASON);
+}
+
+export function histosArchiveRequest(value) {
+  if (!isPlainObject(value)) return null;
+  const kind = histosString(value.kind, "kind", 16);
+  if (!kind || !HISTOS_TOMBSTONE_KINDS.has(kind)) return null;
+  if (!Array.isArray(value.ids) || value.ids.length === 0 || value.ids.length > MAX_HISTOS_TOMBSTONE_IDS) return null;
+  const ids = value.ids.map((id) => histosString(id, "id", 512));
+  if (ids.some((id) => id === null)) return null;
+  const reason = histosTombstoneReason(value.reason);
+  if (value.reason !== undefined && value.reason !== null && reason === null) return null;
+  return { kind, ids, ...(reason ? { reason } : {}) };
+}
+
+export function histosRestoreRequest(value) {
+  if (!isPlainObject(value)) return null;
+  if (!Array.isArray(value.tombstoneIds) || value.tombstoneIds.length === 0 || value.tombstoneIds.length > MAX_HISTOS_TOMBSTONE_IDS) return null;
+  const tombstoneIds = value.tombstoneIds.map((id) => histosString(id, "tombstoneId", 64));
+  if (tombstoneIds.some((id) => id === null)) return null;
+  return { tombstoneIds };
+}
+
+export function histosPurgeRequest(value) {
+  return histosArchiveRequest(value);
+}
+
 export function histosFactAddress(value) {
   return histosAddress(value);
 }

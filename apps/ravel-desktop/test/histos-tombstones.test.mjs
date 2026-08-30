@@ -76,6 +76,7 @@ test("old workspace reopens with tombstones table added and existing data intact
 // --- T0.2 archive/restore engine semantics ---
 
 import { HistosEngine } from "../electron/histos-engine.js";
+import { createHistosEventBus } from "../electron/histos-event-bus.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
@@ -220,4 +221,36 @@ test("rebuild carries tombstones into the swapped index so archives survive", as
   assert.equal(tombstones.length, 1);
   assert.equal(tombstones[0].target_kind, "node");
   assert.equal(tombstones[0].target_id, victim.nodeRevisionId);
+});
+
+test("archive/restore/purge emit bus events for the renderer relay", () => {
+  const directory = mkdtempSync(join(tmpdir(), "histos-tombstone-events-"));
+  const bus = createHistosEventBus();
+  const seen = [];
+  for (const eventType of ["on_entries_archived", "on_entries_restored", "on_entries_purged"]) {
+    bus.add(eventType, (payload) => seen.push([eventType, payload]));
+  }
+  const engine = new HistosEngine({
+    workspaceId: "workspace-1",
+    databasePath: join(directory, "index.sqlite"),
+    artifactsDir: join(directory, "artifacts"),
+    eventBus: bus,
+  });
+  try {
+    engine.archiveEntries("session_index", ["session-9"], "noisy index entry");
+    const tombstone = engine.assertOpen().prepare("SELECT id FROM tombstones WHERE target_kind = 'session_index'").get();
+    engine.restoreEntries([tombstone.id]);
+    const artifactSha = "a".repeat(64);
+    engine.assertOpen().prepare(
+      "INSERT INTO artifacts (sha256, kind, created_at, source_set_json, lens, granularity) VALUES (?, 'graph_revision', ?, '{}', 'structural', 'entry')",
+    ).run(artifactSha, Date.now());
+    engine.purgeEntries("artifact", [artifactSha]);
+    assert.deepEqual(seen.map(([eventType]) => eventType), ["on_entries_archived", "on_entries_restored", "on_entries_purged"]);
+    assert.deepEqual(seen[0][1].targets, ["session-9"]);
+    assert.equal(seen[1][1].count, 1);
+    assert.equal(seen[2][1].targetKind, "artifact");
+  } finally {
+    engine.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

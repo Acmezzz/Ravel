@@ -173,6 +173,9 @@ async function invoke(method, args) {
     if (method === "writeFacts") return current.writeFacts(args?.triples ?? []);
     if (method === "factStats") return current.factStats();
     if (method === "clearFacts") return current.clearFacts();
+    if (method === "archiveEntries") return current.archiveEntries(args?.kind, args?.ids ?? [], args?.reason ?? null);
+    if (method === "restoreEntries") return current.restoreEntries(args?.tombstoneIds ?? []);
+    if (method === "purgeEntries") return current.purgeEntries(args?.kind, args?.ids ?? [], args?.reason ?? null);
     throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });
 }
 
