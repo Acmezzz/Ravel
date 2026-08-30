@@ -154,6 +154,14 @@ export class HistosHost {
         this._handleProviderRequest(child, wireMessage);
         return;
       }
+      // Histos event bus push: relay every "histos-event" envelope to the
+      // registered listener (Main → renderer). The host does not interpret
+      // the payload, so future event types cost nothing.
+      if (wireMessage && wireMessage.type === "histos-event" && typeof wireMessage.eventType === "string" && this.onHistosEvent) {
+        try { this.onHistosEvent(wireMessage.eventType, wireMessage.payload, generation); }
+        catch (error) { this.onError?.(normalizeUtilityProcessError("host_callback_error", "histos-host", error)); }
+        return;
+      }
       this._handleMessage(child, generation, wireMessage);
     };
     const onError = (type, location, report) => this._handleDeath(child, generation, utilityProcessError(type, location, report));

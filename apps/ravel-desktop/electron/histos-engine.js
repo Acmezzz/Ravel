@@ -13,6 +13,10 @@ import * as provenance from "./histos-provenance.js";
 import { chunkFactAddress } from "./histos-chunker.js";
 import { convertGraphToFlowDraft, executionPlanOf, validateFlowSpec } from "./flow-validation.js";
 import { evalResultGraph, normalizeEvalResult } from "./histos-eval.js";
+import { createSqliteFactGraph } from "./histos-sqlite-fact-graph.js";
+import { createOffFactGraph } from "./histos-fact-graph.js";
+import { projectFactBatchToTriples } from "./histos-fact-derivation.js";
+import { boundEventPayload } from "./histos-event-bus.js";
 
 const LENSES = new Set(["structural", "semantic", "mixed"]);
 const GRANULARITIES = new Set(["operation", "entry", "span", "file", "cluster"]);
@@ -538,6 +542,22 @@ export class HistosEngine {
     this.artifactsDir = resolve(options.artifactsDir ?? join(dirname(this.databasePath), "artifacts"));
     this.scanOptions = { ...options };
     this.semanticProvider = typeof options.semanticProvider === "function" ? options.semanticProvider : null;
+    // Histos event bus (BeforeX/AfterX pub/sub). The bus is created on
+    // demand so test code that never calls emit() doesn't pay for it.
+    this.eventBus = options.eventBus ?? null;
+    // Fact graph backend (FactGraphBackend contract, see histos-fact-graph.js).
+    // Defaults to the sqlite implementation backed by the same `index.sqlite`,
+    // but callers can swap in `off` / `in-memory` (tests) or any future
+    // remote backend. The backend is started lazily on first write so the
+    // schema is guaranteed to exist.
+    if (options.factGraph === null) {
+      this.factGraph = createOffFactGraph();
+    } else if (options.factGraph && typeof options.factGraph.writeTriples === "function") {
+      this.factGraph = options.factGraph;
+    } else {
+      this.factGraph = null; // assigned once the database opens
+    }
+    this.factGraphReady = false;
     // Specs are loaded from the durable graph after the database opens. Seeds are
     // materialized only for names that have no persisted node, so a user
     // revision is never replaced by the built-in defaults.
@@ -549,6 +569,9 @@ export class HistosEngine {
     try {
       this.database = this.openDatabase(this.databasePath);
       this.loadAgentSpecs();
+      if (this.factGraph === null) {
+        this.factGraph = createSqliteFactGraph({ database: this.database, workspaceId: this.workspaceId });
+      }
     } catch (error) { this.initializationError = error; }
   }
 
@@ -672,7 +695,98 @@ export class HistosEngine {
     }
     database.exec("BEGIN IMMEDIATE");
     try { rowsFromResult(database, result); database.prepare("INSERT INTO meta (key, value) VALUES ('last_apply_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(now())); database.exec("COMMIT"); } catch (error) { database.exec("ROLLBACK"); throw error; }
-    return { nodeCount: result.nodes.size, edgeCount: result.edges.size };
+    // Project the same fact stream into the FactGraphBackend (triple store).
+    // The graph is a derived index over the durable JSONL, so a write
+    // failure here never propagates back to the caller — the JSONL already
+    // won. The `factsIndexed` counter lets callers observe the projection
+    // without re-reading the backend.
+    const factsIndexed = await this.deriveAndWriteFacts(input);
+    return { nodeCount: result.nodes.size, edgeCount: result.edges.size, factsIndexed };
+  }
+
+  /**
+   * Read the durable facts out of `input` (or out of the JSONL file when
+   * the caller passed a `sessionFile`), project each to triples, and push
+   * them through the FactGraphBackend. Returns the number of triples
+   * accepted by the backend.
+   */
+  async deriveAndWriteFacts(input) {
+    if (!this.factGraph) return 0;
+    if (!this.factGraphReady) {
+      try { await this.factGraph.start({ workspaceId: this.workspaceId }); this.factGraphReady = true; }
+      catch { return 0; }
+    }
+    try {
+      let facts = [];
+      if (Array.isArray(input.facts)) {
+        facts = input.facts
+          .filter((fact) => fact && typeof fact === "object")
+          .map((fact) => ({ ...(fact.fact ?? fact), sessionId: fact.sessionId ?? input.sessionId }));
+      } else if (typeof input.file === "string" || typeof input.sessionFile === "string") {
+        const scan = await adapters.scanSessionFile(input.file ?? input.sessionFile, { workspaceId: this.workspaceId });
+        facts = Array.isArray(scan?.facts) ? scan.facts : [];
+      } else if (typeof input.sessionId === "string" && typeof input.sessionsRoot === "string") {
+        // Rebuilt sessions: project *every* JSONL fact across the workspace
+        // into the graph so facts queries return the same shape as a live
+        // session would. The scan only re-yields structural entries; for
+        // durability the JSONL is the source of truth, the projection is
+        // best-effort, and a rebuild can be re-run to repair drift.
+        const sessions = await adapters.scanWorkspaceSessions(input.sessionsRoot, { workspaceId: this.workspaceId });
+        for (const session of sessions) {
+          for (const f of session?.facts ?? []) facts.push({ ...f, sessionId: session.sessionId });
+        }
+      }
+      const triples = projectFactBatchToTriples(facts, { sessionId: input.sessionId });
+      this.eventBus?.emit("on_session_facts_applied", boundEventPayload({ sessionId: input.sessionId, factCount: facts.length, tripleCount: triples.length }));
+      if (triples.length === 0) return 0;
+      this.eventBus?.emit("before_fact_triple_write", boundEventPayload({ sessionId: input.sessionId, count: triples.length }));
+      const result = await this.factGraph.writeTriples(triples);
+      this.eventBus?.emit("after_fact_triple_write", boundEventPayload({ sessionId: input.sessionId, ok: Boolean(result?.ok), count: result?.count ?? 0, code: result?.code ?? null }));
+      return result?.ok ? result.count : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Write a batch of FactTriples directly. Caller is responsible for
+   *  shape; this only routes through the active backend. */
+  async writeFacts(triples) {
+    if (!this.factGraph) return { ok: false, code: "not_ready", message: "Fact graph backend is not configured", count: 0 };
+    if (!this.factGraphReady) {
+      try { await this.factGraph.start({ workspaceId: this.workspaceId }); this.factGraphReady = true; }
+      catch (error) { return { ok: false, code: error?.code ?? "start_failed", message: error instanceof Error ? error.message : String(error), count: 0 }; }
+    }
+    return this.factGraph.writeTriples(Array.isArray(triples) ? triples : []);
+  }
+
+  /** Read FactTriples with the same scope-aware query the surface needs. */
+  async queryFacts(query = {}) {
+    if (!this.factGraph) return { ok: false, code: "not_ready", message: "Fact graph backend is not configured", triples: [] };
+    if (!this.factGraphReady) {
+      try { await this.factGraph.start({ workspaceId: this.workspaceId }); this.factGraphReady = true; }
+      catch (error) { return { ok: false, code: error?.code ?? "start_failed", message: error instanceof Error ? error.message : String(error), triples: [] }; }
+    }
+    return this.factGraph.queryTriples(query);
+  }
+
+  /** Return FactGraphBackend stats. */
+  async factStats() {
+    if (!this.factGraph) return { tripleCount: 0, distinctSubjects: 0, distinctPredicates: 0 };
+    if (!this.factGraphReady) {
+      try { await this.factGraph.start({ workspaceId: this.workspaceId }); this.factGraphReady = true; }
+      catch { return { tripleCount: 0, distinctSubjects: 0, distinctPredicates: 0 }; }
+    }
+    return this.factGraph.stats();
+  }
+
+  /** Drop every fact triple in the current scope. */
+  async clearFacts() {
+    if (!this.factGraph) return { ok: false, code: "not_ready", message: "Fact graph backend is not configured", count: 0 };
+    if (!this.factGraphReady) {
+      try { await this.factGraph.start({ workspaceId: this.workspaceId }); this.factGraphReady = true; }
+      catch (error) { return { ok: false, code: error?.code ?? "start_failed", message: error instanceof Error ? error.message : String(error), count: 0 }; }
+    }
+    return this.factGraph.clear();
   }
 
   /**
@@ -1228,6 +1342,10 @@ export class HistosEngine {
     this.closed = true;
     this.database?.close();
     this.database = null;
+    if (this.factGraph && this.factGraphReady) {
+      try { this.factGraph.stop?.(); } catch { /* best effort */ }
+      this.factGraphReady = false;
+    }
   }
 }
 

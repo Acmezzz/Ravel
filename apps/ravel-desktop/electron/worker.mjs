@@ -317,7 +317,7 @@ function beginOperationFact(session, operationId, text, flowSha = null) {
   }
 }
 
-function endOperationFact(session, operationId, outcome, error) {
+function endOperationFact(session, operationId, outcome, error, extras) {
   try {
     appendFact(session.sessionManager, {
       type: "operation_finished",
@@ -327,6 +327,17 @@ function endOperationFact(session, operationId, outcome, error) {
       outcome,
       ...(outcome === "failed" && error
         ? { error: { code: String(error.code ?? error.name ?? "error"), message: String(error.message ?? error).slice(0, 500) } }
+        : {}),
+      ...(extras && typeof extras === "object" && typeof extras.previousStateRef === "object"
+        ? { previousStateRef: { id: String(extras.previousStateRef.id).slice(0, 512), ...(extras.previousStateRef.kind ? { kind: String(extras.previousStateRef.kind).slice(0, 64) } : {}) } }
+        : {}),
+      ...(extras && Array.isArray(extras.appliedEdits) && extras.appliedEdits.length > 0
+        ? { appliedEdits: extras.appliedEdits.slice(0, 256).map((edit) => ({
+            action: ["create", "update", "delete"].includes(edit?.action) ? edit.action : "update",
+            ...(edit?.kind ? { kind: String(edit.kind).slice(0, 64) } : {}),
+            ...(edit?.id ? { id: String(edit.id).slice(0, 512) } : {}),
+            ...(typeof edit?.reason === "string" ? { reason: edit.reason.slice(0, 500) } : {}),
+          })) }
         : {}),
       timestamp: Date.now(),
     });

@@ -96,6 +96,8 @@ import {
   histosExecuteFlowRequest,
   histosGetNodeRequest,
   histosDistillResourceRequest,
+  histosQueryFactsRequest,
+  histosWriteFactsRequest,
   histosSuggestContextRequest,
   histosImportContextRequest,
   histosRebuildRequest,
@@ -727,6 +729,14 @@ async function ensureHistosHost(root = activeCwd) {
     host.onError = (diagnostic) => {
       if (histosHosts.get(workspaceId) === host && host.state === "dead") histosHosts.delete(workspaceId);
       sendTransportState("diagnostic", { subsystem: "histos", diagnostic: normalizeUtilityProcessError(diagnostic?.type, diagnostic?.location, diagnostic?.report) });
+    };
+    // Histos event bus relay: forward every "histos-event" envelope to the
+    // renderer as a "histos:event" push. The payload is opaque; subscribers
+    // can re-filter by eventType on the renderer side.
+    host.onHistosEvent = (eventType, payload) => {
+      if (!win || win.isDestroyed()) return;
+      try { win.webContents.send("histos:event", { eventType, payload: payload ?? {} }); }
+      catch { /* best effort */ }
     };
     try {
       await host.start({
@@ -2214,6 +2224,54 @@ ipcMain.handle("omega:histosDiffGraphs", async (event, req) => {
     return okResult({ diff, summary: describeGraphDiff(diff) });
   } catch (error) {
     return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosQueryFacts", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosQueryFactsRequest(req);
+  if (normalized === null) return errorResult("invalid_args", "query must be an object with at least one of subject/predicate/object/scope/tag/asOf/limit");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("queryFacts", normalized);
+    return okResult(result ?? { ok: true, triples: [] });
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosWriteFacts", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosWriteFactsRequest(req);
+  if (!normalized) return errorResult("invalid_args", "triples must be a non-empty array (max 256) of valid FactTriples");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("writeFacts", normalized);
+    return okResult(result ?? { ok: true, count: 0 });
+  } catch (error) {
+    return errorResult(error?.code ?? "write_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosFactStats", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const histos = await activeHistos();
+    const stats = await histos.call("factStats");
+    return okResult(stats ?? { tripleCount: 0, distinctSubjects: 0, distinctPredicates: 0 });
+  } catch (error) {
+    return errorResult(error?.code ?? "read_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosClearFacts", async (event) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("clearFacts");
+    return okResult(result ?? { ok: true, count: 0 });
+  } catch (error) {
+    return errorResult(error?.code ?? "clear_failed", error instanceof Error ? error.message : String(error));
   }
 });
 

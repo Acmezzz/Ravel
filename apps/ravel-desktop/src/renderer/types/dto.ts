@@ -1013,3 +1013,67 @@ export interface GitStageRequest {
   snapshotToken: string;
   items: GitStageItem[];
 }
+
+/**
+ * Fact-graph triple shape (adapted from the oh-my-pi Mnemopi Triple model).
+ * One FactTriple is the atomic unit of the Histos fact graph — a normalized
+ * `(subject, predicate, object)` edge with a time window, source, and
+ * confidence. The graph is the secondary index over the durable session
+ * JSONL fact stream; the JSONL is the source of truth.
+ */
+export interface HistosFactTripleDTO {
+  id?: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  source: string;
+  scope?: string;
+  tag?: string | null;
+  confidence?: number;
+  validFrom?: number | null;
+  validUntil?: number | null;
+  createdAt?: number;
+}
+
+export interface HistosFactQueryDTO {
+  subject?: string;
+  predicate?: string;
+  object?: string;
+  scope?: string;
+  tag?: string;
+  asOf?: number;
+  limit?: number;
+}
+
+export interface HistosFactStatsDTO {
+  tripleCount: number;
+  distinctSubjects: number;
+  distinctPredicates: number;
+  lastWriteAt?: string;
+}
+
+export interface HistosFactQueryResultDTO {
+  ok: boolean;
+  triples: HistosFactTripleDTO[];
+  code?: string;
+  message?: string;
+}
+
+export interface HistosFactWriteResultDTO {
+  ok: boolean;
+  count: number;
+  code?: string;
+  message?: string;
+}
+
+export interface HistosFactClearResultDTO {
+  ok: boolean;
+  count: number;
+  code?: string;
+  message?: string;
+}
+
+export interface HistosFactEventDTO {
+  eventType: string;
+  payload: Record<string, unknown>;
+}

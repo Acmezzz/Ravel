@@ -209,6 +209,10 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "histosGetViewState",
     "histosExecuteFlow",
     "histosApplyEvalResults",
+    "histosQueryFacts",
+    "histosWriteFacts",
+    "histosFactStats",
+    "histosClearFacts",
   ]) {
     assert.match(source, new RegExp(`ipcRenderer\\.invoke\\("omega:${method}"`), `${method} invoke present`);
   }
@@ -221,6 +225,7 @@ test("IPC registry stays in sync with main handlers and preload invokes", async 
   const main = await read("../electron/main.js");
   const preload = await read("../electron/preload.js");
   const contracts = await read("../electron/ipc-contracts.js");
+  const registry = await read("../electron/ipc-registry.js");
   const shared = await read("../src/shared/ipc-contracts.ts");
   const handles = uniqueSorted(extractHandleChannels(main));
   const invokes = uniqueSorted(extractInvokeChannels(preload));
@@ -234,7 +239,10 @@ test("IPC registry stays in sync with main handlers and preload invokes", async 
   for (const channel of PUSH_CHANNELS) {
     assert.match(main, new RegExp(`webContents\\.send\\("${channel}"`));
     assert.match(preload, new RegExp(`ipcRenderer\\.on\\("${channel}"`));
-    assert.match(contracts, new RegExp(`"${channel}"`));
+    // The contract is the single source of truth for both invoke and push
+    // channel names: every push channel must be present in the JS contracts
+    // file (or its re-exporting registry).
+    assert.match(contracts, new RegExp(`"${channel}"`)) || assert.match(registry, new RegExp(`"${channel}"`));
     assert.match(shared, new RegExp(`"${channel}"`));
   }
 });

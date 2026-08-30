@@ -1,6 +1,10 @@
 const MAX = Object.freeze({ sessionId: 128, workspace: 4096, path: 4096, ptyData: 64 * 1024, ptyCwd: 4096 });
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 export function ptyCreateRequest(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const sessionId = boundedString(value.sessionId, MAX.sessionId);
@@ -388,6 +392,57 @@ export function histosGetArtifactRequest(value) {
   const query = histosQuery(value);
   const sha256 = histosString(value?.sha256 ?? value?.hash, "artifact sha256", 64);
   return query && sha256 && HISTOS_SHA256.test(sha256) ? { ...query, sha256 } : null;
+}
+
+const HISTOS_TRIPLE_FIELDS = ["subject", "predicate", "object", "source", "scope", "tag"];
+const HISTOS_TRIPLE_PREDICATE_RE = /^[a-z][a-z0-9_]{0,63}$/;
+const MAX_HISTOS_FACT_TRIPLES = 256;
+const MAX_HISTOS_FACT_OBJECT = 4096;
+
+function histosFactTriple(value) {
+  if (!isPlainObject(value)) return null;
+  const subject = histosString(value.subject, "subject", 512);
+  if (!subject || /[^A-Za-z0-9_:./-]/.test(subject)) return null;
+  const predicate = histosString(value.predicate, "predicate", 64);
+  if (!predicate || !HISTOS_TRIPLE_PREDICATE_RE.test(predicate)) return null;
+  const object = histosString(value.object, "object", MAX_HISTOS_FACT_OBJECT);
+  if (!object) return null;
+  const source = histosString(value.source, "source", 256) ?? "renderer:unknown";
+  const out = { subject, predicate, object, source };
+  if (typeof value.scope === "string" && value.scope.length > 0 && value.scope.length <= 128) out.scope = value.scope;
+  if (typeof value.tag === "string" && value.tag.length > 0 && value.tag.length <= 128) out.tag = value.tag;
+  if (typeof value.confidence === "number" && Number.isFinite(value.confidence) && value.confidence >= 0 && value.confidence <= 1) out.confidence = value.confidence;
+  if (typeof value.validFrom === "number" && Number.isFinite(value.validFrom)) out.validFrom = value.validFrom;
+  if (typeof value.validUntil === "number" && Number.isFinite(value.validUntil)) out.validUntil = value.validUntil;
+  for (const field of HISTOS_TRIPLE_FIELDS) {
+    if (out[field] === undefined) delete out[field];
+  }
+  return out;
+}
+
+export function histosQueryFactsRequest(value) {
+  if (value === undefined || value === null) return {};
+  if (!isPlainObject(value)) return null;
+  const out = {};
+  if (typeof value.subject === "string") out.subject = value.subject.slice(0, 512);
+  if (typeof value.predicate === "string") out.predicate = value.predicate.slice(0, 64);
+  if (typeof value.object === "string") out.object = value.object.slice(0, MAX_HISTOS_FACT_OBJECT);
+  if (typeof value.scope === "string") out.scope = value.scope.slice(0, 128);
+  if (typeof value.tag === "string") out.tag = value.tag.slice(0, 128);
+  if (typeof value.asOf === "number" && Number.isFinite(value.asOf)) out.asOf = value.asOf;
+  if (value.limit !== undefined) {
+    if (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 1000) return null;
+    out.limit = value.limit;
+  }
+  return out;
+}
+
+export function histosWriteFactsRequest(value) {
+  if (!isPlainObject(value) || !Array.isArray(value.triples)) return null;
+  if (value.triples.length === 0 || value.triples.length > MAX_HISTOS_FACT_TRIPLES) return null;
+  const triples = value.triples.map(histosFactTriple);
+  if (triples.some((triple) => triple === null)) return null;
+  return { triples };
 }
 
 export function histosFactAddress(value) {

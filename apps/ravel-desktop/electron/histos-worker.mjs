@@ -10,6 +10,7 @@ import {
   isHistosProviderResult,
   isHistosRequest,
 } from "./histos-protocol.js";
+import { createHistosEventBus, boundEventPayload } from "./histos-event-bus.js";
 
 let engine = null;
 let generation = -1;
@@ -41,6 +42,20 @@ function post(message) {
   } else if (typeof process.send === "function") {
     process.send(message);
   }
+}
+
+const bus = createHistosEventBus({
+  onSubscriberError({ eventType, error }) {
+    processLog("histos-worker", "bus_subscriber_error", error, { eventType });
+  },
+});
+
+function emitToHost(eventType, payload) {
+  post({ type: "histos-event", eventType, payload: boundEventPayload(payload ?? {}) });
+}
+
+for (const eventType of bus.eventTypes) {
+  bus.add(eventType, (payload) => emitToHost(eventType, payload));
 }
 
 function receive(handler) {
@@ -114,7 +129,7 @@ async function init(options, requestGeneration) {
   if (engineOptions.providerRelay === true) {
     engineOptions.semanticProvider = createRelayedSemanticProvider();
   }
-  engine = createHistosEngine(engineOptions);
+  engine = createHistosEngine({ ...engineOptions, eventBus: bus });
   generation = requestGeneration;
   disposed = false;
   return { workspaceId: engine.workspaceId };
@@ -149,12 +164,16 @@ async function invoke(method, args) {
   if (method === "applyWebResources") return current.applyWebResources(args ?? {});
   if (method === "applyAgentActivity") return current.applyAgentActivity(args ?? {});
   if (method === "applyEvalResults") return current.applyEvalResults(args ?? {});
-  if (method === "listCapabilities") return current.listCapabilities(args ?? {});
-  if (method === "invokeNode") return current.invokeNode(args ?? {});
-  if (method === "distillResource") return current.distillResource(args ?? {});
-  if (method === "suggestContext") return current.suggestContext(args ?? {});
-  if (method === "importContext") return current.importContext(args ?? {});
-  throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });
+    if (method === "listCapabilities") return current.listCapabilities(args ?? {});
+    if (method === "invokeNode") return current.invokeNode(args ?? {});
+    if (method === "distillResource") return current.distillResource(args ?? {});
+    if (method === "suggestContext") return current.suggestContext(args ?? {});
+    if (method === "importContext") return current.importContext(args ?? {});
+    if (method === "queryFacts") return current.queryFacts(args?.query ?? args ?? {});
+    if (method === "writeFacts") return current.writeFacts(args?.triples ?? []);
+    if (method === "factStats") return current.factStats();
+    if (method === "clearFacts") return current.clearFacts();
+    throw Object.assign(new Error("unsupported Histos method"), { code: "unsupported_method" });
 }
 
 receive(async (message) => {

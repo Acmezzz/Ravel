@@ -24,6 +24,10 @@ export const HISTOS_METHODS = Object.freeze([
   "listCapabilities",
   "invokeNode",
   "distillResource",
+  "queryFacts",
+  "writeFacts",
+  "factStats",
+  "clearFacts",
   "dispose",
 ]);
 

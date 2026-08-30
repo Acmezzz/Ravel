@@ -107,6 +107,10 @@ export const IPC_CHANNELS = Object.freeze({
   histosDistillResource: "omega:histosDistillResource",
   histosSuggestContext: "omega:histosSuggestContext",
   histosImportContext: "omega:histosImportContext",
+  histosQueryFacts: "omega:histosQueryFacts",
+  histosWriteFacts: "omega:histosWriteFacts",
+  histosFactStats: "omega:histosFactStats",
+  histosClearFacts: "omega:histosClearFacts",
   extensionUiResponse: "omega:extensionUiResponse",
   extensionUiCancel: "omega:extensionUiCancel",
   prompt: "agent:prompt",
@@ -128,6 +132,7 @@ export const IPC_CHANNELS = Object.freeze({
   fileChanged: "file:changed",
   extensionUiRequest: "extension-ui:request",
   activityChanged: "activity:changed",
+  histosEvent: "histos:event",
 });
 
 export { INVOKE_CHANNELS, PUSH_CHANNELS };

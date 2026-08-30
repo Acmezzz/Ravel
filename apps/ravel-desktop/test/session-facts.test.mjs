@@ -302,3 +302,56 @@ test("session-facts.js is the only writer of durable facts (static single-writer
   }
   assert.deepEqual(offenders, []);
 });
+
+test("operation_finished accepts optional previousStateRef and appliedEdits (RefinementEdit hook)", () => {
+  const sm = fakeSessionManager();
+  // Valid: full payload.
+  appendFact(sm, {
+    type: "operation_finished",
+    id: "finish-1",
+    lane: "main",
+    runId: "op-1",
+    outcome: "completed",
+    previousStateRef: { id: "snapshot-abc", kind: "session" },
+    appliedEdits: [
+      { action: "create", kind: "skill", id: "skill-1", reason: "added from /refine" },
+      { action: "update", kind: "memory", id: "mem-1" },
+      { action: "delete", kind: "subagent", id: "sub-1" },
+    ],
+    timestamp: 1,
+  });
+  assert.equal(sm.appended.length, 1);
+  assert.equal(sm.appended[0].previousStateRef.id, "snapshot-abc");
+  assert.equal(sm.appended[0].appliedEdits.length, 3);
+
+  // Reject invalid previousStateRef.
+  assert.throws(() => appendFact(sm, {
+    type: "operation_finished",
+    id: "finish-2",
+    lane: "main",
+    runId: "op-1",
+    outcome: "completed",
+    previousStateRef: { id: 123 },
+  }), /previousStateRef/);
+
+  // Reject invalid appliedEdits (bad action).
+  assert.throws(() => appendFact(sm, {
+    type: "operation_finished",
+    id: "finish-3",
+    lane: "main",
+    runId: "op-1",
+    outcome: "completed",
+    appliedEdits: [{ action: "noop" }],
+  }), /appliedEdits/);
+
+  // Reject over-cap appliedEdits.
+  const tooMany = Array.from({ length: 257 }, (_, i) => ({ action: "update", id: `e${i}` }));
+  assert.throws(() => appendFact(sm, {
+    type: "operation_finished",
+    id: "finish-4",
+    lane: "main",
+    runId: "op-1",
+    outcome: "completed",
+    appliedEdits: tooMany,
+  }), /appliedEdits/);
+});

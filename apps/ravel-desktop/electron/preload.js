@@ -417,6 +417,27 @@ contextBridge.exposeInMainWorld("omega", {
     const limit = Number.isSafeInteger(req?.limit) && req.limit >= 1 && req.limit <= 16 ? req.limit : undefined;
     return ipcRenderer.invoke("omega:histosSuggestContext", query ? { query, ...(limit === undefined ? {} : { limit }) } : { terms, ...(limit === undefined ? {} : { limit }) });
   },
+  histosQueryFacts: (req) => {
+    const payload = req && typeof req === "object" ? req : {};
+    return ipcRenderer.invoke("omega:histosQueryFacts", payload);
+  },
+  histosWriteFacts: (req) => {
+    if (!req || !Array.isArray(req.triples) || req.triples.length === 0 || req.triples.length > 256) {
+      return Promise.resolve({ ok: false, code: "invalid_args", message: "triples must be a non-empty array of at most 256 entries" });
+    }
+    return ipcRenderer.invoke("omega:histosWriteFacts", { triples: req.triples.slice(0, 256) });
+  },
+  histosFactStats: () => ipcRenderer.invoke("omega:histosFactStats", {}),
+  histosClearFacts: () => ipcRenderer.invoke("omega:histosClearFacts", {}),
+  onHistosEvent: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const handler = (_event, data) => {
+      if (!data || typeof data !== "object" || typeof data.eventType !== "string") return;
+      try { callback({ eventType: data.eventType, payload: data.payload ?? {} }); } catch (error) { console.error("omega histos event callback failed", error); }
+    };
+    ipcRenderer.on("histos:event", handler);
+    return () => ipcRenderer.removeListener("histos:event", handler);
+  },
   histosImportContext: (req) => {
     const sourceWorkspaceId = req && typeof req.sourceWorkspaceId === "string" ? req.sourceWorkspaceId.trim().slice(0, 128) : "";
     const sourceSha256 = req && typeof req.sourceSha256 === "string" ? req.sourceSha256.trim().toLowerCase() : "";

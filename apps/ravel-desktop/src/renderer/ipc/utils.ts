@@ -66,6 +66,13 @@ import type {
   HistosContextFreezeResultDTO,
   HistosConvertToFlowResultDTO,
   HistosArtifactDTO,
+  HistosFactTripleDTO,
+  HistosFactQueryDTO,
+  HistosFactStatsDTO,
+  HistosFactQueryResultDTO,
+  HistosFactWriteResultDTO,
+  HistosFactClearResultDTO,
+  HistosFactEventDTO,
 } from "../types/dto";
 
 /**
@@ -205,6 +212,11 @@ export interface RavelBridge {
   histosDistillResource(req: { kind: "skill" | "extension" | "prompt"; name: string; filePath: string }): Promise<IpcResult<{ graphSha256: string; contextSha256: string | null; node: { nodeId: string; nodeRevisionId: string; title: string } }>>;
   histosImportContext(req: { sourceWorkspaceId: string; sourceSha256: string; budget?: number }): Promise<IpcResult<{ sha256: string; sourceSha256: string; factAppend: { ok: boolean; error?: string } }>>;
   histosSuggestContext(req: { query?: string; terms?: string[]; limit?: number }): Promise<IpcResult<{ terms: string[]; candidates: Array<{ nodeRevisionId: string; nodeId: string; kind: string; title: string | null; artifactSha: string | null; lens: string | null; createdAt: number; evidenceCount: number; matchedTerms: string[]; score: number }> }>>;
+  histosQueryFacts(req: HistosFactQueryDTO): Promise<IpcResult<HistosFactQueryResultDTO>>;
+  histosWriteFacts(req: { triples: HistosFactTripleDTO[] }): Promise<IpcResult<HistosFactWriteResultDTO>>;
+  histosFactStats(): Promise<IpcResult<HistosFactStatsDTO>>;
+  histosClearFacts(): Promise<IpcResult<HistosFactClearResultDTO>>;
+  onHistosEvent(callback: (data: HistosFactEventDTO) => void): () => void;
   setProviderApiKey(req: { providerId: string; apiKey: string }): Promise<IpcResult<AuthStatus>>;
   removeProviderApiKey(req: { providerId: string }): Promise<IpcResult<AuthStatus>>;
   listSessions(req?: { offset?: number; limit?: number }): Promise<IpcResult<SessionListPage>>;

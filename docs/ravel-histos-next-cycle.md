@@ -1,7 +1,7 @@
 # Ravel × Histos 当前状态与执行入口
 
-更新日期：2026-08-29
-基线：`e26d270a6`（`main`）
+更新日期：2026-08-30
+基线：`main`
 
 本文是当前唯一的项目状态入口。状态依据当前源码、桌面测试和仓库质量门禁；历史计划、竞品报告和旧测试数字不覆盖本文。未经过真实环境验证的能力不标记为生产完成。
 
@@ -41,6 +41,7 @@ Renderer（无原生权限）
 - Agent capability/spec 图、agent-loop 执行桥、workflow `flow-engine` 执行路径、DAG 波次、并发上限、超时、取消、memoKey 计算和仅复用已成功结果的内存接口。
 - eval_result 规范化、SHA 地址、GraphRevision 投影与持久化；token、耗时、估算成本字段保持显式缺失语义。
 - 定时 Flow 与预授权触发：每次触发记录 `flow_trigger`，按 scope、maxRuns 和 busy 状态 fail-closed。
+- Fact graph（2026-08-30，借鉴 oh-my-pi Mnemopi / prime-agent Refinement）：`FactGraphBackend` 契约（`histos-fact-graph.js`）+ sqlite 后端（`histos-sqlite-fact-graph.js`，同库 `fact_triples` 表）+ 事实派生投影（`histos-fact-derivation.js`）。`applySessionFacts` 派生 triple（best-effort，失败不回传）；引擎暴露 `queryFacts` / `writeFacts` / `factStats` / `clearFacts`；IPC 四通道 `omega:histos{QueryFacts,WriteFacts,FactStats,ClearFacts}`；Histos 事件总线（`histos-event-bus.js`，BeforeX/AfterX 命名）经 worker → Main → renderer `histos:event` 推送。`operation_finished` 支持可选 `previousStateRef` + `appliedEdits`。GoalState / AutonomousGate 契约落点 `goal-state.js`（未接 worker 主流程）。
 
 ### 2.3 当前明确未完成或未宣称
 
@@ -66,6 +67,9 @@ Renderer（无原生权限）
 | eval 规范化与图投影 | `apps/ravel-desktop/electron/histos-eval.js` |
 | Web source 适配器 | `apps/ravel-desktop/electron/histos-web-source.js` |
 | Flow 校验 | `apps/ravel-desktop/electron/flow-validation.js` |
+| Fact graph 契约/后端/派生 | `apps/ravel-desktop/electron/histos-fact-graph.js`、`histos-sqlite-fact-graph.js`、`histos-fact-derivation.js` |
+| Histos 事件总线 | `apps/ravel-desktop/electron/histos-event-bus.js` |
+| Goal/预算门控契约 | `apps/ravel-desktop/electron/goal-state.js` |
 | 主进程 IPC 注册 | `apps/ravel-desktop/electron/main.js`、`ipc-registry.js`、`ipc-schemas.js` |
 | Renderer 类型与桥 | `apps/ravel-desktop/src/renderer/types/dto.ts`、`src/renderer/ipc/client.ts` |
 
@@ -77,8 +81,8 @@ Renderer（无原生权限）
 
 - `npm run --workspace=@ravel/desktop typecheck`：通过。
 - `npm run --workspace=@ravel/desktop typecheck:renderer`：通过。
-- Histos/Agent/eval/web/IPC 相关测试：已纳入桌面测试套件并通过。
-- 根 `npm run check`：当前唯一警告为 `apps/ravel-desktop/electron/histos-web-source.js:199` 的未使用局部变量 `workspaceId`，因此命令退出失败；这不是文档问题，应由代码审查任务处理。
+- Histos/Agent/eval/web/IPC 相关测试：已纳入桌面测试套件并通过（含 fact-graph / event-bus / goal-state 新测试，244 项核心子集全绿）。
+- 根 `npm run check`：biome、pinned-deps、ts-imports、shrinkwrap、install-lock 全部通过；`tsc --noEmit` 在 `packages/ai` 存在 11 个基线错误（`cloudflare-ai-gateway.ts` 流类型与 kimi-k2.6 等 ModelId 注册），与桌面端无关。
 
 ### 当前失败
 

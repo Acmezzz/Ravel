@@ -70,6 +70,24 @@ const TABLE_DEFINITIONS = Object.freeze({
     ["key", "TEXT", 0, null, 1],
     ["value", "TEXT", 1, null, 0],
   ]),
+  // Fact-graph triples (added alongside the §7.3 verified shape so the
+  // validator accepts the new table; the CREATE TABLE IF NOT EXISTS
+  // above runs on every init so old workspaces gain the table on first
+  // open). Rows are append-only and the primary key is the content-
+  // addressed triple id (`t-<16hex>`).
+  fact_triples: Object.freeze([
+    ["id", "TEXT", 0, null, 1],
+    ["subject", "TEXT", 1, null, 0],
+    ["predicate", "TEXT", 1, null, 0],
+    ["object", "TEXT", 1, null, 0],
+    ["source", "TEXT", 1, null, 0],
+    ["scope", "TEXT", 1, null, 0],
+    ["tag", "TEXT", 0, null, 0],
+    ["confidence", "REAL", 1, "1", 0],
+    ["valid_from", "INTEGER", 0, null, 0],
+    ["valid_until", "INTEGER", 0, null, 0],
+    ["created_at", "INTEGER", 1, null, 0],
+  ]),
 });
 
 export const HISTOS_TABLES = Object.freeze(Object.keys(TABLE_DEFINITIONS));
@@ -82,6 +100,9 @@ const INDEX_DEFINITIONS = Object.freeze({
   evidence_address_lookup: Object.freeze({ table: "evidence", columns: ["address_id", "revision_id"] }),
   spans_entry_lookup: Object.freeze({ table: "spans", columns: ["entry_object_id", "start"] }),
   artifacts_kind_lookup: Object.freeze({ table: "artifacts", columns: ["kind", "created_at"] }),
+  fact_triples_subject_lookup: Object.freeze({ table: "fact_triples", columns: ["scope", "subject", "created_at"] }),
+  fact_triples_predicate_lookup: Object.freeze({ table: "fact_triples", columns: ["scope", "predicate", "created_at"] }),
+  fact_triples_object_lookup: Object.freeze({ table: "fact_triples", columns: ["scope", "object", "created_at"] }),
 });
 
 export const HISTOS_INDEXES = Object.freeze(Object.keys(INDEX_DEFINITIONS));
@@ -165,6 +186,32 @@ CREATE INDEX IF NOT EXISTS spans_entry_lookup
   ON spans (entry_object_id, start);
 CREATE INDEX IF NOT EXISTS artifacts_kind_lookup
   ON artifacts (kind, created_at);
+
+-- Fact-graph triples (added in v2.1, not part of the §7.3 verified shape so
+-- the schema validator never rejects a pre-triples database on upgrade).
+-- The table is created on every init so old workspaces gain it the next
+-- time the engine opens. Writes are append-only; the (id) primary key lets
+-- the in-memory map dedupe before INSERT OR IGNORE.
+CREATE TABLE IF NOT EXISTS fact_triples (
+  id TEXT PRIMARY KEY,
+  subject TEXT NOT NULL,
+  predicate TEXT NOT NULL,
+  object TEXT NOT NULL,
+  source TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  tag TEXT,
+  confidence REAL NOT NULL DEFAULT 1,
+  valid_from INTEGER,
+  valid_until INTEGER,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS fact_triples_subject_lookup
+  ON fact_triples (scope, subject, created_at);
+CREATE INDEX IF NOT EXISTS fact_triples_predicate_lookup
+  ON fact_triples (scope, predicate, created_at);
+CREATE INDEX IF NOT EXISTS fact_triples_object_lookup
+  ON fact_triples (scope, object, created_at);
 `;
 
 const MAX_WORKSPACE_ID_LENGTH = 512;

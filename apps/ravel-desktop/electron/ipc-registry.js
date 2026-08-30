@@ -109,6 +109,10 @@ export const INVOKE_CHANNELS = Object.freeze([
   "omega:histosDistillResource",
   "omega:histosSuggestContext",
   "omega:histosImportContext",
+  "omega:histosQueryFacts",
+  "omega:histosWriteFacts",
+  "omega:histosFactStats",
+  "omega:histosClearFacts",
   "omega:extensionUiResponse",
   "omega:extensionUiCancel",
   "agent:prompt",
@@ -133,6 +137,7 @@ export const PUSH_CHANNELS = Object.freeze([
   "activity:changed",
   "pty:data",
   "pty:exit",
+  "histos:event",
 ]);
 
 export function extractHandleChannels(source) {

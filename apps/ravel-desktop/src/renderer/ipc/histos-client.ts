@@ -27,6 +27,13 @@ import type {
   HistosConvertToFlowResultDTO,
   HistosGetArtifactRequest,
   HistosGraphDTO,
+  HistosFactTripleDTO,
+  HistosFactQueryDTO,
+  HistosFactStatsDTO,
+  HistosFactQueryResultDTO,
+  HistosFactWriteResultDTO,
+  HistosFactClearResultDTO,
+  HistosFactEventDTO,
 } from "../types/dto";
 import { ok } from "./utils";
 
@@ -70,6 +77,14 @@ export const histosClient = {
     ok(await window.omega?.histosImportContext?.(req)),
   histosSuggestContext: async (req: { query?: string; terms?: string[]; limit?: number }): Promise<IpcResult<{ terms: string[]; candidates: Array<{ nodeRevisionId: string; nodeId: string; kind: string; title: string | null; artifactSha: string | null; lens: string | null; createdAt: number; evidenceCount: number; matchedTerms: string[]; score: number }> }>> =>
     ok(await window.omega?.histosSuggestContext?.(req)),
+  histosQueryFacts: async (req: HistosFactQueryDTO): Promise<IpcResult<HistosFactQueryResultDTO>> =>
+    ok(await window.omega?.histosQueryFacts?.(req)),
+  histosWriteFacts: async (req: { triples: HistosFactTripleDTO[] }): Promise<IpcResult<HistosFactWriteResultDTO>> =>
+    ok(await window.omega?.histosWriteFacts?.(req)),
+  histosFactStats: async (): Promise<IpcResult<HistosFactStatsDTO>> => ok(await window.omega?.histosFactStats?.()),
+  histosClearFacts: async (): Promise<IpcResult<HistosFactClearResultDTO>> => ok(await window.omega?.histosClearFacts?.()),
+  onHistosEvent: (callback: (data: HistosFactEventDTO) => void): (() => void) =>
+    window.omega?.onHistosEvent?.(callback) ?? (() => {}),
 };
 
 export type HistosClient = typeof histosClient;

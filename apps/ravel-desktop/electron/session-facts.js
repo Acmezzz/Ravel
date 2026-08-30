@@ -31,6 +31,10 @@ export const APPROVAL_OUTCOMES = Object.freeze(["allowed-once", "rejected", "can
 export const APPROVAL_REASON_CODES = Object.freeze(["user-allowed", "user-denied", "ui-cancelled", "timeout", "no-answerer", "rule-allowed", "rule-denied"]);
 const OPERATION_OUTCOMES = new Set(["completed", "aborted", "failed", "declined"]);
 
+function isObject(value) {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function requireString(record, field) {
 	const value = record[field];
 	if (typeof value !== "string" || value.length === 0) {
@@ -102,6 +106,25 @@ export function appendFact(sessionManager, record) {
 			requireString(record, "runId");
 			if (!OPERATION_OUTCOMES.has(record.outcome)) {
 				throw new Error(`Invalid operation_finished fact: outcome ${JSON.stringify(record.outcome)}`);
+			}
+			// RefinementEdit hooks: an operation may carry a snapshot of what
+			// it produced and what it applied so that the Histos surface can
+			// roll back / diff without a second channel. Both fields are
+			// optional so existing call sites are unaffected.
+			if (record.previousStateRef !== undefined) {
+				if (!isObject(record.previousStateRef) || typeof record.previousStateRef.id !== "string") {
+					throw new Error("Invalid operation_finished fact: previousStateRef must be an object with an id string");
+				}
+			}
+			if (record.appliedEdits !== undefined) {
+				if (!Array.isArray(record.appliedEdits) || record.appliedEdits.length > 256) {
+					throw new Error("Invalid operation_finished fact: appliedEdits must be an array of at most 256 entries");
+				}
+				for (const edit of record.appliedEdits) {
+					if (!isObject(edit) || typeof edit.action !== "string" || !["create", "update", "delete"].includes(edit.action)) {
+						throw new Error("Invalid operation_finished fact: each appliedEdits entry must be an object with action in {create, update, delete}");
+					}
+				}
 			}
 			break;
 		}
