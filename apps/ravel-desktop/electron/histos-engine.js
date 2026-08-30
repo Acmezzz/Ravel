@@ -640,6 +640,20 @@ export class HistosEngine {
     try { initializeSchema(database, this.workspaceId); return database; } catch (error) { database.close(); throw error; }
   }
 
+  /**
+   * Copy every tombstone row (active and revoked) from the current index
+   * into a replacement database during rebuild. Row-for-row, ids included,
+   * so restore bookkeeping survives the swap.
+   */
+  copyTombstones(replacement) {
+    const source = this.database;
+    if (!source) return 0;
+    const rows = source.prepare("SELECT id, target_kind, target_id, reason, created_at, revoked_at FROM tombstones").all();
+    const insert = replacement.prepare("INSERT OR IGNORE INTO tombstones (id, target_kind, target_id, reason, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?)");
+    for (const row of rows) insert.run(row.id, row.target_kind, row.target_id, row.reason, row.created_at, row.revoked_at);
+    return rows.length;
+  }
+
   assertOpen() {
     if (this.closed || !this.database) throw this.initializationError ?? notReady();
     return this.database;
@@ -697,6 +711,10 @@ export class HistosEngine {
       replacement = this.openDatabase(temporary);
       replacement.exec("BEGIN IMMEDIATE");
       rowsFromResult(replacement, result);
+      // Rebuild = rescan sources + replay tombstones: the rebuilt index must
+      // inherit the archive state or an index refresh would resurrect
+      // entries the user explicitly deleted.
+      const tombstoneCount = this.copyTombstones(replacement);
       for (const { sha256 } of listArtifacts(this.artifactsDir, check)) {
         await provenance.hydrateArtifact(replacement, this.artifactsDir, sha256, { workspaceId: this.workspaceId });
       }
@@ -723,7 +741,7 @@ export class HistosEngine {
         try { this.database = this.openDatabase(this.databasePath); this.initializationError = undefined; } catch { this.database = null; this.initializationError = error; }
         throw error;
       }
-      return { workspaceId: this.workspaceId, nodeCount: result.nodes.size, edgeCount: result.edges.size, artifactCount: listArtifacts(this.artifactsDir, () => {}).length };
+      return { workspaceId: this.workspaceId, nodeCount: result.nodes.size, edgeCount: result.edges.size, artifactCount: listArtifacts(this.artifactsDir, () => {}).length, tombstoneCount };
     } catch (error) {
       try { replacement?.close(); } catch { /* best effort */ }
       rmSync(temporary, { force: true });

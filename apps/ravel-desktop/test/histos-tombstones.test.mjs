@@ -185,3 +185,39 @@ test("archiving a plain triple hides it from queryFacts until restored", async (
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+// --- T0.3 rebuild replays tombstones ---
+
+test("rebuild carries tombstones into the swapped index so archives survive", async (t) => {
+  const root = await fs.mkdtemp(join(tmpdir(), "histos-rebuild-tombstones-"));
+  const sessionFile = join(root, "session.jsonl");
+  await fs.writeFile(sessionFile, [
+    JSON.stringify({ type: "session", version: 3, id: "session-tombstone", cwd: root }),
+    JSON.stringify({ type: "message", id: "m-1", parentId: null, message: { role: "user", content: "first message" } }),
+    JSON.stringify({ type: "message", id: "m-2", parentId: "m-1", message: { role: "assistant", content: "second message" } }),
+  ].join("\n") + "\n");
+  const engine = new HistosEngine({
+    workspaceId: "workspace-tombstone",
+    databasePath: join(root, "index.sqlite"),
+    artifactsDir: join(root, "artifacts"),
+    sessionFiles: [sessionFile],
+  });
+  t.after(async () => { engine.close(); await fs.rm(root, { recursive: true, force: true }); });
+
+  const query = { sourceSet: { sessionIds: ["session-tombstone"] }, lens: "structural", granularity: "entry" };
+  await engine.rebuild({ granularity: "entry" });
+  const before = engine.getGraph(query);
+  const victim = before.nodes.find((node) => node.nodeId === "entry:session-tombstone/m-1");
+  assert.ok(victim, "expected the first message node");
+
+  engine.archiveEntries("node", [victim.nodeRevisionId], "rebuild survival check");
+  await engine.rebuild({ granularity: "entry" });
+
+  const after = engine.getGraph(query);
+  assert.ok(!after.nodes.some((node) => node.nodeId === "entry:session-tombstone/m-1"), "archived node must stay hidden after rebuild");
+  assert.ok(after.nodes.some((node) => node.nodeId === "entry:session-tombstone/m-2"), "unarchived nodes must survive");
+  const tombstones = engine.assertOpen().prepare("SELECT target_kind, target_id, revoked_at FROM tombstones").all();
+  assert.equal(tombstones.length, 1);
+  assert.equal(tombstones[0].target_kind, "node");
+  assert.equal(tombstones[0].target_id, victim.nodeRevisionId);
+});
