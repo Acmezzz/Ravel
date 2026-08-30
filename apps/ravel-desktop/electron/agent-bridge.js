@@ -25,7 +25,7 @@ import { computeTelemetry } from "./telemetry.js";
 
 export const AGENT_DIR = join(homedir(), ".pi", "agent");
 const DEV_EXTENSIONS_ROOT = resolve(fileURLToPath(new URL("../../../.pi/extensions", import.meta.url)));
-const TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"];
+const TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls", "histos_expand"];
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 /** Cap forwarded tool payloads so a pathological result cannot OOM the renderer. */
 const MAX_PAYLOAD_CHARS = 64_000;
@@ -66,7 +66,7 @@ function genericExtensionPaths(omegaExtensions) {
  * Create an AgentSessionRuntime bound to cwd, with Ravel extensions loaded.
  * First boot continues the most recent CLI JSONL session for that workspace.
  */
-export async function createRuntime({ cwd, extensionsRoot, projectTrusted = true }) {
+export async function createRuntime({ cwd, extensionsRoot, projectTrusted = true, customTools = [] }) {
   const omegaExtensions = extensionsRootOf(extensionsRoot);
   const trusted = projectTrusted === true;
   // Untrusted projects stay dormant: no additional extensions are loaded.
@@ -87,6 +87,7 @@ export async function createRuntime({ cwd, extensionsRoot, projectTrusted = true
       sessionManager,
       sessionStartEvent,
       tools: TOOLS,
+      customTools,
     });
     return {
       session: result.session,

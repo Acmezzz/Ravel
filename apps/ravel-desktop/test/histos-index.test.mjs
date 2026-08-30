@@ -116,7 +116,11 @@ test("DatabaseSync Histos schema initializes and validates", () => {
     const metadata = validateHistosSchema(database, "workspace-1");
     assert.equal(metadata.schema_version, "2");
     assert.equal(metadata.workspace_id, "workspace-1");
-    assert.deepEqual(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((row) => row.name), [...HISTOS_TABLES].sort());
+    const tables = database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((row) => row.name);
+    // FTS5 virtual tables (fact_triples_fts + its shadow tables) are not part
+    // of the validated HISTOS_TABLES set; they are created via IF NOT EXISTS.
+    assert.deepEqual(tables.filter((name) => !name.startsWith("fact_triples_fts")), [...HISTOS_TABLES].sort());
+    assert.ok(tables.includes("fact_triples_fts"), "FTS5 index must exist");
     assert.deepEqual(database.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map((row) => row.name), [...HISTOS_INDEXES].sort());
 
     database.prepare("UPDATE meta SET value = ? WHERE key = 'workspace_id'").run("other-workspace");

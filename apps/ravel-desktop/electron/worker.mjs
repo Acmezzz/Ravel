@@ -20,8 +20,11 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DefaultPackageManager, SessionManager, SettingsManager, createAgentSessionFromServices, createAgentSessionServices } from "@earendil-works/pi-coding-agent";
 import { completeSimple, contentText } from "@earendil-works/pi-ai/compat";
+import { Type } from "typebox";
 import { processLog } from "./process-log.js";
 import * as bridge from "./agent-bridge.js";
+import { expandEvidence, DEFAULT_EXPAND_BUDGET } from "./histos-selection.js";
+import { contentHashOf } from "./content-hash.js";
 import { AGENT_DIR } from "./agent-bridge.js";
 import {
   RESOURCE_ARRAY_KEYS,
@@ -47,6 +50,7 @@ import {
   recordDiagnosticObserved,
   appendGoalStateFact,
   recordUsageObserved,
+  recordCompactionAnchors,
   setFactsAppendedListener,
   appendSessionReferenceFacts,
   buildSessionReferenceBlock,
@@ -428,6 +432,59 @@ let modeProfile = "default";
 /** Persistent per-tool rulesets in increasing precedence: [user, project] (B3). */
 let permissionRulesets = [];
 /**
+ * P6: histos_expand — the LLM-facing L2 evidence tool. Resolves a session
+ * entry FactAddress to its original text (span-aware), fail-closed on
+ * budget. Reads the current session's JSONL through the session manager —
+ * the durable authority — never a derived index.
+ */
+function sessionManagerEntryReader(sessionManager) {
+  void sessionManager;
+  return ({ sessionId, entryId }) => {
+    const entries = typeof sessionManager.getEntries === "function" ? sessionManager.getEntries() : [];
+    const entry = entries.find((item) => (item.id ?? item.entryId) === entryId);
+    if (!entry) return null;
+    const content = entry.message?.content;
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content.map((part) => (part && typeof part === "object" && typeof part.text === "string" ? part.text : "")).join("");
+    }
+    return null;
+  };
+}
+
+const histosExpandTool = {
+  name: "histos_expand",
+  label: "Histos expand",
+  description: "沿 FactAddress 取回会话 entry 的 span 级原文（L2 渐进式披露）。需要 entryId（及可选 span selector 与预算）。超预算 fail-closed，不静默截断。",
+  promptSnippet: "histos_expand(entryId, selector?, budget?) — 拉取被压缩/选区外的原文",
+  parameters: Type.Object({
+    entryId: Type.String({ minLength: 1, maxLength: 128 }),
+    sessionId: Type.Optional(Type.String({ maxLength: 128 })),
+    selector: Type.Optional(Type.Object({ kind: Type.Literal("span"), start: Type.Integer({ minimum: 0 }), length: Type.Integer({ minimum: 0 }) })),
+    budget: Type.Optional(Type.Integer({ minimum: 1, maximum: 128000 })),
+  }),
+  execute: async (_toolCallId, params) => {
+    const sessionManager = runtime?.session?.sessionManager;
+    if (!sessionManager) {
+      return { ok: false, isError: true, content: "histos_expand: 当前会话不可用" };
+    }
+    const result = expandEvidence(
+      {
+        sessionId: params.sessionId ?? runtime.session.sessionId,
+        entryId: params.entryId,
+        ...(params.selector ? { selector: params.selector } : {}),
+        budget: params.budget ?? DEFAULT_EXPAND_BUDGET,
+      },
+      sessionManagerEntryReader(sessionManager),
+    );
+    if (!result.ok) {
+      return { ok: false, isError: true, content: `histos_expand: ${result.message}` };
+    }
+    return { ok: true, content: result.text };
+  },
+};
+
+/**
  * Goal-mode continuation state (B2, contract in goal-state.js). The goal
  * starts with the first prompt in goal mode and keeps prompting within the
  * round/elapsed caps; it stops on abort, error, cap exhaustion or a mode
@@ -466,7 +523,7 @@ async function init({ cwd, extensionsRoot: root, sessionId, generation: nextGene
   runtimeEpoch = 0;
   extensionsRoot = root;
   projectTrusted = trusted !== false;
-  runtime = await bridge.createRuntime({ cwd, extensionsRoot: root, projectTrusted });
+  runtime = await bridge.createRuntime({ cwd, extensionsRoot: root, projectTrusted, customTools: [histosExpandTool] });
   // MCP server auth tokens for the bridge extension (vault-only, never on disk).
   globalThis.__ravelMcpCredentials = { ...mcpCredentials };
   for (const [providerId, apiKey] of Object.entries(runtimeCredentials ?? {})) {
@@ -821,7 +878,7 @@ async function recreateForWorkspace(workspace) {
   unsubscribe = undefined;
   await runtime.dispose();
   try {
-    runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot, projectTrusted });
+    runtime = await bridge.createRuntime({ cwd: workspace, extensionsRoot, projectTrusted, customTools: [histosExpandTool] });
   } catch (error) {
     runtime = null;
     disposed = true;
@@ -1077,6 +1134,13 @@ const methods = {
       throw error;
     }
     recordCompactionFact(sessionManager, knownIds, null);
+    // P6 compaction unification: persist the summary plus navigable memory
+    // anchors (the compressed range's entry ids) so histos_expand can pull
+    // the original text back later.
+    try {
+      const summary = `Compacted ${knownIds.size} entries.`;
+      recordCompactionAnchors(sessionManager, { summary, anchors: [...knownIds] });
+    } catch { /* best effort */ }
     return bridge.snapshotOf(runtime);
   },
   authStatus: () => bridge.authStatusOf(runtime),
@@ -1288,6 +1352,50 @@ const methods = {
     renameSync(temp, filePath);
     await runtime.session.reload();
     return listResourceBundle();
+  },
+  /**
+   * P6 conversational skill editing: propose a new version (draft) without
+   * touching the file. The draft is content-hashed and NOT applied until
+   * approveSkillEdit runs (human gate, fail-closed).
+   */
+  proposeSkillEdit: async ({ filePath, newContent }) => {
+    if (typeof filePath !== "string" || !filePath.trim() || typeof newContent !== "string") {
+      const error = new Error("proposeSkillEdit requires filePath and newContent");
+      error.code = "invalid_args";
+      throw error;
+    }
+    if (!knownResourcePath("skill", filePath) || !existsSync(filePath)) {
+      const error = new Error("Skill 文件不存在");
+      error.code = "not_found";
+      throw error;
+    }
+    const currentHash = contentHashOf(readFileSync(filePath, "utf8"));
+    const nextHash = contentHashOf(newContent);
+    const draftId = `draft-${randomUUID()}`;
+    return { draftId, filePath, currentHash, nextHash, proposedBytes: newContent.length, applied: false };
+  },
+  /**
+   * P6 approval: atomically replace the skill file (tmp + rename) with the
+   * approved content, then reload the session resources so the new revision
+   * takes effect. An unapproved draft never reaches this path.
+   */
+  approveSkillEdit: async ({ draftId, filePath, newContent }) => {
+    if (typeof draftId !== "string" || !draftId.startsWith("draft-") || typeof filePath !== "string" || !filePath.trim() || typeof newContent !== "string") {
+      const error = new Error("approveSkillEdit requires a proposed draftId, filePath and newContent");
+      error.code = "invalid_args";
+      throw error;
+    }
+    if (!knownResourcePath("skill", filePath) || !existsSync(filePath)) {
+      const error = new Error("Skill 文件不存在");
+      error.code = "not_found";
+      throw error;
+    }
+    const temp = `${filePath}.tmp-${process.pid}`;
+    writeFileSync(temp, newContent, { encoding: "utf8", mode: 0o600 });
+    renameSync(temp, filePath);
+    const nextHash = contentHashOf(readFileSync(filePath, "utf8"));
+    await runtime.session.reload();
+    return { draftId, filePath, nextHash, applied: true };
   },
   setSkillCommandsEnabled: async ({ enabled }) => {
     runtime.session.settingsManager.setEnableSkillCommands(enabled !== false);

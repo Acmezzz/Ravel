@@ -8,6 +8,7 @@ import * as addressModule from "./histos-address.js";
 import * as adapters from "./histos-adapters.js";
 import * as webSource from "./histos-web-source.js";
 import * as repoSource from "./histos-repo-source.js";
+import * as selection from "./histos-selection.js";
 import { agentSpecGraph, agentRunGraph, agentSpecRevisionId, normalizeAgentSpec, seedSpecs } from "./histos-agent-spec.js";
 import { normalizeInvocationRequest, planInvocationFromRequest } from "./histos-capability.js";
 import * as provenance from "./histos-provenance.js";
@@ -953,6 +954,42 @@ export class HistosEngine {
     }
     if (typeof this.factGraph.searchFts !== "function") return { ok: false, code: "unsupported", message: "backend does not provide FTS search", triples: [] };
     return this.factGraph.searchFts(input);
+  }
+
+  /**
+   * P6 selection conversation: build the L0 skeleton + L1 distilled prompt
+   * for a node/edge selection. Cheap and deterministic — the byte cost is
+   * the enforceable part of the progressive-disclosure promise.
+   */
+  buildSelectionPrompt(input = {}) {
+    const database = this.assertOpen();
+    if (!isObject(input) || !Array.isArray(input.nodeRevisionIds) || !Array.isArray(input.edgeRevisionIds)) {
+      throw invalid("buildSelectionPrompt requires nodeRevisionIds and edgeRevisionIds arrays");
+    }
+    const query = { ...queryOf({ ...input, sourceSet: input.sourceSet ?? {}, lens: input.lens ?? "structural", granularity: input.granularity ?? "entry" }) };
+    const graph = graphRows(database, query);
+    const selectedNodes = graph.nodes.filter((node) => input.nodeRevisionIds.includes(node.nodeRevisionId) || input.nodeRevisionIds.includes(node.nodeId));
+    const selectedEdges = graph.edges.filter((edge) => input.edgeRevisionIds.includes(edge.edgeRevisionId) || input.edgeRevisionIds.includes(edge.edgeId));
+    const prompt = selection.buildSelectionPrompt({
+      title: typeof input.title === "string" ? input.title : undefined,
+      nodes: selectedNodes,
+      edges: selectedEdges,
+    });
+    return { ok: true, prompt, bytes: selection.selectionPromptBytes(prompt), nodeCount: selectedNodes.length, edgeCount: selectedEdges.length };
+  }
+
+  /**
+   * P6 histos_expand backend: extract span-level original text for a
+   * FactAddress (L2) with a hard budget (fail-closed, never silently
+   * truncated). The reader resolves the entry from the workspace sessions
+   * root — the JSONL authority, never the derived index.
+   */
+  expandEvidence(input = {}) {
+    const sessionsRoot = this.scanOptions?.sessionsRoot;
+    if (typeof sessionsRoot !== "string" || sessionsRoot.length === 0) {
+      return { ok: false, code: "no_sessions_root", message: "engine has no sessions root to expand against" };
+    }
+    return selection.expandEvidence(input, selection.jsonlEntryReader(sessionsRoot));
   }
 
   /**

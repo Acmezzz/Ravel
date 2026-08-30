@@ -15,7 +15,7 @@ const GOAL_STATUS_SET = new Set(GOAL_STATUS);
 
 export const FACT_CUSTOM_TYPE = "ravel_record";
 
-const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached", "flow_trigger", "purge_record", "config_changed", "diagnostic_observed", "goal_state", "usage_observed"]);
+const FACT_TYPES = new Set(["operation_started", "operation_finished", "approval_asked", "approval_decided", "session_reference", "context_attached", "flow_trigger", "purge_record", "config_changed", "diagnostic_observed", "goal_state", "usage_observed", "compaction_anchors"]);
 const PURGE_TARGET_KINDS = new Set(["triple", "node", "edge", "artifact", "session_index"]);
 const CONFIG_DOMAINS = new Set(["resource", "permission", "trust", "mcp", "mode", "provider", "profile"]);
 const CONFIG_ACTIONS = new Set(["create", "update", "delete"]);
@@ -239,6 +239,21 @@ export function appendFact(sessionManager, record) {
 				}
 			}
 			requireString(record, "model");
+			break;
+		}
+		case "compaction_anchors": {
+			// P6 compaction unification: the summary carries navigable memory
+			// anchors (the FactAddress entry ids of the compressed range) so
+			// histos_expand can pull the original text back later.
+			requireString(record, "summary");
+			if (!Array.isArray(record.anchors) || record.anchors.length === 0 || record.anchors.length > 4096) {
+				throw new Error("Invalid compaction_anchors fact: anchors must be an array of 1..4096 entry ids");
+			}
+			for (const anchor of record.anchors) {
+				if (typeof anchor !== "string" || anchor.length === 0 || anchor.length > 128) {
+					throw new Error("Invalid compaction_anchors fact: each anchor must be a bounded entry id string");
+				}
+			}
 			break;
 		}
 	}
@@ -612,6 +627,30 @@ export function recordUsageObserved(sessionManager, { model, tokens, elapsedMs, 
 		...(Number.isFinite(tokens) && tokens >= 0 ? { tokens } : {}),
 		...(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? { elapsedMs } : {}),
 		...(Number.isFinite(costUsd) && costUsd >= 0 ? { costUsd } : {}),
+		timestamp: Date.now(),
+	};
+	return appendFact(sessionManager, record);
+}
+
+/**
+ * Compaction memory anchors (P6): after a compaction, persist the summary
+ * plus the FactAddress entry ids of the compressed range. The JSONL keeps
+ * the original text; histos_expand can pull any anchor's span back on
+ * demand, so compaction upgrades from lossy summary to navigable memory.
+ */
+export function recordCompactionAnchors(sessionManager, { summary, anchors } = {}) {
+	if (typeof summary !== "string" || summary.length === 0) {
+		throw new Error("Invalid compaction_anchors fact: summary must be a non-empty string");
+	}
+	if (!Array.isArray(anchors) || anchors.length === 0 || anchors.length > 4096) {
+		throw new Error("Invalid compaction_anchors fact: anchors must be a non-empty array of at most 4096 entry ids");
+	}
+	const record = {
+		type: "compaction_anchors",
+		id: `compact-${randomUUID()}`,
+		lane: "main",
+		summary: summary.slice(0, 8192),
+		anchors: anchors.slice(0, 4096).map((anchor) => String(anchor).slice(0, 128)),
 		timestamp: Date.now(),
 	};
 	return appendFact(sessionManager, record);
