@@ -161,4 +161,4 @@ Histos 接入状态分三档：
 
 ## 13. 明确不做的（防止范围漂移）
 
-Neo4j/ArangoDB 等图数据库、第二套 agent runtime、云沙箱、computer use、MCP 网络传输、Radix 双轨、Monaco 节点内编辑、Canvas 2D 远景层（三条实测判据全满足前不开）。完整清单见 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md) §1。
+Neo4j/ArangoDB 等图数据库、第二套 agent runtime、云沙箱、computer use、MCP 网络传输、Radix 双轨、Monaco 节点内编辑、Canvas 2D 远景层（三条实测判据全满足前不开）。完整清单见 [`ravel-history-archive.md`](./ravel-history-archive.md) §1。

@@ -116,13 +116,11 @@ git diff --check
 - 不允许 renderer 直接访问 fs、Git、凭据、SQLite、node-pty 或 Pi SDK。
 - 不允许未审来源进入 loader，不运行在线资源安装脚本。
 - 不允许把 relay、dry-run、fake runner、接口存在或测试通过写成 workflow 生产接入、skill-inject 已完成或 memo durable 已完成。
-- 不删除 `.workbuddy/artifacts/`、`.workbuddy/memory/`、源码、测试、锁文件和 package 必要文件。
 
 ## 7. 文档关系
 
 - 不变量：[`ravel-core-design-and-next-slices.md`](./ravel-core-design-and-next-slices.md)。
-- R0–R5/H0/T1–T5 历史档案：[`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。
-- S2–S4 历史档案：[`ravel-design-activity-session-reference-mcp.md`](./ravel-design-activity-session-reference-mcp.md)。
-- 外部借鉴证据：[`ravel-example-agent-borrowing.md`](./ravel-example-agent-borrowing.md)。
+- 信息架构与路线图：[`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md)。
+- R0–R5 / S2–S4 / 四库借鉴历史骨架（三篇已归档合并）：[`ravel-history-archive.md`](./ravel-history-archive.md)。
 - 发布规范：[`ravel-release.md`](./ravel-release.md)。
 - 调研/审查原始证据：`../.workbuddy/artifacts/`，仅作证据，不作状态入口。

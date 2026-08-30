@@ -1,7 +1,7 @@
 # Ravel 核心设计
 
 更新日期：2026-08-28
-状态：**不变量仍有效。** 下一刀执行认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。铬件换栈、R0–R5 数据契约仍见 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)。
+状态：**不变量仍有效。** 下一刀执行认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。铬件换栈、R0–R5 历史骨架见 [`ravel-history-archive.md`](./ravel-history-archive.md)；信息架构与路线图见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md)。
 
 **记忆勘误：** §1「先不设计跨项目记忆」不再读成「不做记忆」。记忆就是 Histos：同工作区默认可检索、可建议；跨工作区只能显式搬运已 freeze 的 ContextSet。不另做记忆产品。
 
@@ -126,7 +126,7 @@ SQLite = rebuild(JSONL facts, Git workspace, skill files, durable artifacts)
 - Neo4j / 通用图数据库 / Monaco / 自研 Canvas 引擎
 - Radix 与 Base UI 长期双轨；Vite 6 / TS 5 作为长期基线
 
-> 2026-08-28 勘误：原「网络安装 skills、OAuth 当 MVP」「MCP 网络传输」不作为永久排除。MCP（含 http/sse 传输与 OAuth）、skills、plugin 是完整 Agent 的普遍能力，Ravel 必须有，纳入基线补齐（见 [`ravel-example-agent-borrowing.md`](./ravel-example-agent-borrowing.md) §3）。仍按设计排除的是：把这些执行挪出 Pi 审批管线、把凭据写进 JSONL、以及云沙箱/computer use。
+> 2026-08-28 勘误：原「网络安装 skills、OAuth 当 MVP」「MCP 网络传输」不作为永久排除。MCP（含 http/sse 传输与 OAuth）、skills、plugin 是完整 Agent 的普遍能力，Ravel 必须有，纳入基线补齐（见 [`ravel-history-archive.md`](./ravel-history-archive.md) §3）。仍按设计排除的是：把这些执行挪出 Pi 审批管线、把凭据写进 JSONL、以及云沙箱/computer use。
 
 ---
 
@@ -147,7 +147,7 @@ Ravel 已经站住、不要推倒的：
 - ContextSet 超窗后的用户收缩 UX（优先级裁剪与 `budget_exceeded` fail-closed 已落地）
 - Electron crashReporter 上传（三进程本地崩溃诊断已落地）
 
-铬件底层已是 Base UI、构建已是 Vite 8.2.2 + Rolldown + TypeScript 7 + Electron 44（T1–T5 已提交）。这些能力的历史落点见 [`ravel-histos-refactor-plan.md`](./ravel-histos-refactor-plan.md)；当前状态与剩余缺口以 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md) 为准。
+铬件底层已是 Base UI、构建已是 Vite 8.2.2 + Rolldown + TypeScript 7 + Electron 44（T1–T5 已提交）。这些能力的历史落点见 [`ravel-history-archive.md`](./ravel-history-archive.md) §1；当前状态与剩余缺口以 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md) 为准。
 
 ---
 
@@ -170,7 +170,7 @@ Ravel 已经站住、不要推倒的：
 - `riskTierOf`：已知工具 read / mutating，其余 untrusted
 - streaming 按 `${sessionId}:${runtimeEpoch}:${runId}` 分桶
 
-S2 / S3 / S4（已完成，设计见 [`ravel-design-activity-session-reference-mcp.md`](./ravel-design-activity-session-reference-mcp.md)）：
+S2 / S3 / S4（已完成，设计骨架见 [`ravel-history-archive.md`](./ravel-history-archive.md) §2）：
 
 - S2 动态视图：零新事实，纯投影
 - S3 `@session`：`session_reference` 边
