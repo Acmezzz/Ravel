@@ -23,9 +23,12 @@ function invalid(message) {
 
 /**
  * Build the L0+L1 selection prompt. L0 is the skeleton (kind + title +
- * relationship edges) and L1 the distilled title list — both are cheap to
- * assemble and their byte cost is the enforceable part of the promise that
- * a selection conversation starts with structure, not raw text.
+ * relationship edges); L1 is the distilled layer — it carries the nodes'
+ * `summary`/`distill` text (condenseGraph/distill products) and explicitly
+ * omits nodes without one, so L1 is real information gain over L0, not a
+ * re-listing. Both layers are cheap and their byte cost is the enforceable
+ * part of the promise that a selection conversation starts with structure,
+ * not raw text.
  */
 export function buildSelectionPrompt(input = {}) {
   if (!input || typeof input !== "object") throw invalid("selection prompt input must be an object");
@@ -44,6 +47,15 @@ export function buildSelectionPrompt(input = {}) {
       return `- ${edge.kind ?? "edge"}: ${srcLabel} → ${dstLabel}`;
     })
     .join("\n");
+  const distilled = nodes
+    .map((node) => {
+      const summary = typeof node.summary === "string" && node.summary.length > 0 ? node.summary : typeof node.distill === "string" && node.distill.length > 0 ? node.distill : null;
+      if (summary === null) return null;
+      const label = node.title ?? node.nodeId ?? node.nodeRevisionId ?? "?";
+      const bounded = summary.length > 512 ? `${summary.slice(0, 512)}…` : summary;
+      return `- ${label}: ${bounded}`;
+    })
+    .filter((line) => line !== null);
   const lines = [
     `选区：${title}（${nodes.length} 节点 / ${edges.length} 边）`,
     "",
@@ -51,9 +63,7 @@ export function buildSelectionPrompt(input = {}) {
     skeleton || "(空选区)",
     "",
     "## L1 凝练",
-    ...(nodes.length > 0
-      ? nodes.map((node) => `- ${node.kind ?? "node"} · ${node.title ?? node.nodeId ?? "?"}`)
-      : ["(无凝练摘要)"]),
+    ...(distilled.length > 0 ? distilled : ["(本选区无凝练摘要；需要细节时经 histos_expand 拉取原文)"]),
     "",
     "## 关系边",
     edgeLines || "(无关系边)",

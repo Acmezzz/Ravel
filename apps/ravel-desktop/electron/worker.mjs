@@ -23,7 +23,7 @@ import { completeSimple, contentText } from "@earendil-works/pi-ai/compat";
 import { Type } from "typebox";
 import { processLog } from "./process-log.js";
 import * as bridge from "./agent-bridge.js";
-import { expandEvidence, DEFAULT_EXPAND_BUDGET } from "./histos-selection.js";
+import { expandEvidence, DEFAULT_EXPAND_BUDGET, jsonlEntryReader } from "./histos-selection.js";
 import { contentHashOf } from "./content-hash.js";
 import { AGENT_DIR } from "./agent-bridge.js";
 import {
@@ -434,12 +434,15 @@ let permissionRulesets = [];
 /**
  * P6: histos_expand — the LLM-facing L2 evidence tool. Resolves a session
  * entry FactAddress to its original text (span-aware), fail-closed on
- * budget. Reads the current session's JSONL through the session manager —
- * the durable authority — never a derived index.
+ * budget. The current session's in-memory entries are tried first (fast
+ * path); a miss falls back to the durable JSONL on disk via
+ * `jsonlEntryReader` — compaction swaps old entries out of memory, and
+ * cross-session expands address another session's file, so the durable
+ * authority (never a derived index) is the fallback that keeps the P6
+ * "navigable memory anchors" promise.
  */
-function sessionManagerEntryReader(sessionManager) {
-  void sessionManager;
-  return ({ sessionId, entryId }) => {
+function sessionManagerEntryReader(sessionManager, sessionsRoot) {
+  const memoryReader = ({ entryId }) => {
     const entries = typeof sessionManager.getEntries === "function" ? sessionManager.getEntries() : [];
     const entry = entries.find((item) => (item.id ?? item.entryId) === entryId);
     if (!entry) return null;
@@ -449,6 +452,14 @@ function sessionManagerEntryReader(sessionManager) {
       return content.map((part) => (part && typeof part === "object" && typeof part.text === "string" ? part.text : "")).join("");
     }
     return null;
+  };
+  const diskReader = typeof sessionsRoot === "string" && sessionsRoot.length > 0 ? jsonlEntryReader(sessionsRoot) : null;
+  return ({ sessionId, entryId }) => {
+    // In-memory only applies to the current session; anything else (a
+    // compacted entry or another session's id) must read the JSONL.
+    const inMemory = sessionId === runtime?.session?.sessionId ? memoryReader({ entryId }) : null;
+    if (typeof inMemory === "string") return inMemory;
+    return diskReader ? diskReader({ sessionId, entryId }) : null;
   };
 }
 
@@ -475,7 +486,7 @@ const histosExpandTool = {
         ...(params.selector ? { selector: params.selector } : {}),
         budget: params.budget ?? DEFAULT_EXPAND_BUDGET,
       },
-      sessionManagerEntryReader(sessionManager),
+      sessionManagerEntryReader(sessionManager, join(AGENT_DIR, "sessions")),
     );
     if (!result.ok) {
       return { ok: false, isError: true, content: `histos_expand: ${result.message}` };

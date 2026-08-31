@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile as readFileAsync } from "node:fs/promises";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -30,6 +31,19 @@ test("buildSelectionPrompt produces an L0+L1 prompt whose byte size is small and
   assert.match(prompt, /## L1 凝练/);
   assert.match(prompt, /bash/);
   assert.match(prompt, /原文（L2）不在此 prompt 中/);
+  // L1 is the distilled layer: nodes without a summary/distill are not
+  // re-listed (that would duplicate L0), and a summarized node carries its
+  // distillation text as real information gain.
+  const withSummary = buildSelectionPrompt({
+    nodes: [
+      { nodeId: "n-1", nodeRevisionId: "r-1", kind: "operation", title: "run: inspect", summary: "inspected the diff" },
+      { nodeId: "n-2", nodeRevisionId: "r-2", kind: "tool", title: "bash" },
+    ],
+    edges: [],
+  });
+  assert.match(withSummary, /inspected the diff/, "L1 must carry the distilled summary");
+  const l1Section = withSummary.split("## L1 凝练")[1]?.split("## 关系边")[0] ?? "";
+  assert.ok(!l1Section.includes("· bash"), "L1 must not re-list nodes without a summary");
   // Empty selection still yields a valid prompt.
   const empty = buildSelectionPrompt({ nodes: [], edges: [] });
   assert.match(empty, /\(空选区\)/);
@@ -101,7 +115,6 @@ test("histos_expand is registered as an agent tool in agent-bridge", async () =>
 
 // --- Task 25/26: skill edit drafts + compaction anchors ---
 
-import { readFile as readFileAsync } from "node:fs/promises";
 import { recordCompactionAnchors } from "../electron/session-facts.js";
 
 function anchorManager() {
@@ -134,4 +147,14 @@ test("worker.mjs registers proposeSkillEdit/approveSkillEdit and compaction anch
   assert.match(worker, /approveSkillEdit: async/);
   assert.match(worker, /tmp-\$\{process\.pid\}/);
   assert.match(worker, /recordCompactionAnchors/);
+});
+
+test("worker histos_expand falls back to the durable JSONL when the entry left memory", async () => {
+  const worker = await readFileAsync(new URL("../electron/worker.mjs", import.meta.url), "utf8");
+  // The reader must fall back to the JSONL on disk (compacted / cross-session
+  // entries are not in memory), which is what keeps the compaction anchor
+  // promise: expand can pull original text back after compaction.
+  assert.match(worker, /sessionManagerEntryReader\(sessionManager, join\(AGENT_DIR, "sessions"\)\)/);
+  assert.match(worker, /jsonlEntryReader\(sessionsRoot\)/);
+  assert.match(worker, /In-memory only applies to the current session/);
 });
