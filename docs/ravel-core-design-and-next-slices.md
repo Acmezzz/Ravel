@@ -1,7 +1,7 @@
 # Ravel 核心设计
 
-更新日期：2026-08-28
-状态：**不变量仍有效。** 下一刀执行认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。铬件换栈、R0–R5 历史骨架见 [`ravel-history-archive.md`](./ravel-history-archive.md)；信息架构与路线图见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md)。
+更新日期：2026-08-31
+状态：**不变量仍有效。** 下一刀执行认 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)。铬件换栈、R0–R5 历史骨架见 [`ravel-history-archive.md`](./ravel-history-archive.md)；信息架构与路线图见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md)（P0–P8 已全部实现）。
 
 **记忆勘误：** §1「先不设计跨项目记忆」不再读成「不做记忆」。记忆就是 Histos：同工作区默认可检索、可建议；跨工作区只能显式搬运已 freeze 的 ContextSet。不另做记忆产品。
 
@@ -142,10 +142,11 @@ Ravel 已经站住、不要推倒的：
 
 现在不到位、且仍阻塞产品深度的：
 
-- 生产 `semanticProvider` 未接入 Histos worker（桌面 semantic 凝练离线）；eval / 成本遥测未做
+- 生产 `semanticProvider` 未接入 Histos worker（桌面 semantic 凝练离线；契约与 relay 已就绪，依赖真实模型/凭据/运行环境单独验收，见 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md) §5.3）
 - 交互式嵌套 Sub Flow UI（递归 compound ELK 布局已落地）
-- ContextSet 超窗后的用户收缩 UX（优先级裁剪与 `budget_exceeded` fail-closed 已落地）
 - Electron crashReporter 上传（三进程本地崩溃诊断已落地）
+
+已随 P0–P8 落地（2026-08-31）：ContextSet 超窗收缩 UX（`budget_exceeded` fail-closed）、GoalState 接 worker 主流程（`goal-state.js`）、compaction 记忆锚点（`recordCompactionAnchors`）、能力运作流程视图（`histos-capability-flow.js`）、项目知识入图与 handoff（`engine.applyProjectKnowledge` / `createHandoff` / `listArtifacts`）。
 
 铬件底层已是 Base UI、构建已是 Vite 8.2.2 + Rolldown + TypeScript 7 + Electron 44（T1–T5 已提交）。这些能力的历史落点见 [`ravel-history-archive.md`](./ravel-history-archive.md) §1；当前状态与剩余缺口以 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md) 为准。
 
@@ -180,9 +181,9 @@ C4 shadow-git checkpoint 已落地：`appendCheckpointFacts` 写成 `operation_s
 
 ---
 
-## 5. 实施状态（2026-08-28）
+## 5. 实施状态（2026-08-28，历史快照）
 
-已在 feature 分支落地，尚未合进 `main`：
+以下内容当时在 feature 分支，**现已全部合进 `main`**（截至 2026-08-31，Histos P0–P8 全路线完成，提交链 `b8ef00dc1` → `99976d1e0`）：
 
 - 切片 0 / 1 / S2–S4
 - Histos R0–R5：Engine utilityProcess、FactAddress、Evidence、revision DAG、工作区 sqlite、durable artifacts、React Flow、Convert to Flow / Validate、隔离 PTY、`app://`
