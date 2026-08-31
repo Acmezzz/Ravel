@@ -566,10 +566,6 @@ export function projectStructuralGraph(input, options) {
   return graph;
 }
 
-export const scanSession = scanSessionFile;
-export const scanWorkspace = scanWorkspaceSessions;
-export const structuralGraph = projectStructuralGraph;
-
 // Kept as a named export for callers that need to construct addresses while
 // interpreting a scan, without depending on the internal helper names.
 export { sessionEntryAddress };

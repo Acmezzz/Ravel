@@ -1343,7 +1343,7 @@ export class HistosEngine {
     const database = this.assertOpen();
     if (!isObject(input) || !Array.isArray(input.configs)) throw invalid("applyMcpConfigs requires a configs array");
     const result = emptyResult(this.workspaceId);
-    const graph = adapters.projectMcpConfigGraph(input.configs, { workspaceId: this.workspaceId });
+    const graph = adapters.projectMcpConfigGraph(input.configs);
     resultFromWebGraph(graph, result);
     linkNodeRevisionParents(database, result);
 

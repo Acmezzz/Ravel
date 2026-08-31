@@ -13,7 +13,6 @@ import {
  * version.
  */
 export const HISTOS_SCHEMA_VERSION = "2";
-export const SCHEMA_VERSION = HISTOS_SCHEMA_VERSION;
 
 const TABLE_DEFINITIONS = Object.freeze({
   addresses: Object.freeze([

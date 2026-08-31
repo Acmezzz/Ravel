@@ -20,7 +20,6 @@ export const STRATEGY_EXECUTORS = Object.freeze(["agent-loop", "skill-inject", "
 /** executors that are not yet wired to a production path must not be approved. */
 export const WIRED_EXECUTORS = Object.freeze(["agent-loop", "flow-engine"]);
 export const DEFAULT_STRATEGY_BUDGET = 64_000;
-export const MAX_STRATEGY_BUDGET = 1_000_000;
 
 function invalid(message) {
   const error = new TypeError(message);

@@ -13,7 +13,6 @@ import { join } from "node:path";
 export const DEFAULT_EXPAND_BUDGET = 32_000;
 export const MAX_EXPAND_BUDGET = 128_000;
 const MAX_SELECTION_NODES = 512;
-const MAX_EVIDENCE_ITEMS = 128;
 
 function invalid(message) {
   const error = new TypeError(message);
@@ -152,4 +151,3 @@ export function jsonlEntryReader(sessionsRoot) {
   };
 }
 
-export const SELECTION_CONSTANTS = Object.freeze({ DEFAULT_EXPAND_BUDGET, MAX_EXPAND_BUDGET, MAX_SELECTION_NODES, MAX_EVIDENCE_ITEMS });

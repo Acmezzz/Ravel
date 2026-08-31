@@ -110,5 +110,3 @@ export function parseCapabilityFlow({ kind, name, content }) {
   const nodeRevisionId = createHash("sha256").update(`capability-flow:${nodeId}:${contentSha256}`, "utf8").digest("hex");
   return { artifact, nodeId, nodeRevisionId };
 }
-
-export const CAPABILITY_FLOW_CONSTANTS = Object.freeze({ FLOW_SCHEMA_VERSION, MAX_STEPS, MAX_TRIGGERS, MAX_OUTPUTS });

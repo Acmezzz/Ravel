@@ -215,5 +215,3 @@ export function scanRepository(root, options = {}) {
     fileCount: files.length,
   };
 }
-
-export const REPO_SOURCE_CONSTANTS = Object.freeze({ MAX_REPO_FILES, IGNORED_DIRS, LANGUAGE_BY_EXTENSION });
