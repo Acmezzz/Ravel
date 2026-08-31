@@ -361,7 +361,7 @@ test("panels no longer hardcode dark-only backgrounds", async () => {
 
 test("agent tools include the pi search tools (grep/find/ls)", async () => {
   const source = await read("../electron/agent-bridge.js");
-  assert.match(source, /\["read", "bash", "edit", "write", "grep", "find", "ls"\]/);
+  assert.match(source, /\["read", "bash", "edit", "write", "grep", "find", "ls", "histos_expand"\]/);
 });
 
 test("native menu bar is replaced by the in-app title bar", async () => {

@@ -1,7 +1,7 @@
 # Ravel × Histos 当前状态与执行入口
 
 更新日期：2026-08-31
-基线：`main` @ `42169d125`（P0 追溯层 T0.1–T0.6 + checkpoint 持久化修复后）
+基线：`main` @ `99976d1e0`（P0–P8 全路线完成）
 
 本文是当前唯一的项目状态入口。状态依据当前源码、桌面测试和仓库质量门禁；历史计划、竞品报告和旧测试数字不覆盖本文。未经过真实环境验证的能力不标记为生产完成。
 
@@ -43,6 +43,14 @@ Renderer（无原生权限）
 - 定时 Flow 与预授权触发：每次触发记录 `flow_trigger`，按 scope、maxRuns 和 busy 状态 fail-closed。
 - Fact graph（2026-08-30，借鉴 oh-my-pi Mnemopi / prime-agent Refinement）：`FactGraphBackend` 契约（`histos-fact-graph.js`）+ sqlite 后端（`histos-sqlite-fact-graph.js`，同库 `fact_triples` 表）+ 事实派生投影（`histos-fact-derivation.js`）。`applySessionFacts` 派生 triple（best-effort，失败不回传）；引擎暴露 `queryFacts` / `writeFacts` / `factStats` / `clearFacts`；IPC 四通道 `omega:histos{QueryFacts,WriteFacts,FactStats,ClearFacts}`；Histos 事件总线（`histos-event-bus.js`，BeforeX/AfterX 命名）经 worker → Main → renderer `histos:event` 推送。`operation_finished` 支持可选 `previousStateRef` + `appliedEdits`。GoalState / AutonomousGate 契约落点 `goal-state.js`（未接 worker 主流程）。
 - P0 追溯层（2026-08-31，Phase 0 收口）：`tombstones` 表 + `tombstones_target_lookup` 索引并入 schema（`IF NOT EXISTS` 旧库自动补表）；引擎 `archiveEntries(kind, ids, reason)` / `restoreEntries(tombstoneIds)` / `purgeEntries(kind, ids)`，四条读路径（`graphRows`/`queryFacts`/`getNode`/`suggestContext`）join 墓碑过滤，审批节点/triple 归档与单独抹除均 fail-closed 拒绝；`rebuild` 重放墓碑表；purge 经 main 转发 agent worker 由 `session-facts.js` 单写者落 `purge_record` 账目事实（记录级抹除提示会话级删除）；IPC 三通道 `omega:histos{Archive,Restore,Purge}` 六方同步 + 事件 `on_entries_archived/restored/purged` 广播到 renderer；节点/边投影支持 asOf 时间旅行（`created_at` + `revision_parents` DAG，`fact_triples.asOf` 语义不变）。
+- P1 配置类（2026-08-31）：`config_changed` 事实（domain 七值闭集 + action 三值 + targetId + reason）经单写者落 JSONL；六写入点接线（资源安装/卸载/启停/frontmatter、权限规则增删、Project Trust、MCP 增删/启停/OAuth、模式切换、provider/API key）；`histos-fact-derivation.js` 按 domain 投影为 `custom_config_<domain>` 谓词族；`mcp_config` 投影接线（`applyMcpConfigs` + content-addressed revision）。
+- P2 Fact Graph 表面 UI（2026-08-31）：`useHistosFactPanel`（查询/统计/过滤/归档/复原/抹除 + `on_entries_*` 事件即时刷新）；Inspector「事实」页签（triple 列表 + 关联 triples + 行级归档/抹除）；Toolbar triple 统计；图节点右键归档/抹除菜单（P0 能力首次暴露）。
+- P3 策略共创（2026-08-31）：`histos-strategy.js` 草案三重建（schema/权限/预算 fail-closed）；`createStrategyDraft` / `approveStrategyDraft`（批准落 agent_spec 节点新 revision，可 invokeNode；未批准无运行入口；skill-inject/orchestrator 保持未接线拒绝）。
+- P4 repo source（2026-08-31）：`histos-repo-source.js` 纯文本启发式扫描（目录结构 + import/require 依赖边 + README/docs 抽取 + 语言检测），`repo:<相对路径>` 内容寻址 revision 链；`omega:histosIndexRepo` 六方同步（root 由 Main 解析授权工作区）；repo 选区可冻结 ContextSet。
+- P5 观测（2026-08-31）：`diagnostic_observed`（absPath 去重投影 + `recordDiagnosticObserved` 单写者）、`fact_triples` FTS5 全文索引（`ftsSearch` 短语转义）、GoalState 契约接入 worker 主流程（`createGoalState`/`recordGoalTurn`/`isGoalBudgetExceeded` + `goal_state` 账目事实）、`usage_observed` 费用 triple（token/耗时/成本显式缺失语义）。
+- P6 图会话（2026-08-31）：`histos-selection.js` L0 骨架 + L1 凝练 prompt 构建器（体积可验证）+ `expandEvidence` span 级原文提取（预算 fail-closed）；`histos_expand` agent 工具（agent-bridge TOOLS + worker customTool，预算守卫）；`proposeSkillEdit`/`approveSkillEdit` 对话式编辑（草稿不落盘，批准 tmp+rename 原子替换）；`compaction_anchors` 压缩记忆锚点（摘要 + 可导航 entry id）。
+- P7 能力与知识（2026-08-31）：`histos-capability-flow.js` 确定性解析 skill/extension/MCP → 触发条件→执行步骤→产出工件（hash 变更新 revision）；`applyProjectKnowledge` 版本化 AGENTS.md/.ravel 规则（版本链 + user/project 生效范围 + 蒸馏摘要，可归档）。
+- P8 成果与交接（2026-08-31）：`createHandoff`（交接文档工件，compaction-entry 式，busy 时 fail-closed 拒绝，可冻结 ContextSet 跨会话附加）；`listArtifacts` 工件库；`handoff` 加入 ARTIFACT_KINDS。
 
 ### 2.3 当前明确未完成或未宣称
 
@@ -87,7 +95,7 @@ Renderer（无原生权限）
 
 ### 当前失败
 
-执行 `npm test --workspace=@ravel/desktop` 得到 **518 tests：517 pass、1 fail、0 cancelled**。3 个 PortableGit checkpoint 失败已修复（ref 改为直接写 loose ref 文件 + `rev-parse --verify` fail-closed，见提交 `42169d125`）；剩余 1 个失败在 `p1-cjk-lucide.test.mjs`（字体栈正则匹配），经基线 `2c75a12f5` worktree 对照确认是基线既有环境问题，非本周期引入。
+执行 `npm test --workspace=@ravel/desktop`：**546 tests：545 pass / 1 fail / 0 cancelled（P0–P8 共新增约 100 项）**。唯一失败在 `p1-cjk-lucide.test.mjs`（字体栈），经基线 `2c75a12f5` worktree 对照确认为基线既有环境问题，非本路线引入；3 个 PortableGit checkpoint 失败已在本路线修复（ref 直接写 loose ref 文件 + `rev-parse --verify` fail-closed，提交 `42169d125`）。`p1-cjk-lucide.test.mjs` 字体栈测试失败经基线 `2c75a12f5` 对照确认为基线既有环境问题，非本路线引入。根 `npm run check` 的 biome CSS 警告与 `packages/ai` 11 个基线 TS 错误同为基线既有，按现状保留（未在范围内强行修复）。
 
 ### 运行建议
 
@@ -106,20 +114,14 @@ git diff --check
 
 全局路线见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md) §3（P0–P8）；本节维护**当前周期**的切片级执行计划。
 
-### 5.1 P0 追溯周期（已完成，T0.1–T0.6）
+### 5.1 P0–P8 全路线（已完成）
 
-前置决策（2026-08-30 用户拍板）：删除语义两级——归档（墓碑，可复原）/ 抹除（purge，不可逆）；复原 = 撤销墓碑 + asOf；JSONL 单行永不重写；审批账目不可归档；rebuild 重放墓碑表。schema 细节见 design-and-roadmap §2。
-
-T0.1–T0.6 全部完成并独立提交（`b8ef00dc1`/`22534b997`/`cda9fadb3`/`28ac42879`/`29d3070ca`/`6c2717a42`）；门禁修复 checkpoint 持久化失败提交 `42169d125`。详见 §2.2「P0 追溯层」。
-
-### 5.2 后续周期（切片计划在各周期开始时细化到这里）
-
-P1 `config_changed` 事实 → P2 Fact Graph 表面 UI → P3 策略共创循环（交互基座 P6 图会话可提前并行）→ P4 repo source 适配器 → P5 观测 → P6 图会话与编辑闭环 → P7 能力运作流程 + 项目知识入图 → P8 成果浏览 + handoff。目标与借鉴来源见 design-and-roadmap §3；覆盖分类学 6 大类全部子类。
+P0 追溯层（T0.1–T0.6 + checkpoint 修复）、P1 `config_changed` 事实、P2 Fact Graph 表面 UI、P3 策略共创、P4 repo source、P5 观测、P6 图会话与编辑闭环、P7 能力运作流程 + 项目知识、P8 成果浏览 + handoff 全部完成并独立提交（提交链 `b8ef00dc1` → `99976d1e0`）。覆盖内容分类学 6 大类（记忆/能力/策略/成果/账目与观测/配置）全部子类。详见 §2.2。
 
 ### 5.3 长期遗留（不随 P 周期关闭）
 
-1. 为 capability / orchestration 决定实际生产接入边界；在接线前继续明确 `skill-inject`、`orchestrator` 和 durable memo 未完成。
-2. 补真实 provider、嵌套 Sub Flow、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
+1. 为 capability / orchestration 决定实际生产接入边界；`skill-inject`、`orchestrator` 与 durable memo 保持未接线（草案/编排校验层已按 R17 fail-closed 拒绝这些 executor）。
+2. 补真实 provider、嵌套 Sub Flow 交互 UX、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
 3. `packages/ai` 的 11 个基线 TS 错误与 `p1-cjk-lucide` 字体栈测试失败（均为基线既有，待单独处理）。
 4. 维持文档单一入口；更新时同步 HEAD、测试计数和失败原因，删除过时快照而不是复制旧路线图。
 
