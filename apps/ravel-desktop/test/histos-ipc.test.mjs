@@ -235,6 +235,15 @@ test("archive/restore/purge schemas enforce the closed target kind and bounded i
   assert.equal(histosPurgeRequest({ kind: "bogus", ids: ["x"] }), null);
 });
 
+test("purge handler refuses without an active session (erase stays auditable, design 2.1)", async () => {
+  const main = await readSource("../electron/main.js");
+  const section = main.slice(main.indexOf('ipcMain.handle("omega:histosPurge"'));
+  // The active-session check must run before purgeEntries is called, so a
+  // physical delete can never commit with a silently lost purge_record fact.
+  assert.ok(section.indexOf('if (!worker?.sessionId)') < section.indexOf('histos.call("purgeEntries"'), "session check precedes the delete");
+  assert.match(section, /no_active_session/);
+});
+
 test("preload and schema sources expose no private Histos DTO fields", async () => {
   const preload = await readSource("../electron/preload.js");
   const schemas = await readSource("../electron/ipc-schemas.js");

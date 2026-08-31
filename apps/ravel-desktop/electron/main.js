@@ -2348,14 +2348,22 @@ ipcMain.handle("omega:histosPurge", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const normalized = histosPurgeRequest(req);
   if (!normalized) return errorResult("invalid_args", "kind must be one of triple/node/edge/artifact/session_index with 1..512 ids and an optional reason");
+  // Erase must stay auditable (design 2.1: "抹除这件事本身留痕"): the
+  // purge_record fact goes through the JSONL single writer on the agent
+  // worker, which requires an active session. Without one the physical
+  // delete would commit with a silently lost audit trail, so refuse the
+  // erase up front instead of deleting then reporting the failed record.
+  if (!worker?.sessionId) {
+    return errorResult("no_active_session", "purge requires an active session to record the purge_record fact; open a session first");
+  }
   try {
     const histos = await activeHistos();
     const result = await histos.call("purgeEntries", normalized);
     // The erase itself stays auditable: the purge_record fact is written by
     // the agent worker through session-facts (the JSONL single writer).
     // Best effort like every fact write — a failed append never un-deletes.
-    let purgeRecord = { ok: false, error: "no active session" };
-    if (result?.purgeFact && worker?.sessionId) {
+    let purgeRecord = { ok: false, error: "purge fact append failed" };
+    if (result?.purgeFact) {
       try {
         await worker.call("recordPurge", { ...result.purgeFact, sessionId: worker.sessionId });
         purgeRecord = { ok: true };
