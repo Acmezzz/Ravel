@@ -1115,6 +1115,25 @@ export class HistosEngine {
   }
 
   /**
+   * List the archive ledger so the surface can show what is archived and
+   * offer restore. Active tombstones (revoked_at IS NULL) come first; the
+   * audit trail (revoked tombstones) stays queryable too, bounded so a
+   * large ledger cannot blow up the IPC payload.
+   */
+  listTombstones({ limit = 200, includeRevoked = false } = {}) {
+    const database = this.assertOpen();
+    const bounded = Number.isSafeInteger(limit) ? Math.max(1, Math.min(1000, limit)) : 200;
+    const rows = database.prepare(
+      `SELECT id, target_kind AS targetKind, target_id AS targetId, reason, created_at AS createdAt, revoked_at AS revokedAt
+       FROM tombstones
+       WHERE revoked_at IS NULL OR (? = 1)
+       ORDER BY (revoked_at IS NULL) DESC, created_at DESC, id ASC
+       LIMIT ?`,
+    ).all(includeRevoked === true ? 1 : 0, bounded);
+    return { ok: true, tombstones: rows, count: rows.length, total: database.prepare("SELECT COUNT(*) AS count FROM tombstones WHERE revoked_at IS NULL").get().count };
+  }
+
+  /**
    * P0 erase: the only physical deletion. Index rows (fact_triples /
    * node_revisions / edge_revisions / artifacts) disappear for good and
    * artifact files are removed from disk. Approval accounting refuses to be

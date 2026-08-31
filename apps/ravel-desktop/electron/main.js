@@ -100,6 +100,7 @@ import {
   histosWriteFactsRequest,
   histosArchiveRequest,
   histosRestoreRequest,
+  histosListTombstonesRequest,
   histosPurgeRequest,
   histosIndexRepoRequest,
   histosSuggestContextRequest,
@@ -2341,6 +2342,19 @@ ipcMain.handle("omega:histosRestore", async (event, req) => {
     return okResult(result ?? { ok: true, restoredCount: 0 });
   } catch (error) {
     return errorResult(error?.code ?? "restore_failed", error instanceof Error ? error.message : String(error));
+  }
+});
+
+ipcMain.handle("omega:histosListTombstones", async (event, req) => {
+  if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
+  const normalized = histosListTombstonesRequest(req);
+  if (normalized === null) return errorResult("invalid_args", "limit must be 1..1000 and includeRevoked must be boolean when present");
+  try {
+    const histos = await activeHistos();
+    const result = await histos.call("listTombstones", normalized ?? {});
+    return okResult(result ?? { ok: true, tombstones: [], count: 0, total: 0 });
+  } catch (error) {
+    return errorResult(error?.code ?? "list_tombstones_failed", error instanceof Error ? error.message : String(error));
   }
 });
 

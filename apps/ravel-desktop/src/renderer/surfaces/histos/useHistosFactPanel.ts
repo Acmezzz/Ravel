@@ -14,6 +14,7 @@ import { histosClient } from "../../ipc/histos-client";
 import type {
   HistosFactTripleDTO,
   HistosFactStatsDTO,
+  HistosTombstoneDTO,
   HistosTombstoneTargetKind,
 } from "../../types/dto";
 
@@ -33,6 +34,10 @@ export interface HistosFactPanel {
   relatedTo: (sessionId: string) => Promise<HistosFactTripleDTO[]>;
   /** P0 archive: write tombstones over triple/node/edge ids. */
   archive: (kind: HistosTombstoneTargetKind, ids: string[], reason?: string) => Promise<string | null>;
+  /** Active archive ledger (tombstones that have not been revoked). */
+  tombstones: HistosTombstoneDTO[];
+  /** Reload the archive ledger. */
+  refreshTombstones: () => Promise<void>;
   /** P0 restore: revoke tombstones. */
   restore: (tombstoneIds: string[]) => Promise<string | null>;
   /** P0 purge: physical erase with the owning-session hint surfaced. */
@@ -47,6 +52,7 @@ function messageOf(result: { ok?: boolean; message?: string; code?: string } | n
 export function useHistosFactPanel(): HistosFactPanel {
   const [triples, setTriples] = React.useState<HistosFactTripleDTO[]>([]);
   const [stats, setStats] = React.useState<HistosFactStatsDTO | null>(null);
+  const [tombstones, setTombstones] = React.useState<HistosTombstoneDTO[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [predicateFilter, setPredicateFilter] = React.useState("");
@@ -68,15 +74,24 @@ export function useHistosFactPanel(): HistosFactPanel {
     }
   }, [predicateFilter]);
 
+  const refreshTombstones = React.useCallback(async () => {
+    const result = await histosClient.histosListTombstones({ limit: 200 });
+    setTombstones(result.ok ? result.data.tombstones : []);
+  }, []);
+
   React.useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void refreshTombstones();
+  }, [refresh, refreshTombstones]);
 
   React.useEffect(() => {
     return histosClient.onHistosEvent(({ eventType }) => {
-      if (TRIPLE_REFRESH_EVENTS.has(eventType)) void refresh();
+      if (TRIPLE_REFRESH_EVENTS.has(eventType)) {
+        void refresh();
+        void refreshTombstones();
+      }
     });
-  }, [refresh]);
+  }, [refresh, refreshTombstones]);
 
   const relatedTo = React.useCallback(async (sessionId: string): Promise<HistosFactTripleDTO[]> => {
     const result = await histosClient.histosQueryFacts({ subject: `session:${sessionId}*`, limit: 100 });
@@ -88,28 +103,31 @@ export function useHistosFactPanel(): HistosFactPanel {
     const result = await histosClient.histosArchive({ kind, ids, ...(reason ? { reason } : {}) });
     if (result.ok) {
       await refresh();
+      await refreshTombstones();
       return null;
     }
     return messageOf(result, "archive failed");
-  }, [refresh]);
+  }, [refresh, refreshTombstones]);
 
   const restore = React.useCallback(async (tombstoneIds: string[]): Promise<string | null> => {
     const result = await histosClient.histosRestore({ tombstoneIds });
     if (result.ok) {
       await refresh();
+      await refreshTombstones();
       return null;
     }
     return messageOf(result, "restore failed");
-  }, [refresh]);
+  }, [refresh, refreshTombstones]);
 
   const purge = React.useCallback(async (kind: HistosTombstoneTargetKind, ids: string[], reason?: string): Promise<{ error: string | null; hint?: string }> => {
     const result = await histosClient.histosPurge({ kind, ids, ...(reason ? { reason } : {}) });
     if (result.ok) {
       await refresh();
+      await refreshTombstones();
       return { error: null, hint: result.data.hint };
     }
     return { error: messageOf(result, "purge failed") };
-  }, [refresh]);
+  }, [refresh, refreshTombstones]);
 
   return {
     triples,
@@ -121,6 +139,8 @@ export function useHistosFactPanel(): HistosFactPanel {
     refresh,
     relatedTo,
     archive,
+    tombstones,
+    refreshTombstones,
     restore,
     purge,
   };

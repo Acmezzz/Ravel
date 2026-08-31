@@ -156,6 +156,7 @@ test("new IPC handlers stay behind senderAllowed and return an IpcResult envelop
     "omega:histosArchive",
     "omega:histosIndexRepo",
     "omega:histosRestore",
+    "omega:histosListTombstones",
     "omega:histosPurge",
     "agent:abort",
   ]) {
@@ -220,6 +221,7 @@ test("preload exposes a narrow validated bridge including omega:* methods", asyn
     "histosArchive",
     "histosIndexRepo",
     "histosRestore",
+    "histosListTombstones",
     "histosPurge",
   ]) {
     assert.match(source, new RegExp(`ipcRenderer\\.invoke\\("omega:${method}"`), `${method} invoke present`);

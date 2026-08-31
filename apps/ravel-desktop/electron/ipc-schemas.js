@@ -489,6 +489,16 @@ export function histosPurgeRequest(value) {
   return histosArchiveRequest(value);
 }
 
+export function histosListTombstonesRequest(value) {
+  if (value === undefined || value === null) return {};
+  if (!isPlainObject(value)) return null;
+  const limit = value.limit === undefined ? undefined : value.limit;
+  if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)) return null;
+  const includeRevoked = value.includeRevoked === undefined ? undefined : value.includeRevoked;
+  if (includeRevoked !== undefined && typeof includeRevoked !== "boolean") return null;
+  return { ...(limit !== undefined ? { limit } : {}), ...(includeRevoked !== undefined ? { includeRevoked } : {}) };
+}
+
 // P4 repo source: the renderer may only pass scan limits. The repository
 // root is resolved by Main from the active authorized workspace — the
 // renderer never supplies a path.

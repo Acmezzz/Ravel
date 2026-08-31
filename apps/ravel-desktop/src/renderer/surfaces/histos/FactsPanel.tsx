@@ -1,7 +1,7 @@
 /**
  * P2 "facts" tab: the Fact Graph triple list with predicate/source filters,
  * related-triple view for the selected graph node, and the P0 archive /
- * purge actions exposed to the user for the first time.
+ * restore / purge actions exposed to the user for the first time.
  */
 import * as React from "react";
 import type { HistosFactTripleDTO } from "../../types/dto";
@@ -55,6 +55,13 @@ export function FactsPanel(props: FactsPanelProps): React.ReactElement {
     setBusy(false);
     setNotice(error ?? hint ?? `已抹除 ${triple.id}`);
     if (!error) setConfirmTriple(null);
+  };
+
+  const runRestore = async (tombstoneId: string) => {
+    setBusy(true);
+    const error = await panel.restore([tombstoneId]);
+    setBusy(false);
+    setNotice(error ?? `已复原 ${tombstoneId}`);
   };
 
   const tripleKey = (triple: HistosFactTripleDTO): string => triple.id ?? `${triple.subject}:${triple.predicate}:${triple.object}`;
@@ -113,7 +120,27 @@ export function FactsPanel(props: FactsPanelProps): React.ReactElement {
       ) : (
         <p className="omega-muted-text">暂无事实。</p>
       )}
-      <p className="omega-muted-text">归档 = 墓碑（可复原）；抹除 = 物理删除（不可逆，含二次确认）。审批账目事实不可归档或单独抹除。</p>
+
+      {panel.tombstones.length > 0 ? (
+        <>
+          <span className="overline-label">已归档（{panel.tombstones.length}，可复原）</span>
+          <ul className="omega-resource-list">
+            {panel.tombstones.map((tombstone) => (
+              <li key={tombstone.id} className="omega-resource-row ravel-histos-fact-row">
+                <span className="mono-num">{tombstone.targetKind}</span>
+                <span className="omega-resource-row-title">
+                  <strong>{tombstone.targetId}</strong>
+                  <span className="omega-muted-text">{tombstone.reason ?? "无理由"}</span>
+                </span>
+                <span className="omega-graph-toolbar-actions">
+                  <Button size="sm" variant="quiet" disabled={busy} onClick={() => runRestore(tombstone.id)} title="撤销墓碑，恢复可见">复原</Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <p className="omega-muted-text">归档 = 墓碑（可复原，见上方已归档列表）；抹除 = 物理删除（不可逆，含二次确认）。审批账目事实不可归档或单独抹除。</p>
     </div>
   );
 }

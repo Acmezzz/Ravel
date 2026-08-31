@@ -38,6 +38,8 @@ import type {
   HistosArchiveResultDTO,
   HistosRestoreRequestDTO,
   HistosRestoreResultDTO,
+  HistosListTombstonesRequestDTO,
+  HistosListTombstonesResultDTO,
   HistosPurgeResultDTO,
   HistosIndexRepoRequestDTO,
   HistosIndexRepoResultDTO,
@@ -94,6 +96,8 @@ export const histosClient = {
     ok(await window.omega?.histosArchive?.(req)),
   histosRestore: async (req: HistosRestoreRequestDTO): Promise<IpcResult<HistosRestoreResultDTO>> =>
     ok(await window.omega?.histosRestore?.(req)),
+  histosListTombstones: async (req?: HistosListTombstonesRequestDTO): Promise<IpcResult<HistosListTombstonesResultDTO>> =>
+    ok(await window.omega?.histosListTombstones?.(req)),
   histosPurge: async (req: HistosEntriesRequestDTO): Promise<IpcResult<HistosPurgeResultDTO>> =>
     ok(await window.omega?.histosPurge?.(req)),
   histosIndexRepo: async (req?: HistosIndexRepoRequestDTO): Promise<IpcResult<HistosIndexRepoResultDTO>> =>

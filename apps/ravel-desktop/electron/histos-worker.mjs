@@ -175,6 +175,7 @@ async function invoke(method, args) {
     if (method === "clearFacts") return current.clearFacts();
     if (method === "archiveEntries") return current.archiveEntries(args?.kind, args?.ids ?? [], args?.reason ?? null);
     if (method === "restoreEntries") return current.restoreEntries(args?.tombstoneIds ?? []);
+    if (method === "listTombstones") return current.listTombstones(args ?? {});
     if (method === "purgeEntries") return current.purgeEntries(args?.kind, args?.ids ?? [], args?.reason ?? null);
     if (method === "applyMcpConfigs") return current.applyMcpConfigs(args ?? {});
     if (method === "applyRepoIndex") return current.applyRepoIndex(args ?? {});

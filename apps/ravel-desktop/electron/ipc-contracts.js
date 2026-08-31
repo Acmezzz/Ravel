@@ -114,6 +114,7 @@ export const IPC_CHANNELS = Object.freeze({
   histosArchive: "omega:histosArchive",
   histosIndexRepo: "omega:histosIndexRepo",
   histosRestore: "omega:histosRestore",
+  histosListTombstones: "omega:histosListTombstones",
   histosPurge: "omega:histosPurge",
   extensionUiResponse: "omega:extensionUiResponse",
   extensionUiCancel: "omega:extensionUiCancel",

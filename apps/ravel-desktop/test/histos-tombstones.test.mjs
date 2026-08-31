@@ -254,3 +254,41 @@ test("archive/restore/purge emit bus events for the renderer relay", () => {
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+// --- T0.5b: archive ledger (listTombstones) powers the restore entry ---
+
+test("listTombstones returns active tombstones first with reason/createdAt and count", () => {
+  const directory = mkdtempSync(join(tmpdir(), "histos-ledger-"));
+  const engine = new HistosEngine({
+    workspaceId: "workspace-1",
+    databasePath: join(directory, "index.sqlite"),
+    artifactsDir: join(directory, "artifacts"),
+  });
+  try {
+    engine.archiveEntries("session_index", ["session-1"], "first archive");
+    engine.archiveEntries("session_index", ["session-2"], "second archive");
+    const ledger = engine.listTombstones();
+    assert.equal(ledger.ok, true);
+    assert.equal(ledger.total, 2);
+    assert.equal(ledger.tombstones.length, 2);
+    assert.equal(ledger.tombstones[0].targetId, "session-2", "newest first");
+    assert.equal(ledger.tombstones[0].reason, "second archive");
+    assert.ok(typeof ledger.tombstones[0].createdAt === "number");
+    assert.equal(ledger.tombstones[0].revokedAt, null);
+
+    // Restore moves the row out of the active ledger (revoked_at set), and
+    // the audit trail stays queryable with includeRevoked.
+    const tombstoneId = ledger.tombstones[1].id;
+    engine.restoreEntries([tombstoneId]);
+    const active = engine.listTombstones();
+    assert.equal(active.total, 1);
+    assert.ok(!active.tombstones.some((item) => item.id === tombstoneId));
+    const withRevoked = engine.listTombstones({ includeRevoked: true });
+    assert.equal(withRevoked.tombstones.length, 2);
+    const restored = withRevoked.tombstones.find((item) => item.id === tombstoneId);
+    assert.ok(typeof restored.revokedAt === "number", "audit trail keeps revoked_at");
+  } finally {
+    engine.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

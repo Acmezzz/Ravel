@@ -77,6 +77,8 @@ import type {
   HistosArchiveResultDTO,
   HistosRestoreRequestDTO,
   HistosRestoreResultDTO,
+  HistosListTombstonesRequestDTO,
+  HistosListTombstonesResultDTO,
   HistosPurgeResultDTO,
   HistosIndexRepoRequestDTO,
   HistosIndexRepoResultDTO,
@@ -225,6 +227,7 @@ export interface RavelBridge {
   histosClearFacts(): Promise<IpcResult<HistosFactClearResultDTO>>;
   histosArchive(req: HistosEntriesRequestDTO): Promise<IpcResult<HistosArchiveResultDTO>>;
   histosRestore(req: HistosRestoreRequestDTO): Promise<IpcResult<HistosRestoreResultDTO>>;
+  histosListTombstones(req?: HistosListTombstonesRequestDTO): Promise<IpcResult<HistosListTombstonesResultDTO>>;
   histosPurge(req: HistosEntriesRequestDTO): Promise<IpcResult<HistosPurgeResultDTO>>;
   histosIndexRepo(req?: HistosIndexRepoRequestDTO): Promise<IpcResult<HistosIndexRepoResultDTO>>;
   onHistosEvent(callback: (data: HistosFactEventDTO) => void): () => void;

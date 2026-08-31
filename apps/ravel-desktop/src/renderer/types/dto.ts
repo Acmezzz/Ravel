@@ -1086,6 +1086,15 @@ export interface HistosFactEventDTO {
  */
 export type HistosTombstoneTargetKind = "triple" | "node" | "edge" | "artifact" | "session_index";
 
+export interface HistosTombstoneDTO {
+  id: string;
+  targetKind: HistosTombstoneTargetKind;
+  targetId: string;
+  reason: string | null;
+  createdAt: number;
+  revokedAt: number | null;
+}
+
 export interface HistosEntriesRequestDTO {
   kind: HistosTombstoneTargetKind;
   ids: string[];
@@ -1111,6 +1120,27 @@ export interface HistosRestoreResultDTO {
   restoredCount: number;
   restored: Array<{ tombstoneId: string; targetKind: HistosTombstoneTargetKind; targetId: string }>;
   notFound: string[];
+  code?: string;
+  message?: string;
+}
+
+export interface HistosListTombstonesRequestDTO {
+  limit?: number;
+  includeRevoked?: boolean;
+}
+
+export interface HistosListTombstonesResultDTO {
+  ok: boolean;
+  tombstones: Array<{
+    id: string;
+    targetKind: HistosTombstoneTargetKind;
+    targetId: string;
+    reason: string | null;
+    createdAt: number;
+    revokedAt: number | null;
+  }>;
+  count: number;
+  total: number;
   code?: string;
   message?: string;
 }

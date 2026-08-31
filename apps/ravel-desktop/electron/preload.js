@@ -453,6 +453,20 @@ contextBridge.exposeInMainWorld("omega", {
     }
     return ipcRenderer.invoke("omega:histosRestore", { tombstoneIds });
   },
+  histosListTombstones: (req) => {
+    if (req !== undefined && req !== null) {
+      if (typeof req !== "object" || req === null || Array.isArray(req)) {
+        return Promise.resolve({ ok: false, code: "invalid_args", message: "request must be an object" });
+      }
+      if (req.limit !== undefined && (typeof req.limit !== "number" || !Number.isSafeInteger(req.limit) || req.limit < 1 || req.limit > 1000)) {
+        return Promise.resolve({ ok: false, code: "invalid_args", message: "limit must be an integer between 1 and 1000" });
+      }
+      if (req.includeRevoked !== undefined && typeof req.includeRevoked !== "boolean") {
+        return Promise.resolve({ ok: false, code: "invalid_args", message: "includeRevoked must be a boolean" });
+      }
+    }
+    return ipcRenderer.invoke("omega:histosListTombstones", req ?? {});
+  },
   histosPurge: (req) => {
     const kinds = ["triple", "node", "edge", "artifact", "session_index"];
     if (!req || !kinds.includes(req.kind) || !Array.isArray(req.ids) || req.ids.length === 0 || req.ids.length > 512) {
