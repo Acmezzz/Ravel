@@ -140,18 +140,6 @@ export function projectFactToTriples(fact, context = {}) {
       pushTriple(out, `session:${sessionId}`, domainPredicate, `${action}:${targetId}`, `session:${sessionId}`, { validFrom: ts, tag: "config" });
       break;
     }
-    case "diagnostic_observed": {
-      // Observability class: file x severity x time, tagged diagnostic. The
-      // projection keeps the newest per-file severity in the graph (the
-      // JSONL keeps full history); object carries severity + bounded message.
-      // Subject is the URI-safe normalized path (matches applyDiagnostics).
-      if (typeof fact.file !== "string" || !fact.file) return [];
-      const severity = typeof fact.severity === "string" ? fact.severity : "info";
-      const message = typeof fact.message === "string" ? fact.message : "";
-      const subjectKey = fact.file.replace(/[^A-Za-z0-9_.:-]/g, "_");
-      pushTriple(out, `file:${subjectKey}`, "custom_diagnostic_observed", `${severity}:${bounded(message, 2048)}`, `session:${sessionId}`, { validFrom: ts, tag: "diagnostic" });
-      break;
-    }
     case "usage_observed": {
       // Usage class: model x token/time/cost, tagged usage. Missing cost
       // fields stay missing (explicit-missing semantics preserved).

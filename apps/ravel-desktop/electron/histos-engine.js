@@ -575,6 +575,25 @@ function tombstoneId() {
 }
 
 /**
+ * Delete fact_triples rows and keep the FTS5 mirror consistent. The FTS
+ * index is an external-content table: row deletion must be driven through
+ * the special 'delete' command with the old cell values, otherwise the
+ * index keeps the tokens and a later rowid reuse joins MATCH to the wrong
+ * row (purged/archived text stays searchable). Callers run inside their own
+ * transaction; this only queues the FTS delete + row delete.
+ */
+function deleteTriplesWithFts(database, ids) {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => "?").join(",");
+  const rows = database.prepare(`SELECT rowid, subject, predicate, object FROM fact_triples WHERE id IN (${placeholders})`).all(...ids);
+  const ftsDelete = database.prepare("INSERT INTO fact_triples_fts(fact_triples_fts, rowid, subject, predicate, object) VALUES('delete', ?, ?, ?, ?)");
+  for (const row of rows) {
+    try { ftsDelete.run(row.rowid, row.subject, row.predicate, row.object); } catch { /* best effort */ }
+  }
+  database.prepare(`DELETE FROM fact_triples WHERE id IN (${placeholders})`).run(...ids);
+}
+
+/**
  * Fail-closed gate for archive/purge: approval accounting is never
  * archivable, and the target rows must actually exist (a tombstone over a
  * missing object would silently pretend a deletion happened).
@@ -921,11 +940,15 @@ export class HistosEngine {
       if (!["info", "warning", "error"].includes(item.severity)) throw invalid("diagnostic severity must be info, warning or error");
       normalized.push({ file: item.file, severity: item.severity, message: String(item.message ?? "").slice(0, 4096), ts: Number.isFinite(item.ts) ? item.ts : Date.now() });
     }
-    const deleteStale = database.prepare("DELETE FROM fact_triples WHERE subject = ? AND predicate = 'custom_diagnostic_observed'");
-    // Subject keys must satisfy the URI-ish triple subject charset, so the
-    // absolute path is normalized (dedupe stays per-file, keyed on the
-    // normalized form).
     const keyOf = (file) => file.replace(/[^A-Za-z0-9_.:-]/g, "_");
+    // Collect the stale per-file rows *before* writing (the new rows match
+    // the same subject+predicate and must not be deleted).
+    const staleById = new Map();
+    for (const item of normalized) {
+      const subject = `file:${keyOf(item.file)}`;
+      const stale = database.prepare("SELECT id FROM fact_triples WHERE subject = ? AND predicate = 'custom_diagnostic_observed'").all(subject);
+      if (stale.length > 0) staleById.set(subject, stale.map((row) => row.id));
+    }
     const triples = normalized.map((item) => ({
       subject: `file:${keyOf(item.file)}`,
       predicate: "custom_diagnostic_observed",
@@ -934,16 +957,26 @@ export class HistosEngine {
       validFrom: item.ts,
       tag: "diagnostic",
     }));
+    // Write the new projection first, then delete the pre-collected stale
+    // rows. A failed write leaves the previous diagnostics intact (never a
+    // silent loss); the content-addressed ids make re-runs collapse. The
+    // FTS5 mirror is kept in sync on delete (external-content tables need
+    // the 'delete' command, not a plain row delete).
+    const written = await this.writeFacts(triples);
+    if (!written.ok) {
+      return { ok: written.ok, count: 0, dedupedFiles: normalized.length, code: written.code, message: written.message };
+    }
     database.exec("BEGIN IMMEDIATE");
     try {
-      for (const item of normalized) deleteStale.run(`file:${keyOf(item.file)}`);
+      for (const ids of staleById.values()) {
+        if (ids.length > 0) deleteTriplesWithFts(database, ids);
+      }
       database.exec("COMMIT");
     } catch (error) {
       database.exec("ROLLBACK");
       throw error;
     }
-    const written = await this.writeFacts(triples);
-    return { ok: written.ok, count: written.count ?? 0, dedupedFiles: normalized.length, code: written.code, message: written.message };
+    return { ok: true, count: written.count ?? 0, dedupedFiles: normalized.length };
   }
 
   /** P5 FTS5 keyword search over fact triple text. */
@@ -954,7 +987,14 @@ export class HistosEngine {
       catch (error) { return { ok: false, code: error?.code ?? "start_failed", message: error instanceof Error ? error.message : String(error), triples: [] }; }
     }
     if (typeof this.factGraph.searchFts !== "function") return { ok: false, code: "unsupported", message: "backend does not provide FTS search", triples: [] };
-    return this.factGraph.searchFts(input);
+    const result = await this.factGraph.searchFts(input);
+    if (!result.ok) return result;
+    // Archival consistency: archived/purged triples must stay invisible to
+    // keyword search just like every other read path (the FTS mirror cannot
+    // see tombstones, so filter the projection).
+    const archived = activeTombstoneIds(this.assertOpen(), "triple");
+    if (archived.size > 0) result.triples = result.triples.filter((triple) => !archived.has(triple.id));
+    return result;
   }
 
   /**
@@ -1127,7 +1167,7 @@ export class HistosEngine {
     database.exec("BEGIN IMMEDIATE");
     try {
       if (kind === "triple") {
-        database.prepare(`DELETE FROM fact_triples WHERE id IN (${placeholders})`).run(...targets);
+        deleteTriplesWithFts(database, targets);
       } else if (kind === "node") {
         database.prepare(`DELETE FROM evidence WHERE revision_id IN (${placeholders})`).run(...targets);
         database.prepare(`DELETE FROM revision_parents WHERE child_id IN (${placeholders}) OR parent_id IN (${placeholders})`).run(...targets, ...targets);

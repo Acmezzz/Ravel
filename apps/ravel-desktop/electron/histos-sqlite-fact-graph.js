@@ -88,7 +88,6 @@ export function createSqliteFactGraph({ database, workspaceId, randomId, default
   // mirror uses the implicit integer rowid of the content table row.
   const ftsInsert = database.prepare("INSERT INTO fact_triples_fts(rowid, subject, predicate, object) VALUES (?, ?, ?, ?)");
   const rowidOf = database.prepare("SELECT rowid FROM fact_triples WHERE id = ?");
-  const ftsDeleteAll = database.prepare("DELETE FROM fact_triples_fts");
   const existsById = database.prepare("SELECT 1 AS present FROM fact_triples WHERE id = ?");
   const countAll = database.prepare("SELECT COUNT(*) AS count FROM fact_triples WHERE scope = ?");
   const distinctSubjects = database.prepare("SELECT COUNT(DISTINCT subject) AS count FROM fact_triples WHERE scope = ?");
@@ -217,7 +216,11 @@ export function createSqliteFactGraph({ database, workspaceId, randomId, default
         ensurePrepared();
         const removed = countAll.get(resolvedScope)?.count ?? 0;
         deleteAll.run(resolvedScope);
-        try { ftsDeleteAll.run(); } catch { /* best effort */ }
+        // `fact_triples_fts` is an external-content FTS5 table: a plain
+        // `DELETE FROM fact_triples_fts` cannot clear it (the delete hook is
+        // only driven through the special 'delete-all' command). Without
+        // this, rowids get reused and a later MATCH JOINs to the wrong row.
+        try { database.exec("INSERT INTO fact_triples_fts(fact_triples_fts) VALUES('delete-all')"); } catch { /* best effort */ }
         seenIds.clear();
         prepared = false;
         ensurePrepared();

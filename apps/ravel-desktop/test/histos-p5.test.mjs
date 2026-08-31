@@ -81,6 +81,42 @@ test("fact_triples FTS5 search hits keywords in subjects/objects", async () => {
   }
 });
 
+test("FTS5 index survives clear and rowid reuse without phantom hits", async () => {
+  const { directory, engine } = createEngine();
+  try {
+    await engine.applyDiagnostics({ diagnostics: [{ file: "C:/repo/src/api.ts", severity: "error", message: "zebraquark unique marker", ts: 1_000 }] });
+    assert.ok((await engine.ftsSearch({ term: "zebraquark" })).triples.length >= 1);
+    // clear() must wipe the FTS mirror too, or the external-content table
+    // keeps the old tokens and a rowid reuse JOINs MATCH to a wrong row.
+    await engine.clearFacts();
+    assert.equal((await engine.ftsSearch({ term: "zebraquark" })).triples.length, 0, "cleared index must not return old tokens");
+    await engine.applyDiagnostics({ diagnostics: [{ file: "C:/repo/src/api.ts", severity: "error", message: "brand new payload", ts: 2_000 }] });
+    const fresh = await engine.ftsSearch({ term: "payload" });
+    assert.ok(fresh.triples.length >= 1, "new rows must be searchable");
+    assert.ok(fresh.triples.every((triple) => triple.object.includes("brand new payload")), "no phantom rows from reused rowids");
+  } finally {
+    engine.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("ftsSearch hides archived and purged triples", async () => {
+  const { directory, engine } = createEngine();
+  try {
+    await engine.applyDiagnostics({ diagnostics: [{ file: "C:/repo/src/secret.ts", severity: "error", message: "classified archive marker", ts: 1_000 }] });
+    const hit = await engine.ftsSearch({ term: "classified" });
+    assert.ok(hit.triples.length >= 1);
+    const target = hit.triples[0];
+    engine.archiveEntries("triple", [target.id], "archive it");
+    assert.equal((await engine.ftsSearch({ term: "classified" })).triples.length, 0, "archived triple must stay invisible to FTS");
+    engine.restoreEntries([engine.assertOpen().prepare("SELECT id FROM tombstones WHERE target_kind = 'triple' AND target_id = ?").get(target.id).id]);
+    assert.ok((await engine.ftsSearch({ term: "classified" })).triples.length >= 1, "restored triple becomes searchable again");
+  } finally {
+    engine.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("goal_state and usage_observed facts land through the single writer with explicit-missing semantics", () => {
   const manager = fakeSessionManager();
   const goal = createGoalState({ objective: "ship the feature", sessionId: "s1" });
