@@ -1,7 +1,7 @@
 # Ravel × Histos 当前状态与执行入口
 
 更新日期：2026-08-31（终版快照）
-基线：`main` @ `22b3ccd6b`（P0–P8 全路线 + 审查修复周期全部完成）
+基线：`main` @ `fe4417716`（P0–P8 全路线 + 审查修复周期全部完成；基线问题已核完成）
 
 本文是当前唯一的项目状态入口。状态依据当前源码、桌面测试和仓库质量门禁；历史计划、竞品报告和旧测试数字不覆盖本文。未经过真实环境验证的能力不标记为生产完成。P0–P8 执行周期与 2026-08-31 三方审查+修复周期的完整记录已归档至 [`ravel-history-archive.md`](./ravel-history-archive.md) §4/§5；本文只保留当前状态与剩余任务。
 
@@ -93,11 +93,11 @@ Renderer（无原生权限）
 - `npm run --workspace=@ravel/desktop typecheck`：通过。
 - `npm run --workspace=@ravel/desktop typecheck:renderer`：通过。
 - Histos/Agent/eval/web/IPC 相关测试：已纳入桌面测试套件并通过（含 tombstones / purge / asOf / 事件广播新测试）。
-- 根 `npm run check`：biome、pinned-deps、ts-imports、shrinkwrap、install-lock 其余部分通过；biome 对 `src/renderer/styles/global.css` 的 8 个 specificity 警告（基线既有，本周期未触碰该文件）与 `packages/ai` 的 11 个基线 TS 错误（`cloudflare-ai-gateway.ts` 流类型与 kimi-k2.6 等 ModelId 注册，与桌面端无关）按现状保留，未在范围内强行修复。
+- 根 `npm run check` 首步 biome：全绿。两处 fixable（`noUselessTernary` @ `HistosFlowDrawer.tsx`、未用函参 @ `histos-repo-source.test.mjs`）已自动修复；`global.css` 两处 `noDescendingSpecificity` 加无副作用 suppression 豁免（通用/无关选择器层叠结果本正确）。`packages/ai` 原 11 个 TS 错误在现行 HEAD（`fe4417716`）上已不存在（`tsc --noEmit` 全绿）。
 
 ### 当前失败
 
-执行 `npm test --workspace=@ravel/desktop`：**553 tests：552 pass / 1 fail / 0 cancelled**（P0–P8 + 审查修复周期新增约 110 项）。唯一失败在 `p1-cjk-lucide.test.mjs`（字体栈），经基线 `2c75a12f5` worktree 对照确认为基线既有环境问题，非任何周期引入。3 个 PortableGit checkpoint 失败已修复（`42169d125`，ref 直接写 loose ref 文件 + `rev-parse --verify` fail-closed）。根 `npm run check` 的 biome 对 `global.css` 的 specificity 警告与 `packages/ai` 11 个基线 TS 错误同为基线既有，按现状保留（未在范围内强行修复）。
+执行 `npm test --workspace=@ravel/desktop`：**553 tests / 553 pass / 0 fail**。原唯一失败 `p1-cjk-lucide.test.mjs` 已修复（同步过期字体栈断言到现行 Geist 优先 + `HarmonyOS Sans SC` 的 CJK 回退 token；CSS 为现行真源，测试曾断言旧 `Noto Sans CJK SC`）。3 个 PortableGit checkpoint 失败已修复（`42169d125`，ref 直接写 loose ref 文件 + `rev-parse --verify` fail-closed）。根 `npm run check` 通过。
 
 ### 运行建议
 
@@ -129,11 +129,11 @@ P0–P8 全路线与 2026-08-31 三方审查+修复周期均已闭环（提交�
 - 嵌套 Sub Flow 交互 UX、超窗收缩 UX、crashReporter 上传。
 - 签名、公证、打包与发布流水线（`ravel-release.md` 门禁）。
 
-### 5.3 基线既有（非任何周期引入，待单独处理）
+### 5.3 基线既有（已核完成，2026-08-31 复查）
 
-1. `p1-cjk-lucide.test.mjs` 字体栈测试失败（基线 `2c75a12f5` 已对照确认）。
-2. `packages/ai` 11 个基线 TS 错误（cloudflare-ai-gateway 流类型 + kimi-k2.6 等 ModelId 注册，与桌面端无关）。
-3. biome 对 `global.css` 的 specificity 警告（基线既有）。
+1. `p1-cjk-lucide.test.mjs` 字体栈测试失败：**已修复**（同步过期断言到现行 Geist 优先 + `HarmonyOS Sans SC` 的 CJK 回退 token；553 tests 全绿）。
+2. `packages/ai` 11 个基线 TS 错误：现行 HEAD 已不存在，`tsc --noEmit` 通过。
+3. 根 biome：已全绿（2 处 fixable 自动修复 + `global.css` 2 处 `noDescendingSpecificity` suppression）。
 
 ### 5.4 长期遗留（不随 P 周期关闭）
 

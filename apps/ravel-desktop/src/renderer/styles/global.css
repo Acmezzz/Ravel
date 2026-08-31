@@ -1598,6 +1598,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 .omega-diff-log p { margin: 0; overflow: hidden; color: var(--ravel-text-dim); font-family: var(--ravel-font-mono); font-size: 0.65625rem; text-overflow: ellipsis; white-space: nowrap; }
 .omega-diff-error { margin-bottom: 0.75rem; white-space: pre-wrap; }
 .omega-diff-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; padding: 0.5rem; border: 1px solid var(--ravel-accent-line); background: var(--ravel-selected); }
+/* biome-ignore lint/style/noDescendingSpecificity: 仅 diff 面板内按钮，与 graph 控件无关，保持块内分组 */
 .omega-diff-selection > button:last-child { margin-left: auto; }
 .omega-diff-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding-right: 0.25rem; }
 .omega-diff-section-title { margin: 0.25rem 0 0.75rem; color: var(--ravel-text-muted); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; }
@@ -1967,6 +1968,7 @@ button.omega-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 }
 .omega-dialog-title { margin: 0; flex: 1 1 auto; color: var(--ravel-text); font-size: var(--ravel-text-lg); font-weight: 600; letter-spacing: 0.2px; }
 .omega-dialog-description { margin: 0; color: var(--ravel-text-muted); font-size: var(--ravel-text-sm); }
+/* biome-ignore lint/style/noDescendingSpecificity: 通用规则置于特化规则之后，层叠结果正确 */
 .omega-dialog-content-area { padding: var(--ravel-space-5) var(--ravel-space-5) var(--ravel-space-4); }
 .omega-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; padding: var(--ravel-space-3) var(--ravel-space-5) var(--ravel-space-5); border-top: 1px solid var(--ravel-border); }
 .omega-menu-content {

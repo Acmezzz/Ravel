@@ -31,7 +31,7 @@ export function HistosFlowDrawer(props: HistosFlowDrawerProps): React.ReactEleme
   const flow = actions.flow;
   const validated = Boolean(flow?.validation.ok);
   const approved = validated && flowApproved;
-  const canConvert = actions.converting || nodeCount === 0 ? false : true;
+  const canConvert = !(actions.converting || nodeCount === 0);
 
   if (!open) {
     return (

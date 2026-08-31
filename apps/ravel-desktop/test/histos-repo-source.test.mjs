@@ -19,7 +19,7 @@ function repoFixture() {
   return root;
 }
 
-function createEngine(root) {
+function createEngine(_root) {
   const directory = mkdtempSync(join(tmpdir(), "ravel-repo-engine-"));
   const engine = new HistosEngine({
     workspaceId: "workspace-1",
