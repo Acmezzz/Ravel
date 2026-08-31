@@ -1,7 +1,7 @@
 # Ravel 功能全景清单
 
-更新日期：2026-08-30
-基线：`main`（Fact Graph 落地后）
+更新日期：2026-08-31
+基线：`main` @ `22b3ccd6b`（P0–P8 全路线 + 审查修复周期完成）
 
 本文是**功能维度**的全景清单：每一个已实现的功能、它的实现位置、以及它与 Histos 的接入状态。状态口径以代码为准，与 [`ravel-histos-next-cycle.md`](./ravel-histos-next-cycle.md)（架构与不变量）互为补充：那篇讲"系统是什么"，这篇讲"系统有什么"。
 
@@ -153,19 +153,19 @@ Histos 接入状态分三档：
 | HTML 导出 / 导出脱敏 | 完成 | 接口就绪（可作为一种 artifact 投影，未接线） |
 | 更新器 / 崩溃恢复对话框 | 完成 | 未设计 |
 
-## 12. 未设计接入 Histos 的配置类变更（缺口清单）
+## 12. 配置类事实化（P1 已闭环，2026-08-31）
 
-以下是本轮审查确认的**事实化缺口**——它们都发生在 settings 文件层，不走 JSONL 单写者，因此 Histos 看不见。统一的修复路径是引入 `config_changed` 事实类型（走 `session-facts.js` 单写者 + Fact Graph 派生投影加映射）：
+2026-08-30 确认的配置类事实化缺口已由 P1 的 `config_changed` 事实类型全部解决（走 `session-facts.js` 单写者 + Fact Graph 派生投影 `custom_config_<domain>` 谓词族）：
 
-1. 资源安装/卸载/启停/frontmatter 编辑（§6）
-2. 权限规则增删（§3）
-3. Project Trust 决策（§3）
-4. MCP 增删/启停/OAuth 登录（§7）
-5. 模式切换动作（§5，事实类型 `mode_changed`）
-6. Provider API key / 自定义 provider 配置变更（§3）
-7. 权限 profile / 设置变更（§3）
+1. ✅ 资源安装/卸载/启停/frontmatter 编辑（§6，`recordConfig("resource", ...)`）
+2. ✅ 权限规则增删（§3，`recordConfig("permission", ...)`）
+3. ✅ Project Trust 决策（§3，`recordConfig("trust", ...)`）
+4. ✅ MCP 增删/启停/OAuth 登录（§7，`recordConfig("mcp", ...)` + mcp_config 节点投影）
+5. ✅ 模式切换动作（§5，`recordConfig("mode", ...)`）
+6. ✅ Provider API key / 自定义 provider 配置变更（§3，`recordConfig("provider", ...)`；**凭据明文永不入图**，只记 provider id + reason）
+7. ✅ 权限 profile / 设置变更（§3，`recordConfig("profile", ...)`，2026-08-31 补全三处写入点）
 
-**不建议**接入 Histos 的：凭据明文（永不入图）、路径安全机制内部状态、进程池状态、UI 布局偏好。
+**仍不建议**接入 Histos 的：凭据明文（永不入图）、路径安全机制内部状态、进程池状态、UI 布局偏好（`lastSessionId`/`lastWorkspace` 等 bookkeeping 字段已从事实中排除）。
 
 ## 13. 明确不做的（防止范围漂移）
 

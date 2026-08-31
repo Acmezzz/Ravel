@@ -1,9 +1,9 @@
 # Ravel × Histos 当前状态与执行入口
 
-更新日期：2026-08-31
-基线：`main` @ `99976d1e0`（P0–P8 全路线完成）
+更新日期：2026-08-31（终版快照）
+基线：`main` @ `22b3ccd6b`（P0–P8 全路线 + 审查修复周期全部完成）
 
-本文是当前唯一的项目状态入口。状态依据当前源码、桌面测试和仓库质量门禁；历史计划、竞品报告和旧测试数字不覆盖本文。未经过真实环境验证的能力不标记为生产完成。
+本文是当前唯一的项目状态入口。状态依据当前源码、桌面测试和仓库质量门禁；历史计划、竞品报告和旧测试数字不覆盖本文。未经过真实环境验证的能力不标记为生产完成。P0–P8 执行周期与 2026-08-31 三方审查+修复周期的完整记录已归档至 [`ravel-history-archive.md`](./ravel-history-archive.md) §4/§5；本文只保留当前状态与剩余任务。
 
 ## 1. 产品边界
 
@@ -41,7 +41,7 @@ Renderer（无原生权限）
 - Agent capability/spec 图、agent-loop 执行桥、workflow `flow-engine` 执行路径、DAG 波次、并发上限、超时、取消、memoKey 计算和仅复用已成功结果的内存接口。
 - eval_result 规范化、SHA 地址、GraphRevision 投影与持久化；token、耗时、估算成本字段保持显式缺失语义。
 - 定时 Flow 与预授权触发：每次触发记录 `flow_trigger`，按 scope、maxRuns 和 busy 状态 fail-closed。
-- Fact graph（2026-08-30，借鉴 oh-my-pi Mnemopi / prime-agent Refinement）：`FactGraphBackend` 契约（`histos-fact-graph.js`）+ sqlite 后端（`histos-sqlite-fact-graph.js`，同库 `fact_triples` 表）+ 事实派生投影（`histos-fact-derivation.js`）。`applySessionFacts` 派生 triple（best-effort，失败不回传）；引擎暴露 `queryFacts` / `writeFacts` / `factStats` / `clearFacts`；IPC 四通道 `omega:histos{QueryFacts,WriteFacts,FactStats,ClearFacts}`；Histos 事件总线（`histos-event-bus.js`，BeforeX/AfterX 命名）经 worker → Main → renderer `histos:event` 推送。`operation_finished` 支持可选 `previousStateRef` + `appliedEdits`。GoalState / AutonomousGate 契约落点 `goal-state.js`（未接 worker 主流程）。
+- Fact graph（2026-08-30，借鉴 oh-my-pi Mnemopi / prime-agent Refinement）：`FactGraphBackend` 契约（`histos-fact-graph.js`）+ sqlite 后端（`histos-sqlite-fact-graph.js`，同库 `fact_triples` 表）+ 事实派生投影（`histos-fact-derivation.js`）。`applySessionFacts` 派生 triple（best-effort，失败不回传）；引擎暴露 `queryFacts` / `writeFacts` / `factStats` / `clearFacts`；IPC 四通道 `omega:histos{QueryFacts,WriteFacts,FactStats,ClearFacts}`；Histos 事件总线（`histos-event-bus.js`，BeforeX/AfterX 命名）经 worker → Main → renderer `histos:event` 推送。`operation_finished` 支持可选 `previousStateRef` + `appliedEdits`。GoalState / AutonomousGate 契约落点 `goal-state.js`，P5 已接 worker 主流程。
 - P0 追溯层（2026-08-31，Phase 0 收口）：`tombstones` 表 + `tombstones_target_lookup` 索引并入 schema（`IF NOT EXISTS` 旧库自动补表）；引擎 `archiveEntries(kind, ids, reason)` / `restoreEntries(tombstoneIds)` / `purgeEntries(kind, ids)`，四条读路径（`graphRows`/`queryFacts`/`getNode`/`suggestContext`）join 墓碑过滤，审批节点/triple 归档与单独抹除均 fail-closed 拒绝；`rebuild` 重放墓碑表；purge 经 main 转发 agent worker 由 `session-facts.js` 单写者落 `purge_record` 账目事实（记录级抹除提示会话级删除）；IPC 三通道 `omega:histos{Archive,Restore,Purge}` 六方同步 + 事件 `on_entries_archived/restored/purged` 广播到 renderer；节点/边投影支持 asOf 时间旅行（`created_at` + `revision_parents` DAG，`fact_triples.asOf` 语义不变）。
 - P1 配置类（2026-08-31）：`config_changed` 事实（domain 七值闭集 + action 三值 + targetId + reason）经单写者落 JSONL；六写入点接线（资源安装/卸载/启停/frontmatter、权限规则增删、Project Trust、MCP 增删/启停/OAuth、模式切换、provider/API key）；`histos-fact-derivation.js` 按 domain 投影为 `custom_config_<domain>` 谓词族；`mcp_config` 投影接线（`applyMcpConfigs` + content-addressed revision）。
 - P2 Fact Graph 表面 UI（2026-08-31）：`useHistosFactPanel`（查询/统计/过滤/归档/复原/抹除 + `on_entries_*` 事件即时刷新）；Inspector「事实」页签（triple 列表 + 关联 triples + 行级归档/抹除）；Toolbar triple 统计；图节点右键归档/抹除菜单（P0 能力首次暴露）。
@@ -56,6 +56,8 @@ Renderer（无原生权限）
 
 以下项目不能从“代码存在”推导为完整生产能力：
 
+- **P3/P7/P8 与 P4 的引擎方法无生产调用方（用户路径未接线）**：`createStrategyDraft`/`approveStrategyDraft`/`applyCapabilityFlows`/`applyProjectKnowledge`/`createHandoff`/`listArtifacts`/`ftsSearch` 及 `omega:histosIndexRepo` 通道在 2026-08-31 三方审查中确认只有 worker 分发 + 单测，渲染层零调用。spec 已诚实标注“引擎就绪、产品未接线”（`bdde66529`）；是否补 IPC+UI 需产品决策。
+- **Task 24.2 Inspector「展开原文」与 25.2 图选区生成 skill 草稿**：渲染层入口未实现（spec 保留未勾选）。
 - `skill-inject` executor 在 `histos-capability.js` 中明确 `wired: false`；只读 dry-run/规划能力不等于 skill 注入生产接入。
 - `orchestrator` executor 明确 `wired: false`；DAG 规划、memoKey 和测试 fake runner 不等于 workflow orchestrator 已接入桌面生产路径。
 - memo 目前是 `runOrchestration` 的注入式 `memoStore`/`memoLookup`/`memoWrite` 接口；未形成 durable memo 产品或持久事实协议，不能声称 memo durable 完成。
@@ -95,7 +97,7 @@ Renderer（无原生权限）
 
 ### 当前失败
 
-执行 `npm test --workspace=@ravel/desktop`：**546 tests：545 pass / 1 fail / 0 cancelled（P0–P8 共新增约 100 项）**。唯一失败在 `p1-cjk-lucide.test.mjs`（字体栈），经基线 `2c75a12f5` worktree 对照确认为基线既有环境问题，非本路线引入；3 个 PortableGit checkpoint 失败已在本路线修复（ref 直接写 loose ref 文件 + `rev-parse --verify` fail-closed，提交 `42169d125`）。`p1-cjk-lucide.test.mjs` 字体栈测试失败经基线 `2c75a12f5` 对照确认为基线既有环境问题，非本路线引入。根 `npm run check` 的 biome CSS 警告与 `packages/ai` 11 个基线 TS 错误同为基线既有，按现状保留（未在范围内强行修复）。
+执行 `npm test --workspace=@ravel/desktop`：**553 tests：552 pass / 1 fail / 0 cancelled**（P0–P8 + 审查修复周期新增约 110 项）。唯一失败在 `p1-cjk-lucide.test.mjs`（字体栈），经基线 `2c75a12f5` worktree 对照确认为基线既有环境问题，非任何周期引入。3 个 PortableGit checkpoint 失败已修复（`42169d125`，ref 直接写 loose ref 文件 + `rev-parse --verify` fail-closed）。根 `npm run check` 的 biome 对 `global.css` 的 specificity 警告与 `packages/ai` 11 个基线 TS 错误同为基线既有，按现状保留（未在范围内强行修复）。
 
 ### 运行建议
 
@@ -110,20 +112,33 @@ git diff --check
 
 需要真实 provider、网络、签名或打包时，必须显式注明外部环境，并单独记录结果；离线测试不得伪造成功。
 
-## 5. 下一步
+## 5. 下一步（当前周期：审查修复后的收尾与产品决策）
 
-全局路线见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md) §3（P0–P8）；本节维护**当前周期**的切片级执行计划。
+P0–P8 全路线与 2026-08-31 三方审查+修复周期均已闭环（提交链 `b8ef00dc1` → `22b3ccd6b`，553 tests / 552 pass）。**本节是唯一的前进入口**；执行记录与审查细节已归档（见 [`ravel-history-archive.md`](./ravel-history-archive.md) §4/§5）。
 
-### 5.1 P0–P8 全路线（已完成）
+### 5.1 需要产品决策的接线项（引擎就绪，无用户路径）
 
-P0 追溯层（T0.1–T0.6 + checkpoint 修复）、P1 `config_changed` 事实、P2 Fact Graph 表面 UI、P3 策略共创、P4 repo source、P5 观测、P6 图会话与编辑闭环、P7 能力运作流程 + 项目知识、P8 成果浏览 + handoff 全部完成并独立提交（提交链 `b8ef00dc1` → `99976d1e0`）。覆盖内容分类学 6 大类（记忆/能力/策略/成果/账目与观测/配置）全部子类。详见 §2.2。
+- **P3 策略共创 / P7 能力流程与项目知识 / P8 成果浏览与 handoff / P4 repo 模块地图**：9 个引擎方法（`createStrategyDraft`/`approveStrategyDraft`/`applyCapabilityFlows`/`applyProjectKnowledge`/`createHandoff`/`listArtifacts`/`ftsSearch`/`buildSelectionPrompt`/`expandEvidence`）与 `omega:histosIndexRepo` 只有 worker 分发 + 单测。选项：(a) 补 IPC + 渲染层入口激活（每项独立切片）；(b) 正式在文档降级为“引擎就绪，产品未接线”。spec 已诚实标注，等产品拍板。
+- **Task 24.2 Inspector「展开原文」** 与 **25.2 图选区生成 skill 草稿**：渲染层入口，待补。
+- **`recordConfig` 无活动 session 时的持久化策略**：当前静默丢弃（14 处写入点），需决策是否降级持久化。
 
-### 5.3 长期遗留（不随 P 周期关闭）
+### 5.2 真实环境独立验收（不把测试 fake runner 当生产证据）
+
+- 真实 provider 端到端（语义凝练、goal 续跑、usage triple）。
+- OAuth provider 登录闭环、在线 skill registry 下载、Git remote/fetch。
+- 嵌套 Sub Flow 交互 UX、超窗收缩 UX、crashReporter 上传。
+- 签名、公证、打包与发布流水线（`ravel-release.md` 门禁）。
+
+### 5.3 基线既有（非任何周期引入，待单独处理）
+
+1. `p1-cjk-lucide.test.mjs` 字体栈测试失败（基线 `2c75a12f5` 已对照确认）。
+2. `packages/ai` 11 个基线 TS 错误（cloudflare-ai-gateway 流类型 + kimi-k2.6 等 ModelId 注册，与桌面端无关）。
+3. biome 对 `global.css` 的 specificity 警告（基线既有）。
+
+### 5.4 长期遗留（不随 P 周期关闭）
 
 1. 为 capability / orchestration 决定实际生产接入边界；`skill-inject`、`orchestrator` 与 durable memo 保持未接线（草案/编排校验层已按 R17 fail-closed 拒绝这些 executor）。
-2. 补真实 provider、嵌套 Sub Flow 交互 UX、超窗收缩 UX、crashReporter 上传的独立验收；不把测试 fake runner 当生产证据。
-3. `packages/ai` 的 11 个基线 TS 错误与 `p1-cjk-lucide` 字体栈测试失败（均为基线既有，待单独处理）。
-4. 维持文档单一入口；更新时同步 HEAD、测试计数和失败原因，删除过时快照而不是复制旧路线图。
+2. 维持文档单一入口；更新时同步 HEAD、测试计数和失败原因，删除过时快照而不是复制旧路线图。
 
 ## 6. 不变量与禁止事项
 

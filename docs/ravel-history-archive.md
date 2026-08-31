@@ -46,3 +46,35 @@
 **不采纳（防重复评估）**：HTTP server 形态、第二事实权威、云依赖、图数据库、Radix 双轨、MUI 回潮。
 **元收获**：上游同步纪律来自 omp `docs/porting-from-pi-mono.md`；携码出处规范 = 每个借鉴项标注来源文件与许可（MIT，上游 Pi 版权保留）。
 **2026-08-30 扩展**：六项目对照（+hermes-agent、deepseek-harness、zed）的完整借鉴清单与内容分类学见 [`ravel-histos-design-and-roadmap.md`](./ravel-histos-design-and-roadmap.md) §1 与路线图各 P 的"借鉴来源"栏。
+
+## 4. P0–P8 全路线执行记录（2026-08-31，已交付归档）
+
+执行规范 `.trae/specs/implement-histos-full-roadmap/`（spec/tasks/checklist 三件套，tasks/checklist 已勾选并诚实标注未接线项）。提交链 `b8ef00dc1` → `99976d1e0`，每 Task 独立提交，覆盖内容分类学 6 大类全部子类：
+
+- **P0 追溯层**：tombstones 表 + archive/restore/purge + 四读路径过滤 + rebuild 重放 + purge_record 账目 + IPC 三通道 + asOf 投影（`b8ef00dc1`/`22534b997`/`cda9fadb3`/`28ac42879`/`29d3070ca`/`6c2717a42`）。
+- **门禁修复**：PortableGit checkpoint 持久化（本机 git 2.55.0.windows.3 对嵌套 ref 的 `update-ref` 静默失败且破坏同目录 loose refs → 直接写 loose ref + `rev-parse --verify` fail-closed，`42169d125`）。
+- **P1** config_changed 七域事实 + 六写入点 + mcp_config 投影（`4853a0931`/`e097c5deb`）。
+- **P2** Fact Graph 表面 UI：事实页签 + 右键归档/抹除（`828b93be9`）。
+- **P3** 策略共创三重校验 fail-closed（`4e7a94daf`）。
+- **P4** repo source 模块地图 + `omega:histosIndexRepo`（`92d9e3a65`）。
+- **P5** diagnostic + FTS5 + GoalState 接 worker + usage triple（`d3cd7eb3a`）。
+- **P6** L0/L1/L2 渐进式披露 + histos_expand + 对话编辑 + compaction 锚点（`424e38d1c`）。
+- **P7** 能力流程工件 + 项目知识版本化（`99976d1e0`）。
+- **P8** createHandoff + listArtifacts 工件库（`99976d1e0`）。
+- **收口**：`ca61d87d9`/`86cdf3325`/`95932d7c2`（文档同步至完成态）。
+
+## 5. 三方审查 + 修复周期（2026-08-31，已闭环归档）
+
+工程保障团队（Archi 架构/Cody 代码审查/Tessa 运行取证）对 P0–P8 全路线的独立审查，完整报告见 `deliverables/engineering-assurance/code-review-histos-p0-p8-2026-08-31.md`（含 §11 修复跟进）。核心结论：**546 全绿 ≠ 功能全部正常**——P3/P7/P8 属"引擎就绪、产品未接线"，P5/P6 存在测试通过但行为错误的实质缺陷。修复提交链 `63cf56093` → `bdde66529`（553 tests / 552 pass）：
+
+- **FTS5 失同步**（`63cf56093`）：外部内容表 clear 须 `'delete-all'` 命令；purge/诊断删除前同步 FTS `'delete'`——否则 rowid 复用后 JOIN 到错误行、已抹除文本仍可搜。
+- **purge 记账顺序**（`08448e118`）：无活动 session 时 fail-closed 拒绝，物理删除不再可能无账目提交。
+- **复原闭环**（`b57b63b71`）：`engine.listTombstones` + `omega:histosListTombstones` 六方同步 + FactsPanel 已归档列表与复原按钮。
+- **诊断双写**（`63cf56093`）：派生层不再投影 diagnostic_observed（JSONL 权威，graph 索引由 applyDiagnostics 专责 dedupe）。
+- **histos_expand + L1 空壳**（`434d46a9c`）：内存 miss 回落 JSONL 磁盘；L1 携带 summary/distill 文本而非重复 L0。
+- **死代码清理**（`62328fe8d`，ponytail 口径）：删 7 个 0 引用常量/别名 + MAX_EVIDENCE_ITEMS 双定义 + 多余实参。
+- **profile 域 + 画布刷新**（`43faba05b`）：三处 settings 写入点接线；useHistosGraphQuery 订阅归档事件。
+- **人审门/菜单 CSS/checkpoint 校验/谓词补全**（`4f425ef48`）。
+- **spec 勾选诚实化**（`bdde66529`）：tasks/checklist 勾选 + 未接线项标注。
+
+**审查最终结论**：P0 追溯层端到端可用、单写者/审批 fail-closed/凭据零泄漏守住；P3/P7/P8/P4 用户路径接线与 Task 24.2/25.2 渲染层入口留待产品决策（见 `ravel-histos-next-cycle.md` §5.1）。
