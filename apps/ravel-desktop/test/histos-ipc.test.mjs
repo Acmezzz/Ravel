@@ -8,6 +8,7 @@ import {
   histosGetGraphRequest,
   histosGetViewStateRequest,
   histosGetNodeRequest,
+  histosCondenseGraphRequest,
   histosQueryRequest,
   histosRebuildRequest,
   histosApplyAgentActivityRequest,
@@ -56,6 +57,13 @@ function assertSafeDto(value, location = "dto") {
 async function readSource(path) {
   return readFile(new URL(path, import.meta.url), "utf8");
 }
+
+test("condense graph request preserves bounded semantic model selection", () => {
+  assert.deepEqual(histosCondenseGraphRequest({ ...QUERY, provider: "openai", modelId: "gpt-4o-mini" }), { ...QUERY, provider: "openai", modelId: "gpt-4o-mini" });
+  assert.equal(histosCondenseGraphRequest({ ...QUERY, provider: "" }), null);
+  assert.equal(histosCondenseGraphRequest({ ...QUERY, modelId: "m".repeat(257) }), null);
+});
+
 
 test("Histos query schemas reject every missing query dimension", () => {
   const normalizers = [

@@ -108,6 +108,8 @@ export function isHistosProviderRequest(value) {
     boundedString(value.reqId, MAX_ID) &&
     value.request !== null && typeof value.request === "object" && !Array.isArray(value.request) &&
     boundedString(value.request.prompt, MAX_PROVIDER_PROMPT) &&
+    (value.request.provider === undefined || boundedString(value.request.provider, 256)) &&
+    (value.request.modelId === undefined || boundedString(value.request.modelId, 256)) &&
     (value.request.maxTokens === undefined || (Number.isSafeInteger(value.request.maxTokens) && value.request.maxTokens >= 1 && value.request.maxTokens <= 8192)),
   );
 }

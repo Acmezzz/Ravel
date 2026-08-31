@@ -1695,6 +1695,9 @@ export class HistosEngine {
     if (!Number.isSafeInteger(budget) || budget < 1 || budget > MAX_CONDENSE_BUDGET) throw invalid(`budget must be between 1 and ${MAX_CONDENSE_BUDGET}`);
     const parentSha = typeof input.parentSha === "string" ? input.parentSha : null;
     if (parentSha !== null && !/^[0-9a-f]{64}$/.test(parentSha)) throw invalid("parentSha must be a lowercase SHA-256 hash");
+    const provider = input.provider === undefined ? undefined : string(input.provider, "provider", 256);
+    const modelId = input.modelId === undefined ? undefined : string(input.modelId, "modelId", 256);
+    const semanticModel = provider !== undefined && modelId !== undefined ? { provider, modelId } : undefined;
     const database = this.assertOpen();
     const structural = graphRows(database, { ...query, lens: "structural" });
     const nodes = structural.nodes;
@@ -1713,7 +1716,7 @@ export class HistosEngine {
       const nodeCost = canonicalJson(node).length + evidenceCost;
       if (nodeCost > MAX_CONDENSE_BUDGET) throw Object.assign(new Error("semantic condensation node exceeds maximum budget"), { code: "cost_cap_exceeded" });
       if (nodeCost > remainingBudget) throw Object.assign(new Error("semantic condensation budget exceeded"), { code: "cost_cap_exceeded" });
-      const result = await this.semanticProvider({ node, evidence: sourceEvidence, budget: remainingBudget });
+      const result = await this.semanticProvider({ node, evidence: sourceEvidence, budget: remainingBudget, ...(semanticModel ?? {}) });
       if (typeof result !== "string" || result.length === 0) throw Object.assign(new Error("semantic provider returned no summary"), { code: "provider_invalid" });
       const nodeRevisionId = revisionMap.get(node.nodeRevisionId);
       condensed.push({ ...node, nodeRevisionId, parentId: node.parentId ? revisionMap.get(node.parentId) ?? semanticByNodeId.get(node.parentId) ?? null : null, title: result.slice(0, 4096), artifactSha: null });
@@ -1757,6 +1760,9 @@ export class HistosEngine {
       return { ok: false, code: "semantic_provider_unavailable", diagnostics: [{ code: "offline", message: "Resource distillation requires an available model provider" }] };
     }
     const parentSha = typeof input.parentSha === "string" && /^[0-9a-f]{64}$/.test(input.parentSha) ? input.parentSha : null;
+    const provider = input.provider === undefined ? undefined : string(input.provider, "provider", 256);
+    const modelId = input.modelId === undefined ? undefined : string(input.modelId, "modelId", 256);
+    const semanticModel = provider !== undefined && modelId !== undefined ? { provider, modelId } : undefined;
     const prompt = [
       `Summarize this ${resourceKind} ("${name}") for an agent skill library.`,
       "Describe what it does, when an agent should use it, and its key constraints. Reply with the summary text only.",
@@ -1766,7 +1772,7 @@ export class HistosEngine {
     ].join("\n");
     let summary;
     try {
-      summary = await this.semanticProvider({ kind: resourceKind, name, prompt, budget: MAX_CONDENSE_BUDGET });
+      summary = await this.semanticProvider({ kind: resourceKind, name, prompt, budget: MAX_CONDENSE_BUDGET, ...(semanticModel ?? {}) });
     } catch (error) {
       throw Object.assign(new Error(`Resource distillation failed: ${error instanceof Error ? error.message : String(error)}`), { code: error?.code ?? "provider_invalid" });
     }

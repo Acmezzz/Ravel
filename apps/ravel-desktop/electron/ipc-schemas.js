@@ -223,7 +223,10 @@ export function histosCondenseGraphRequest(value) {
   if (budget === null) return null;
   const parentSha = value?.parentSha === undefined ? undefined : histosString(value.parentSha, "parentSha", 64);
   if (parentSha !== undefined && (parentSha === null || !HISTOS_SHA256.test(parentSha))) return null;
-  return { ...query, ...(budget === undefined ? {} : { budget }), ...(parentSha === undefined ? {} : { parentSha }) };
+  const provider = value?.provider === undefined ? undefined : histosString(value.provider, "provider", 256);
+  const modelId = value?.modelId === undefined ? undefined : histosString(value.modelId, "modelId", 256);
+  if (provider === null || modelId === null) return null;
+  return { ...query, ...(budget === undefined ? {} : { budget }), ...(parentSha === undefined ? {} : { parentSha }), ...(provider === undefined ? {} : { provider }), ...(modelId === undefined ? {} : { modelId }) };
 }
 
 export function histosExecuteFlowRequest(value) {

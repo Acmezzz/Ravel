@@ -286,7 +286,11 @@ contextBridge.exposeInMainWorld("omega", {
     if (budget !== undefined && (!Number.isSafeInteger(budget) || budget < 1 || budget > 32000)) return invalidHistos("budget is out of bounds");
     const parentSha = req?.parentSha;
     if (parentSha !== undefined && (typeof parentSha !== "string" || !HISTOS_SHA256.test(parentSha))) return invalidHistos("parentSha is invalid");
-    return ipcRenderer.invoke("omega:histosCondenseGraph", { ...query, ...(budget === undefined ? {} : { budget }), ...(parentSha === undefined ? {} : { parentSha }) });
+    const provider = req?.provider === undefined ? undefined : req.provider;
+    const modelId = req?.modelId === undefined ? undefined : req.modelId;
+    if (provider !== undefined && !histosString(provider, 256)) return invalidHistos("provider is invalid");
+    if (modelId !== undefined && !histosString(modelId, 256)) return invalidHistos("modelId is invalid");
+    return ipcRenderer.invoke("omega:histosCondenseGraph", { ...query, ...(budget === undefined ? {} : { budget }), ...(parentSha === undefined ? {} : { parentSha }), ...(provider === undefined ? {} : { provider }), ...(modelId === undefined ? {} : { modelId }) });
   },
   histosExecuteFlow: (req) => {
     const sha256 = req?.sha256;

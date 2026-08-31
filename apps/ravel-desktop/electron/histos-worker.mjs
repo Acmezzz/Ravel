@@ -100,6 +100,8 @@ function createRelayedSemanticProvider() {
         request: {
           prompt: typeof request.prompt === "string" ? request.prompt : buildCondensePrompt(request),
           maxTokens: Number.isSafeInteger(request.maxTokens) ? request.maxTokens : PROVIDER_MAX_TOKENS,
+          ...(typeof request.provider === "string" && request.provider.length > 0 ? { provider: request.provider } : {}),
+          ...(typeof request.modelId === "string" && request.modelId.length > 0 ? { modelId: request.modelId } : {}),
         },
       });
     });

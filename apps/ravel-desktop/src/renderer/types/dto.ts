@@ -260,6 +260,8 @@ export interface HistosApplyEvalResultsResultDTO {
 export interface HistosCondenseGraphRequest extends HistosQueryDTO {
   budget?: number;
   parentSha?: string;
+  provider?: string;
+  modelId?: string;
 }
 export interface HistosExecuteFlowRequest { sha256: string }
 export type HistosExecuteFlowResultDTO = {

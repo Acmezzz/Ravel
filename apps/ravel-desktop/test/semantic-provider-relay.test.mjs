@@ -39,8 +39,10 @@ function providerResultsOf(child) {
 }
 
 test("provider relay protocol validators accept well-formed envelopes and reject malformed ones", () => {
-  const request = { type: "histos-provider", reqId: "prov-1", request: { prompt: "summarize", maxTokens: 1024 } };
+  const request = { type: "histos-provider", reqId: "prov-1", request: { prompt: "summarize", maxTokens: 1024, provider: "openai", modelId: "gpt-4o-mini" } };
   assert.equal(isHistosProviderRequest(request), true);
+  assert.equal(isHistosProviderRequest({ type: "histos-provider", reqId: "prov-1", request: { prompt: "ok", provider: "" } }), false);
+  assert.equal(isHistosProviderRequest({ type: "histos-provider", reqId: "prov-1", request: { prompt: "ok", modelId: "m".repeat(257) } }), false);
   assert.equal(isHistosProviderRequest({ type: "histos-provider", reqId: "prov-1" }), false);
   assert.equal(isHistosProviderRequest({ type: "histos-provider", reqId: "prov-1", request: { prompt: "" } }), false);
   assert.equal(isHistosProviderRequest({ type: "histos-provider", reqId: "prov-1", request: { prompt: "ok", maxTokens: 0 } }), false);
@@ -164,9 +166,11 @@ test("histos-worker bridges semantic condensation through the provider relay end
     worker.setProviderResponder((message) => {
       assert.match(message.request.prompt, /NODE:/);
       assert.match(message.request.prompt, /EVIDENCE:/);
+      assert.equal(message.request.provider, "openai");
+      assert.equal(message.request.modelId, "gpt-4o-mini");
       worker.child.send(createHistosProviderResult(message.reqId, { text: "汇聚节点标题" }));
     });
-    const condensed = await worker.call("condenseGraph", { sourceSet: {}, lens: "semantic", granularity: "entry" });
+    const condensed = await worker.call("condenseGraph", { sourceSet: {}, lens: "semantic", granularity: "entry", provider: "openai", modelId: "gpt-4o-mini" });
     assert.equal(condensed.ok, true);
     assert.match(condensed.sha256, /^[0-9a-f]{64}$/);
     assert.ok(condensed.artifact.nodes.length > 0);

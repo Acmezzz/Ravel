@@ -739,7 +739,12 @@ function createSemanticProviderRelay(authorizedRoot) {
     if (ordered.length === 0) {
       throw Object.assign(new Error("No agent runtime is available for semantic condensation"), { code: "semantic_provider_unavailable" });
     }
-    const payload = { prompt: request.prompt, ...(Number.isSafeInteger(request.maxTokens) ? { maxTokens: request.maxTokens } : {}) };
+    const payload = {
+      prompt: request.prompt,
+      ...(Number.isSafeInteger(request.maxTokens) ? { maxTokens: request.maxTokens } : {}),
+      ...(typeof request.provider === "string" && request.provider.length > 0 && request.provider.length <= 256 ? { provider: request.provider } : {}),
+      ...(typeof request.modelId === "string" && request.modelId.length > 0 && request.modelId.length <= 256 ? { modelId: request.modelId } : {}),
+    };
     const transportCodes = new Set(["stale_generation", "stale_runtime", "worker_unavailable", "not_ready"]);
     let lastError = null;
     for (const slot of ordered) {

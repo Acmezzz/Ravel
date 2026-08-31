@@ -949,13 +949,16 @@ const methods = {
    * Touches no session state, appends no facts, and joins no prompt queue;
    * the workspace's currently selected model is the provider.
    */
-  semanticComplete: async ({ prompt, maxTokens }) => {
+  semanticComplete: async ({ prompt, maxTokens, provider, modelId }) => {
     if (!runtime) {
       const error = new Error("Agent runtime is not initialized");
       error.code = "no_model";
       throw error;
     }
-    const model = runtime.session.model;
+    const requestedModel = typeof provider === "string" && provider.length > 0 && typeof modelId === "string" && modelId.length > 0
+      ? bridge.findModel(runtime, provider, modelId)
+      : null;
+    const model = requestedModel ?? runtime.session.model;
     if (!model) {
       const error = new Error("No model is selected for this workspace");
       error.code = "no_model";
