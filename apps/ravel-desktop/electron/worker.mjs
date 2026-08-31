@@ -74,6 +74,7 @@ let activeRunId = null;
 let activeUiContext = null;
 const activeClientMessageIds = new Set();
 const pendingExtensionUI = new Map();
+const pendingSkillEdits = new Map();
 const MAX_FLOW_STEPS = 128;
 const MAX_FLOW_FIELD = 4096;
 const MAX_FLOW_PROMPT_BYTES = 64 * 1024;
@@ -1383,17 +1384,36 @@ const methods = {
     const currentHash = contentHashOf(readFileSync(filePath, "utf8"));
     const nextHash = contentHashOf(newContent);
     const draftId = `draft-${randomUUID()}`;
+    // The draft is registered server-side so approveSkillEdit can verify the
+    // caller is really approving a proposed draft — not injecting any
+    // filePath+content pair (the "human review" gate must be enforceable,
+    // not cosmetic). Bounded so the map cannot grow without limit.
+    if (pendingSkillEdits.size >= 64) pendingSkillEdits.clear();
+    pendingSkillEdits.set(draftId, { filePath, nextHash });
     return { draftId, filePath, currentHash, nextHash, proposedBytes: newContent.length, applied: false };
   },
   /**
    * P6 approval: atomically replace the skill file (tmp + rename) with the
    * approved content, then reload the session resources so the new revision
-   * takes effect. An unapproved draft never reaches this path.
+   * takes effect. Only a draft previously registered by proposeSkillEdit may
+   * be approved; the path and content hash must match what was proposed, so
+   * the approval gate is bound to the actual reviewed content.
    */
   approveSkillEdit: async ({ draftId, filePath, newContent }) => {
     if (typeof draftId !== "string" || !draftId.startsWith("draft-") || typeof filePath !== "string" || !filePath.trim() || typeof newContent !== "string") {
       const error = new Error("approveSkillEdit requires a proposed draftId, filePath and newContent");
       error.code = "invalid_args";
+      throw error;
+    }
+    const draft = pendingSkillEdits.get(draftId);
+    if (!draft) {
+      const error = new Error("approveSkillEdit: unknown or expired draft; propose the edit again");
+      error.code = "unknown_draft";
+      throw error;
+    }
+    if (draft.filePath !== filePath || draft.nextHash !== contentHashOf(newContent)) {
+      const error = new Error("approveSkillEdit: content or path does not match the proposed draft; re-propose");
+      error.code = "draft_mismatch";
       throw error;
     }
     if (!knownResourcePath("skill", filePath) || !existsSync(filePath)) {
@@ -1405,6 +1425,7 @@ const methods = {
     writeFileSync(temp, newContent, { encoding: "utf8", mode: 0o600 });
     renameSync(temp, filePath);
     const nextHash = contentHashOf(readFileSync(filePath, "utf8"));
+    pendingSkillEdits.delete(draftId);
     await runtime.session.reload();
     return { draftId, filePath, nextHash, applied: true };
   },

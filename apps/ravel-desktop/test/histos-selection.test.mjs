@@ -158,3 +158,10 @@ test("worker histos_expand falls back to the durable JSONL when the entry left m
   assert.match(worker, /jsonlEntryReader\(sessionsRoot\)/);
   assert.match(worker, /In-memory only applies to the current session/);
 });
+
+test("approveSkillEdit is bound to a proposed draft (human review gate enforced)", async () => {
+  const worker = await readFileAsync(new URL("../electron/worker.mjs", import.meta.url), "utf8");
+  assert.match(worker, /pendingSkillEdits\.set\(draftId, \{ filePath, nextHash \}\)/);
+  assert.match(worker, /unknown or expired draft/);
+  assert.match(worker, /draft\.nextHash !== contentHashOf\(newContent\)/);
+});

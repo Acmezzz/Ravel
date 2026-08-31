@@ -42,6 +42,10 @@ function firstLine(stdout) {
 }
 
 function refFor(id) {
+  // Fail closed on the id shape before it ever becomes a path segment: a
+  // non-40-hex id from any caller would otherwise be join()ed into the git
+  // dir (path traversal via `../` inside the id).
+  if (typeof id !== "string" || !/^[0-9a-f]{40}$/.test(id)) throw new Error(`invalid checkpoint id: ${String(id).slice(0, 16)}`);
   return `${CHECKPOINT_REF_PREFIX}${id}`;
 }
 

@@ -14,7 +14,16 @@ interface FactsPanelProps {
   selectedSessionId?: string | null;
 }
 
-const PREDICATE_OPTIONS = ["", "produces", "approves", "denies", "references", "attaches", "annotates", "schedules", "spawns", "custom_config_resource", "custom_config_mcp", "custom_config_mode"];
+// Must stay in sync with histos-fact-derivation.js predicate families:
+// core FACT_PREDICATES + the custom_config_<domain> (7), custom_diagnostic_
+// observed, custom_usage_observed, custom_goal_state predicates.
+const PREDICATE_OPTIONS = [
+  "",
+  "produces", "approves", "denies", "references", "attaches", "annotates", "schedules", "spawns",
+  "custom_config_resource", "custom_config_permission", "custom_config_trust", "custom_config_mcp",
+  "custom_config_mode", "custom_config_provider", "custom_config_profile",
+  "custom_diagnostic_observed", "custom_usage_observed", "custom_goal_state",
+];
 
 function compactObject(object: string, max = 120): string {
   return object.length > max ? `${object.slice(0, max)}…` : object;
