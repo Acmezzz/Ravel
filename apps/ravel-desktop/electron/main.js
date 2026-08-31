@@ -1637,13 +1637,15 @@ ipcMain.handle("omega:compact", (event) => {
   return rpc("compact", {}, "compact_failed");
 });
 
-ipcMain.handle("omega:updateSettings", (event, req) => {
+ipcMain.handle("omega:updateSettings", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   const payload = {};
   if (req?.steeringMode === "all" || req?.steeringMode === "one-at-a-time") payload.steeringMode = req.steeringMode;
   if (req?.followUpMode === "all" || req?.followUpMode === "one-at-a-time") payload.followUpMode = req.followUpMode;
   if (typeof req?.autoCompaction === "boolean") payload.autoCompaction = req.autoCompaction;
   if (typeof req?.autoRetry === "boolean") payload.autoRetry = req.autoRetry;
+  const changed = Object.keys(payload).join(",");
+  if (changed) await recordConfig("profile", "update", `agent:${changed}`);
   return rpc("updateSettings", payload, "write_failed");
 });
 
@@ -1692,7 +1694,7 @@ ipcMain.handle("omega:getDesktopSettings", (event) => {
   return okResult(desktopSettings?.get() ?? null);
 });
 
-ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
+ipcMain.handle("omega:updateDesktopSettings", async (event, req) => {
   if (!senderAllowed(event)) return errorResult("forbidden", "Invalid renderer sender");
   if (!desktopSettings) return errorResult("unavailable", "Desktop settings are not ready");
   const patch = {};
@@ -1716,6 +1718,8 @@ ipcMain.handle("omega:updateDesktopSettings", (event, req) => {
   if (typeof req?.permissionProfile === "string" && PERMISSION_PROFILES.includes(req.permissionProfile)) patch.permissionProfile = sanitizePermissionProfile(req.permissionProfile);
   if (typeof req?.lastSessionId === "string" || req?.lastSessionId === null) patch.lastSessionId = req.lastSessionId;
   if (typeof req?.lastWorkspace === "string" || req?.lastWorkspace === null) patch.lastWorkspace = req.lastWorkspace;
+  const changed = Object.keys(patch).filter((key) => key !== "lastSessionId" && key !== "lastWorkspace").join(",");
+  if (changed) await recordConfig("profile", "update", `desktop:${changed}`);
   const next = desktopSettings.update(patch);
   workerPool.configure({ cap: next.workerCap, idleTtlMs: next.workerIdleTtlMs });
   return okResult(next);
@@ -1772,6 +1776,7 @@ ipcMain.handle("omega:setPermissionProfile", async (event, req) => {
     }));
     return errorResult(failed?.code ?? "write_failed", failed instanceof Error ? failed.message : String(failed));
   }
+  await recordConfig("profile", "update", `permission:${profile}`);
   return okResult(next);
 });
 

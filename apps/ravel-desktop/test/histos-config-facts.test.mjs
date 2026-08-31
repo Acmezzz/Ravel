@@ -131,3 +131,15 @@ test("worker.mjs dispatches recordConfigChange to the single writer", async () =
   assert.match(workerSource, /recordConfigChange: async/);
 });
 
+
+test("profile domain is wired at the three settings write sites", async () => {
+  const main = await fs.readFile(new URL("../electron/main.js", import.meta.url), "utf8");
+  const profileSites = (main.match(/recordConfig\("profile"/g) ?? []).length;
+  assert.ok(profileSites >= 3, `expected at least 3 recordConfig("profile" sites, got ${profileSites}`);
+  // The three handlers (updateSettings, updateDesktopSettings, setPermissionProfile)
+  // each record a profile-domain fact; lastSessionId/lastWorkspace bookkeeping
+  // is excluded from the fact (not a config change).
+  assert.match(main, /recordConfig\("profile", "update", `agent:/);
+  assert.match(main, /recordConfig\("profile", "update", `desktop:/);
+  assert.match(main, /recordConfig\("profile", "update", `permission:/);
+});

@@ -11,6 +11,7 @@
  */
 import * as React from "react";
 import { ipc } from "../../ipc/client";
+import { histosClient } from "../../ipc/histos-client";
 import { useAppStore } from "../../store/useAppStore";
 import type { HistosGraphDTO, HistosLens } from "../../types/dto";
 
@@ -74,6 +75,17 @@ export function useHistosGraphQuery(): HistosGraphQuery {
   }, [lens]);
 
   React.useEffect(() => { void refresh(); }, [refresh, workspaceEpoch]);
+
+  // P0 visibility contract: archiving/purging/restoring entries changes what
+  // the graph projection should show, so the canvas must refresh the moment
+  // the event bus reports it - not on the next manual refresh.
+  React.useEffect(() => {
+    return histosClient.onHistosEvent(({ eventType }) => {
+      if (eventType === "on_entries_archived" || eventType === "on_entries_restored" || eventType === "on_entries_purged") {
+        refresh();
+      }
+    });
+  }, [refresh]);
 
   return { graph, loading, error, lens, query, requestKey, setLens, refresh };
 }
